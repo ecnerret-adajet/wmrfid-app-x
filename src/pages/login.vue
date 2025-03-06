@@ -1,11 +1,8 @@
 <script setup>
-import { useTheme } from 'vuetify'
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
-import logo from '@images/logo.svg?raw'
-import authV1MaskDark from '@images/pages/auth-v1-mask-dark.png'
-import authV1MaskLight from '@images/pages/auth-v1-mask-light.png'
-import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
-import authV1Tree from '@images/pages/auth-v1-tree.png'
+import { useAuthStore } from '@/stores/auth';
+import logo from '@images/logo.svg?raw';
+import { useRouter } from "vue-router";
+import { VForm } from 'vuetify/components/VForm';
 
 const form = ref({
   email: '',
@@ -13,152 +10,113 @@ const form = ref({
   remember: false,
 })
 
-const vuetifyTheme = useTheme()
-
-const authThemeMask = computed(() => {
-  return vuetifyTheme.global.name.value === 'light' ? authV1MaskLight : authV1MaskDark
-})
-
+const refForm = ref()
 const isPasswordVisible = ref(false)
+const store = useAuthStore();
+const router = useRouter()
+const submitDisabled = ref(false)
+
+// Define custom validation rules
+const requiredValidator = (value) => !!value || 'This field is required'
+
+const loginSuccess = ref(false)
+
+const handleLogin = async (values) => {
+    submitDisabled.value = true
+    store.logout(true);
+    await store.login(values);
+    const error = Object.values(store.errors);
+
+    if (error.length === 0) {
+        submitDisabled.value = false
+        loginSuccess.value = true
+        store.errors = {}
+        router.push({ name: 'dashboard' });
+     } else {
+        submitDisabled.value = false
+     }
+}
+
 </script>
 
 <template>
-  <!-- eslint-disable vue/no-v-html -->
+    <div class="auth-wrapper d-flex align-center justify-center pa-4">
+        <VCard class="auth-card pa-4 pt-7" max-width="448">
+            <VCardItem class="justify-center">
+                <RouterLink to="/" class="d-flex align-center gap-3">
+                    <div class="d-flex" v-html="logo" />
+                    <h2 class="font-weight-medium text-2xl text-uppercase">
+                        WMRFID
+                    </h2>
+                </RouterLink>
+            </VCardItem>
+            <VCardText class="pt-2">
+                <h4 class="text-h4 mb-1">
+                    Welcome to WMRFID
+                </h4>
+                <p class="mb-0">
+                    Please sign-in to your account
+                </p>
+            </VCardText>
 
-  <div class="auth-wrapper d-flex align-center justify-center pa-4">
-    <VCard
-      class="auth-card pa-4 pt-7"
-      max-width="448"
-    >
-      <VCardItem class="justify-center">
-        <RouterLink
-          to="/"
-          class="d-flex align-center gap-3"
-        >
-          <!-- eslint-disable vue/no-v-html -->
-          <div
-            class="d-flex"
-            v-html="logo"
-          />
-          <h2 class="font-weight-medium text-2xl text-uppercase">
-            Materio
-          </h2>
-        </RouterLink>
-      </VCardItem>
+            <VCardText>
+                <VForm @submit.prevent="handleLogin(form)"  ref="refForm">
+                    <VRow>
+                        <!-- email -->
+                        <VCol cols="12">
+                            <VTextField v-model="form.email" label="Email" type="email" 
+                                :rules="[requiredValidator]"
+                            />
+                        </VCol>
 
-      <VCardText class="pt-2">
-        <h4 class="text-h4 mb-1">
-          Welcome to Materio! 👋🏻
-        </h4>
-        <p class="mb-0">
-          Please sign-in to your account and start the adventure
-        </p>
-      </VCardText>
+                        <!-- password -->
+                        <VCol cols="12">
+                            <VTextField
+                                v-model="form.password"
+                                label="Password"
+                                placeholder="············"
+                                :type="isPasswordVisible ? 'text' : 'password'"
+                                autocomplete="password"
+                                :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
+                                @click:append-inner="isPasswordVisible = !isPasswordVisible"
+                            />
 
-      <VCardText>
-        <VForm @submit.prevent="() => {}">
-          <VRow>
-            <!-- email -->
-            <VCol cols="12">
-              <VTextField
-                v-model="form.email"
-                label="Email"
-                type="email"
-              />
-            </VCol>
+                            <VAlert v-if="store.errors.email" class="mt-4"
+                                color="error"
+                                variant="tonal"
+                            >
+                                {{ store.errors.email[0] }}
+                            </VAlert>
 
-            <!-- password -->
-            <VCol cols="12">
-              <VTextField
-                v-model="form.password"
-                label="Password"
-                placeholder="············"
-                :type="isPasswordVisible ? 'text' : 'password'"
-                autocomplete="password"
-                :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
-                @click:append-inner="isPasswordVisible = !isPasswordVisible"
-              />
+                            <VAlert v-if="loginSuccess" class="mt-4" color="success">
+                                You have successfully login
+                            </VAlert>
 
-              <!-- remember me checkbox -->
-              <div class="d-flex align-center justify-space-between flex-wrap my-6">
-                <VCheckbox
-                  v-model="form.remember"
-                  label="Remember me"
-                />
+                            <div class="d-flex align-center justify-space-between flex-wrap my-6">
+                                <VCheckbox
+                                    v-model="form.remember"
+                                    label="Remember me"
+                                />
+                                <a class="text-primary" href="javascript:void(0)">
+                                    Forgot Password?
+                                </a>
+                            </div>
 
-                <a
-                  class="text-primary"
-                  href="javascript:void(0)"
-                >
-                  Forgot Password?
-                </a>
-              </div>
+                            <VBtn block type="submit" :disabled="submitDisabled" @click="refForm?.validate()">
+                                Login
+                            </VBtn>
+                        </VCol>
+                    </VRow>
+                </VForm>
+            </VCardText>
+        </VCard>
 
-              <!-- login button -->
-              <VBtn
-                block
-                type="submit"
-                to="/"
-              >
-                Login
-              </VBtn>
-            </VCol>
-
-            <!-- create account -->
-            <VCol
-              cols="12"
-              class="text-center text-base"
+        <!-- <VSnackbar
+            v-model="isSnackbarFadeVisible"
+            transition="fade-transition"
+            location="top start"
             >
-              <span>New on our platform?</span>
-              <RouterLink
-                class="text-primary ms-2"
-                to="/register"
-              >
-                Create an account
-              </RouterLink>
-            </VCol>
-
-            <VCol
-              cols="12"
-              class="d-flex align-center"
-            >
-              <VDivider />
-              <span class="mx-4">or</span>
-              <VDivider />
-            </VCol>
-
-            <!-- auth providers -->
-            <VCol
-              cols="12"
-              class="text-center"
-            >
-              <AuthProvider />
-            </VCol>
-          </VRow>
-        </VForm>
-      </VCardText>
-    </VCard>
-
-    <VImg
-      class="auth-footer-start-tree d-none d-md-block"
-      :src="authV1Tree"
-      :width="250"
-    />
-
-    <VImg
-      :src="authV1Tree2"
-      class="auth-footer-end-tree d-none d-md-block"
-      :width="350"
-    />
-
-    <!-- bg img -->
-    <VImg
-      class="auth-footer-mask d-none d-md-block"
-      :src="authThemeMask"
-    />
-  </div>
+            You have successfully login
+        </VSnackbar> -->
+    </div>
 </template>
-
-<style lang="scss">
-@use "@core/scss/template/pages/page-auth";
-</style>

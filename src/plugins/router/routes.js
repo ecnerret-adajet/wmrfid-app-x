@@ -1,55 +1,51 @@
 export const routes = [
-  { path: '/', redirect: '/dashboard' },
-  {
-    path: '/',
-    component: () => import('@/layouts/default.vue'),
-    children: [
-      {
-        path: 'dashboard',
-        component: () => import('@/pages/dashboard.vue'),
+    { path: '/', redirect: '/dashboard' },
+    {
+      path: '/',
+      component: () => import('@/layouts/default.vue'),
+      meta: {
+        middleware: "auth",
       },
-      {
-        path: 'account-settings',
-        component: () => import('@/pages/account-settings.vue'),
-      },
-      {
-        path: 'typography',
-        component: () => import('@/pages/typography.vue'),
-      },
-      {
-        path: 'icons',
-        component: () => import('@/pages/icons.vue'),
-      },
-      {
-        path: 'cards',
-        component: () => import('@/pages/cards.vue'),
-      },
-      {
-        path: 'tables',
-        component: () => import('@/pages/tables.vue'),
-      },
-      {
-        path: 'form-layouts',
-        component: () => import('@/pages/form-layouts.vue'),
-      },
-    ],
-  },
-  {
-    path: '/',
-    component: () => import('@/layouts/blank.vue'),
-    children: [
-      {
-        path: 'login',
-        component: () => import('@/pages/login.vue'),
-      },
-      {
-        path: 'register',
-        component: () => import('@/pages/register.vue'),
-      },
-      {
-        path: '/:pathMatch(.*)*',
-        component: () => import('@/pages/[...error].vue'),
-      },
-    ],
-  },
-]
+      children: [
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/pages/dashboard.vue'),
+          meta: {
+            pageTitle: "Dashboard",
+            breadcrumbs: ["Dashboard"],
+          },
+        },
+        {
+          path: 'account-settings',
+          name: 'account-settings',
+          component: () => import('@/pages/account-settings.vue'),
+        },
+      ],
+    },
+    {
+      path: '/',
+      component: () => import('@/layouts/blank.vue'),
+      children: [
+        {
+          path: 'login',
+          name: 'login',
+          component: () => import('@/pages/login.vue'),
+          meta: {
+            pageTitle: "Login"
+          },
+        },
+        {
+          path: 'register',
+          name: 'register',
+          component: () => import('@/pages/register.vue'),
+        },
+        {
+          path: '/:pathMatch(.*)*',
+          name: 'error',
+          component: () => import('@/pages/[...error].vue'),
+        },
+      ],
+    },
+  ];
+  
