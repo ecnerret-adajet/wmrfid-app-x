@@ -1,4 +1,5 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
 import { useAuthStore } from '@/stores/auth';
 import logo from '@images/logo.svg?raw';
 import { useRouter } from "vue-router";
@@ -22,6 +23,9 @@ const requiredValidator = (value) => !!value || 'This field is required'
 const loginSuccess = ref(false)
 
 const handleLogin = async (values) => {
+    if (!values.email || !values.password) {
+        return;
+    }
     submitDisabled.value = true
     store.logout(true);
     await store.login(values);
@@ -110,13 +114,7 @@ const handleLogin = async (values) => {
                 </VForm>
             </VCardText>
         </VCard>
-
-        <!-- <VSnackbar
-            v-model="isSnackbarFadeVisible"
-            transition="fade-transition"
-            location="top start"
-            >
-            You have successfully login
-        </VSnackbar> -->
+        <Loader :show="submitDisabled"/>
     </div>
 </template>
+
