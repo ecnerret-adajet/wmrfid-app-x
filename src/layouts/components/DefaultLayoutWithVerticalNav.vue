@@ -4,28 +4,12 @@ import logo from '@images/logo.svg?raw'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 
 // Components
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
-import { VIcon } from 'vuetify/components'
 
-const breadcrumbs = [
-    {
-      title: 'Dashboard',
-      disabled: false,
-      href: 'breadcrumbs_dashboard',
-    },
-    {
-      title: 'Link 1',
-      disabled: false,
-      href: 'breadcrumbs_link_1',
-    },
-    {
-      title: 'Link 2',
-      disabled: true,
-      href: 'breadcrumbs_link_2',
-    },
-  ]
+
 </script>
 
 <template>
@@ -41,33 +25,7 @@ const breadcrumbs = [
           <VIcon icon="ri-menu-line" />
         </IconBtn>
 
-        <!-- 👉 Change this to breadcrumbs -->
-        <!-- <div
-          class="d-flex align-center cursor-pointer"
-          style="user-select: none;"
-        >
-          <IconBtn>
-            <VIcon icon="ri-search-line" />
-          </IconBtn>
-
-          <span class="d-none d-md-flex align-center text-disabled">
-            <span class="me-3">Search</span>
-            <span class="meta-key">&#8984;K</span>
-          </span>
-        </div> -->
-<!-- 
-        <v-breadcrumbs v-if="breadcrumbs.length > 0">
-            <v-breadcrumbs-item
-            v-for="(breadcrumb, index) in breadcrumbs"
-            :key="index"
-            :to="breadcrumb.to"
-            >
-            <v-icon icon="mdi-chevron-right"></v-icon>
-            {{ breadcrumb.title }}
-            </v-breadcrumbs-item>
-
-        
-        </v-breadcrumbs> -->
+        <Breadcrumbs />
 
         <VSpacer />
 

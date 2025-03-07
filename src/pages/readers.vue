@@ -3,6 +3,6 @@
 </script>
 
 <template>
-    <h1>Dashboard here</h1>
+    <h1>Reader list here</h1>
 </template>
 

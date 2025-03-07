@@ -8,19 +8,33 @@ export const routes = [
       },
       children: [
         {
-          path: 'dashboard',
-          name: 'dashboard',
-          component: () => import('@/pages/dashboard.vue'),
-          meta: {
-            pageTitle: "Dashboard",
-            breadcrumbs: ["Dashboard"],
-          },
+            path: 'dashboard',
+            name: 'dashboard',
+            component: () => import('@/pages/dashboard.vue'),
+            meta: {
+                pageTitle: "Dashboard",
+                breadcrumbs: [
+                    { label: "Dashboard", link: "/dashboard" },
+                ],
+            },
         },
+        {
+            path: 'readers',
+            name: 'readers',
+            component: () => import('@/pages/readers.vue'),
+            meta: {
+              pageTitle: "Readers",
+              breadcrumbs: [
+                  { label: "Readers", link: "/readers" },
+              ],
+            },
+          },
         {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
         },
+
       ],
     },
     {

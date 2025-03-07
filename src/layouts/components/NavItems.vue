@@ -29,7 +29,7 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
     <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
     <VerticalNavLink :item="{ title: 'RFID Logs', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-home-smile-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Authentication'}" />
