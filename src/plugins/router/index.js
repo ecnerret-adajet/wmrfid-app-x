@@ -8,11 +8,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();  // Get auth store
-  
-  // Set page title dynamically based on route meta
-  document.title = `${to.meta.pageTitle || 'Default'} - ${import.meta.env.VITE_APP_NAME}`;
+    const authStore = useAuthStore();  // Get auth store
+    
+    // Set page title dynamically based on route meta
+    document.title = `${to.meta.pageTitle || 'Default'} - ${import.meta.env.VITE_APP_NAME}`;
 
+    authStore.verifyAuth();
     // If route requires authentication
     if (authStore.isAuthenticated && to.name === 'login') {
         next({ name: 'dashboard' });
@@ -29,7 +30,6 @@ router.beforeEach((to, from, next) => {
         }
     }
 
-  // Optionally, scroll to the top of the page on route change
   window.scrollTo({
     top: 0,
     left: 0,

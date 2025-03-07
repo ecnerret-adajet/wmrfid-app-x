@@ -21,14 +21,14 @@ export const routes = [
         {
             path: 'readers',
             name: 'readers',
-            component: () => import('@/pages/readers.vue'),
+            component: () => import('@/pages/readers/index.vue'),
             meta: {
               pageTitle: "Readers",
               breadcrumbs: [
                   { label: "Readers", link: "/readers" },
               ],
             },
-          },
+        },
         {
           path: 'account-settings',
           name: 'account-settings',
