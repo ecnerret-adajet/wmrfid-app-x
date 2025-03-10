@@ -30,6 +30,17 @@ export const routes = [
             },
         },
         {
+            path: 'users',
+            name: 'users',
+            component: () => import('@/pages/users/index.vue'),
+            meta: {
+              pageTitle: "Users",
+              breadcrumbs: [
+                  { label: "Users", link: "/users" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),

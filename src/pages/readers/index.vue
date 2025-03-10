@@ -99,7 +99,6 @@ const handleSearch = debounce((search) => {
             <SearchInput @update:search="handleSearch"/>
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
-            <!-- Center the button -->
             <v-btn block @click="openDialog">Add Reader</v-btn>
         </VCol>
     </VRow>
@@ -110,7 +109,7 @@ const handleSearch = debounce((search) => {
         />
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Reader'">
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Reader'" >
         <template #default>
             <v-form @submit.prevent="submit">
                 <v-select label="Select Storage Location" density="compact"
