@@ -41,6 +41,17 @@ export const routes = [
             },
         },
         {
+            path: 'roles',
+            name: 'roles',
+            component: () => import('@/pages/roles/index.vue'),
+            meta: {
+              pageTitle: "Roles",
+              breadcrumbs: [
+                  { label: "Roles", link: "/roles" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
