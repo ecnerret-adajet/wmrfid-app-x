@@ -75,6 +75,7 @@ const submit = async () => {
         form.value.name = null;
         form.value.reader_type_id = null;
         form.value.storage_location_id = null;
+        
     } catch (error) {
         console.error('Error submitting:', error);
     }

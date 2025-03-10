@@ -16,7 +16,7 @@ const tableSort = ref('-created_at')
 const isLoading = ref(false);
 const errorMessage = ref(null)
 const toast = ref({
-    message: 'User successfully created!',
+    message: 'Permission successfully created!',
     color: 'success',
     show: false
 });
@@ -41,24 +41,24 @@ const openDialog = () => {
 
 const form = ref({
     'name': null,
-    'email': null,
+    'description': null,
 });
 
 const submit = async () => {
     isLoading.value = true;
     toast.value.show = false;
     try {
-        const response = await ApiService.post('users/store', form.value)
+        const response = await ApiService.post('permissions/store', form.value)
         if (datatableRef.value) {
             datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{key: 'created_at', 'order': 'desc'}], search: searchValue.value });
         }
         isLoading.value = false;
         dialogVisible.value = false
-        toast.value.message = 'User successfully created!'
+        toast.value.message = 'Permission successfully created!'
         toast.value.show = true;
         form.value.name = null;
-        form.value.email = null;
-        errorMessage.value = ''
+        form.value.description = null;
+        errorMessage.value = null;
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
@@ -74,7 +74,7 @@ const submit = async () => {
             <SearchInput @update:search="handleSearch"/>
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="openDialog">Add New User</v-btn>
+            <v-btn block @click="openDialog">Add New Permission</v-btn>
         </VCol>
     </VRow>
 
@@ -84,18 +84,17 @@ const submit = async () => {
         />
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New User'" >
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Permission'" >
         <template #default>
             <v-form @submit.prevent="submit">
                 <v-text-field class="mt-6" density="compact" 
-                    label="Full Name"
+                    label="Name"
                     v-model="form.name" 
                     :rules="[value => !!value || 'Name is required']"
                 />
                 <v-text-field class="mt-6" density="compact" 
-                    label="Email Address"
-                    v-model="form.email" 
-                    :rules="[value => !!value || 'Email address is required']"
+                    label="Description"
+                    v-model="form.description" 
                 />
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                     {{ errorMessage }}

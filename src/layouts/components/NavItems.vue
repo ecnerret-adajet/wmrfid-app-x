@@ -35,6 +35,6 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
     <VerticalNavSectionTitle :item="{ heading: 'Authentication'}" />
     <VerticalNavLink :item="{ title: 'Users', icon: 'ri-user-line', to: '/users'}"/>
     <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-group-line', to: '/roles'}"/>
-    <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions'}"/>
 
 </template>

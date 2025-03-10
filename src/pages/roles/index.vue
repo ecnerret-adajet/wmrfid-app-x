@@ -74,7 +74,8 @@ const submit = async () => {
         toast.value.show = true;
         form.value.name = null;
         form.value.description = null;
-        form.value.permissions = []
+        form.value.permissions = [];
+        errorMessage.value = null;
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);

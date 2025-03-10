@@ -52,6 +52,17 @@ export const routes = [
             },
         },
         {
+            path: 'permissions',
+            name: 'permissions',
+            component: () => import('@/pages/permissions/index.vue'),
+            meta: {
+              pageTitle: "Permissions",
+              breadcrumbs: [
+                  { label: "Permissions", link: "/permissions" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
