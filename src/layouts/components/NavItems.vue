@@ -8,33 +8,33 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
     
     <!-- Warehouse Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
-    <VerticalNavLink :item="{ title: 'Invetory', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Invetory', icon: 'ri-stack-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse'}"/>
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Shipments'}" />
-    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/>
 
     <!-- Stock Transfers Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Stock Transfers'}" />
-    <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-
+    <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/warehouse'}"/>
+   
     <!-- Master Data Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Master Data'}" />
-    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Batch Maintenance', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-folder-open-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Batch Maintenance', icon: 'ri-home-gear-line', to: '/warehouse'}"/>
 
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
-    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'RFID Logs', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-home-smile-line', to: '/readers'}"/>
+    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'RFID Logs', icon: 'ri-file-text-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Authentication'}" />
-    <VerticalNavLink :item="{ title: 'Users', icon: 'ri-home-smile-line', to: '/users'}"/>
-    <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-home-smile-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Users', icon: 'ri-user-line', to: '/users'}"/>
+    <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-group-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/warehouse'}"/>
 
 </template>
