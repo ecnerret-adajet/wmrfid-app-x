@@ -15,6 +15,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    permissions: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const editDialog = ref(false);
@@ -101,6 +105,7 @@ const editItem = (item) => {
     selectedRole.value = item;
     form.value.name = item.name;
     form.value.description = item.description;
+    form.value.permissions = item.permissions;
     errorMessage.value = '';
     editDialog.value = true;
 }  
@@ -155,6 +160,7 @@ const handleUpdate = async () => {
 const form = ref({
     'name': null,
     'description': null,
+    'permissions': []
 });
 
 defineExpose({
@@ -235,6 +241,16 @@ defineExpose({
                 <v-text-field class="mt-6" density="compact" 
                     label="Description"
                     v-model="form.description" 
+                />
+                <v-select class="mt-6"
+                    v-model="form.permissions"
+                    :items="permissions"
+                    item-title="name"
+                    item-value="id"
+                    placeholder="Select Permissions"
+                    label="Select Permissions"
+                    chips
+                    multiple
                 />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">

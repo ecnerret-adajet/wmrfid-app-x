@@ -12,14 +12,29 @@ const searchValue = ref('');
 const datatableRef = ref(null);
 const tablePerPage = ref(10);
 const tablePage = ref(1);
-const tableSort = ref('-created_at')
+const tableSort = ref('-created_at');
 const isLoading = ref(false);
-const errorMessage = ref(null)
+const errorMessage = ref(null);
+const permissions = ref([]);
 const toast = ref({
     message: 'New role successfully created!',
     color: 'success',
     show: false
 });
+
+
+onMounted(() => {
+    fetchPermissions();
+})
+
+const fetchPermissions = async () => {
+    try {
+        const response = await ApiService.get('roles/get-permissions');
+        permissions.value = response.data;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+};
 
 
 const handleSearch = debounce((search) => {
@@ -42,6 +57,7 @@ const openDialog = () => {
 const form = ref({
     'name': null,
     'description': null,
+    'permissions': []
 });
 
 const submit = async () => {
@@ -57,7 +73,8 @@ const submit = async () => {
         toast.value.message = 'New role successfully created!'
         toast.value.show = true;
         form.value.name = null;
-        form.value.email = null;
+        form.value.description = null;
+        form.value.permissions = []
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
@@ -78,7 +95,7 @@ const submit = async () => {
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+        <datatable ref="datatableRef" :permissions="permissions" @pagination-changed="onPaginationChanged" 
             :search="searchValue"
         />
     </VCard>
@@ -94,6 +111,17 @@ const submit = async () => {
                 <v-text-field class="mt-6" density="compact" 
                     label="Description"
                     v-model="form.description"
+                />
+
+                <v-select class="mt-6"
+                    v-model="form.permissions"
+                    :items="permissions"
+                    item-title="name"
+                    item-value="id"
+                    placeholder="Select Permissions"
+                    label="Select Permissions"
+                    chips
+                    multiple
                 />
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                     {{ errorMessage }}
