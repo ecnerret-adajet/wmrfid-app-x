@@ -1,7 +1,14 @@
 <script setup>
+import { watch } from 'vue';
 import { VCardText, VTextField } from 'vuetify/components';
 
+const emits = defineEmits(['update:search']);
+
 const search = ref('')
+
+watch(search, (newValue) => {
+    emits('update:search', newValue);
+});
 
 </script>
 <template>
