@@ -13,6 +13,7 @@ declare module 'vue' {
     CardStatisticsVertical: typeof import('./src/@core/components/cards/CardStatisticsVertical.vue')['default']
     CardStatisticsWithImages: typeof import('./src/@core/components/cards/CardStatisticsWithImages.vue')['default']
     DeleteModal: typeof import('./src/components/DeleteModal.vue')['default']
+    EditingModal: typeof import('./src/components/EditingModal.vue')['default']
     ErrorHeader: typeof import('./src/components/ErrorHeader.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']

@@ -14,7 +14,6 @@ const searchValue = ref('');
 
 const openDialog = () => {
     if (!dialogVisible.value) {
-        fetchReaderTypesAndStorageLocations();
         dialogVisible.value = true;
     }
 };
@@ -24,6 +23,10 @@ const form = ref({
     'reader_type_id': null,
     'storage_location_id': null,
 });
+
+onMounted(() => {
+    fetchReaderTypesAndStorageLocations();
+})
 
 const readerTypes = ref([]);
 const storageLocations = ref([]);
@@ -102,7 +105,9 @@ const handleSearch = debounce((search) => {
     </VRow>
     
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" :search="searchValue"/>
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+            :search="searchValue" :storage-locations="storageLocations" :reader-types="readerTypes"
+        />
     </VCard>
 
     <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Reader'">
