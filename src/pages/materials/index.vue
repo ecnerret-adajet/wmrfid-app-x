@@ -1,0 +1,38 @@
+<script setup>
+import SearchInput from '@/components/SearchInput.vue';
+import { debounce } from 'lodash';
+import { ref } from 'vue';
+import datatable from './datatable.vue';
+
+const searchValue = ref('');
+const datatableRef = ref(null);
+const tablePerPage = ref(10);
+const tablePage = ref(1);
+const tableSort = ref('-created_at')
+
+const handleSearch = debounce((search) => {
+    searchValue.value = search;
+}, 500);
+
+const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
+    tableSort.value = sortBy
+    tablePage.value = page
+    tablePerPage.value = itemsPerPage
+    searchValue.value = search
+}
+
+</script>
+
+<template>
+    <VRow>
+        <VCol>
+            <SearchInput @update:search="handleSearch"/>
+        </VCol>
+    </VRow>
+
+    <VCard>
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+            :search="searchValue"
+        />
+    </VCard>
+</template>

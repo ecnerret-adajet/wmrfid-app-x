@@ -63,6 +63,17 @@ export const routes = [
             },
         },
         {
+            path: 'materials',
+            name: 'materials',
+            component: () => import('@/pages/materials/index.vue'),
+            meta: {
+              pageTitle: "Materials",
+              breadcrumbs: [
+                  { label: "Materials", link: "/materials" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),

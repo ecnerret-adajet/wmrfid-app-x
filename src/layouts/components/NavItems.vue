@@ -22,7 +22,7 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
    
     <!-- Master Data Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Master Data'}" />
-    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-folder-open-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-folder-open-line', to: '/materials'}"/>
     <VerticalNavLink :item="{ title: 'Batch Maintenance', icon: 'ri-home-gear-line', to: '/warehouse'}"/>
 
     <!-- RFID Components Section  -->
