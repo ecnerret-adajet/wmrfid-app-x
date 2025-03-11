@@ -9,7 +9,7 @@ const router = useRouter()
 
 const handleLogout = () => {
     store.logout(); 
-    // router.push({ name: 'login' }); 
+    router.push({ name: 'login' }); 
 };
 
 </script>
