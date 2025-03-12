@@ -85,6 +85,17 @@ export const routes = [
             },
         },
         {
+            path: 'production-runs',
+            name: 'production-runs',
+            component: () => import('@/pages/productionRuns/index.vue'),
+            meta: {
+              pageTitle: "Production Runs",
+              breadcrumbs: [
+                  { label: "Production Runs", link: "/production-runs" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
