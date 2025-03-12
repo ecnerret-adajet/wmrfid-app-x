@@ -96,6 +96,17 @@ export const routes = [
             },
         },
         {
+            path: 'inventories',
+            name: 'inventories',
+            component: () => import('@/pages/inventories/index.vue'),
+            meta: {
+              pageTitle: "Inventories",
+              breadcrumbs: [
+                  { label: "Inventories", link: "/inventories" },
+              ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
