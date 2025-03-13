@@ -75,9 +75,8 @@ const handleUpdate = async () => {
         toast.value.message = 'You have successfully updated your password';
         toast.value.show = true;
         isLoading.value = false;
-
-        authStore.hidePasswordModal();
         authStore.verifyAuth()
+        authStore.hidePasswordModal();
     } catch (error) {
         isLoading.value = false;
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
@@ -86,7 +85,7 @@ const handleUpdate = async () => {
 
 </script>
 <template>
-    <v-dialog v-model="dialogVisible" max-width="600px">
+    <v-dialog v-model="dialogVisible" max-width="600px" persistent>
       <VCard class="auth-card pa-4 pt-7">
             <VCardItem class="justify-center">
                     <!-- <div class="d-flex" v-html="logo" /> -->
