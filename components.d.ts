@@ -18,7 +18,6 @@ declare module 'vue' {
     ErrorHeader: typeof import('./src/components/ErrorHeader.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
-    NominateModal: typeof import('./src/components/NominateModal.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
@@ -26,7 +25,5 @@ declare module 'vue' {
     SearchInput: typeof import('./src/components/SearchInput.vue')['default']
     ThemeSwitcher: typeof import('./src/@core/components/ThemeSwitcher.vue')['default']
     Toast: typeof import('./src/components/Toast.vue')['default']
-    UpgradeToPro: typeof import('./src/components/UpgradeToPro.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

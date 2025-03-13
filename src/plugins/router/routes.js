@@ -116,23 +116,11 @@ export const routes = [
     },
     {
         path: '/picklist',
-        component: () => import('@/layouts/blank.vue'),
+        component: () => import('@/pages/picklist.vue'), // Temporarily use the page directly
         meta: {
             middleware: "auth",
         },
-        children: [
-            {
-              path: 'picklist',
-              name: 'picklist',
-              component: () => import('@/pages/picklist.vue'),
-              meta: {
-                pageTitle: "Picklist"
-              },
-            },
-           
-        ],
     },
-    
     {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
@@ -143,18 +131,20 @@ export const routes = [
             component: () => import('@/pages/register.vue'),
         },
         {
-          path: 'login',
-          name: 'login',
-          component: () => import('@/pages/login.vue'),
-          meta: {
-            pageTitle: "Login"
-          },
+            path: 'login',
+            name: 'login',
+            component: () => import('@/pages/login.vue'),
+            meta: {
+                pageTitle: "Login"
+            },
         },
         {
-          path: '/:pathMatch(.*)*',
-          name: 'error',
-          component: () => import('@/pages/[...error].vue'),
+            path: '/:pathMatch(.*)*',
+            name: 'error',
+            component: () => import('@/pages/[...error].vue'),
         },
+       
+
       ],
     },
   ];
