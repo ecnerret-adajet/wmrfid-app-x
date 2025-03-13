@@ -115,9 +115,33 @@ export const routes = [
       ],
     },
     {
+        path: '/picklist',
+        component: () => import('@/layouts/blank.vue'),
+        meta: {
+            middleware: "auth",
+        },
+        children: [
+            {
+              path: 'picklist',
+              name: 'picklist',
+              component: () => import('@/pages/picklist.vue'),
+              meta: {
+                pageTitle: "Picklist"
+              },
+            },
+           
+        ],
+    },
+    
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [
+        {
+            path: 'register',
+            name: 'register',
+            component: () => import('@/pages/register.vue'),
+        },
         {
           path: 'login',
           name: 'login',
@@ -125,11 +149,6 @@ export const routes = [
           meta: {
             pageTitle: "Login"
           },
-        },
-        {
-          path: 'register',
-          name: 'register',
-          component: () => import('@/pages/register.vue'),
         },
         {
           path: '/:pathMatch(.*)*',

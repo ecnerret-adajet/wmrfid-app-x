@@ -14,9 +14,17 @@ router.beforeEach((to, from, next) => {
     document.title = `${to.meta.pageTitle || 'Default'} - ${import.meta.env.VITE_APP_NAME}`;
 
     authStore.verifyAuth();
+
     // If route requires authentication
-    if (authStore.isAuthenticated && to.name === 'login') {
-        next({ name: 'dashboard' });
+    if (authStore.isAuthenticated) {
+        if (to.name === "login") {
+            next({ name: "dashboard" }); // Redirect to dashboard if trying to go to login while already logged
+        } else if (authStore.user?.email_verified_at === null && to.name !== 'logout' ) {
+            authStore.showPasswordModal(); // force the user to create password if not yet verified
+            next();
+        } else {
+            next(); // Proceed to the requested route
+        }
     } else {
         // If route requires authentication
         if (to.meta.middleware === 'auth') {

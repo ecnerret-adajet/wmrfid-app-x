@@ -8,7 +8,7 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
     
     <!-- Warehouse Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
-    <VerticalNavLink :item="{ title: 'Invetory', icon: 'ri-stack-line', to: '/inventories'}"/>
+    <VerticalNavLink :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories'}"/>
     <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/production-runs'}"/>
     <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse'}"/>
 

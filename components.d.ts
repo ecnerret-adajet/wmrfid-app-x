@@ -18,6 +18,8 @@ declare module 'vue' {
     ErrorHeader: typeof import('./src/components/ErrorHeader.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
+    NominateModal: typeof import('./src/components/NominateModal.vue')['default']
+    NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
