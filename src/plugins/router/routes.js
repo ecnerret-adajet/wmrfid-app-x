@@ -116,10 +116,18 @@ export const routes = [
     },
     {
         path: '/picklist',
-        component: () => import('@/pages/picklist.vue'), // Temporarily use the page directly
+        component: () => import('@/pages/picklist.vue'), 
         meta: {
             middleware: "auth",
-            pageTitle: "Picklist"
+            pageTitle: "Picklist Screen"
+        },
+    },
+    {
+        path: '/curtain',
+        component: () => import('@/pages/curtain.vue'), 
+        meta: {
+            middleware: "auth",
+            pageTitle: "Curtain Screen"
         },
     },
     {

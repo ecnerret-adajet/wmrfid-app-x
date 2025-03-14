@@ -1,10 +1,12 @@
-export const staticPrimaryColor = '#00833c'
+export const staticPrimaryColor = '#00833c' // Green
+export const primaryColor2 = '#FAD13E' // Yellow
 export const staticPrimaryDarkenColor = '#006830'
 export const themes = {
   light: {
     dark: false,
     colors: {
       'primary': staticPrimaryColor,
+      'primary-2': primaryColor2,
       'on-primary': '#fff',
       'primary-darken-1': '#006830',
       'secondary': '#8A8D93',
@@ -74,6 +76,7 @@ export const themes = {
     dark: true,
     colors: {
       'primary': staticPrimaryColor,
+      'primary-2': primaryColor2,
       'on-primary': '#fff',
       'primary-darken-1': '#006830',
       'secondary': '#8A8D93',
