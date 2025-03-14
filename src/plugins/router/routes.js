@@ -119,6 +119,7 @@ export const routes = [
         component: () => import('@/pages/picklist.vue'), // Temporarily use the page directly
         meta: {
             middleware: "auth",
+            pageTitle: "Picklist"
         },
     },
     {
