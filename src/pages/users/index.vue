@@ -1,5 +1,6 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
+import DateRangePicker from '@/components/DateRangePicker.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
