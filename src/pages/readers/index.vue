@@ -230,7 +230,6 @@ const clearFilters = () => {
         </template>
     </FilteringModal>
 
-
     <Toast :show="toast.show" :message="toast.message"/>
 </template>
 

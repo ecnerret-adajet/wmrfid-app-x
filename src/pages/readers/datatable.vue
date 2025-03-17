@@ -172,7 +172,6 @@ const applyFilters = (data) => {
         sortBy: [{key: 'created_at', order: 'desc'}],
         search: props.search
     });
-    
 }
 
 const form = ref({
