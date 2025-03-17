@@ -1,5 +1,5 @@
 <script setup>
-// Use this component if date and time is required
+// Use this component if date only is required
 import Datepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import moment from 'moment';
@@ -11,17 +11,17 @@ const date = ref(null);
 const customDateFormat = (dates) => {
     if (Array.isArray(dates)) {
         return dates.map(date => {
-            // Format date using Moment.js (e.g., "March 3, 2025 3:38 PM")
-            return moment(date).format('MMMM D, YYYY h:mm A');
+            // Format date using Moment.js (e.g., "March 3, 2025")
+            return moment(date).format('MMMM D, YYYY');
         });
     } else {
-        // Format date using Moment.js (e.g., "March 3, 2025 3:38 PM")
-        return moment(dates).format('MMMM D, YYYY h:mm A');
+        // Format date using Moment.js (e.g., "March 3, 2025")
+        return moment(dates).format('MMMM D, YYYY');
     }
 };
 
 watch(date, (newDate) => {
-    const formattedDate = moment(newDate).format('MMMM D, YYYY h:mm A');
+    const formattedDate = moment(newDate).format('MMMM D, YYYY');
     emit('update:modelValue', formattedDate); 
 });
 

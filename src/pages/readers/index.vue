@@ -1,20 +1,29 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
+import DateRangePicker from '@/components/DateRangePicker.vue';
+import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
 
 const dialogVisible = ref(false)
 const datatableRef = ref(null);
 const searchValue = ref('');
+const filterModalVisible = ref(false);
 
 const openDialog = () => {
     if (!dialogVisible.value) {
         dialogVisible.value = true;
+    }
+};
+
+const filterModalOpen = () => {
+    if (!filterModalVisible.value) {
+        filterModalVisible.value = true;
     }
 };
 
@@ -35,6 +44,20 @@ const toast = ref({
     message: 'New Reader Added!',
     color: 'success',
     show: false
+});
+
+const filters = reactive({
+    created_at: null,
+    updated_at: null,
+    storage_location_id: null,
+    reader_type_id: null
+});
+
+const isFiltersEmpty = computed(() => {
+    return !filters.created_at && 
+           !filters.updated_at && 
+           !filters.storage_location_id && 
+           !filters.reader_type_id;
 });
 
 const tablePerPage = ref(10);
@@ -92,12 +115,42 @@ const handleSearch = debounce((search) => {
     searchValue.value = search;
 }, 500);
 
+const applyFilter = () => {
+    if(datatableRef.value) {
+        datatableRef.value.applyFilters(filters);
+    }
+    filterModalVisible.value = false;
+}
+
+const resetFilter = () => {
+    clearFilters();
+    if(datatableRef.value) {
+        datatableRef.value.applyFilters([]);
+    }
+    filterModalVisible.value = false;
+}
+
+const clearFilters = () => {
+    filters.created_at = null;
+    filters.updated_at = null;
+    filters.storage_location_id = null;
+    filters.reader_type_id = null;
+};
+
 </script>
 
 <template>
     <VRow>
-        <VCol md="10">
+        <VCol md="9">
             <SearchInput @update:search="handleSearch"/>
+        </VCol>
+        <VCol md="1" class="d-flex justify-center align-center">
+                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
+                    <template v-slot:prepend>
+                        <v-icon color="white"></v-icon>
+                    </template>
+                    Filter
+                </v-btn>
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
             <v-btn block @click="openDialog">Add Reader</v-btn>
@@ -137,6 +190,46 @@ const handleSearch = debounce((search) => {
             </v-form>
         </template>
     </AddingModal>
+
+    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Readers'">
+        <template #default>
+            <v-form>
+                <div class="mt-6">
+                    <label class="font-weight-bold">Storage Location</label>
+                    <v-select class="mt-1" label="Select Storage Location" density="compact"
+                        :items="storageLocations" v-model="filters.storage_location_id"
+                    >
+                    </v-select>
+                </div>
+
+                <div class="mt-6">
+                    <label class="font-weight-bold">Reader Type</label>
+                    <v-select class="mt-1" label="Select Reader Type" density="compact"
+                        :items="readerTypes" v-model="filters.reader_type_id"
+                    >
+                    </v-select>
+                </div>
+
+                <div class="mt-4">
+                    <label class="font-weight-bold">Date Created</label>
+                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
+                </div>
+                 
+                <div class="mt-4">
+                    <label class="font-weight-bold">Date Updated</label>
+                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
+                </div>
+
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
+                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
+                        Apply Filter
+                    </PrimaryButton>
+                </div>
+            </v-form>
+        </template>
+    </FilteringModal>
+
 
     <Toast :show="toast.show" :message="toast.message"/>
 </template>
