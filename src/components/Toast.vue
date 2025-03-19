@@ -5,7 +5,7 @@ import { ref } from 'vue';
 const props = defineProps({
     color: {
         type: String,
-        default: 'success'
+        default: 'primary'
     },
     show: {
         type: Boolean,

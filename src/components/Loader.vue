@@ -25,7 +25,6 @@ watch(
             <VProgressCircular indeterminate color="primary" size="64" />
             </VCardTitle>
             <VCardText class="d-flex justify-center align-center">
-                <span>Processing</span>
             </VCardText>
     </VDialog>
 </template>

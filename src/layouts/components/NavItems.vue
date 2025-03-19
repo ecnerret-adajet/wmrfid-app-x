@@ -13,8 +13,8 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
     <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse'}"/>
 
     <!-- Shipments Section  -->
-    <VerticalNavSectionTitle :item="{ heading: 'Shipments'}" />
-    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/>
+    <VerticalNavSectionTitle :item="{ heading: 'Test Label Here'}" />
+    <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/warehouse'}"/>
 
     <!-- Stock Transfers Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Stock Transfers'}" />
@@ -28,8 +28,7 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
 
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
-    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line', to: '/warehouse'}"/>
-    <VerticalNavLink :item="{ title: 'RFID Logs', icon: 'ri-file-text-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'RFID Registration', icon: 'ri-dashboard-2-line', to: '/rfid-registration'}"/>
     <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->

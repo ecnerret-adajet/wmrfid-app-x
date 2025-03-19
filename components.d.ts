@@ -15,6 +15,7 @@ declare module 'vue' {
     DatePicker: typeof import('./src/components/DatePicker.vue')['default']
     DateRangePicker: typeof import('./src/components/DateRangePicker.vue')['default']
     DateTimePicker: typeof import('./src/components/DateTimePicker.vue')['default']
+    DefaultModal: typeof import('./src/components/DefaultModal.vue')['default']
     DeleteModal: typeof import('./src/components/DeleteModal.vue')['default']
     EditingModal: typeof import('./src/components/EditingModal.vue')['default']
     ErrorHeader: typeof import('./src/components/ErrorHeader.vue')['default']

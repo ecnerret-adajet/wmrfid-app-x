@@ -131,6 +131,14 @@ export const routes = [
         },
     },
     {
+        path: '/rfid-registration',
+        component: () => import('@/pages/rfid-registration.vue'), 
+        meta: {
+            middleware: "auth",
+            pageTitle: "RFID Registration"
+        },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [
