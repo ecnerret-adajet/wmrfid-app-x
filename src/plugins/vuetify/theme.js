@@ -1,5 +1,5 @@
 export const staticPrimaryColor = '#00833c' // Green
-export const primaryColor2 = '#FAD13E' // Yellow
+export const primaryColor2 = '#e1bc37' // Yellow
 export const staticPrimaryDarkenColor = '#006830'
 export const themes = {
   light: {

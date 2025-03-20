@@ -131,7 +131,7 @@ export const routes = [
         },
     },
     {
-        path: '/rfid-registration',
+        path: '/rfid-registration/:type/:location',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {
             middleware: "auth",

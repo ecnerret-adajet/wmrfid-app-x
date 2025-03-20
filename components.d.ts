@@ -24,6 +24,7 @@ declare module 'vue' {
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
+    ResponseModal: typeof import('./src/components/ResponseModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchInput: typeof import('./src/components/SearchInput.vue')['default']

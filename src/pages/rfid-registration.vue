@@ -1,108 +1,113 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
+import AddingModal from '@/components/AddingModal.vue';
 import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
+import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import axios from 'axios';
-import { debounce } from 'lodash';
-import { computed, nextTick, reactive } from 'vue';
-import VueMultiselect from 'vue-multiselect';
+import { computed, reactive, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
-const tagTypes = ref([]);
-const storageLocations = ref([]);
+const route = useRoute();
 const isLoading = ref(false);
-const isFetching = ref(false); // Used in multiselect
-const addToExistingLoading = ref(false);
+const addingLoading = ref(false);
 const formRef = ref(null);
-const addExistingForm = ref(null);
 const errorMessage = ref(null);
 const showLoader = ref(false);
 const addExistingModal = ref(false);
 const tags = ref([]);
-const unregisteredTags = ref([])
-const tagsOption = ref([])
+const unregisteredTags = ref([]);
+const unregisteredIdTags = ref([]);
+const registeredTags = ref([]);
+const responseModal = ref(false);
+const responseMessage = ref('Not all unregistered EPC values are the same. Please ensure that all tags you are processing share the same EPC.');
+
+// Get values from the URL
+const tagType = route.params.type;
+const storageLocation = route.params.location;
 
 const form = reactive({
-    storage_location_id: null,
+    storage_location: null,
     group_no: null,
     name: null,
     is_defective: 'no',
-    tag_type_id: null,
-    existing_tag: null,
+    tag_type: null,
     to_be_added_tags: [],
 })
 
 // Dev implementation: This will mimic the process of reading tags from the RFID reader
 const getTags = async () => {
-    const url = `registration/get-dummy-tags?tag_type_id=${form.tag_type_id}`;
+    showLoader.value = true;
+    const url = `registration/get-dummy-tags?tag_type=${tagType}`;
     try {
         const response = await ApiService.get(url);
         tags.value = response.data
+        registeredTags.value = response.data.filter(tag => tag.status !== 'unregistered' && tag.status !== 'unregistered TID');
         unregisteredTags.value = response.data.filter(tag => tag.status === 'unregistered');
+        unregisteredIdTags.value = response.data.filter(tag => tag.status === 'unregistered TID')
+        showLoader.value = false;
     } catch (error) {
+        showLoader.value = false;
     }
 };
+
+const getUniqueEpc = (tags) => {
+    // Run only if not single entry since no comparison needed
+    
+    const filteredTags = tags.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID');
+
+    // Get unique EPCs
+    const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
+    
+    // If all EPCs are the same (Set size is 1), return the EPC
+    if (uniqueEpcs.size === 1) {
+        return [...uniqueEpcs][0];  // Return single EPC from the Set
+    } else {
+        return null;  // Return null if EPCs are not the same
+    }
+    
+};
+
+const removeItem = (index) => {
+    tags.value.splice(index , 1)
+    let epc = getUniqueEpc(tags.value);
+    if (epc) {
+        getLastItem(epc);
+    } 
+}
+
+watch(tags, (newTags) => {
+    if (newTags.length > 0) {
+        let epc = getUniqueEpc(tags.value);
+        // Show modal if mismatched EPCs
+        if (!epc && newTags.length > 1) {
+            responseModal.value = true
+        } 
+        getLastItem(epc);
+    }
+});
 
 onMounted(() => {
-    fetchTagTypes();
+    if (tagType) {
+        getTags();
+    }
 })
 
-const fetchTagTypes = async () => {
-    try {
-        const response = await ApiService.get('registration/get-data-dropdown');
-
-        const { rfid_types, storage_locations } = response.data
-
-        tagTypes.value = rfid_types.map(item => ({
-            value: item.id,
-            title: item.name, 
-            name: item.name 
-        }));
-  
-        storageLocations.value = storage_locations.map(item => ({
-            value: item.id,
-            title: item.name
-        }));
-   
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    }
-};
-
-const getLastItem = async () => {
+const getLastItem = async (epc) => {
     showLoader.value = true;
-    const url = `registration/get-last-tag?tag_type_id=${form.tag_type_id}`;
+    const url = `registration/get-last-tag?tag_type=${tagType}&epc=${epc}`; 
     try {
         const response = await ApiService.get(url);
-        form.group_no = response.data;
+        const { group_no, name, epc_exists } = response.data
+        form.group_no = group_no;
+        form.name = name;
+        form.epc_exists = epc_exists;
         showLoader.value = false;
     } catch (error) {
         showLoader.value = false;
         console.error('Error fetching data from get-last-tag:', error);
     }
 };
-
-
-watch(() => form.tag_type_id, async (newTagTypeId) => {
-    if (newTagTypeId) {
-        tags.value = []
-        unregisteredTags.value = []
-        getTags();
-        getLastItem();
-        
-        if (tags.length > 0) {
-            // Get the first tag and assign epc to form.epc
-            form.epc = tags[0].epc;
-            const url = `registration/check-reference?epc=${form.epc}&tag_type_id=${form.tag_type_id}`;
-            try {
-                const response = await ApiService.get(url);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        }
-    }
-});
 
 const getTableLabel = computed(() => {
     return 'Tags'; // TODO:: Implement dynamic label, depending on the selected tag type (e.g Pallet Tags)
@@ -117,64 +122,61 @@ const toast = ref({
 const submit = async () => {
     // Allow only if form is valid (without validation issue)
     if (formRef.value.isValid) {
-        form.to_be_added_tags = unregisteredTags.value
-        isLoading.value = true;
-        toast.value.show = false;
-        try {
-            const response = await ApiService.post('register-rfid', form)
-            isLoading.value = false;
-            toast.value.message = 'RFID successfully created!'
-            toast.value.show = true;
-            errorMessage.value = ''
-            getTags();
-            clearForm();
-        } catch (error) {
-            errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-            console.error('Error submitting:', error);
-            isLoading.value = false;
+        if (tags.value.length === 0 ) {
+            responseMessage.value = 'Tags seems to be empty. Please try again'
+            responseModal.value = true
+        } else {
+            form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
+            form.storage_location = storageLocation;
+            form.tag_type = tagType
+            isLoading.value = true;
+            toast.value.show = false;
+            try {
+                const response = await ApiService.post('register-rfid', form)
+                isLoading.value = false;
+                toast.value.message = 'RFID successfully created!'
+                toast.value.show = true;
+                errorMessage.value = ''
+                getTags();
+                clearForm();
+            } catch (error) {
+                errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+                console.error('Error submitting:', error);
+                isLoading.value = false;
+            }
         }
+       
     }
 }
 
 const handleAddExisting = () => {
-    addExistingModal.value = true;
-}
-
-const fetchExistingTag = debounce((query) => {
-    if (query) {
-        isFetching.value = true;
-        axios.get('/registration/search', {
-            params: {
-                query: query,
-                tag_type_id: form.tag_type_id
-            }
-        }).then(response => {
-            tagsOption.value = response.data;
-            nextTick(() => {
-                isFetching.value = false;
-            });
-        }).catch(error => {
-            console.error(error);
-            nextTick(() => {
-                isFetching.value = false;
-            });
-        });
+    const filteredTags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID');
+    // Check for duplicate EPC values by using a Set
+    const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
+    
+    // // If the size of the Set is different from the length of the combined array, open the modal
+    if (uniqueEpcs.size > 1) {
+        responseModal.value = true
+    } else {
+        // Proceed
+        addExistingModal.value = true;
     }
-}, 500);
+
+}
 
 const cancelAdd = () => {
     addExistingModal.value = false;
-    form.existing_tag = null;
-    form.to_be_added_tags = []
-    tagsOption.value = [];
 }
 
 const addToExistingTag = async () => {
-    form.to_be_added_tags = unregisteredTags.value
-    addToExistingLoading.value = true;
+    form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
+    form.storage_location = storageLocation;
+    form.tag_type = tagType
+    addingLoading.value = true;
+    
     try {
         const response = await ApiService.post('/registration/add-to-existing', form)
-        addToExistingLoading.value = false;
+        addingLoading.value = false;
         toast.value.message = 'Tags successfully added to existing group'
         toast.value.show = true;
         addExistingModal.value = false;
@@ -183,20 +185,31 @@ const addToExistingTag = async () => {
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
-        addToExistingLoading.value = false;
+        addingLoading.value = false;
     }
-        
 }
 
 const clearForm = () => {
-    form.storage_location_id = null;
+    form.storage_location = null;
     form.group_no = null;
     form.name = null;
     form.is_defective = 'no'; // Reset to no
-    form.tag_type_id = null;
-    form.existing_tag = null;
+    form.tag_type = null;
     form.to_be_added_tags = []
 }
+
+const handleClear = () => {
+    clearForm();
+    
+    // Clear tags and re-fetch
+    tags.value = []
+    unregisteredIdTags.value = []
+    unregisteredTags.value = []
+
+    getTags();
+}
+
+
 
 </script>
 
@@ -209,8 +222,15 @@ const clearForm = () => {
                     RFID Registration
                     </div>
                 </VCol>
-                <VCol cols="2" offset="6" class="d-flex align-center">
-                    <PrimaryButton form="registerForm" :disabled="unregisteredTags.length === 0" class="px-12" type="submit" :loading="isLoading">
+                <VCol cols="2" offset="4" class="d-flex align-center justify-end">
+                    <v-btn color="primary" block variant="outlined" @click="handleClear" class="px-12" >
+                        Clear
+                    </v-btn>
+                </VCol>
+                <VCol cols="2" class="d-flex align-center">
+                    <PrimaryButton form="registerForm" :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
+                        type="submit" :loading="isLoading"
+                    >
                         Submit
                     </PrimaryButton>
                 </VCol>
@@ -220,24 +240,19 @@ const clearForm = () => {
             <v-form @submit.prevent="submit" id="registerForm" ref="formRef">
                 <VRow>
                     <VCol md="3">
-                        <div>
-                            <label class="font-weight-bold">RFID Type</label>
-                            <v-select class="mt-1" label="Select Type" density="compact"
-                                :items="tagTypes" v-model="form.tag_type_id" 
-                                :rules="[value => !!value || 'Please select an item from the list']"
-                            >
-                            </v-select>
-                        </div>
                         <div class="mt-4">
                             <label class="font-weight-bold">Group No.</label>
-                            <v-text-field class="mt-1 opacity-50" label="" readonly density="compact" v-model="form.group_no"/>
+                            <!-- Always disable group no since it is generated from backend -->
+                            <v-text-field class="mt-1" label="" :disabled="true"
+                             density="compact" v-model="form.group_no"/>
+                        </div>
+                        <div class="mt-4">
+                            <label class="font-weight-bold">Physical ID</label> 
+                            <v-text-field class="mt-1" label="" :disabled="form.epc_exists" :rules="[value => !!value || 'This field is required']" 
+                                density="compact" v-model="form.name"/>
                         </div>
                     </VCol>
-                    <VCol md="3">
-                        <div>
-                            <label class="font-weight-bold">Physical ID</label>
-                            <v-text-field class="mt-1" label="" :rules="[value => !!value || 'This field is required']" density="compact" v-model="form.name"/>
-                        </div>
+                    <VCol md="3" class="ml-4">
                         <div class="mt-4">
                             <v-radio-group inline v-model="form.is_defective">
                                 <template v-slot:label>
@@ -254,20 +269,8 @@ const clearForm = () => {
                             </v-radio-group>
                         </div>
                     </VCol>
-
-                    <VCol md="3">
-                        <div>
-                            <label class="font-weight-bold">Location</label>
-                            <v-select class="mt-1" label="Select Location" density="compact"
-                                :items="storageLocations" v-model="form.storage_location_id"
-                                :rules="[value => !!value || 'Please select an item from the list']"
-                            >
-                            </v-select>
-                        </div>
-                        
-                    </VCol>
                   
-                    <VCol md="2" class="d-flex flex-column justify-center align-center text-center">
+                    <VCol md="2" offset="3" class="d-flex flex-column justify-center align-center text-center">
                          
                         <div class="font-weight-black text-h1 text-primary mt-auto px-4" style="border-bottom: 1px thin #00833c;">
                             {{ tags.length }}
@@ -294,7 +297,8 @@ const clearForm = () => {
                 </div>
             </VCol>
             <VCol cols="2" offset="6">
-                <v-btn block color="primary-2" @click="handleAddExisting" :disabled="!form.existing_tag" class="text-grey-100">
+                <!-- Enable add to existing if there's atleast 1 registered tag  -->
+                <v-btn block color="primary-2" :disabled="!form.epc_exists" @click="handleAddExisting"  style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
             </VCol>
@@ -307,28 +311,42 @@ const clearForm = () => {
                     <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">rssi</th>
                     <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">reader</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">antenna</th>
+                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">action</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">status</th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-if="tags.length === 0">
-                    <td colspan="6" class="text-center">No data available</td>
+                    <td colspan="7" class="text-center">No data available</td>
                 </tr>
-                <tr v-for="item in tags" :key="item.tid">
+                <tr v-for="(item, index) in tags" :key="item.tid" :class="{'light-green' : item.status !== 'unregistered' && item.status !== 'unregistered TID'}">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
                     <td>{{ item.rssi }}</td>
                     <td>{{ item.reader }}</td>
                     <td class="text-center">{{ item.antenna }}</td>
                     <td class="text-center">
+                            <v-btn v-if="item.status == 'unregistered' || item.status == 'unregistered TID'" 
+                                class="ma-2"
+                                color="error"
+                                @click="removeItem(index)"
+                                icon="ri-delete-bin-6-line"
+                            ></v-btn>
+                    </td>
+                    <td class="text-center">
                         <template v-if="item.status === 'unregistered'">
                             <v-chip color="primary-2" variant="flat" class="text-uppercase text-grey-100">
-                                {{item.status}}
+                                <span class="px-5 font-weight-bold">{{item.status}}</span>
+                            </v-chip>
+                        </template>
+                        <template v-else-if="item.status === 'unregistered TID'">
+                            <v-chip :color="'#af922b'" variant="flat" class="text-uppercase text-grey-100">
+                                <span class="px-1 font-weight-bold">{{item.status}}</span>
                             </v-chip>
                         </template>
                         <template v-else>
                             <v-chip color="primary" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-7">{{item.status}}</span>
+                                <span class="px-10 font-weight-bold">{{item.status}}</span>
                             </v-chip>
                         </template>
                     </td>
@@ -336,75 +354,53 @@ const clearForm = () => {
             </tbody>
         </v-table>
     </v-card>
-    <DefaultModal @close="cancelAdd" :show="addExistingModal" :dialogTitle="'Add to Existing'" >
+    <AddingModal @close="cancelAdd" :show="addExistingModal" >
         <template #default>
-            <v-form @submit.prevent="addToExistingTag" ref="addExistingForm" id="addExistingForm">
-                <VRow>
-                    <VCol md="12">
-                        <VueMultiselect label="name" v-model="form.existing_tag" track-by="id" placeholder="Search by name"
-                            open-direction="bottom" :options="tagsOption" :searchable="true" :loading="isFetching"
-                            :internal-search="false" :clear-on-select="false" :close-on-select="true" :options-limit="8"
-                            :limit="8" :max-height="600" :show-no-results="true" 
-                            @search-change="fetchExistingTag" required>
-                        </VueMultiselect>
-                    </VCol>
-                </VRow>
-                <v-table class="mt-4">
-                    <thead>
-                        <tr>
-                            <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" 
-                                style="background-color: #00833c !important; color: white !important;
-                                width: 350px !important;">code</th>
-                            <th class="text-left text-uppercase bg-primary py-2 font-weight-black" 
-                                style="background-color: #00833c !important; color: white !important; 
-                                width: 250px !important;">group no.</th>
-
-                            <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">name</th>
-                        </tr>
-                    </thead>
-                    <tbody v-if="form.existing_tag?.name && form.existing_tag?.tid && form.existing_tag?.epc && form.existing_tag?.group_no">
-                        <tr>
-                            <td style="width: 250px !important;">{{ form.existing_tag.epc }}</td>
-                            <td style="width: 250px !important;" class="text-left px-8">{{ form.existing_tag.group_no }}</td>
-                            <td class="text-left">{{ form.existing_tag.name }}</td>
-                        </tr>
-                    </tbody>
-                </v-table>
-                
-                <v-table class="mt-4">
-                    <thead>
-                        <tr>
-                            <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" 
-                            style="background-color: #00833c !important; color: white !important;
-                            width: 350px !important;">epc</th>
-                            <th class="text-left text-uppercase bg-primary py-2 font-weight-black" 
-                                style="background-color: #00833c !important; color: white !important;
-                                width: 250px !important;">tid</th>
-                            <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">name</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-if="unregisteredTags.length === 0">
-                            <td colspan="6" class="text-center">No data available</td>
-                        </tr>
-                        <tr v-for="item in unregisteredTags" :key="item.tid">
-                            <td style="width: 350px !important;">{{ item.epc }}</td>
-                            <td style="width: 250px !important;" class="text-left">{{ item.tid }}</td>
-                            <td class="text-left">{{ item.name }}</td>
-                        </tr>
-                    </tbody>
-                </v-table>
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="cancelAdd" class="px-12 mr-3">Cancel</v-btn>
-                    <v-btn color="primary" form="addExistingForm" type="submit" :loading="addToExistingLoading" class="text-grey-100 px-8">
-                        Add To Existing
-                    </v-btn>
-                </div>
-            </v-form>
+            <div class="text-h4 text-grey-800 mb-4 font-weight-medium">
+                Are you sure you want to add unregistered tags to an existing tag with physical ID of 
+                <strong class="text-primary font-weight-black">{{ form.name }}</strong>?
+            </div>
+            <div class="d-flex justify-end align-center mt-8">
+                <v-btn color="secondary" variant="outlined" @click="cancelAdd" class="px-12 mr-3">Cancel</v-btn>
+                <v-btn @click="addToExistingTag" color="primary" class="px-12" type="submit" :loading="addingLoading">
+                    Update
+                </v-btn>
+            </div>
         </template>
-    </DefaultModal>
+    </AddingModal>
+
+    <ResponseModal :show="responseModal" @close="responseModal = false">
+        <template #default>
+            <div class="py-4 text-center">
+                <v-icon
+                    class="mb-2"
+                    color="primary"
+                    icon="ri-information-line"
+                    size="128"
+                ></v-icon>
+
+                <div class="text-h5 font-weight-bold"> 
+                    {{ responseMessage }}
+                </div>
+            </div>
+            <div class="d-flex justify-end align-center mt-8">
+                <v-btn color="primary" class="px-12" type="button" @click="responseModal = false">
+                    Okay
+                </v-btn>
+            </div>
+        </template>
+    </ResponseModal>
+
     <Loader :show="showLoader"/>
     <Toast :show="toast.show" :message="toast.message"/>
 </template>
 
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
+
+<style scoped>
+
+.light-green {
+    background-color: #cce6d8 !important;
+}
+
+</style>
