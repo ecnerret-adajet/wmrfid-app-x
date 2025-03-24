@@ -85,11 +85,13 @@ const proceedRegister = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
     <VerticalNavLink :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories'}"/>
     <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/production-runs'}"/>
-    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse-mapping'}"/>
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Test Label Here'}" />
-    <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/warehouse'}"/>
+    <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments'}"/>
+    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/>
+    <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
 
     <!-- Stock Transfers Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Stock Transfers'}" />

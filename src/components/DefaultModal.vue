@@ -34,7 +34,7 @@ watch(
 
 </script>
 <template>
-    <v-dialog v-model="dialogVisible" max-width="800px" min-height="400px">
+    <v-dialog v-model="dialogVisible" max-width="1000px" min-height="400px">
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
             <div class="text-h5 text-bold-emphasis ps-2">

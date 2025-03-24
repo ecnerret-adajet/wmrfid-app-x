@@ -107,6 +107,29 @@ export const routes = [
             },
         },
         {
+            path: 'shipments',
+            name: 'shipments',
+            component: () => import('@/pages/shipments/index.vue'),
+            meta: {
+              pageTitle: "Shipments",
+              breadcrumbs: [
+                  { label: "Shipments", link: "/shipments" },
+              ],
+            },
+        },
+        {
+            path: 'shipments/:shipmentNumber',
+            name: 'shipments.show',
+            component: () => import('@/pages/shipments/show.vue'),
+            meta: {
+                pageTitle: "Shipment Details",
+                breadcrumbs: (route) => [
+                    { label: "Shipments", link: "/shipments" },
+                    { label: `${route.params.shipmentNumber}`, link: `/shipments/${route.params.shipmentNumber}` }
+                ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
@@ -118,7 +141,6 @@ export const routes = [
         path: '/picklist',
         component: () => import('@/pages/picklist.vue'), 
         meta: {
-            middleware: "auth",
             pageTitle: "Picklist Screen"
         },
     },
@@ -126,7 +148,6 @@ export const routes = [
         path: '/curtain',
         component: () => import('@/pages/curtain.vue'), 
         meta: {
-            middleware: "auth",
             pageTitle: "Curtain Screen"
         },
     },
@@ -136,6 +157,13 @@ export const routes = [
         meta: {
             middleware: "auth",
             pageTitle: "RFID Registration"
+        },
+    },
+    {
+        path: '/warehouse-mapping',
+        component: () => import('@/pages/mapping.vue'), 
+        meta: {
+            pageTitle: "Warehouse Mapping"
         },
     },
     {
