@@ -42,6 +42,8 @@ const selectedItem = reactive({
     i: null,
     x: null,
     y: null,
+    w: null,
+    h: null,
     type: 'block' // default block
 });
 
@@ -70,7 +72,7 @@ const fetchMapData = async () => {
             h: item.h || 2, // Default height
             label: item.label || 'Unnamed', // Use name from API
             type: item.type || 'unknown', 
-            isResizable: false,
+            isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
         }));
 
         initialLayout.value = JSON.parse(JSON.stringify(state.layout));
@@ -130,6 +132,7 @@ const save = async () => {
             toast.color = 'success'
             toast.show = true;
             saveLoading.value = false
+            editEnabled.value = false
             fetchMapData();
         } catch (error) {
             toast.message = error.response?.data?.message || 'An unexpected error occurred.'
@@ -137,6 +140,7 @@ const save = async () => {
             toast.show = true;
             console.error('Error submitting:', error);
             saveLoading.value = false
+            editEnabled.value = false
             // isLoading.value = false;
         }
 
@@ -161,6 +165,8 @@ const openEditModal = (item) => {
     selectedItem.type = item.type;
     selectedItem.x = item.x;
     selectedItem.y = item.y;
+    selectedItem.w = item.w;
+    selectedItem.h = item.h;
     actionDialog.value = true;
 }
 
@@ -299,7 +305,7 @@ const editCancelClicked = () => {
             :i="item.i"
             @click="!editEnabled && showBlockInformation(item)"
             @dblclick="editEnabled && openEditModal(item)"
-            :is-resizable="item.isResizable"
+            :is-resizable="item.isResizable && editEnabled"
         >
             <span class="text">{{item.label}}</span>
         </GridItem>
