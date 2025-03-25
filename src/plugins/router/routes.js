@@ -160,10 +160,10 @@ export const routes = [
         },
     },
     {
-        path: '/warehouse-mapping',
-        component: () => import('@/pages/mapping.vue'), 
+        path: '/warehouse-map/:location',
+        component: () => import('@/pages/warehouse/map.vue'), 
         meta: {
-            pageTitle: "Warehouse Mapping"
+            pageTitle: "Warehouse Map"
         },
     },
     {

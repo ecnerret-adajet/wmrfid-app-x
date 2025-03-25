@@ -8,6 +8,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const showRegistrationModal = ref(false);
+const showMappingModal = ref(false)
 
 const openRfidRegistrationModal = (event) => {
     showRegistrationModal.value = true;
@@ -16,6 +17,8 @@ const openRfidRegistrationModal = (event) => {
 const tagTypes = ref([]);
 const storageLocations = ref([]);
 const registrationModalForm = ref(null);
+const mappingModalForm = ref(null);
+const mappingLocation = ref(null)
 
 const router = useRouter();
 
@@ -76,6 +79,16 @@ const proceedRegister = () => {
     }
 }
 
+const proceedMapping = () => {
+    if (mappingModalForm.value.isValid) {
+        let storageLocation = storageLocations.value.find(item => item.value === mappingLocation.value);
+        router.push({
+            path: `/warehouse-map/${generateSlug(storageLocation.name)}`,
+        });
+        showMappingModal.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -85,7 +98,7 @@ const proceedRegister = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
     <VerticalNavLink :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories'}"/>
     <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/production-runs'}"/>
-    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line', to: '/warehouse-mapping'}"/>
+    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line'}" @click="showMappingModal = true"/>
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Test Label Here'}" />
@@ -114,6 +127,7 @@ const proceedRegister = () => {
     <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-group-line', to: '/roles'}"/>
     <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions'}"/>
 
+    <!--  RFID Registration  -->
     <AddingModal @close="showRegistrationModal = false" :show="showRegistrationModal" :dialogTitle="'Select Type and Location'" >
         <template #default>
             <v-form @submit.prevent="proceedRegister" ref="registrationModalForm">
@@ -135,6 +149,26 @@ const proceedRegister = () => {
                 </div>
                 <div class="d-flex justify-end align-center mt-8">
                     <v-btn color="secondary" variant="outlined" @click="showRegistrationModal = false" class="px-12 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
+                </div>
+            </v-form>
+        </template>
+    </AddingModal>
+
+    <!-- Warehouse Mapping  -->
+    <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'" >
+        <template #default>
+            <v-form @submit.prevent="proceedMapping" ref="mappingModalForm">
+                <div>
+                    <label class="font-weight-bold">Location</label>
+                    <v-select class="mt-1" label="Select Location" density="compact"
+                        :items="storageLocations" v-model="mappingLocation"
+                        :rules="[value => !!value || 'Please select an item from the list']"
+                    >
+                    </v-select>
+                </div>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="showMappingModal = false" class="px-12 mr-3">Cancel</v-btn>
                     <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
                 </div>
             </v-form>

@@ -17,6 +17,7 @@ const props = defineProps({
     }
 })
 
+const emit = defineEmits(['update:show']);
 
 
 const snackbarVisible = ref(props.show)
@@ -28,6 +29,10 @@ watch(
   }, {immediate: true}
 )
 
+const onSnackbarHidden = () => {
+  emit('update:show', false);
+};
+
 </script>
 
 
@@ -37,6 +42,7 @@ watch(
         location="top end"
         :color="color"
         timeout="3000"
+        @update:modelValue="onSnackbarHidden"
     >
         {{ message }}
     </v-snackbar>
