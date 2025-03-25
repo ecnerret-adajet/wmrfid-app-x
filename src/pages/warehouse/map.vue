@@ -30,6 +30,7 @@ const storageLocationModel = ref(null);
 
 // Controls
 const editEnabled = ref(false)
+const initialLayout = ref([]);
 
 onMounted(() => {
     state.index = state.layout.length;
@@ -72,6 +73,7 @@ const fetchMapData = async () => {
             isResizable: false,
         }));
 
+        initialLayout.value = JSON.parse(JSON.stringify(state.layout));
         state.index = state.layout.length;
         showLoader.value = false;
     } catch (error) {
@@ -183,6 +185,18 @@ const clearItems = () => {
     state.layout = [];
 }
 
+const editCancelClicked = () => {
+    if (editEnabled.value) {
+        // Reset to the saved layout before editing
+        state.layout = JSON.parse(JSON.stringify(initialLayout.value));
+    } else {
+        // Save the current layout before enabling edit mode
+        initialLayout.value = JSON.parse(JSON.stringify(state.layout));
+    }
+    
+    // Toggle edit mode
+    editEnabled.value = !editEnabled.value;
+};
 </script>
 
 <template>
@@ -191,7 +205,7 @@ const clearItems = () => {
             <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Warehouse Map</h3>
             <div class="d-flex justify-end">
                 <v-btn color="primary-2" 
-                    @click="editEnabled = !editEnabled"
+                    @click="editCancelClicked"
                     :variant="editEnabled ? 'outlined' : 'flat'"
                     :class="editEnabled ? 'text-primary-2' : 'text-grey-100'"
                     class="px-12 mr-2">
