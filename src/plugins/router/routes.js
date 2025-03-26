@@ -85,6 +85,51 @@ export const routes = [
             },
         },
         {
+            path: 'production-runs',
+            name: 'production-runs',
+            component: () => import('@/pages/productionRuns/index.vue'),
+            meta: {
+              pageTitle: "Production Runs",
+              breadcrumbs: [
+                  { label: "Production Runs", link: "/production-runs" },
+              ],
+            },
+        },
+        {
+            path: 'inventories',
+            name: 'inventories',
+            component: () => import('@/pages/inventories/index.vue'),
+            meta: {
+              pageTitle: "Inventories",
+              breadcrumbs: [
+                  { label: "Inventories", link: "/inventories" },
+              ],
+            },
+        },
+        {
+            path: 'shipments',
+            name: 'shipments',
+            component: () => import('@/pages/shipments/index.vue'),
+            meta: {
+              pageTitle: "Shipments",
+              breadcrumbs: [
+                  { label: "Shipments", link: "/shipments" },
+              ],
+            },
+        },
+        {
+            path: 'shipments/:shipmentNumber',
+            name: 'shipments.show',
+            component: () => import('@/pages/shipments/show.vue'),
+            meta: {
+                pageTitle: "Shipment Details",
+                breadcrumbs: (route) => [
+                    { label: "Shipments", link: "/shipments" },
+                    { label: `${route.params.shipmentNumber}`, link: `/shipments/${route.params.shipmentNumber}` }
+                ],
+            },
+        },
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
@@ -93,27 +138,58 @@ export const routes = [
       ],
     },
     {
+        path: '/picklist',
+        component: () => import('@/pages/picklist.vue'), 
+        meta: {
+            pageTitle: "Picklist Screen"
+        },
+    },
+    {
+        path: '/curtain',
+        component: () => import('@/pages/curtain.vue'), 
+        meta: {
+            pageTitle: "Curtain Screen"
+        },
+    },
+    {
+        path: '/rfid-registration/:type/:location',
+        component: () => import('@/pages/rfid-registration.vue'), 
+        meta: {
+            middleware: "auth",
+            pageTitle: "RFID Registration"
+        },
+    },
+    {
+        path: '/warehouse-map/:location',
+        component: () => import('@/pages/warehouse/map.vue'), 
+        meta: {
+            pageTitle: "Warehouse Map"
+        },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [
         {
-          path: 'login',
-          name: 'login',
-          component: () => import('@/pages/login.vue'),
-          meta: {
-            pageTitle: "Login"
-          },
+            path: 'register',
+            name: 'register',
+            component: () => import('@/pages/register.vue'),
         },
         {
-          path: 'register',
-          name: 'register',
-          component: () => import('@/pages/register.vue'),
+            path: 'login',
+            name: 'login',
+            component: () => import('@/pages/login.vue'),
+            meta: {
+                pageTitle: "Login"
+            },
         },
         {
-          path: '/:pathMatch(.*)*',
-          name: 'error',
-          component: () => import('@/pages/[...error].vue'),
+            path: '/:pathMatch(.*)*',
+            name: 'error',
+            component: () => import('@/pages/[...error].vue'),
         },
+       
+
       ],
     },
   ];

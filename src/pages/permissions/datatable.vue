@@ -28,6 +28,7 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const errorMessage = ref(null)
+const filters = ref(null);
 
 const headers = [
     {
@@ -71,7 +72,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             page,
             itemsPerPage,
             sort: sortQuery.value,
-            search: props.search
+            search: props.search,
+            filters: filters.value
         }
         })
         .then((response) => {
@@ -147,13 +149,25 @@ const handleUpdate = async () => {
     }
 }
 
+
+const applyFilters = (data) => {
+    filters.value = data;
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{key: 'created_at', order: 'desc'}],
+        search: props.search
+    });
+}
+
 const form = ref({
     'name': null,
     'description': null,
 });
 
 defineExpose({
-    loadItems
+    loadItems,
+    applyFilters
 })
 
 </script>

@@ -17,7 +17,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <v-btn :color="color" variant="elevated" :type="type" class="px-12" :loading="loading">
+    <v-btn :color="color" variant="elevated" block :type="type" class="px-12" :loading="loading">
         <template v-slot:loader>
             <v-progress-circular indeterminate color="white" size="24" />
         </template>

@@ -5,6 +5,7 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { READER_STATUS } from '@/composables/useEnums';
 import ApiService from '@/services/ApiService';
+import Moment from "moment";
 import { ref } from 'vue';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -35,6 +36,7 @@ const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
+const filters = ref(null);
 
 const headers = [
     {
@@ -53,6 +55,14 @@ const headers = [
         title: 'STATUS',
         key: 'status',
         sortable: false,
+    },
+    {
+        title: 'CREATED AT',
+        key: 'created_at',
+    },
+    {
+        title: 'LAST UPDATED AT',
+        key: 'updated_at',
     },
     {
         title: 'ACTIONS',
@@ -79,7 +89,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             page,
             itemsPerPage,
             sort: sortQuery.value,
-            search: props.search
+            search: props.search,
+            filters: filters.value
         }
         })
         .then((response) => {
@@ -153,6 +164,16 @@ const handleUpdate = async () => {
     }
 }
 
+const applyFilters = (data) => {
+    filters.value = data;
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{key: 'created_at', order: 'desc'}],
+        search: props.search
+    });
+}
+
 const form = ref({
     'name': null,
     'reader_type_id': null,
@@ -160,7 +181,8 @@ const form = ref({
 });
 
 defineExpose({
-    loadItems
+    loadItems,
+    applyFilters
 })
 
 </script>
@@ -192,6 +214,14 @@ defineExpose({
             <VBadge v-if="item.status == READER_STATUS.ACTIVE" content="ACTIVE" color="success pa-3 "  />
             <VBadge v-else content="INACTIVE" color="error pa-3"  />
         </div>
+    </template>
+
+    <template #item.created_at="{ item }">
+        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
+    </template>
+
+    <template #item.updated_at="{ item }">
+        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
     </template>
     
     <!-- Actions -->
