@@ -8,42 +8,42 @@ import palletsImage from '@images/curtains/pallets.png';
 
         <div class="d-flex justify-end" style="position: relative;">
             <!-- Latest Pallet Label -->
-            <div class="position-absolute" style="z-index: 9; left: 50px; top: 120px;">
+            <div class="position-absolute" style="z-index: 9; left: 50px; top: 90px;">
                 <span class="text-h1 font-weight-black text-grey-700">Latest Pallet </span>
                 <span class="text-h1 font-weight-black text-primary-2">(Bay 1)</span>
             </div>
 
             <!-- Image -->
             <img
-                style="position: absolute; z-index: 1; margin-right: 150px; top: -60px"
+                style="position: absolute; z-index: 1; margin-right: 150px; top: -30px"
                 :src="palletsImage"
-                :width="350"
-                :height="350"
+                :width="230"
+                :height="230"
             />
 
             <!-- v-sheet background -->
             <v-sheet
                 style="position: absolute !important;"
-                :height="230"
+                :height="150"
                 color="primary-2"
-                :width="300"
+                :width="230"
             ></v-sheet>
         </div>
 
 
 
-        <div style="padding-top: 270px;" class="px-12">
+        <div style="padding-top: 175px;" class="px-12">
             <VRow no-gutters >
-                <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     Physical ID
                 </VCol>
-                <VCol md="3"  class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black" style="font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3"  class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black" style="font-size: 18px; border-right: 1px solid #fff;">
+                <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     date and time
                 </VCol>
             </VRow>
@@ -78,23 +78,23 @@ import palletsImage from '@images/curtains/pallets.png';
             </div>
         </div>
 
-        <div class="px-12 mt-12 pb-4">
+        <div class="px-12 mt-8 pb-4">
             <span class="text-h1 font-weight-black text-grey-700">Recent </span>
             <span class="text-h1 font-weight-black text-primary-2">Pallet Logs</span>
         </div>
 
         <div class="px-12">
             <VRow no-gutters >
-                <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary py-2 text-center font-weight-black">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     Physical ID
                 </VCol>
-                <VCol md="3"  class="text-uppercase bg-primary py-2 text-center font-weight-black" style="font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                <VCol md="3"  class="text-uppercase text-grey-100 py-2 text-center font-weight-black" style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3"  class="text-uppercase bg-primary py-2 text-center font-weight-black" style="font-size: 18px; border-right: 1px solid #fff;">
+                <VCol md="3"  class="text-uppercase text-grey-100 py-2 text-center font-weight-black" style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary py-2 text-center font-weight-black">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     date and time
                 </VCol>
             </VRow>

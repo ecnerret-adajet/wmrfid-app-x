@@ -141,12 +141,12 @@ const save = async () => {
             console.error('Error submitting:', error);
             saveLoading.value = false
             editEnabled.value = false
-            // isLoading.value = false;
         }
 
     } else {
         toast.message = 'All blocks should have a label';
         toast.show = true;
+        saveLoading.value = false
     }
 }
 
@@ -299,11 +299,15 @@ const editCancelClicked = () => {
             :static="item.static"
             :x="item.x"
             :y="item.y"
-            :class="editEnabled ? 'cursor-grabbing' : 'cursor-pointer'"
+            :class="{
+                'cursor-grabbing': editEnabled,
+                'cursor-pointer': !editEnabled && item.type !== 'lot',
+                'cursor-default': item.type === 'lot'
+            }"
             :w="item.w"
             :h="item.h"
             :i="item.i"
-            @click="!editEnabled && showBlockInformation(item)"
+            @click="item.type !== 'lot' && !editEnabled && showBlockInformation(item)"
             @dblclick="editEnabled && openEditModal(item)"
             :is-resizable="item.isResizable && editEnabled"
         >

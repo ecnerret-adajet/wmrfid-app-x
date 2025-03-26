@@ -228,7 +228,7 @@ const handleClear = () => {
                     </v-btn>
                 </VCol>
                 <VCol cols="2" class="d-flex align-center">
-                    <PrimaryButton form="registerForm" :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
+                    <PrimaryButton block form="registerForm" :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
                         type="submit" :loading="isLoading"
                     >
                         Submit

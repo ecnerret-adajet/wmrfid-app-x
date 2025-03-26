@@ -2,13 +2,10 @@
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
-import calendarIcon from "@images/pick_list_icons/icons8-calendar.png";
 import haulerIcon from "@images/pick_list_icons/icons8-company.png";
 import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
-import platformIcon from "@images/pick_list_icons/icons8-setting.png";
-import statusIcon from "@images/pick_list_icons/icons8-status-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import Moment from 'moment';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -59,7 +56,7 @@ const toast = ref({
 <template>
     
     <div class="mt-4 px-8 whiteBackground">
-        <v-progress-linear
+        <!-- <v-progress-linear
             v-model="value"
             :buffer-value="bufferValue"
             color="primary"
@@ -76,10 +73,10 @@ const toast = ref({
                 </v-icon>
                 <strong :class="value <= 50 ? 'text-primary' : 'text-white'">{{ Math.ceil(value) }}%</strong>
             </template>
-        </v-progress-linear>
+        </v-progress-linear> -->
         <VRow >
             <VCol md="8" >
-                <VList lines="one" density="compact" style="border: 2px solid #00833c; padding-top: 0px !important;">
+                <VList lines="one" density="compact" style="border: 2px solid #329b62; padding-top: 0px !important;">
                     <VListItem class="d-flex justify-end" style="padding-top: 0px !important; padding-bottom: 0px !important;">
                         <VTooltip location="top">
                             <template #activator="{ props }">
@@ -117,32 +114,7 @@ const toast = ref({
                                        <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span>
                                     </VCol>
                                 </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="calendarIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Shipment Date</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="platformIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">TS Platform</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">Coming Soon</span>
-                                    </VCol>
-                                </VRow>
+                              
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -169,6 +141,7 @@ const toast = ref({
                                         <span class="font-weight-bold">{{Moment(new Date()).format('MMMM D, YYYY hh:mm:ss A')}}</span>
                                     </VCol>
                                 </VRow>
+                               
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -194,8 +167,9 @@ const toast = ref({
                                     <VCol md="6" class="d-inline-flex align-center">
                                         <span class="font-weight-bold">{{Moment(new Date()).format('MMMM D, YYYY hh:mm:ss A')}}</span>
                                     </VCol>
-                                </VRow>
+                                </VRow> 
                             </VCol>
+
                         </VRow>
                     </VListItem>
                     <VListItem>
@@ -212,17 +186,7 @@ const toast = ref({
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="statusIcon" class="icon-class"/> 
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">status</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-chip class="bg-primary text-on-primary">
-                                            <span class="px-4 font-weight-bold">1</span>
-                                        </v-chip>
-                                    </VCol>
-                                </VRow>
+                               
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -230,7 +194,7 @@ const toast = ref({
                 <VDivider />
             </VCol>
             <VCol md="4">
-                <v-sheet class="mx-auto px-6 py-4 bg-primary" elevation="2" style="height: 100%; display: flex; flex-direction: column; ">
+                <v-sheet class="mx-auto px-6 py-4" elevation="2" style="height: 100%; display: flex; flex-direction: column; background-color: #00A36C;">
                     <div class="text-h4 text-white text-bold-emphasis font-weight-black">
                         Bay No. 2
                     </div>
@@ -251,30 +215,30 @@ const toast = ref({
         <div class="mt-4">
             <div>
                 <VRow no-gutters >
-                    <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black">
+                    <VCol md="3" style="font-size: 18px; background-color: #00A36C;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                         Shipment Details
                     </VCol>
-                    <VCol md="3"  class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black" style="font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                    <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #00A36C; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         Expected (SAP)
                     </VCol>
-                    <VCol md="3"  class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black" style="font-size: 18px; border-right: 1px solid #fff;">
+                    <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #00A36C; font-size: 18px; border-right: 1px solid #fff;">
                         Expected (WMRFID)
                     </VCol>
-                    <VCol md="3" style="font-size: 18px;" class="text-uppercase bg-primary px-3 py-2 text-center font-weight-black">
+                    <VCol md="3" style="font-size: 18px; background-color: #00A36C;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                         Read (RFID PALLETS)
                     </VCol>
                 </VRow>
                 <div class="table-wrapper" style="height: 550px;">
 
                     <!-- Loop Row  -->
-                    <VRow no-gutters style="border: 1px solid #00833c;">
+                    <VRow no-gutters style="border: 1px solid #329b62;">
                         <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
                             <div class="text-center">
                                 <div class="text-overline mb-1 font-weight-bold" style="font-size: 14px !important;">
                                     Vitamin; Riboflavin; URC
                                 </div>
                                 <div>
-                                    <span :style="{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)' }" class="text-uppercase text-h5 text-primary font-weight-black">
+                                    <span style="color: #00A36C;" class="text-uppercase text-h5 font-weight-black">
                                         MSSJP03C
                                     </span>
                                     <br>
