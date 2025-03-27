@@ -145,10 +145,10 @@ export const routes = [
         },
     },
     {
-        path: '/curtain',
+        path: '/loading-latest/:reader/:bay',
         component: () => import('@/pages/curtain.vue'), 
         meta: {
-            pageTitle: "Curtain Screen"
+            pageTitle: "Loading Curtain"
         },
     },
     {

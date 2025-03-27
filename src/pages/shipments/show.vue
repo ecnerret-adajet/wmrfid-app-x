@@ -36,6 +36,7 @@ const displayPlateNumber = computed(() => {
 });
 
 const goToScreen = (screen) => {
+    // Add parameters
     const route = screen === 'picklist' ? '/picklist' : '/curtain';
     window.open(route, '_blank');
 }
@@ -52,7 +53,6 @@ const goToScreen = (screen) => {
                     
                     <div class="d-flex gap-2">
                         <v-btn color="primary" @click="goToScreen('picklist')" class="px-8">View Picklist</v-btn>
-                        <v-btn color="primary-2 text-grey-100" @click="goToScreen('curtain')" class="px-8">View Curtain</v-btn>
                     </div>
                 </div>
 
