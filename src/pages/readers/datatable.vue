@@ -4,7 +4,6 @@ import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { READER_STATUS } from '@/composables/useEnums';
-import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
 import { ref } from 'vue';
@@ -183,10 +182,7 @@ const form = ref({
 });
 
 const showLoadingCurtain = (reader, bay) => {
-    console.log(reader);
-    console.log(bay);
-
-    const url = `/loading-latest/${generateSlug(reader.name)}/${bay}`;
+    const url = `/loading-latest/${reader.id}/${bay}`;
     // Open loading curtain in a new tab
     window.open(url, '_blank');
 }

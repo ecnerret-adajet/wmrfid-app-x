@@ -1,11 +1,44 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
+import ApiService from '@/services/ApiService';
 import palletsImage from '@images/curtains/pallets.png';
+import { onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
+const isLoading = ref(false);
+const reader = route.params.reader;
+const bay = route.params.bay;
+const hasError = ref(false);
+const errorMessage = ref(null);
+const logs = ref([])
+
+onMounted(() => {
+    fetchLoadingCurtain();
+})
+
+const fetchLoadingCurtain = async () => {
+    isLoading.value = true
+    const url = `loading-curtain/${reader}/${bay}`;
+    try {
+        const response = await ApiService.get(url);
+        logs.value = response.data
+        console.log(logs.value);
+        isLoading.value = false
+    } catch (error) {
+        isLoading.value = false
+        console.log(error.response?.data?.message);
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        hasError.value = true
+        console.error('Error fetching data:', error);
+    }
+};
+
 
 </script>
 <template>
     <div class="background-container">
-
-
         <div class="d-flex justify-end" style="position: relative;">
             <!-- Latest Pallet Label -->
             <div class="position-absolute" style="z-index: 9; left: 50px; top: 90px;">
@@ -130,6 +163,18 @@ import palletsImage from '@images/curtains/pallets.png';
             </div>
         </div>
   </div>
+  <v-dialog v-model="hasError" max-width="550">
+        <v-card class="px-4 py-4">
+            <v-card-title>Loading Curtain Error</v-card-title>
+            <v-card-text class="mt-4">
+                <p class="text-h4 font-weight-bold">{{ errorMessage }}</p>
+            </v-card-text>
+            <v-card-actions>
+                <v-btn color="primary" class="px-8" text variant="outlined" @click="hasError = false">Okay</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+  <Loader :show="isLoading"/>
 </template>
 
 <style scoped>
