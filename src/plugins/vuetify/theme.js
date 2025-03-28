@@ -7,6 +7,7 @@ export const themes = {
     colors: {
       'primary': staticPrimaryColor,
       'primary-2': primaryColor2,
+      'primary-light': '#1ab394',
       'on-primary': '#fff',
       'primary-darken-1': '#006830',
       'secondary': '#8A8D93',

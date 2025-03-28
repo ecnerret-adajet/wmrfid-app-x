@@ -167,6 +167,13 @@ export const routes = [
         },
     },
     {
+        path: '/operator/:location/movement',
+        component: () => import('@/pages/operator/movement.vue'), 
+        meta: {
+            pageTitle: "Warehouse Movement"
+        },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [
