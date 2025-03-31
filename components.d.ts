@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AddingModal: typeof import('./src/components/AddingModal.vue')['default']
+    BlockAssignModal: typeof import('./src/components/BlockAssignModal.vue')['default']
     Breadcrumbs: typeof import('./src/components/Breadcrumbs.vue')['default']
     CardStatisticsHorizontal: typeof import('./src/@core/components/cards/CardStatisticsHorizontal.vue')['default']
     CardStatisticsVertical: typeof import('./src/@core/components/cards/CardStatisticsVertical.vue')['default']

@@ -80,7 +80,7 @@ watch(selectedReader, (newReaderId) => {
             </v-tabs>
 
             <div v-if="!loading" class="mt-4">
-                <logsDataTable 
+                <logsDataTable :storage-location="storageLocation"
                     :reader-name="selectedReaderName"
                 />
             </div>
