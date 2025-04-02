@@ -1,5 +1,7 @@
 <script setup>
+import SearchInput from '@/components/SearchInput.vue';
 import ApiService from '@/services/ApiService';
+import { debounce } from 'lodash';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import logsDataTable from './logsDataTable.vue';
@@ -14,6 +16,10 @@ const selectedReaderName = ref(null);
 const readers = ref([]);
 const loading = ref(true);
 
+const searchValue = ref('');
+const tablePerPage = ref(10);
+const tablePage = ref(1);
+
 const toggleButton = () => {
     isWarehouseMap.value = !isWarehouseMap.value;
 };
@@ -27,7 +33,6 @@ const fetchReaders = async () => {
     try {
         const response = await ApiService.get(`data/get-readers-by-location/${storageLocation}`);
         readers.value = response.data
-        console.log(readers.value);
         if (readers.value.length > 0) {
             selectedReader.value = readers.value[0].id; // Set default selected tab
             selectedReaderName.value = readers.value[0].name; 
@@ -43,8 +48,19 @@ const fetchReaders = async () => {
 watch(selectedReader, (newReaderId) => {
     const reader = readers.value.find(r => r.id === newReaderId);
     selectedReaderName.value = reader ? reader.name : null;
+    tablePage.value = 1; // Reset page if switched reader
+    searchValue.value = '' // reset search query if switched reader
 });
 
+const onPaginationChanged = ({ page, itemsPerPage, search }) => {
+    tablePage.value = page
+    tablePerPage.value = itemsPerPage
+    searchValue.value = search
+}
+
+const handleSearch = debounce((search) => {
+    searchValue.value = search;
+}, 500);
 
 </script>
 
@@ -78,9 +94,14 @@ watch(selectedReader, (newReaderId) => {
                     </template>
                 </v-tab>
             </v-tabs>
+            <SearchInput @update:search="handleSearch" class="mt-4"/>
 
             <div v-if="!loading" class="mt-4">
                 <logsDataTable :storage-location="storageLocation"
+                    :key="selectedReader.id"
+                    :search="searchValue" :page="tablePage"
+                    :items-per-page="tablePerPage"
+                    @pagination-changed="onPaginationChanged"
                     :reader-name="selectedReaderName"
                 />
             </div>

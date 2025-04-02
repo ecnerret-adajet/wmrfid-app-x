@@ -18,14 +18,20 @@ const props = defineProps({
         type: String,
         default: ''
     },
-    storageLocation: String
+    storageLocation: String,
+    page: {
+        type: Number,
+        default: 1,
+    },
+    itemsPerPage: {
+        type: Number,
+        default: 5
+    }
 });
 
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
-const page = ref(1);
 const filters = ref(null);
 const errorMessage = ref(null);
 const pickLoading = ref(null);
@@ -67,8 +73,8 @@ const headers = [
 
 const loadItems = (options = {}) => {
     // Ensure updated values are used
-    const updatedPage = options.page || page.value;
-    const updatedItemsPerPage = options.itemsPerPage || itemsPerPage.value;
+    const updatedPage = options.page || props.page;
+    const updatedItemsPerPage = options.itemsPerPage || props.itemsPerPage;
     const updatedSearch = options.search ?? props.search;
     const updatedReaderName = props.readerName; // Always use latest value
     loading.value = true;
@@ -84,7 +90,6 @@ const loadItems = (options = {}) => {
     .then((response) => {
         totalItems.value = response.data.total;
         serverItems.value = response.data.data;
-        console.log(response.data);
         loading.value = false;
         emits('pagination-changed', { page: updatedPage, itemsPerPage: updatedItemsPerPage, search: updatedSearch });
     })
@@ -102,15 +107,18 @@ const toast = ref({
 
 watch(() => props.readerName, () => {
     if (!loading.value) {
-        loadItems({ page: 1, itemsPerPage: itemsPerPage.value, search: props.search });
+        console.log(props.page);
+        loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
     }
 }, { immediate: true });
+
+
 
 const wrapAction = async (inventory) => {
     wrapLoading.value = inventory.id;
     try {
         const response = await axios.get(`inventory/wrap-inventory/${inventory.id}`);
-        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, search: props.search });
+        loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
         toast.value.message = 'Item wrapped successfully!'
         toast.value.show = true;
     } catch (error) {
@@ -125,7 +133,7 @@ const pickInventory =  async (inventory) => {
     pickLoading.value = inventory.id;
     try {
         const response = await axios.get(`inventory/pick-inventory/${inventory.id}`);
-        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, search: props.search });
+        loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
         toast.value.message = 'Item picked successfully!'
         toast.value.show = true;
     } catch (error) {
@@ -139,8 +147,17 @@ const pickInventory =  async (inventory) => {
 const selectInventory = (rfid) => {
     selectedInventory.value = rfid
     assignModalOpen.value = true;
-    console.log(selectedInventory.value);
 }
+
+const onAssignSuccess = () => {
+    toast.value.message = 'Assign to layer successfully!';
+    toast.value.color = 'success';
+    toast.value.show = true;
+    loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
+    assignModalOpen.value = false;
+}
+
+const pageLimit = ref(5)
 
 defineExpose({
     loadItems,
@@ -149,14 +166,16 @@ defineExpose({
 </script>
 
 <template>
+    <!-- :key props ensure to reset values on footer if tabs switched -->
     <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
+        v-model:items-per-page="pageLimit"
         :headers="headers"
         :items="serverItems"
         :items-length="totalItems"
         :loading="loading"
         item-value="id"
         :search="search"
+        :key="readerName" 
         @update:options="loadItems"
         class="text-no-wrap"
     >
@@ -203,8 +222,9 @@ defineExpose({
             </div>
         </template>
 
+
         <template #item.action="{ item }">
-            <template v-if="item.rfid?.inventory?.is_wrapped">
+            <template v-if="item.rfid?.inventory?.is_wrapped && item.rfid?.inventory?.picked_datetime != null">
                 <v-btn v-if="item.rfid?.inventory?.picked_datetime !== null"
                     :color="item.rfid?.inventory?.picked_datetime === null ? 'primary-light' : 'primary-light'"
                     :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'" 
@@ -238,9 +258,9 @@ defineExpose({
     </VDataTableServer>
     <BlockAssignModal v-if="selectedInventory" :show="assignModalOpen" 
         :selected-inventory="selectedInventory" :storage-location="storageLocation"
-        @close="assignModalOpen = false"
+        @close="assignModalOpen = false" @assign-success="onAssignSuccess"
     />
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" @update:show="toast.show = $event"/>
 </template>
 
 <style scoped>

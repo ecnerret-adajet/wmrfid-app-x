@@ -6,7 +6,7 @@ import { debounce } from 'lodash';
 import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
 
-const emits = defineEmits(['close']);
+const emits = defineEmits(['close', 'assign-success']);
 
 const props = defineProps({
     selectedInventory: Object,
@@ -22,7 +22,7 @@ const defaultLayer = ref([]);
 const selectedBlock = ref(null);
 const blockSearch = ref('');
 const selectedLayerIndex = ref(-1);
-
+const selectedLayer = ref(null);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
@@ -34,11 +34,19 @@ const searchValue = ref('');
 
 const closeModal = () => {
     emits('close')
+    const previousBlock = selectedBlock.value?.id;
     selectedLayerIndex.value = -1;
+    selectedLayer.value = null;
+    selectedBlock.value = null;
+    if (previousBlock) {
+        getLayer(previousBlock);
+    }
+    resetLayers()
+
 }
 
 onMounted(() => {
-    getPalletLayer(props.selectedInventory.inventory?.block_id);
+    getLayer(props.selectedInventory.inventory?.block_id);
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -79,19 +87,17 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             }));
 
             loading.value = false
-            console.log(serverItems.value);
         })
         .catch((error) => {
             console.log(error);
         });
 }
 
-const getPalletLayer = async (block) => {
+const getLayer = async (block) => {
     layerLoading.value = true;
     try {
         const response = await axios.get(`warehouse/get-inventories-in-block/${props.storageLocation}/${block ?? ''}`); 
         defaultLayer.value = response.data.reverse();
-        console.log(defaultLayer.value);
     } catch (error) {
         console.error("Error fetching layers:", error);
     } finally {
@@ -104,9 +110,14 @@ const handleSearch = debounce((search) => {
 }, 500);
 
 const cancelBlock = (event) => {
+    const previousBlock = selectedBlock.value?.id;
     selectedLayerIndex.value = -1;
     selectedBlock.value = null;
-
+    selectedLayer.value = null;
+    if (previousBlock) {
+        getLayer(previousBlock);
+    }
+    resetLayers()
     // Reset isSelected property
     serverItems.value = serverItems.value.map(item => ({
         ...item,
@@ -116,7 +127,7 @@ const cancelBlock = (event) => {
 
 const selectBlock = (block) => {
     selectedBlock.value = block;
-    console.log(block);
+    getLayer(selectedBlock.value.id) // Fetch layers using the block id
     serverItems.value = serverItems.value.map(item => ({
         ...item,
         isSelected: item.id === block.id, // Set isSelected to true for the clicked block
@@ -134,19 +145,47 @@ const toast = ref({
 const selectLayer = (index, layer) => {
     // Must select and open a block first
     if (!selectedBlock.value) {
-        console.log('here');
         toast.value.message = 'Select block location first';
         toast.value.color = 'error';
         toast.value.show = true;
     } else {
         selectedLayerIndex.value = index;
+        selectedLayer.value = layer
     }
 }
 
-const assignInventoryToLayerBin = (layer) => {
-    console.log('api call assign');
-    
+const assignInventoryToLayerBin = async (layer) => {
+
+    if (defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] && defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] !== null) {
+        toast.value.message = 'Selected layer has an assigned inventory already!';
+        toast.value.color = 'error';
+        toast.value.show = true;
+    } else {
+
+        try {
+            
+            const response = await axios.post(`warehouse/assign-inventory`, {
+                block: selectedBlock.value,
+                position: selectedLayer.value,
+                inventory: props.selectedInventory.inventory
+            }); 
+
+            if (response.status == 200) {
+                emits('assign-success');
+            } 
+
+        } catch (error) {
+            console.error("Error assigning inventory:", error);
+        } finally {
+            layerLoading.value = false;
+            close();
+        }
+    }
 }
+
+const resetLayers = () => {
+    defaultLayer.value = [];
+};
 
 
 const headers = [
@@ -196,6 +235,7 @@ const filteredDefaultLayer = computed(() => {
         layer_status: item.layer_position === assigned_inventory_layer_count + 1, 
     }));
 });
+
 </script>
 
 <template>
@@ -213,12 +253,22 @@ const filteredDefaultLayer = computed(() => {
                     v-for="(layer, index) of filteredDefaultLayer"
                     :key="layer.layer_name"
                 >
-                    <VListItem :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
+                    <VListItem class="py-0 px-0" :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
                         <template v-if="layer.assigned_inventory">
-                            Batch: <strong>{{ layer.assigned_inventory.inventory?.batch }}</strong>
-                            <br />
-                            Group Name:
-                            <strong>{{ layer.assigned_inventory.name }}</strong>
+                            <VListItem class="selected-blue">
+                                <VListItemTitle>
+                                    <span class="text-h5 font-weight-bold">{{ layer.layer_name }}</span>
+                                </VListItemTitle>
+                                <template #append>
+                                    <div class="flex-column text-h5">
+                                        Batch: <span class="font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
+                                        <div>
+                                            Group Name:
+                                            <span class="font-weight-bold">{{ layer.assigned_inventory.rfid?.name }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </VListItem>
                         </template>
                       
                   
@@ -312,7 +362,11 @@ const filteredDefaultLayer = computed(() => {
     text-align: center; 
 }
 .selected-row {
-    background-color: #FFFFAD !important; /* Light blue */
+    background-color: #88dfe6 !important; 
     transition: background-color 0.3s ease-in-out;
+}
+
+.selected-blue {
+    background-color: #88dfe6 !important;  
 }
 </style>
