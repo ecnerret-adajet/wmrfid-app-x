@@ -119,7 +119,7 @@ defineExpose({
     >
 
     <template #item.block="{ item }">
-        {{ item.label }}
+        {{ item.lot.label }} - {{ item.label }}123123
     </template>
 
     <template #item.assigned_item="{ item }">

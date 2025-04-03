@@ -117,17 +117,24 @@ watch(() => props.readerName, () => {
 
 
 const wrapAction = async (inventory) => {
-    wrapLoading.value = inventory.id;
-    try {
-        const response = await axios.get(`inventory/wrap-inventory/${inventory.id}`);
-        loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
-        toast.value.message = 'Item wrapped successfully!'
+    if (inventory.picked_datetime == null) {
+        toast.value.message = 'Item must be picked first!'
+        toast.value.color = 'error';
         toast.value.show = true;
-    } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        console.error('Error submitting:', error);
-    } finally {
-        wrapLoading.value = null;
+    } else {
+        wrapLoading.value = inventory.id;
+        try {
+            const response = await axios.get(`inventory/wrap-inventory/${inventory.id}`);
+            loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
+            toast.value.message = 'Item wrapped successfully!'
+            toast.value.color = 'success';
+            toast.value.show = true;
+        } catch (error) {
+            errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+            console.error('Error submitting:', error);
+        } finally {
+            wrapLoading.value = null;
+        } 
     }
 }
 
@@ -136,7 +143,8 @@ const pickInventory =  async (inventory) => {
     try {
         const response = await axios.get(`inventory/pick-inventory/${inventory.id}`);
         loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
-        toast.value.message = 'Item picked successfully!'
+        toast.value.message = 'Item picked successfully!';
+        toast.value.color = 'success';
         toast.value.show = true;
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
@@ -262,7 +270,7 @@ defineExpose({
         :selected-inventory="selectedInventory" :storage-location="storageLocation"
         @close="assignModalOpen = false" @assign-success="onAssignSuccess"
     />
-    <Toast :show="toast.show" :message="toast.message" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 
 <style scoped>

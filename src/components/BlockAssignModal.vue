@@ -83,7 +83,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 label: item.label,
                 inventories_count: item.inventories_count,
                 isSelected: false,
-                storage_location_id: item.storage_location_id
+                storage_location_id: item.storage_location_id,
+                lot: item.lot ?? null
             }));
 
             loading.value = false
@@ -325,7 +326,8 @@ const filteredDefaultLayer = computed(() => {
 
             <template v-slot:item="{ item }">
                 <tr class="text-no-wrap" :class="{'selected-row': item.isSelected}">
-                    <td style="width: 200px;">{{ item.label }}</td>
+                                                <!-- Combine lot label and block label  -->
+                    <td style="width: 200px;">{{ item.lot?.label }} - {{ item.label }}</td>
                     <td style="width: 200px;" class="text-center">{{ item.inventories_count }}</td>
                     <td style="width: 200px;">
                         <template v-if="item.isSelected === false">
