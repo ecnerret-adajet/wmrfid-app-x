@@ -5,6 +5,7 @@ import { debounce } from 'lodash';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import logsDataTable from './logsDataTable.vue';
+import WarehouseMap from './warehouseMap.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -77,7 +78,7 @@ const handleSearch = debounce((search) => {
             </div>
         </v-card>
         <v-card v-if="isWarehouseMap" elevation="1" class="mt-4 px-6 py-4">
-            <h5>Map view</h5>
+            <WarehouseMap :storageLocation="storageLocation"></WarehouseMap>
         </v-card>
         <v-card v-else elevation="1" class="mt-4 px-6 py-4">
             <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>

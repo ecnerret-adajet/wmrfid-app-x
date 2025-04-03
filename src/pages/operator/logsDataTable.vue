@@ -90,6 +90,8 @@ const loadItems = (options = {}) => {
     .then((response) => {
         totalItems.value = response.data.total;
         serverItems.value = response.data.data;
+        console.log(response);
+        
         loading.value = false;
         emits('pagination-changed', { page: updatedPage, itemsPerPage: updatedItemsPerPage, search: updatedSearch });
     })
