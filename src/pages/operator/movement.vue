@@ -34,6 +34,7 @@ const fetchReaders = async () => {
     try {
         const response = await ApiService.get(`data/get-readers-by-location/${storageLocation}`);
         readers.value = response.data
+        console.log(readers.value);
         if (readers.value.length > 0) {
             selectedReader.value = readers.value[0].id; // Set default selected tab
             selectedReaderName.value = readers.value[0].name; 
@@ -103,6 +104,7 @@ const handleSearch = debounce((search) => {
                     :search="searchValue" :page="tablePage"
                     :items-per-page="tablePerPage"
                     @pagination-changed="onPaginationChanged"
+                    @refreshReader="fetchReaders"
                     :reader-name="selectedReaderName"
                 />
             </div>

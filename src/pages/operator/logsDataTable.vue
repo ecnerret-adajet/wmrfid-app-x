@@ -7,7 +7,7 @@ import Moment from 'moment';
 import { ref, watch } from 'vue';
 import { VDataTableServer } from 'vuetify/components';
 
-const emits = defineEmits(['pagination-changed']);
+const emits = defineEmits(['pagination-changed', 'refreshReader']);
 
 const props = defineProps({
     search: {
@@ -90,8 +90,6 @@ const loadItems = (options = {}) => {
     .then((response) => {
         totalItems.value = response.data.total;
         serverItems.value = response.data.data;
-        console.log(response);
-        
         loading.value = false;
         emits('pagination-changed', { page: updatedPage, itemsPerPage: updatedItemsPerPage, search: updatedSearch });
     })
@@ -109,7 +107,6 @@ const toast = ref({
 
 watch(() => props.readerName, () => {
     if (!loading.value) {
-        console.log(props.page);
         loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
     }
 }, { immediate: true });
@@ -165,6 +162,7 @@ const onAssignSuccess = () => {
     toast.value.show = true;
     loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
     assignModalOpen.value = false;
+    emits('refreshReader', props.readerName);
 }
 
 const pageLimit = ref(5)

@@ -1,9 +1,10 @@
 <script setup>
 import MapBlockAssignModal from '@/components/MapBlockAssignModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
+import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 
 const props = defineProps({
@@ -18,11 +19,14 @@ const state = reactive({
     index: 0,
     inventories: null,
     inventoriesCount: 0,
-    layers: []
+    layers: [],
+    lot: null,
+    id: null,
 });
 
 const searchValue = ref('')
 const loading = ref(true);
+const mapLoading = ref(true);
 const layersData = ref(null);
 const isFiltered = ref(false);
 const openAssignModal = ref(false);
@@ -31,9 +35,30 @@ const selectedBlock = reactive({
     data: null
 })
 
+const toast = ref({
+    message: '',
+    color: 'success',
+    show: false
+});
+
 const handleSearch = debounce((search) => {
     searchValue.value = search;
+    isFiltered.value = true;
+    if (searchValue.value) {
+        fetchFilteredMap()
+    } else {
+        fetchStorageLocationInformation(); 
+        isFiltered.value = false;
+    }
 }, 500);
+
+watch(searchValue, (newValue) => {
+    if (newValue === '') {
+        isFiltered.value = false;
+        state.index = state.layout.length;
+        fetchStorageLocationInformation();
+    }
+});
 
 onMounted(() => {
     state.index = state.layout.length;
@@ -41,12 +66,13 @@ onMounted(() => {
 })
 
 const fetchStorageLocationInformation = async () => {
+    state.layout = [];
     loading.value = true;
     try {
         const response = await ApiService.get(`warehouse/get-storage-location-information/${props.storageLocation}`);
         const { storage_location, layers_data, blocks } = response.data
         layersData.value = layers_data;
-
+        
         // Transform blocks data into GridItem format
         state.layout = blocks.map((item, index) => ({
             i: String(index),
@@ -59,25 +85,68 @@ const fetchStorageLocationInformation = async () => {
             isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
             inventories: item.inventories || null,
             inventoriesCount: item.inventories_count || 0,
-            layers: item.layers || []
+            layers: item.layers || [],
+            lot: item.lot || null,
+            id: item.id || null,
         }));
 
         state.index = state.layout.length;
     } catch (error) {
         console.error('Error fetching data:', error);
     } finally {
-        loading.value = false
+        loading.value = false;
+        mapLoading.value = false;
     }
 };
 
-const filterBlock = () => {
-    isFiltered.value = true;
-}
+const fetchFilteredMap = async () => {
+    state.layout = [];
+    mapLoading.value = true;
+    try {
+        const response = await ApiService.get(`warehouse/get-blocks/${props.storageLocation}/${searchValue.value}`);
+        const { storage_location, layers_data, blocks } = response.data
+        console.log(blocks);
+        state.layout = blocks.map((item, index) => ({
+            i: String(index),
+            x: item.x || 0, // Default to 0 if x is not provided
+            y: item.y || 0, // Default to 0 if y is not provided
+            w: item.w || 3, // Default width
+            h: item.h || 2, // Default height
+            label: item.label || 'Unnamed', // Use name from API
+            type: item.type || 'unknown', 
+            isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
+            inventories: item.inventories || null,
+            inventoriesCount: item.inventories_count || 0,
+            layers: item.layers || [],
+            lot: item.lot || null,
+            id: item.id || null,
+        }));
+
+        state.index = state.layout.length;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    } finally {
+        mapLoading.value = false
+    }
+};
 
 const handleBlockClick = (item) => {
     selectedBlock.data = item;
     selectedBlock.layers = item.layers;
     openAssignModal.value = true;
+}
+
+const onAssignSuccess = () => {
+    if(isFiltered.value) {
+        fetchFilteredMap()
+        openAssignModal.value = false;
+    } else {
+        fetchStorageLocationInformation()
+        openAssignModal.value = false;
+    }
+    toast.value.message = 'Inventory assigned successfully!';
+    toast.value.color = 'success';
+    toast.value.show = true;
 }
 
 const getItemColor = (inventoriesCount) => {
@@ -115,17 +184,11 @@ const getItemColor = (inventoriesCount) => {
             </div>
 
             <div class="d-flex align-center">
-                <SearchInput style="min-width: 300px;" placeholder="Filter by block" @update:search="handleSearch"/>
-                <v-btn class="bg-primary-light px-8 ml-4" @click="filterBlock">
-                    Filter
-                </v-btn>
+                <SearchInput style="min-width: 300px;" placeholder="Filter by lot" @update:search="handleSearch"/>
             </div>
         </div>
 
-        <!-- Filtered map  -->
-        <div v-if="isFiltered">
-            <h1>Filtered map</h1>
-        </div>
+        <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
 
         <!-- Map area  -->
         <div v-else>
@@ -169,9 +232,15 @@ const getItemColor = (inventoriesCount) => {
                     <span class="text">{{item.label}}</span>
                 </GridItem>
             </GridLayout>
+            <div v-else class="border mt-2" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                <p class="text-center mt-4 text-h4 font-weight-bold">No results found</p>
+            </div>
         </div>
     </div>
-    <MapBlockAssignModal :storage-location="storageLocation" :block="selectedBlock" :show="openAssignModal" @close="openAssignModal = false"/>
+    <MapBlockAssignModal :storage-location="storageLocation" :block="selectedBlock" 
+        @assign-success="onAssignSuccess"
+        :show="openAssignModal" @close="openAssignModal = false"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 
 <style scoped>

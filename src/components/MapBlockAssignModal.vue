@@ -1,9 +1,11 @@
 <script setup>
 import ApiService from '@/services/ApiService';
+import axios from 'axios';
 import { debounce } from 'lodash';
 import { ref } from 'vue';
 import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
+import Toast from './Toast.vue';
 
 const emits = defineEmits(['close', 'assign-success']);
 
@@ -26,6 +28,7 @@ const totalItems = ref(0);
 const itemsPerPage = ref(5);
 const page = ref(1);
 const sortQuery = ref('-updated_at'); // Default sort
+const confirmModalOpen = ref(false);
 
 const headers = [
     {
@@ -35,7 +38,7 @@ const headers = [
     },
     {
         title: 'BATCH',
-        key: 'assigned_item',
+        key: 'batch',
         align: 'center',
         sortable: false
     },
@@ -74,7 +77,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-updated_at';
     }
 
-    ApiService.query(`warehouse/get-inventories/${props.storageLocation}`,{
+    ApiService.query(`warehouse/get-grouped-inventories/${props.storageLocation}`,{
         params: {
             page,
             itemsPerPage,
@@ -83,16 +86,18 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
         })
         .then((response) => {
-            console.log(response.data);
-            // totalItems.value = response.data.total;
-
-            // serverItems.value = response.data.data.map(item => ({
-            //     id: item.id,
-            //     label: item.label,
-            //     inventories_count: item.inventories_count,
-            //     isSelected: false,
-            //     storage_location_id: item.storage_location_id
-            // }));
+            totalItems.value = response.data.total;
+            serverItems.value = response.data.data.map(item => ({
+                id: item.id,
+                label: item.label,
+                inventories_count: item.inventories_count,
+                isSelected: false,
+                storage_location_id: item.storage_location_id,
+                rfid: item.rfid,
+                batch: item.batch,
+                mfg_date: item.mfg_date,
+                isAssigned: item.block_id !== null ? true : false,
+            }));
 
             loading.value = false
         })
@@ -109,46 +114,49 @@ const toast = ref({
 
 const closeModal = () => {
     emits('close');
-}
-
-const assignInventoryToLayerBin = async (layer) => {
-
-    // if (defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] && defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] !== null) {
-    //     toast.value.message = 'Selected layer has an assigned inventory already!';
-    //     toast.value.color = 'error';
-    //     toast.value.show = true;
-    // } else {
-
-    //     try {
-            
-    //         const response = await axios.post(`warehouse/assign-inventory`, {
-    //             block: selectedBlock.value,
-    //             position: selectedLayer.value,
-    //             inventory: props.selectedInventory.inventory
-    //         }); 
-
-    //         if (response.status == 200) {
-    //             emits('assign-success');
-    //         } 
-
-    //     } catch (error) {
-    //         console.error("Error assigning inventory:", error);
-    //     } finally {
-    //         layerLoading.value = false;
-    //         close();
-    //     }
-    // }
+    selectedLayerIndex.value = -1;
+    selectedLayer.value = null
 }
 
 const selectLayer = (index, layer) => {
-    // Must select and open a  first
-    if (!selectedInventory.value) {
-        toast.value.message = 'Assign inventory item first';
-        toast.value.color = 'error';
-        toast.value.show = true;
-    } else {
-        selectedLayerIndex.value = index;
-        selectedLayer.value = layer
+    selectedLayerIndex.value = index;
+    selectedLayer.value = layer
+}
+
+const cancelLayerSelection = (layer) => {
+    selectedLayerIndex.value = -1;
+    selectedLayer.value = null;
+}
+
+const assign = (item) => {
+    selectedInventory.value = item;
+    confirmModalOpen.value = true
+}
+
+const proceedAssign = async () => {
+    try {
+        const response = await axios.post(`warehouse/assign-inventory`, {
+            block: props.block.data,
+            position: selectedLayer.value,
+            inventory: selectedInventory.value
+        }); 
+
+        if (response.status == 200) {
+            loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'updated_at', order: 'desc'}],
+                search: searchValue.value
+            });
+            selectedLayerIndex.value = -1;
+            selectedLayer.value = null;
+            selectedInventory.value = null;
+            emits('assign-success');
+        } 
+    } catch (error) {
+        console.error("Error assigning inventory:", error);
+    } finally {
+        confirmModalOpen.value = false
     }
 }
 
@@ -158,7 +166,8 @@ const handleSearch = debounce((search) => {
 
 </script>
 <template>
-    <DefaultModal :dialog-title="'RFID Details'" max-width="800px" :show="show" @close="closeModal">
+    <DefaultModal :dialog-title="'Block Details'" max-width="800px" :show="show" @close="closeModal">
+        <p class="text-h3 font-weight-black text-grey-700">{{block.data.lot?.label }} - {{ block.data.label }}</p>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
                 <template 
                     v-for="(layer, index) of block.layers"
@@ -186,7 +195,7 @@ const handleSearch = debounce((search) => {
                         <template v-if="!layer.assigned_inventory">
                             <VListItem>
                                 <VListItemTitle>
-                                    <span :class="selectedLayerIndex === index ? 'text-grey-100' :'text-grey-900'" class="text-h5 font-weight-bold">{{ layer.layer_name }}</span>
+                                    <span :class="selectedLayerIndex === index ? 'text-grey-100' :'text-grey-700'" class="text-h5 font-weight-bold">{{ layer.layer_name }}</span>
                                 </VListItemTitle>
 
                                 <template #append>
@@ -196,13 +205,12 @@ const handleSearch = debounce((search) => {
                                         :variant="selectedLayerIndex === index ? 'outlined' : 'flat'"
                                         :class="selectedLayerIndex === index ? 'text-grey-100' : ''"
                                         class="fixed-width-btn"
-                                        @click="assignInventoryToLayerBin(layer)"
+                                        @click="cancelLayerSelection(layer)"
                                     >
-                                        Confirm
+                                        Cancel
                                     </VBtn>
 
-                                    <VBtn 
-                                        v-else 
+                                    <VBtn v-else
                                         :disabled="!layer.layer_status" 
                                         size="large" 
                                         class="fixed-width-btn"
@@ -221,7 +229,7 @@ const handleSearch = debounce((search) => {
         </VList>
         <SearchInput @update:search="handleSearch" placeholder="Search inventory"/>
 
-        <!-- <VDataTableServer
+        <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
             :items="serverItems"
@@ -234,35 +242,43 @@ const handleSearch = debounce((search) => {
         >
 
             <template v-slot:item="{ item }">
-                <tr class="text-no-wrap" :class="{'selected-row': item.isSelected}">
-                    <td style="width: 200px;">{{ item.label }}</td>
-                    <td style="width: 200px;" class="text-center">{{ item.inventories_count }}</td>
+                <tr class="text-no-wrap">
+                    <td style="width: 200px;">{{ item.rfid?.name }}</td>
+                    <td class="text-center" style="width: 200px;">{{ item.batch }}</td>
+                    <td style="width: 200px;">{{ item.mfg_date }}</td>
                     <td style="width: 200px;">
-                        <template v-if="item.isSelected === false">
-                            <div class="d-flex justify-end align-center">
-                                <v-btn @click="selectBlock(item)" class="px-5" type="button" color="primary-light">
-                                    Open
-                                </v-btn>
-                            </div>
-                        </template>
-                        <template v-else>
-                            <div class="d-flex justify-end align-center">
-                                <v-btn v-if="item.isSelected === true" @click="cancelBlock(item)"
-                                    class="ml-3 bg-primary-light">Cancel</v-btn>
-                                <v-btn v-else >
-                                    {{ item.isSelected === true ? "Selected" : "Open" }}
-                                </v-btn>
-                            </div>
-                        </template>
+                        <div class="d-flex justify-end align-center">
+                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button" color="primary-light">
+                                Assigned
+                            </v-btn>
+                            <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5" type="button" color="primary-light">
+                                Assign
+                            </v-btn>
+                        </div>
                     </td>
                 </tr>
             </template>
 
-        </VDataTableServer> -->
+        </VDataTableServer>
         <div class="d-flex justify-end align-center mt-4">
-            <v-btn color="secondary" variant="outlined" @click="emits('close')" class="px-12 mr-3">Close</v-btn>
+            <v-btn color="secondary" variant="outlined" @click="closeModal" class="px-12 mr-3">Close</v-btn>
         </div>
     </DefaultModal>
+    <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="500">
+        <v-card class="py-8 px-6">
+            <div class="mx-auto">
+                <i class="ri-add-box-line" style="font-size: 54px;"></i>
+            </div>
+            <p class="mt-4 text-h4 text-center">Assign RFID with physical ID of <span class="font-weight-black">{{ selectedInventory.rfid?.name }}</span> 
+                to <span class="font-weight-black">{{selectedLayer.layer_name}}</span> of <span class="font-weight-black">{{block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
+          
+            <v-card-actions class="mt-5">
+                    <v-spacer></v-spacer>
+                    <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
+                    <v-btn color="primary" variant="flat" class="px-6" @click="proceedAssign" type="button">Confirm</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 <style scoped>
