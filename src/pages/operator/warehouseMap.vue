@@ -149,6 +149,21 @@ const onAssignSuccess = () => {
     toast.value.show = true;
 }
 
+const actionSuccess = (type) => {
+    // Set toast message and color based on action type
+    const isReturnToMill = type === 'Return to Mill';
+    toast.value.message = isReturnToMill
+        ? 'Returned to mill successfully!'
+        : 'Bin transferred successfully!';
+    toast.value.color = 'success';
+    toast.value.show = true;
+
+    const fetchFunction = isFiltered.value ? fetchFilteredMap : fetchStorageLocationInformation;
+    fetchFunction();
+    
+    openAssignModal.value = false;
+};
+
 const getItemColor = (inventoriesCount) => {
     if (inventoriesCount >= 4) return '#ac84e0'; // Layer 4 color
     if (inventoriesCount === 3) return '#afe1af'; // Layer 3 color
@@ -239,6 +254,7 @@ const getItemColor = (inventoriesCount) => {
     </div>
     <MapBlockAssignModal :storage-location="storageLocation" :block="selectedBlock" 
         @assign-success="onAssignSuccess"
+        @action-success="actionSuccess"
         :show="openAssignModal" @close="openAssignModal = false"/>
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>

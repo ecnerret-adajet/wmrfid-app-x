@@ -78,7 +78,7 @@ const loadItems = (options = {}) => {
     const updatedSearch = options.search ?? props.search;
     const updatedReaderName = props.readerName; // Always use latest value
     loading.value = true;
-    ApiService.query('data/get-antenna-logs', {
+    ApiService.query(`data/get-antenna-logs/${props.storageLocation}`, {
         params: {
             page: updatedPage,
             itemsPerPage: updatedItemsPerPage,

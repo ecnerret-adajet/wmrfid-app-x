@@ -380,7 +380,6 @@ const editCancelClicked = () => {
             :i="item.i"
             :min-w="2.5"
             :min-h="2"
-            @click="item.type !== 'lot' && !editEnabled && showBlockInformation(item)"
             @dblclick="editEnabled && openEditModal(item)"
             :is-resizable="item.isResizable && editEnabled"
         >

@@ -7,7 +7,7 @@ import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
 import Toast from './Toast.vue';
 
-const emits = defineEmits(['close', 'assign-success']);
+const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
 
 const props = defineProps({
     block: Object,
@@ -22,6 +22,7 @@ const selectedLayerIndex = ref(-1);
 const selectedLayer = ref(null);
 const searchValue = ref('');
 const selectedInventory = ref(null);
+const selectedNewInventory = ref(null); // For Bin Transfer
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
@@ -29,6 +30,14 @@ const itemsPerPage = ref(5);
 const page = ref(1);
 const sortQuery = ref('-updated_at'); // Default sort
 const confirmModalOpen = ref(false);
+const enableBinTransfer = ref(false);
+const binTransferDetails = ref(null);
+const selectedAction = reactive({
+    title: '',
+    message: '',
+    type: ''
+});
+const actionModalOpen = ref(false);
 
 const headers = [
     {
@@ -115,7 +124,8 @@ const toast = ref({
 const closeModal = () => {
     emits('close');
     selectedLayerIndex.value = -1;
-    selectedLayer.value = null
+    selectedLayer.value = null;
+    enableBinTransfer.value = false;
 }
 
 const selectLayer = (index, layer) => {
@@ -160,6 +170,88 @@ const proceedAssign = async () => {
     }
 }
 
+const items = [
+    { title: 'Bin Transfer' },
+    { title: 'For RTM' },
+]
+
+const handleActionClick = (action, layer) => {
+    selectedAction.type = action;
+    selectedInventory.value = layer.assigned_inventory;
+    console.log(layer);
+    
+    if (action === 'Bin Transfer') {
+        enableBinTransfer.value = true;
+        binTransferDetails.value = 'Select inventory to transfer bin'
+    } else if (action === 'For RTM') {
+        enableBinTransfer.value = false;
+        selectedAction.title = 'Return to Mill';
+        selectedAction.message = `Are you sure you want to return RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong> to mill?`;
+        actionModalOpen.value = true;
+    }
+}
+
+const proceedAction = async () => {
+    try {
+        // Check if action is 'Return to Mill'
+        if (selectedAction.title === 'Return to Mill') {
+            const response = await axios.post('warehouse/return-to-mill', {
+                block: props.block.data,
+                inventory: selectedInventory.value
+            });
+
+            if (response.status === 200) {
+                loadItems({
+                    page: page.value,
+                    itemsPerPage: itemsPerPage.value,
+                    sortBy: [{key: 'updated_at', order: 'desc'}],
+                    search: searchValue.value
+                });
+                selectedLayerIndex.value = -1;
+                selectedLayer.value = null;
+                selectedInventory.value = null;
+            }
+
+        } else {
+            const response = await axios.post('warehouse/bin-transfer', {
+                block: props.block.data,
+                inventory: selectedInventory.value
+            });
+
+            if (response.status === 200) {
+                loadItems({
+                    page: page.value,
+                    itemsPerPage: itemsPerPage.value,
+                    sortBy: [{key: 'updated_at', order: 'desc'}],
+                    search: searchValue.value
+                });
+                selectedLayerIndex.value = -1;
+                selectedLayer.value = null;
+                selectedInventory.value = null;
+            }
+        }
+        actionModalOpen.value = false;
+        emits('actionSuccess', selectedAction.title);
+    } catch (error) {
+        console.error("Error proceeding with action:", error);
+    } finally {
+        closeModal();  
+    }
+
+    actionModalOpen.value = false;  
+};
+
+const binTransfer = (item) => {
+    selectedNewInventory.value = item;
+    selectedAction.title = 'Bin Transfer';
+    selectedAction.message = `Are you sure you want to transfer RFID with physical ID of <strong>${selectedNewInventory.value.rfid?.name}</strong> to the bin of RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong>?`;
+    actionModalOpen.value = true;
+}
+
+const cancelBinTransfer = () => {
+    enableBinTransfer.value = false;
+}
+
 const handleSearch = debounce((search) => {
     searchValue.value = search;
 }, 500);
@@ -187,6 +279,23 @@ const handleSearch = debounce((search) => {
                                             <span class="font-weight-bold">{{ layer.assigned_inventory.rfid?.name }}</span>
                                         </div>
                                     </div>
+                                    <div class="d-flex gap-1">
+                                        <v-menu location="start"> 
+                                            <template v-slot:activator="{ props }">
+                                                <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                                            </template>
+                                            <v-list>
+                                            <v-list-item
+                                                v-for="(item, i) in items"
+                                                    :key="i"
+                                                    :value="i"
+                                                    @click="handleActionClick(item.title, layer)"
+                                                >
+                                                <v-list-item-title>{{ item.title }}</v-list-item-title>
+                                            </v-list-item>
+                                            </v-list>
+                                        </v-menu>
+                                    </div>
                                 </template>
                             </VListItem>
                         </template>
@@ -211,7 +320,7 @@ const handleSearch = debounce((search) => {
                                     </VBtn>
 
                                     <VBtn v-else
-                                        :disabled="!layer.layer_status" 
+                                        :disabled="!layer.layer_status || enableBinTransfer" 
                                         size="large" 
                                         class="fixed-width-btn"
                                         @click="layer.layer_status && selectLayer(index, layer)"
@@ -228,7 +337,15 @@ const handleSearch = debounce((search) => {
                 </template>
         </VList>
         <SearchInput @update:search="handleSearch" placeholder="Search inventory"/>
-
+        <div v-if="enableBinTransfer" class="d-flex justify-between align-center mb-4">
+            <div class="text-h5 font-weight-medium text-grey-700">
+                {{ binTransferDetails }}
+            </div>
+            <v-spacer></v-spacer>
+            <v-btn @click="cancelBinTransfer" class="px-5" type="button" color="error">
+                Cancel Bin Transfer
+            </v-btn>
+        </div>
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
@@ -247,8 +364,13 @@ const handleSearch = debounce((search) => {
                     <td class="text-center" style="width: 200px;">{{ item.batch }}</td>
                     <td style="width: 200px;">{{ item.mfg_date }}</td>
                     <td style="width: 200px;">
-                        <div class="d-flex justify-end align-center">
-                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button" color="primary-light">
+                        <div v-if="enableBinTransfer && item.isAssigned" class="d-flex justify-end align-center">
+                            <v-btn @click="binTransfer(item)" class="px-5" type="button" color="info">
+                                Bin Transfer
+                            </v-btn>
+                        </div>
+                        <div v-else class="d-flex justify-end align-center">
+                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button" style="background-color: #eece70 !important;">
                                 Assigned
                             </v-btn>
                             <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5" type="button" color="primary-light">
@@ -264,6 +386,8 @@ const handleSearch = debounce((search) => {
             <v-btn color="secondary" variant="outlined" @click="closeModal" class="px-12 mr-3">Close</v-btn>
         </div>
     </DefaultModal>
+    
+    <!-- Assign Confirmation  -->
     <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="500">
         <v-card class="py-8 px-6">
             <div class="mx-auto">
@@ -279,6 +403,24 @@ const handleSearch = debounce((search) => {
             </v-card-actions>
         </v-card>
     </v-dialog>
+
+    <!-- Action item confirmation -->
+    <v-dialog v-model="actionModalOpen"  max-width="600">
+        <v-card class="py-8 px-6">
+            <div class="mx-auto">
+                <i v-if="selectedAction.type == 'Bin Transfer'" class="ri-folder-transfer-line" style="font-size: 54px;"></i>
+                <i v-else class="ri-arrow-go-back-line" style="font-size: 54px;"></i>
+            </div>
+            <p class="mt-4 text-h4 text-center">{{ selectedAction.title }}</p>
+            <p class="text-h5 text-center" v-html="selectedAction.message"></p>
+            <v-card-actions class="mt-5">
+                    <v-spacer></v-spacer>
+                    <v-btn color="secondary" variant="flat" class="px-6" @click="actionModalOpen = false">Cancel</v-btn>
+                    <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 <style scoped>
