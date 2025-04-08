@@ -38,7 +38,7 @@ const pickLoading = ref(null);
 const wrapLoading = ref(null);
 const selectedInventory = ref(null);
 const assignModalOpen = ref(false);
-
+const confirmModalOpen = ref(false);
 
 const headers = [
     {
@@ -70,6 +70,12 @@ const headers = [
         align: 'center'
     },
 ]
+
+const selectedAction = reactive({
+    title: '',
+    message: '',
+    type: ''
+});
 
 const loadItems = (options = {}) => {
     // Ensure updated values are used
@@ -156,6 +162,28 @@ const selectInventory = (rfid) => {
     assignModalOpen.value = true;
 }
 
+const proceedAction = () => {
+    if (selectedAction.title == 'Mark as Wrapped') {
+        wrapAction(selectedInventory.value)
+    } else {
+        pickInventory(selectedInventory.value)
+    }
+    confirmModalOpen.value = false;
+}
+
+const handleShowConfirm = (action, item) => {
+    let rfidModel = item;
+    selectedInventory.value = item.inventory;
+    if (action == 'wrap') {
+        selectedAction.title = 'Mark as Wrapped';
+        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${rfidModel?.name}</strong> as wrapped?`;
+    } else {
+        selectedAction.title = 'Mark as Picked';
+        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${rfidModel?.name}</strong> as picked?`;
+    }
+    confirmModalOpen.value = true;
+}
+
 const onAssignSuccess = () => {
     toast.value.message = 'Assign to layer successfully!';
     toast.value.color = 'success';
@@ -226,7 +254,7 @@ defineExpose({
         <template #item.wrap_status="{ item }">
             <div class="d-flex justify-center align-center">
                 <i v-if="item.rfid?.inventory?.is_wrapped" style="font-size: 44px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                <i @click="wrapAction(item.rfid?.inventory)" v-else style="font-size: 44px;" class="ri-close-circle-line clickable-icon"></i>
+                <i @click="handleShowConfirm('wrap', item.rfid)" v-else style="font-size: 44px;" class="ri-close-circle-line clickable-icon"></i>
             </div>
         </template>
 
@@ -253,7 +281,7 @@ defineExpose({
                     :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'" 
                     :loading="pickLoading === item.rfid?.inventory?.id"
                     :disabled="item.rfid?.inventory?.picked_datetime !== null" 
-                    @click="pickInventory(item.rfid?.inventory)"
+                    @click="handleShowConfirm('pick', item.rfid)"
                     type="button"
                     :class="item.rfid?.inventory?.picked_datetime === null ? 'px-16 cursor-pointer' : 'px-13 cursor-not-allowed'" 
                 >
@@ -269,6 +297,22 @@ defineExpose({
         @close="assignModalOpen = false" @assign-success="onAssignSuccess"
     />
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+
+    <v-dialog v-model="confirmModalOpen" max-width="500">
+        <v-card class="py-8 px-6">
+            <div class="mx-auto">
+                <!-- <i class="ri-add-box-line" style="font-size: 54px;"></i> -->
+            </div>
+            <p class="mt-4 text-h4 text-center">{{ selectedAction.title }}</p>
+            <p class="text-h5 text-center" v-html="selectedAction.message"></p>
+          
+            <v-card-actions class="mt-5">
+                    <v-spacer></v-spacer>
+                    <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
+                    <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 </template>
 
 <style scoped>

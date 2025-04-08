@@ -323,7 +323,11 @@ const cancelBinTransfer = () => {
 }
 
 const handleSearch = debounce((search) => {
-    searchValue.value = search;
+    if (enableBinTransfer.value) {
+        layerSearchValue.value = search
+    } else {
+        searchValue.value = search;
+    }
 }, 500);
 
 </script>
