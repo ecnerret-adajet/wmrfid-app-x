@@ -107,6 +107,18 @@ export const routes = [
             },
         },
         {
+            path: 'inventories/:batch',
+            name: 'inventories.show',
+            component: () => import('@/pages/inventories/show.vue'),
+            meta: {
+                pageTitle: "Inventory Details",
+                breadcrumbs: (route) => [
+                    { label: "Inventories", link: "/inventories" },
+                    { label: `${route.params.batch}`, link: `/inventories/${route.params.batch}` }
+                ],
+            },
+        },
+        {
             path: 'shipments',
             name: 'shipments',
             component: () => import('@/pages/shipments/index.vue'),
@@ -127,6 +139,18 @@ export const routes = [
                     { label: "Shipments", link: "/shipments" },
                     { label: `${route.params.shipmentNumber}`, link: `/shipments/${route.params.shipmentNumber}` }
                 ],
+            },
+        },
+
+        {
+            path: 'warehouse',
+            name: 'warehouse',
+            component: () => import('@/pages/warehouse/index.vue'),
+            meta: {
+              pageTitle: "Storage Location",
+              breadcrumbs: [
+                  { label: "Storage Location", link: "/warehouse" },
+              ],
             },
         },
         {

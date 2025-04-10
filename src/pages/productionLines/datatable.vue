@@ -18,6 +18,10 @@ const props = defineProps({
     readersOption: {
         type: Array,
         default: () => []
+    },
+    tagTypesOption: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -42,6 +46,10 @@ const headers = [
     {
         title: 'READER',
         key: 'reader_id',
+    },
+    {
+        title: 'TAG TYPE',
+        key: 'tag_type_id',
     },
     {
         title: 'DATE CREATED',
@@ -102,6 +110,7 @@ const editItem = (item) => {
     selectedProductionLine.value = item;
     form.value.name = item.name;
     form.value.reader_id = item.reader_id;
+    form.value.tag_type_id = item.tag_type_id;
     errorMessage.value = '';
     editDialog.value = true;
 }  
@@ -156,6 +165,7 @@ const handleUpdate = async () => {
 const form = ref({
     'name': null,
     'reader_id': null,
+    'tag_type_id': null
 });
 
 const applyFilters = (data) => {
@@ -193,6 +203,10 @@ defineExpose({
         {{ item.reader?.name }}
     </template>
 
+    <template #item.tag_type_id="{ item }">
+        {{ item.tag_type?.name }}
+    </template>
+
     <template #item.created_at="{ item }">
         {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
     </template>
@@ -210,12 +224,12 @@ defineExpose({
         >
           <VIcon icon="ri-pencil-line" />
         </IconBtn>
-        <IconBtn
+        <!-- <IconBtn
           size="small"
           @click="deleteItem(item)"
         >
           <VIcon icon="ri-delete-bin-line" />
-        </IconBtn>
+        </IconBtn> -->
       </div>
     </template>
     </VDataTableServer>
@@ -244,6 +258,10 @@ defineExpose({
             <v-form @submit.prevent="handleUpdate">
                 <v-select label="Select Reader" density="compact"
                     :items="readersOption" v-model="form.reader_id"
+                    :rules="[value => !!value || 'Please select an item from the list']"
+                ></v-select>
+                <v-select class="mt-6" label="Select Type" density="compact"
+                    :items="tagTypesOption" v-model="form.tag_type_id"
                     :rules="[value => !!value || 'Please select an item from the list']"
                 ></v-select>
                 <v-text-field class="mt-6" density="compact" 
