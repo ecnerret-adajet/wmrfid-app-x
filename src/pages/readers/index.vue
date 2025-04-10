@@ -31,6 +31,7 @@ const form = ref({
     'name': null,
     'reader_type_id': null,
     'storage_location_id': null,
+    'ip_address': null
 });
 
 onMounted(() => {
@@ -65,10 +66,10 @@ const tablePage = ref(1);
 const tableSort = ref('-created_at')
 
 const fetchReaderTypesAndStorageLocations = async () => {
+    console.log('test');
     try {
         const preReqData = await ApiService.get('readers/get-data-dropdown');
-        const { reader_types, storage_locations } = preReqData.data
-
+        const { reader_types, storage_locations, reader_status } = preReqData.data
         readerTypes.value = reader_types.map(item => ({
             value: item.id,
             title: item.name 
@@ -78,6 +79,7 @@ const fetchReaderTypesAndStorageLocations = async () => {
             value: item.id,
             title: item.name
         }));
+
 
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -98,7 +100,7 @@ const submit = async () => {
         form.value.name = null;
         form.value.reader_type_id = null;
         form.value.storage_location_id = null;
-        
+        form.value.ip_address = null;
     } catch (error) {
         console.error('Error submitting:', error);
     }
@@ -180,6 +182,10 @@ const clearFilters = () => {
                     label="Reader Name"
                     v-model="form.name" 
                     :rules="[value => !!value || 'Reader name is required']"
+                />
+                <v-text-field class="mt-6" density="compact" 
+                    label="IP Address"
+                    v-model="form.ip_address" 
                 />
                 <div class="d-flex justify-end align-center mt-8">
                     <v-btn color="secondary" variant="outlined" @click="dialogVisible = false" class="px-12 mr-3">Cancel</v-btn>

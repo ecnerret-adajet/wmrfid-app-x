@@ -1,5 +1,4 @@
 <script setup>
-import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
 import { ref } from 'vue';
@@ -13,6 +12,7 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    batch: String
 });
 
 const router = useRouter();
@@ -25,25 +25,37 @@ const sortQuery = ref('-created_at'); // Default sort
 
 const headers = [
     {
-        title: 'BATCH',
-        key: 'batch',
-    },
-    {
         title: 'MATERIAL',
         key: 'material_id',
     },
     {
-        title: 'MFG DATE',
-        key: 'latest_mfg_date',
+        title: 'PHYSICAL ID',
+        key: 'physical_id',
     },
     {
-        title: 'TOTAL QUANTITY',
-        key: 'total_count',
+        title: 'TYPE',
+        key: 'type',
+        sortable: false
+    },
+    {
+        title: 'MFG DATE',
+        key: 'mfg_date',
+    },
+    {
+        title: 'IS WRAPPED',
+        key: 'is_wrapped',
+        align: 'center',
+        sortable: false
+    },
+    {
+        title: 'CURRENT AGE',
+        key: 'age',
         align: 'center'
     },
     {
-        title: 'CREATED AT',
-        key: 'latest_created_at',
+        title: 'QUANTITY',
+        key: 'quantity',
+        align: 'center'
     },
 ]
 
@@ -60,7 +72,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query('datatable/inventories',{
+    ApiService.query(`datatable/inventories/${props.batch}`,{
         params: {
             page,
             itemsPerPage,
@@ -74,19 +86,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             console.log(serverItems.value);
             loading.value = false
 
-            emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
+            // emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
         })
         .catch((error) => {
             loading.value = false
             console.log(error);
         });
 }
-
-const toast = ref({
-    message: 'Inventory refreshed',
-    color: 'success',
-    show: false
-});
 
 const handleViewBatch = (inventory) => {
     router.push(`/inventories/${inventory.batch}`);
@@ -121,8 +127,27 @@ defineExpose({
         {{ item.material?.description }}
     </template>
 
-    <template #item.latest_mfg_date="{ item }">
-        {{ item.latest_mfg_date ? Moment(item.latest_mfg_date).format('MMMM D, YYYY') : '' }}
+    <template #item.physical_id="{ item }">
+        {{ item.rfid?.name }}
+    </template>
+
+    <template #item.type="{ item }">
+        {{ item.type }}
+    </template>
+
+    <template #item.mfg_date="{ item }">
+        {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+    </template>
+
+    <template #item.is_wrapped="{ item }">
+        <div class="d-flex justify-center align-center">
+            <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
+            <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+        </div>
+    </template>
+
+    <template #item.age="{ item }">
+        {{  item.current_age }}
     </template>
 
     <template #item.latest_created_at="{ item }">
@@ -134,8 +159,5 @@ defineExpose({
     </template>
 
     </VDataTableServer>
-
-
-    <Toast :show="toast.show" :message="toast.message"/>
 
 </template>

@@ -7,7 +7,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import datatable from './datatable.vue';
 
 const dialogVisible = ref(false)
@@ -18,15 +18,11 @@ const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
 const errorMessage = ref(null)
-const readersOption = ref([])
-const tagTypesOption = ref([])
-
 const toast = ref({
-    message: 'New production line successfully created!',
+    message: 'User successfully created!',
     color: 'success',
     show: false
 });
-
 const filterModalVisible = ref(false);
 
 const filterModalOpen = () => {
@@ -38,15 +34,11 @@ const filterModalOpen = () => {
 const filters = reactive({
     created_at: null,
     updated_at: null,
-    reader_id: null,
-    tag_type_id: null
 });
 
 const isFiltersEmpty = computed(() => {
     return !filters.created_at && 
-           !filters.updated_at && 
-           !filters.reader_id && 
-           !filters.tag_type_id;
+           !filters.updated_at 
 });
 
 const applyFilter = () => {
@@ -67,31 +59,6 @@ const resetFilter = () => {
 const clearFilters = () => {
     filters.created_at = null;
     filters.updated_at = null;
-    filters.reader_id = null;
-    filters.tag_type_id = null;
-};
-
-onMounted(() => {
-    fetchReadersAndTagTypes();
-})
-
-const fetchReadersAndTagTypes = async () => {
-    try {
-        const preReqData = await ApiService.get('production-lines/get-data-dropdown');
-        const { readers, tag_types } = preReqData.data
-        readersOption.value = readers.map(item => ({
-            value: item.id,
-            title: item.name 
-        }));
-
-        tagTypesOption.value = tag_types.map(item => ({
-            value: item.id,
-            title: item.name 
-        }));
-
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    }
 };
 
 const handleSearch = debounce((search) => {
@@ -113,25 +80,24 @@ const openDialog = () => {
 
 const form = ref({
     'name': null,
-    'reader_id': null,
-    'tag_type_id' : null
+    'email': null,
 });
 
 const submit = async () => {
     isLoading.value = true;
     toast.value.show = false;
     try {
-        const response = await ApiService.post('production-lines/store', form.value)
+        const response = await ApiService.post('users/store', form.value)
         if (datatableRef.value) {
             datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{key: 'created_at', 'order': 'desc'}], search: searchValue.value });
         }
         isLoading.value = false;
         dialogVisible.value = false
-        toast.value.message = 'New production line successfully created!'
+        toast.value.message = 'User successfully created!'
         toast.value.show = true;
         form.value.name = null;
-        form.value.reader_id = null;
-        errorMessage.value = null;
+        form.value.email = null;
+        errorMessage.value = ''
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
@@ -155,31 +121,28 @@ const submit = async () => {
                 </v-btn>
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="openDialog">Add New Production Line</v-btn>
+            <v-btn block @click="openDialog">Add New Storage Location</v-btn>
         </VCol>
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" :readersOption="readersOption" :tagTypesOption="tagTypesOption" @pagination-changed="onPaginationChanged" 
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
             :search="searchValue"
         />
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Production Line'" >
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New User'" >
         <template #default>
             <v-form @submit.prevent="submit">
-                <v-select label="Select Reader" density="compact"
-                    :items="readersOption" v-model="form.reader_id"
-                    :rules="[value => !!value || 'Please select an item from the list']"
-                ></v-select>
-                <v-select class="mt-6" label="Select Type" density="compact"
-                    :items="tagTypesOption" v-model="form.tag_type_id"
-                    :rules="[value => !!value || 'Please select an item from the list']"
-                ></v-select>
                 <v-text-field class="mt-6" density="compact" 
-                    label="Name"
+                    label="Full Name"
                     v-model="form.name" 
-                    :rules="[value => !!value || 'Production line name is required']"
+                    :rules="[value => !!value || 'Name is required']"
+                />
+                <v-text-field class="mt-6" density="compact" 
+                    label="Email Address"
+                    v-model="form.email" 
+                    :rules="[value => !!value || 'Email address is required']"
                 />
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                     {{ errorMessage }}
@@ -194,17 +157,9 @@ const submit = async () => {
         </template>
     </AddingModal>
 
-    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Readers'">
+    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Users'">
         <template #default>
             <v-form>
-                <div class="mt-6">
-                    <label class="font-weight-bold">Reader</label>
-                    <v-select class="mt-1" label="Select Reader" density="compact"
-                        :items="readersOption" v-model="filters.reader_id"
-                    >
-                    </v-select>
-                </div>
-
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
                     <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>

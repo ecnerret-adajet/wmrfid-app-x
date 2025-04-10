@@ -19,6 +19,8 @@ export const useAuthStore = defineStore(
         const user = ref<User>({} as User);
         const isAuthenticated = ref(!!JwtService.getToken());
         const isPasswordModalVisible = ref(false);
+        const isSessionExpiredModalVisible = ref(false);
+
 
         function setAuth(authUser: User) {
             isAuthenticated.value = true;
@@ -68,6 +70,7 @@ export const useAuthStore = defineStore(
         }
     
         function verifyAuth() {
+            isSessionExpiredModalVisible.value = false;
             if (JwtService.getToken()) {
                 ApiService.setHeader();
                 ApiService.post("verify_token", { api_token: JwtService.getToken() })
@@ -77,9 +80,11 @@ export const useAuthStore = defineStore(
                 .catch(({ response }) => {
                     purgeAuth();
                     setError(response.data.errors);
+                    showSessionExpiredModal();
+                
                 });
             } else {
-              purgeAuth();
+                purgeAuth();
             }
         }
 
@@ -92,6 +97,16 @@ export const useAuthStore = defineStore(
         const hidePasswordModal = () => {
             isPasswordModalVisible.value = false;
         };
+
+        
+        const showSessionExpiredModal = () => {
+            isSessionExpiredModalVisible.value = true;
+        };
+
+        const hideSessionExpiredModal = () => {
+            isSessionExpiredModalVisible.value = false;
+        };
+
 
         return {
             errors,
@@ -108,6 +123,9 @@ export const useAuthStore = defineStore(
             hidePasswordModal,
             showPasswordModal,
             isPasswordModalVisible,
+            isSessionExpiredModalVisible,
+            showSessionExpiredModal,
+            hideSessionExpiredModal,
         };
     },
     {

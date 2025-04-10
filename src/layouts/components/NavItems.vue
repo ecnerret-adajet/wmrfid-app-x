@@ -98,7 +98,9 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
     <VerticalNavLink :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories'}"/>
     <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/production-runs'}"/>
-    <VerticalNavLink :item="{ title: 'Warehouse Map', icon: 'ri-route-line'}" @click="showMappingModal = true"/>
+    <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line', to: '/warehouse'}" />
+
+    <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Test Label Here'}" />
@@ -107,18 +109,17 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
 
     <!-- Stock Transfers Section  -->
-    <VerticalNavSectionTitle :item="{ heading: 'Stock Transfers'}" />
-    <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/warehouse'}"/>
+    <!-- <VerticalNavSectionTitle :item="{ heading: 'Stock Transfers'}" /> -->
+    <!-- <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/dashboard'}"/> -->
    
     <!-- Master Data Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Master Data'}" />
     <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-folder-open-line', to: '/materials'}"/>
-    <VerticalNavLink :item="{ title: 'Batch Maintenance', icon: 'ri-home-gear-line', to: '/warehouse'}"/>
     <VerticalNavLink :item="{ title: 'Production Lines', icon: 'ri-database-line', to: '/production-lines'}"/>
 
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
-    <VerticalNavLink :item="{ title: 'RFID Registration', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/>
+    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/>
     <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->
