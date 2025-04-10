@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AddingModal: typeof import('./src/components/AddingModal.vue')['default']
+    BlockAssignModal: typeof import('./src/components/BlockAssignModal.vue')['default']
     Breadcrumbs: typeof import('./src/components/Breadcrumbs.vue')['default']
     CardStatisticsHorizontal: typeof import('./src/@core/components/cards/CardStatisticsHorizontal.vue')['default']
     CardStatisticsVertical: typeof import('./src/@core/components/cards/CardStatisticsVertical.vue')['default']
@@ -22,6 +23,7 @@ declare module 'vue' {
     FilteringModal: typeof import('./src/components/FilteringModal.vue')['default']
     GridItemComponent: typeof import('./src/components/GridItemComponent.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
+    MapBlockAssignModal: typeof import('./src/components/MapBlockAssignModal.vue')['default']
     Mapper: typeof import('./src/components/Mapper.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']

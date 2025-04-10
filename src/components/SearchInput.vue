@@ -4,6 +4,14 @@ import { VCardText, VTextField } from 'vuetify/components';
 
 const emits = defineEmits(['update:search']);
 
+const props = defineProps({
+    placeholder: {
+        type: String,
+        default: 'Search ...'
+    },
+});
+
+
 const search = ref('')
 
 watch(search, (newValue) => {
@@ -16,7 +24,7 @@ watch(search, (newValue) => {
         <VTextField
             v-model="search"
             label="Search"
-            placeholder="Search ..."
+            :placeholder="placeholder"
             append-inner-icon="ri-search-line"
             single-line
             hide-details

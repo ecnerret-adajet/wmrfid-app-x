@@ -12,12 +12,16 @@ const props = defineProps({
     color: {
         type: String,
         default: 'primary'
-    }
+    },
+    block: {
+        type: Boolean,
+        default: false
+    },
 })
 </script>
 
 <template>
-    <v-btn :color="color" variant="elevated" block :type="type" class="px-12" :loading="loading">
+    <v-btn :color="color" variant="elevated" :block="block" :type="type" class="px-12" :loading="loading">
         <template v-slot:loader>
             <v-progress-circular indeterminate color="white" size="24" />
         </template>

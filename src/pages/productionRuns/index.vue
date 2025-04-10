@@ -1,6 +1,7 @@
 <script setup>
 import { default as AddingModal } from '@/components/AddingModal.vue';
 import DateTimePicker from '@/components/DateTimePicker.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';

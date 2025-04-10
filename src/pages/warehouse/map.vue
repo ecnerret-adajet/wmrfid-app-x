@@ -13,8 +13,10 @@ const state = reactive({
     layout: [],
     draggable: true,
     resizable: true,
-    colNum: 144,
+    colNum: 148,
     index: 0,
+    inventories: null,
+    inventoriesCount: 0
 });
 
 const route = useRoute();
@@ -27,6 +29,7 @@ const selectedBlock = ref(null);
 const saveLoading = ref(false);
 const removedItems = reactive([]);
 const storageLocationModel = ref(null);
+const warningModalOpen = ref(false);
 
 // Controls
 const editEnabled = ref(false)
@@ -39,11 +42,16 @@ onMounted(() => {
 
 const selectedItem = reactive({
     label: '',
+    index: '',
     i: null,
     x: null,
     y: null,
     w: null,
     h: null,
+    inventories: null,
+    inventoriesCount: 0,
+    lot_id: null,
+    title: null,
     type: 'block' // default block
 });
 
@@ -66,13 +74,18 @@ const fetchMapData = async () => {
         // Transform API data into GridItem format
         state.layout = items.map((item, index) => ({
             i: String(index),
-            x: item.x || 0, // Default to 0 if x is not provided
-            y: item.y || 0, // Default to 0 if y is not provided
-            w: item.w || 2, // Default width
-            h: item.h || 2, // Default height
-            label: item.label || 'Unnamed', // Use name from API
+            x: item.x || 0, 
+            y: item.y || 0, 
+            w: item.w || 3, 
+            h: item.h || 2, 
+            label: item.label || 'Unnamed',
+            title: item.label || 'Unnamed',
             type: item.type || 'unknown', 
+            index: item.index,
+            lot_id: item.lot_id,
             isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
+            inventories: item.inventories || null,
+            inventoriesCount: item.inventories_count || 0
         }));
 
         initialLayout.value = JSON.parse(JSON.stringify(state.layout));
@@ -92,41 +105,55 @@ function addItem() {
     state.layout.push({
         x: (state.layout.length * 2) % (state.colNum || 12),
         y: 0, // puts it at the bottom
-        w: 2,
+        w: 3,
         h: 2,
         i: state.index,
+        index: state.index,
         label: null,
+        title: null,
         isResizable: false,
-        type: 'block'
+        type: 'block',
+        lot_id: null,
+        inventories: null,
+        inventoriesCount: 0,
     });
     // Increment the counter to ensure key is always unique.
     state.index++;
 }
 
 function addLot() {
-    state.layout.push({
+    const newLot = {
         x: (state.layout.length * 2) % (state.colNum || 12),
         y: 0, 
-        w: 2, 
+        w: 6, 
         h: 2,
         i: state.index,
+        index: state.index,
         label: null,
+        title: null,
+        lot_id: null,
         isResizable: true, // Allow resizing
         type: 'lot'
-    });
+    };
+
+    state.layout.push(newLot);
     state.index++;
 }
 
+const lots = computed(() => state.layout.filter(item => item.type === 'lot' && item.label !== null));
+
 const save = async () => {
     saveLoading.value = true
-    if (state.layout.length > 0 && checkItemsIfValid()) {
+    const validation = checkItemsIfValid();
+    if (state.layout.length > 0 && validation.valid) {
         try {
             const payload = {
                 storage_location: storageLocation,
                 items: state.layout,
                 removedItems : removedItems 
             };
-
+            console.log(payload.items);
+            
             const response = await ApiService.post('warehouse-mapping/store', payload)
             toast.message = 'Map updated successfully!'
             toast.color = 'success'
@@ -141,18 +168,26 @@ const save = async () => {
             console.error('Error submitting:', error);
             saveLoading.value = false
             editEnabled.value = false
-            // isLoading.value = false;
         }
 
     } else {
-        toast.message = 'All blocks should have a label';
+        toast.message = validation.message;
         toast.show = true;
+        saveLoading.value = false
     }
 }
 
 const checkItemsIfValid = () => {
-    return !state.layout.some(item => !item.label || item.label.trim() === "");
-}
+    if (state.layout.some(item => !item.label || item.label.trim() === "")) {
+        return { valid: false, message: 'All blocks should have a label' };
+    }
+
+    if (state.layout.some(item => item.type === 'block' && (item.lot_id === null || item.lot_id === undefined))) {
+        return { valid: false, message: 'All blocks must have a valid lot assigned' };
+    }
+
+    return { valid: true, message: '' };
+};
 
 const showBlockInformation = (item) => {
     selectedBlock.value = item;
@@ -167,28 +202,64 @@ const openEditModal = (item) => {
     selectedItem.y = item.y;
     selectedItem.w = item.w;
     selectedItem.h = item.h;
+    selectedItem.index = item.index;
+    selectedItem.title = item.label;
+    selectedItem.lot_id = item.lot_id;
     actionDialog.value = true;
 }
 
+const actionForm = ref(null);
+
 const removeItem = () => {
-    state.layout = state.layout.filter(item => item.i !== selectedItem.i);
-    removedItems.push(selectedItem)
-    actionDialog.value = false; // Close dialog after removing
+    if (selectedItem.type == 'lot') {
+        warningModalOpen.value = true;
+    } else {
+        proceedRemove();
+    }
 };
 
-const saveEdit = () => {
-    const item = state.layout.find(obj => obj.i === selectedItem.i);
+const proceedRemove = () => {
+    // Find all blocks associated with the selected lot
+    const lotAndBlocks = state.layout.filter(item => item.lot_id === selectedItem.lot_id);
 
-    if (!item) return;
-    
-    if (item) {
-        item.label = selectedItem.label;
+    // Filter out removed items
+    state.layout = state.layout.filter(item => item.i !== selectedItem.i && item.lot_id !== selectedItem.lot_id);
+    removedItems.push(...lotAndBlocks);
+    actionDialog.value = false; // Close dialog after removing
+    if (warningModalOpen.value) {
+        warningModalOpen.value = false;
     }
-    actionDialog.value = false;
+}
+
+const saveEdit = () => {
+    if (actionForm.value.isValid) {
+        const item = state.layout.find(obj => obj.i === selectedItem.i);
+        console.log(item);
+        console.log(selectedItem);
+        
+        if (!item) return;
+        
+        if (item) {
+            item.label = selectedItem.label;
+            item.title = selectedItem.label;
+            item.lot_id = selectedItem.lot_id;
+        }
+        actionDialog.value = false;
+    }
 }
 
 const clearItems = () => {
     state.layout = [];
+    selectedItem.i = null;
+    selectedItem.label = null;
+    selectedItem.type = null;
+    selectedItem.x = null;
+    selectedItem.y = null;
+    selectedItem.w = null;
+    selectedItem.h = null;
+    selectedItem.index = null;
+    selectedItem.lot_id = null;
+    selectedItem.title = null;
 }
 
 const editCancelClicked = () => {
@@ -208,7 +279,7 @@ const editCancelClicked = () => {
 <template>
     <v-card class="mx-4 mt-3 px-3 py-4" style="border-radius: 0px !important;">
         <v-card-title class="d-flex justify-space-between align-center">
-            <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Warehouse Map</h3>
+            <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Map</h3>
             <div class="d-flex justify-end">
                 <v-btn color="primary-2" 
                     @click="editCancelClicked"
@@ -282,7 +353,7 @@ const editCancelClicked = () => {
     <GridLayout class="border mx-4 mt-2"
         v-model:layout="state.layout"
         v-if="state.layout.length > 0"
-        :col-num="144"
+        :col-num="148"
         :row-height="15"
         style="min-height: 200px;"
         :is-draggable="editEnabled"
@@ -299,11 +370,16 @@ const editCancelClicked = () => {
             :static="item.static"
             :x="item.x"
             :y="item.y"
-            :class="editEnabled ? 'cursor-grabbing' : 'cursor-pointer'"
+            :class="{
+                'cursor-grabbing': editEnabled,
+                'cursor-pointer': !editEnabled && item.type !== 'lot',
+                'cursor-default bg-primary-light': item.type === 'lot',
+            }"
             :w="item.w"
             :h="item.h"
             :i="item.i"
-            @click="!editEnabled && showBlockInformation(item)"
+            :min-w="2.5"
+            :min-h="2"
             @dblclick="editEnabled && openEditModal(item)"
             :is-resizable="item.isResizable && editEnabled"
         >
@@ -316,17 +392,39 @@ const editCancelClicked = () => {
         <span class="text-h5">No map preview yet. Create now by clicking on 'Edit' button on the top right.</span>
     </div>
     <Loader :show="showLoader"/>
-    <v-dialog v-model="actionDialog" persistent max-width="400">
+    <v-dialog v-model="actionDialog" persistent max-width="500">
         <v-card>
-            <v-card-title>Edit Item</v-card-title>
-            <v-card-text class="mt-4">
-                <v-text-field v-model="selectedItem.label" label="Enter label" type="text"></v-text-field>
-            </v-card-text>
-            <v-card-actions>
-                <v-btn color="error" text @click="removeItem">Remove</v-btn>
-                <v-spacer></v-spacer>
-                <v-btn color="secondary" text @click="actionDialog = false">Cancel</v-btn>
-                <v-btn color="primary" text @click="saveEdit">Save</v-btn>
+            <v-form @submit.prevent="saveEdit" ref="actionForm">
+                <v-card-title>Edit Item</v-card-title>
+                <v-select v-if="selectedItem.type == 'block'" class="mt-4 mx-5" label="Select Lot" density="compact"
+                    :items="lots" v-model="selectedItem.lot_id" 
+                    :rules="[value => !!value || 'Please select lot from the list']"
+                >
+                </v-select>
+                <v-card-text class="mt-5">
+                    <v-text-field v-model="selectedItem.label" label="Enter label" type="text"></v-text-field>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn color="error" text @click="removeItem">Remove</v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn color="secondary" text @click="actionDialog = false">Cancel</v-btn>
+                    <v-btn color="primary" text type="submit">Save</v-btn>
+                </v-card-actions>
+            </v-form>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="warningModalOpen" max-width="500">
+        <v-card class="py-8 px-6">
+            <div class="mx-auto">
+                <i class="ri-error-warning-line bg-error" style="font-size: 54px;"></i>
+            </div>
+            <h4 class="mt-4 text-h4">Removing a lot will also remove blocks associated with this lot. Do you want to proceed?</h4>
+          
+            <v-card-actions class="mt-5">
+                    <v-spacer></v-spacer>
+                    <v-btn color="secondary" variant="flat" @click="warningModalOpen = false">Cancel</v-btn>
+                    <v-btn color="primary" variant="flat" @click="proceedRemove" type="button">Proceed</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -352,12 +450,12 @@ const editCancelClicked = () => {
 }
 
 .vue-grid-item:not(.vue-grid-placeholder) {
-    background: #00833c;
+    background: #b9bbba;
     border: 1px solid black;
 }
 
 :deep(.vue-grid-item.vue-grid-placeholder) {
-    background: green;
+    background: rgb(159, 182, 159);
 }
 
 .vue-grid-item .text {
@@ -365,7 +463,7 @@ const editCancelClicked = () => {
     color: white;
     text-align: center;
     position: absolute;
-    top: 0;
+    top: 3px;
     bottom: 0;
     left: 0;
     right: 0;

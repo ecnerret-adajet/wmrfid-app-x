@@ -7,6 +7,7 @@ import { READER_STATUS } from '@/composables/useEnums';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
 import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
 const emits = defineEmits(['pagination-changed']);
@@ -38,6 +39,9 @@ const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
 
+const route = useRoute();
+const router = useRouter();
+
 const headers = [
     {
         title: 'READER NAME',
@@ -57,10 +61,6 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'CREATED AT',
-        key: 'created_at',
-    },
-    {
         title: 'LAST UPDATED AT',
         key: 'updated_at',
     },
@@ -68,6 +68,7 @@ const headers = [
         title: 'ACTIONS',
         key: 'actions',
         sortable: false,
+        align: 'center'
     },
 ]
 
@@ -180,6 +181,12 @@ const form = ref({
     'storage_location_id': null,
 });
 
+const showLoadingCurtain = (reader, bay) => {
+    const url = `/loading-latest/${reader.id}/${bay}`;
+    // Open loading curtain in a new tab
+    window.open(url, '_blank');
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -211,22 +218,36 @@ defineExpose({
 
     <template #item.status="{ item }">
         <div class="d-flex gap-1 ml-3">
-            <VBadge v-if="item.status == READER_STATUS.ACTIVE" content="ACTIVE" color="success pa-3 "  />
-            <VBadge v-else content="INACTIVE" color="error pa-3"  />
+            <VBadge v-if="item.status == READER_STATUS.ACTIVE" content="ACTIVE" color="success pa-3 px-8"  />
+            <VBadge v-else-if="item.status == READER_STATUS.INACTIVE" content="INACTIVE" color="primary-2 pa-3 px-6 text-grey-100"  />
+            <VBadge v-else content="DEACTIVATED" color="error pa-3"  />
         </div>
-    </template>
-
-    <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
     </template>
 
     <template #item.updated_at="{ item }">
         {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
     </template>
-    
+
     <!-- Actions -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
+      <div class="d-flex gap-1 justify-center">
+        <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
+            <v-menu location="start"> 
+                <template v-slot:activator="{ props }">
+                    <v-btn icon="ri-truck-line" variant="text" v-bind="props" color="grey"></v-btn>
+                </template>
+                <v-list>
+                <v-list-item
+                    v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" 
+                        :key="i"
+                        :value="i"
+                    >
+                    <v-list-item-title @click="showLoadingCurtain(item, antenna.bay_location.bay_no)" class="px-4">Loading Curtain - Bay No {{ antenna.bay_location.bay_no }}</v-list-item-title>
+                </v-list-item>
+                </v-list>
+            </v-menu>
+        </template>
+
         <IconBtn
           size="small"
           @click="editItem(item)"

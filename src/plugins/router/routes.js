@@ -145,10 +145,10 @@ export const routes = [
         },
     },
     {
-        path: '/curtain',
+        path: '/loading-latest/:reader/:bay',
         component: () => import('@/pages/curtain.vue'), 
         meta: {
-            pageTitle: "Curtain Screen"
+            pageTitle: "Loading Curtain"
         },
     },
     {
@@ -164,6 +164,13 @@ export const routes = [
         component: () => import('@/pages/warehouse/map.vue'), 
         meta: {
             pageTitle: "Warehouse Map"
+        },
+    },
+    {
+        path: '/operator/:location/movement',
+        component: () => import('@/pages/operator/movement.vue'), 
+        meta: {
+            pageTitle: "Warehouse Movement"
         },
     },
     {
