@@ -66,7 +66,6 @@ const tablePage = ref(1);
 const tableSort = ref('-created_at')
 
 const fetchReaderTypesAndStorageLocations = async () => {
-    console.log('test');
     try {
         const preReqData = await ApiService.get('readers/get-data-dropdown');
         const { reader_types, storage_locations, reader_status } = preReqData.data

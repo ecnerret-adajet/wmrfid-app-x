@@ -176,6 +176,13 @@ export const routes = [
         },
     },
     {
+        path: '/reader/picklist/:reader/:bay',
+        component: () => import('@/pages/readers/picklist.vue'), 
+        meta: {
+            pageTitle: "Picklist"
+        },
+    },
+    {
         path: '/rfid-registration/:type/:location',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {

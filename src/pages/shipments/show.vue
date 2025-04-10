@@ -1,30 +1,30 @@
 <script setup>
-import Loader from '@/components/Loader.vue';
 import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import deliveriesDataTable from './deliveriesDataTable.vue';
+import reservedOrdersDataTable from './reservedOrdersDataTable.vue';
 
 const route = useRoute();
 const router = useRouter();
 const shipment = ref(null);
-const isLoading = ref(false);
+const pageLoading = ref(false);
 const shipmentNumber = route.params.shipmentNumber; // Get the shipment number from URL
 
 onMounted(async () => {
-    isLoading.value = true;
+    pageLoading.value = true;
     try {
         // Fetch shipment details from API
         const response = await axios.get(`shipments/${shipmentNumber}`);
         const { data } = response.data; 
         shipment.value = data; // Set shipment details
-        isLoading.value = false; // Stop loading
+        pageLoading.value = false; // Stop loading
     } catch (error) {
         console.error("Shipment not found:", error);
         router.replace('/404'); // Redirect to 404 page
     } finally {
-        isLoading.value = false; // Stop loading
+        pageLoading.value = false; // Stop loading
     }
 });
 
@@ -45,7 +45,8 @@ const goToScreen = (screen) => {
 </script>
 
 <template>
-    <div v-if="shipment">
+    <v-progress-linear v-if="pageLoading" indeterminate color="primary" class="mt-5"></v-progress-linear>
+    <div v-else>
         <v-card>
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
@@ -65,7 +66,7 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment.shipment_number }}</span>
+                                        <span class="font-weight-medium">{{ shipment?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -76,7 +77,7 @@ const goToScreen = (screen) => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium">
-                                            {{ shipment.check_in_date ? Moment(shipment.check_in_date).format('MMMM D, YYYY') : '--' }}
+                                            {{ shipment?.check_in_date ? Moment(shipment?.check_in_date).format('MMMM D, YYYY') : '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -91,7 +92,7 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment.hauler_name }}</span>
+                                        <span class="font-weight-medium">{{ shipment?.hauler_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -115,7 +116,7 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment.driver_name }}</span>
+                                        <span class="font-weight-medium">{{ shipment?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -134,7 +135,8 @@ const goToScreen = (screen) => {
                     <!-- Add item as needed  -->
                 </VList>
             </v-card-title>
-            <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
+        </v-card>
+        <v-card class="mt-2">
             <v-card-text class="mx-2">
                 <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
                 <div class="mt-2">
@@ -142,6 +144,13 @@ const goToScreen = (screen) => {
                 </div>
             </v-card-text>
         </v-card>
+        <v-card class="mt-2">
+            <v-card-text class="mx-2">
+                <h4 class="text-h4 font-weight-black text-primary">Reserved Orders</h4>
+                <div class="mt-2">
+                    <reserved-orders-data-table />
+                </div>
+            </v-card-text>
+        </v-card>
     </div>
-    <Loader :show="isLoading"/>
 </template>

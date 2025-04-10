@@ -183,9 +183,8 @@ const form = ref({
     'ip_address': null
 });
 
-const showLoadingCurtain = (reader, bay) => {
-    const url = `/loading-latest/${reader.id}/${bay}`;
-    // Open loading curtain in a new tab
+const showReaderLastTap = (reader, bay) => {
+    const url = `/reader/picklist/${reader.id}/${bay}`;
     window.open(url, '_blank');
 }
 
@@ -240,7 +239,7 @@ defineExpose({
                         :key="i"
                         :value="i"
                     >
-                    <v-list-item-title @click="showLoadingCurtain(item, antenna.bay_location.bay_no)" class="px-4">Loading Curtain - Bay No {{ antenna.bay_location.bay_no }}</v-list-item-title>
+                    <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location.bay_no)" class="px-4">Bay No. {{ antenna.bay_location.bay_no }} - {{ antenna.bay_location.description }}</v-list-item-title>
                 </v-list-item>
                 </v-list>
             </v-menu>

@@ -60,7 +60,6 @@ const headers = [
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -83,10 +82,9 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            console.log(serverItems.value);
             loading.value = false
 
-            // emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
+            emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
         })
         .catch((error) => {
             loading.value = false

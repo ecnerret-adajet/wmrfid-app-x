@@ -39,12 +39,17 @@ const headers = [
         key: 'driver_name',
     },
     {
-        title: 'LAST UPDATED AT',
-        key: 'updated_at',
+        title: 'LOAD START',
+        key: 'load_start_date',
     },
     {
-        title: 'ACTIONS',
-        key: 'actions',
+        title: 'LOAD END',
+        key: 'load_end_date',
+    },
+    {
+        title: 'STATUS',
+        key: 'status',
+        align: 'center',
         sortable: false,
     },
 ]
@@ -134,13 +139,39 @@ defineExpose({
         </span>
     </template>
 
-    <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
+
+    <template #item.load_start_date="{ item }">
+        {{ item.load_start_date_time ? Moment(item.load_start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+    </template>
+
+    <template #item.load_end_date="{ item }">
+        {{ item.load_end_date_time ? Moment(item.load_end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
     </template>
 
     <template #item.updated_at="{ item }">
         {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
     </template>
+    <template #item.status="{ item }">
+        <v-chip 
+            v-if="!item.load_end_date || item.load_end_time"
+            class="ma-2"
+            color="success"
+            outlined
+            label
+        >
+        Success
+        </v-chip>
+        <v-chip
+            v-else
+            class="ma-2"
+            color="primary-2-light"
+            outlined
+            label
+        >
+        Pending
+        </v-chip>
+    </template>
+    
 
 
     <!-- Actions -->

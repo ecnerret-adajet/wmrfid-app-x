@@ -28,7 +28,6 @@ const fetchLoadingCurtain = async () => {
         isLoading.value = false
     } catch (error) {
         isLoading.value = false
-        console.log(error.response?.data?.message);
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         hasError.value = true
         console.error('Error fetching data:', error);

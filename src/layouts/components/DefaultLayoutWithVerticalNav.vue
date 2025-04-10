@@ -1,6 +1,6 @@
 <script setup>
 import NavItems from '@/layouts/components/NavItems.vue'
-import logo from '@images/logo.svg?raw'
+import alc_logo from '@images/alc.png'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 
 // Components
@@ -46,14 +46,15 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
         class="app-logo app-title-wrapper"
       >
         <!-- eslint-disable vue/no-v-html -->
-        <div
+        <!-- <div
           class="d-flex"
           v-html="logo"
-        />
+        /> -->
+        <img :src="alc_logo" alt="" srcset="" width="60">
         <!-- eslint-enable -->
 
         <h1 class="font-weight-medium leading-normal text-xl text-uppercase">
-          Materio
+          WMRFID
         </h1>
       </RouterLink>
 
