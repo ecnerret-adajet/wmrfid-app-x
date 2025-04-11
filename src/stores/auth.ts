@@ -42,7 +42,7 @@ export const useAuthStore = defineStore(
     
         function login(credentials: User) {
             errors.value = {}
-            return ApiService.post("/login", credentials)
+            return ApiService.post("login", credentials)
               .then(({ data }) => {
                 setAuth(data);
               })
@@ -54,7 +54,7 @@ export const useAuthStore = defineStore(
         function logout(isLoginFlow = false) {
             if (JwtService.getToken()) {
                 ApiService.setHeader();
-                ApiService.post("/logout", { api_token: JwtService.getToken() })
+                ApiService.post("logout", { api_token: JwtService.getToken() })
                     .then(({ data }) => {
                         purgeAuth();
                         if (!isLoginFlow) {
