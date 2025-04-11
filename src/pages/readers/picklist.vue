@@ -32,7 +32,6 @@ onMounted(() => {
     fetchData();  
 })
 
-
 const fetchData = async () => {
     loading.value = true;
     try {
@@ -58,43 +57,16 @@ const fetchData = async () => {
 
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
-        // const response = await ApiService.get(`picklist/shipment-picklist/${shipmentNumber}`);
-        // console.log('Shipment Details:', response.data);
+        const response = await ApiService.get(`picklist/shipment-picklist/${shipmentNumber}`);
 
-        // Sample passing of data
-        shipmentData.deliveries = [];
-        shipmentData.shipment = {};
-
-        shipmentData.deliveries = [
-            {
-                DELIVERY: "1100100668",
-                ITEM: "000010",
-                MATERIAL: "000000001100000152",
-                MATERIAL_DESC: "FL AMI Gold Flour P",
-                QUANTITY: 536,
-                SALES_UNIT: "BAG",
-                PLANT: "2110",
-                SLOC: "W107",
-                BATCH: "AGRPJC26"
-            }
-        ];
-
-        shipmentData.shipment = {
-            SHIPMENT: "0000116614",
-            HAULER: "0011000567",
-            HAULER_NAME: "G AND F TRUCKING SERVICES",
-            PLATE_NUMBER_1: "NHB 5813",
-            PLATE_NUMBER_2: "",
-            PLATE_NUMBER_3: "",
-            DRIVER_NAME: "D. LEMENCE",
-            CHECKIN_DATE: "20250407",
-            CHECKIN_TIME: "103000",
-            LOADSTART_DATE: "20250407",
-            LOADSTART_TIME: "162949",
-            LOADEND_DATE: "20250407",
-            LOADEND_TIME: "165604"
-        };
-
+        // If success
+        if (response.data.result == 'S') {
+            shipmentData.deliveries = response.data.picklists;
+            shipmentData.shipment = response.data;
+        } else {
+            dialogVisible.value = true;
+            errorMessage.value = 'Error encountered. Please contact admin.'
+        }
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     }
@@ -110,16 +82,20 @@ const close = () => {
 }
 
 const displayPlateNumber = computed(() => {
-  return shipmentData.shipment?.PLATE_NUMBER_1 || 
-         shipmentData.shipment?.PLATE_NUMBER_2 || 
-         shipmentData.shipment?.PLATE_NUMBER_3 || 
+  return shipmentData.shipment?.plate_number_1 || 
+         shipmentData.shipment?.plate_number_2 || 
+         shipmentData.shipment?.plate_number_3 || 
          ""; // Default value if none exist
 });
 
 const formatDateTime = (date, time) => {
-    if (!date || !time) return '';
+    if (!date || !time || date === '00000000' || time === '000000') return '';
     return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
+
+const determineSapQuantity = (quantity) => {
+    return Math.ceil(quantity / 40);
+}
 
 const toast = ref({
     message: 'Inventory refreshed',
@@ -159,7 +135,7 @@ const toast = ref({
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Shipment</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <span class="font-weight-bold">{{ shipmentData.shipment?.SHIPMENT }}</span>
+                                            <span class="font-weight-bold">{{ shipmentData.shipment?.shipment }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -197,7 +173,7 @@ const toast = ref({
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load Start</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <span class="font-weight-bold">{{ formatDateTime(shipmentData.shipment.LOADSTART_DATE, shipmentData.shipment.LOADSTART_TIME) }}</span>
+                                            <span class="font-weight-bold">{{ formatDateTime(shipmentData.shipment.loadstart_date, shipmentData.shipment.loadstart_time) }}</span>
                                         </VCol>
                                     </VRow>
                                 
@@ -213,7 +189,7 @@ const toast = ref({
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Driver Name</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <span class="font-weight-bold">{{shipmentData.shipment?.DRIVER_NAME}}</span>
+                                            <span class="font-weight-bold">{{shipmentData.shipment?.driver_name}}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -224,7 +200,7 @@ const toast = ref({
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load End</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <span class="font-weight-bold">{{ formatDateTime(shipmentData.shipment.LOADEND_DATE, shipmentData.shipment.LOADEND_TIME) }}</span>
+                                            <span class="font-weight-bold">{{ formatDateTime(shipmentData.shipment.loadend_date, shipmentData.shipment.loadend_time) }}</span>
                                         </VCol>
                                     </VRow> 
                                 </VCol>
@@ -240,7 +216,7 @@ const toast = ref({
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Hauler Name</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <div class="font-weight-bold">{{shipmentData.shipment?.HAULER_NAME}}</div>
+                                            <div class="font-weight-bold">{{shipmentData.shipment?.hauler_name}}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -258,7 +234,7 @@ const toast = ref({
                             Bay No. {{ bay }}
                         </div>
                         <div>
-                            <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">0</h2>
+                            <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">{{ shipmentData.shipment?.total_pallet_to_load }}</h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
                             <div class="text-h4 text-white font-weight-bold">
@@ -300,25 +276,41 @@ const toast = ref({
                                 <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
                                     <div class="text-center">
                                         <div class="text-overline mb-1 font-weight-bold" style="font-size: 14px !important;">
-                                            {{ delivery.MATERIAL_DESC }}
+                                            {{ delivery.material_desc }}
                                         </div>
                                         <div>
                                             <span style="color: #00A36C;" class="text-uppercase text-h5 font-weight-black">
-                                                {{ delivery.MATERIAL }}
+                                                {{ delivery.material }} - Line {{ delivery.item }}
                                             </span>
                                             <br>
-                                            <p style="margin-bottom: 0px !important;" class="font-weight-bold">{{ delivery.QUANTITY }} {{ delivery.SALES_UNIT }}</p>
+                                            <p style="margin-bottom: 0px !important;" class="font-weight-bold">{{ delivery.quantity }} {{ delivery.sales_unit }}</p>
                                         </div>
                                     </div>
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
+                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
+                                        {{ delivery.quantity_all ? determineSapQuantity(delivery.quantity_all) : determineSapQuantity(delivery.quantity)  }}
+                                    </span>
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-right: 1px solid #fff;">
-                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
+                                    <div class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
+                                        <span v-if="delivery.quantity_all !== null || !delivery.quantity_all">
+                                            <span v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
+                                                {{ delivery.inventory.length }}
+                                            </span>
+                                            <span v-else class="text-error text-h4 font-weight-black">
+                                                NO STOCK
+                                            </span>
+                                        </span>
+                                        <span v-else class="display-3">
+                                            {{ determineSapQuantity(delivery.quantity_all) }}
+                                        </span>
+                                    </div>
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen">
-                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
+                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
+                                        {{ delivery.expected }}
+                                    </span>
                                 </VCol>
                             </VRow>
                         </template>
