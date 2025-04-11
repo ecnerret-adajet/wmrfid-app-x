@@ -93,8 +93,12 @@ const formatDateTime = (date, time) => {
     return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-const determineSapQuantity = (quantity) => {
-    return Math.ceil(quantity / 40);
+const determineSapQuantity = (quantity, default_pallet_capacity) => {
+    if (default_pallet_capacity != 0) {
+        return Math.ceil(quantity / default_pallet_capacity);
+    } else {
+        return Math.ceil(quantity / 40);
+    }
 }
 
 const toast = ref({
@@ -107,25 +111,11 @@ const toast = ref({
 <template>
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2"></v-progress-linear>
 
-    <div v-else class="mt-4 px-8 whiteBackground">
+    <div v-else class="mt-2 px-8 whiteBackground">
         <div>
             <VRow >
                 <VCol md="8" >
                     <VList lines="one" density="compact" style="border: 2px solid #329b62; padding-top: 0px !important;">
-                        <VListItem class="d-flex justify-end" style="padding-top: 0px !important; padding-bottom: 0px !important;">
-                            <VTooltip location="top">
-                                <template #activator="{ props }">
-                                    <VIcon class="mt-2 clickable-icon"
-                                        v-bind="props"
-                                        size="35"
-                                        color="primary"
-                                        icon="ri-refresh-fill"
-                                        @click="refreshData"
-                                    />
-                                </template>
-                                <span>Refresh Data</span>
-                            </VTooltip>
-                        </VListItem>
                         <VListItem>
                             <VRow class="table-row" no-gutters>
                                 <VCol md="6" class="table-cell d-inline-flex">
@@ -145,11 +135,24 @@ const toast = ref({
                                             <v-img :src="gateIcon" class="icon-class"/>
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Gate in</span>
                                         </VCol>
-                                        <VCol md="6" class="d-inline-flex align-center">
+                                        <VCol md="5" class="d-inline-flex align-center">
                                         <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
                                         </VCol>
+                                        <VCol md="1" class="d-inline-flex align-center">
+                                            <VTooltip location="top">
+                                                <template #activator="{ props }">
+                                                    <VIcon class="clickable-icon"
+                                                        v-bind="props"
+                                                        size="30"
+                                                        color="primary"
+                                                        icon="ri-refresh-fill"
+                                                        @click="refreshData"
+                                                    />
+                                                </template>
+                                                <span>Refresh Data</span>
+                                            </VTooltip>
+                                        </VCol>
                                     </VRow>
-                                
                                 </VCol>
                             </VRow>
                         </VListItem>
@@ -225,11 +228,13 @@ const toast = ref({
                                 </VCol>
                             </VRow>
                         </VListItem>
+
+                        
                     </VList>
                     <VDivider />
                 </VCol>
                 <VCol md="4">
-                    <v-sheet class="mx-auto px-6 py-4" elevation="2" style="height: 100%; display: flex; flex-direction: column; background-color: #00A36C;">
+                    <v-sheet class="mx-auto px-6 py-1" elevation="2" style="height: 100%; display: flex; flex-direction: column; background-color: #00A36C;">
                         <div class="text-h4 text-white text-bold-emphasis font-weight-black">
                             Bay No. {{ bay }}
                         </div>
@@ -280,7 +285,7 @@ const toast = ref({
                                         </div>
                                         <div>
                                             <span style="color: #00A36C;" class="text-uppercase text-h5 font-weight-black">
-                                                {{ delivery.material }} - Line {{ delivery.item }}
+                                                {{ delivery.material }} - {{ delivery.batch }}
                                             </span>
                                             <br>
                                             <p style="margin-bottom: 0px !important;" class="font-weight-bold">{{ delivery.quantity }} {{ delivery.sales_unit }}</p>
@@ -289,7 +294,7 @@ const toast = ref({
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                                     <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
-                                        {{ delivery.quantity_all ? determineSapQuantity(delivery.quantity_all) : determineSapQuantity(delivery.quantity)  }}
+                                        {{ delivery.quantity_all ? determineSapQuantity(delivery.quantity_all, delivery.default_pallet_capacity) : determineSapQuantity(delivery.quantity, delivery.default_pallet_capacity)  }}
                                     </span>
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-right: 1px solid #fff;">
@@ -303,7 +308,7 @@ const toast = ref({
                                             </span>
                                         </span>
                                         <span v-else class="display-3">
-                                            {{ determineSapQuantity(delivery.quantity_all) }}
+                                            {{ determineSapQuantity(delivery.quantity_all, delivery.default_pallet_capacity) }}
                                         </span>
                                     </div>
                                 </VCol>
@@ -315,8 +320,8 @@ const toast = ref({
                             </VRow>
                         </template>
                         <template v-else>
-                            <div>
-                                No delivery found
+                            <div style="min-height: 100px;" class="d-flex justify-center align-center border">
+                                <span class="text-h4 text-error">No delivery found</span>
                             </div>
                         </template>
                         
