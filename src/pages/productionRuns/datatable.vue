@@ -1,9 +1,8 @@
 <script setup>
-import DeleteModal from '@/components/DeleteModal.vue';
-import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import axios from 'axios';
 import Moment from "moment";
 import { ref } from 'vue';
 import { VDataTableServer } from 'vuetify/components';
@@ -25,17 +24,17 @@ const props = defineProps({
     }
 });
 
-const editDialog = ref(false);
-const deleteDialog = ref(false);
+const triggerEndDialog = ref(false);
 const selectedProductionRun = ref(null);
-const isLoading = ref(false);
+const triggerEndLoading = ref(false);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
-const sortQuery = ref('-created_at'); // Default sort
+const sortQuery = ref(null); // Default sort
 const errorMessage = ref(null)
+const filters = ref(null);
 
 const headers = [
     {
@@ -43,8 +42,18 @@ const headers = [
         key: 'material_id',
     },
     {
-        title: 'PRODUCTION LINE',
-        key: 'production_line_id',
+        title: 'BATCH',
+        key: 'batch',
+    },
+    {
+        title: 'MFG DATE',
+        key: 'mfg_date',
+    },
+    {
+        title: 'QUANTITY',
+        key: 'total_quantity',
+        align: 'center',
+        sortable: false,
     },
     {
         title: 'START DATE',
@@ -53,41 +62,19 @@ const headers = [
     {
         title: 'END DATE',
         key: 'end_date_time',
-    },
-    {
-        title: 'CREATED AT',
-        key: 'created_at',
-    },
-    {
-        title: 'LAST UPDATED AT',
-        key: 'updated_at',
-    },
-    {
-        title: 'ACTIONS',
-        key: 'actions',
-        sortable: false,
+        align: 'center',
     },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
     loading.value = true
-    if (sortBy && sortBy.length > 0) {
-        const sort = sortBy[0];  // Assuming single sort field
-        sortQuery.value = `${sort.key}`;  // Default ascending order
-        if (sort.order === 'desc') {
-            sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
-        }
-    } else {
-        sortQuery.value = '-created_at';
-    }
-
     ApiService.query('datatable/production-runs',{
         params: {
             page,
             itemsPerPage,
             sort: sortQuery.value,
-            search: props.search
+            search: props.search,
+            filters: filters.value
         }
         })
         .then((response) => {
@@ -103,67 +90,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 const toast = ref({
-    message: 'Production run deleted successfully!',
+    message: 'Production run trigger end successfully!',
     color: 'success',
     show: false
 });
-
-const editItem = (item) => {
-    selectedProductionRun.value = item;
-    form.value.material_id = item.material_id;
-    form.value.production_line_id = item.production_line_id;
-    form.value.start_date_time = item.start_date_time;
-    form.value.end_date_time = item.end_date_time;
-    errorMessage.value = '';
-    editDialog.value = true;
-}  
-
-const deleteItem = (item) => {
-    selectedProductionRun.value = item;
-    deleteDialog.value = true;
-}
-
-const handleDelete = async () => {
-    isLoading.value = true;
-    toast.value.show = false
-    try {
-        const response = await ApiService.delete(`production-runs/${selectedProductionRun.value.id}/delete`)
-        isLoading.value = false;
-        deleteDialog.value = false
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
-            search: props.search
-        });
-        toast.value.message = 'Production run deleted successfully!'
-        toast.value.show = true;
-    } catch (error) {
-        console.error('Error deleting:', error);
-    }
-}
-
-const handleUpdate = async () => {
-    isLoading.value = true;
-    toast.value.show = false
-    try {
-        const response = await ApiService.put(`production-runs/${selectedProductionRun.value.id}/update`, form.value)
-        isLoading.value = false;
-        editDialog.value = false
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
-            search: props.search
-        });
-        toast.value.message = 'Production run updated successfully!'
-        toast.value.show = true;
-    } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        console.error('Error updating:', error);
-        isLoading.value = false;
-    }
-}
 
 const form = ref({
     'production_line_id': null,
@@ -172,16 +102,41 @@ const form = ref({
     'end_date_time': null
 });
 
-const clearStartDate = () => {
-    form.value.start_date_time = null
+const handleEndProductionRun = async () => {
+    triggerEndLoading.value = true
+    try {
+        const response = await axios.put(`production-runs/${selectedProductionRun.value.production_run_id}/trigger-end`);
+        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, search: props.search });
+        toast.value.message = 'Production run end trigger successfully!'
+        toast.value.color = 'success';
+        toast.value.show = true;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error updating:', error);
+    } finally {
+        triggerEndLoading.value = null;
+        triggerEndDialog.value = false
+    } 
 }
 
-const clearEndDate = () => {
-    form.value.end_date_time = null
+const triggerEnd = (item) => {
+    selectedProductionRun.value = item;
+    triggerEndDialog.value = true;
+}
+
+const applyFilters = (data) => {
+    filters.value = data;
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{key: 'created_at', order: 'desc'}],
+        search: props.search
+    });
 }
 
 defineExpose({
-    loadItems
+    loadItems,
+    applyFilters
 })
 
 </script>
@@ -204,96 +159,62 @@ defineExpose({
     </template>
 
     <template #item.production_line_id="{ item }">
-        {{ item.production_line?.name }}
+        {{ item.production_run?.production_line?.name }}
     </template>
 
     <template #item.start_date_time="{ item }">
-        {{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+        {{ item.production_run?.start_date_time ? Moment(item.production_run?.start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+    </template>
+
+    <template #item.mfg_date="{ item }">
+        {{ item.latest_mfg_date ? Moment(item.latest_mfg_date).format('MMMM D, YYYY') : '' }}
+    </template>
+
+    <template #item.total_quantity="{ item }">
+       <div>
+            <div class="font-weight-bold">
+                {{ item.total_quantity }}
+            </div>
+            <span class="text-subtitle-1 font-weight-bold">
+                {{ item.rfid_type }}
+            </span>
+        </div>
     </template>
 
     <template #item.end_date_time="{ item }">
-        {{ item.end_date_time ? Moment(item.end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+        <div v-if="item.production_run?.end_date_time">
+            {{ item.production_run?.end_date_time ? Moment(item.production_run?.end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+        </div>
+        <div v-else>
+            <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
+                Trigger End
+            </v-btn>
+        </div>
     </template>
 
-    <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
-    </template>
-
-    <template #item.updated_at="{ item }">
-        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-    </template>
-
-    <!-- Actions -->
-    <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
-        <IconBtn
-          size="small"
-          @click="editItem(item)"
-        >
-          <VIcon icon="ri-pencil-line" />
-        </IconBtn>
-        <IconBtn
-          size="small"
-          @click="deleteItem(item)"
-        >
-          <VIcon icon="ri-delete-bin-line" />
-        </IconBtn>
-      </div>
-    </template>
     </VDataTableServer>
 
-    <DeleteModal @close="deleteDialog = false" :show="deleteDialog" dialog-title="Delete Production Run">
-        <template #default>
-            <VCardText>
-                <p class="text-h5 text-bold-emphasis ps-2">Are you sure you want to delete this production run? 
-                </p>
-                <span class="text-subtitle-1 ps-2 text-error">Warning: This action is irreversible</span>
-            </VCardText>
+    <v-dialog v-model="triggerEndDialog" max-width="600px" persistent>
+    
+        <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
+            <v-icon
+                class="mb-5"
+                color="primary"
+                icon="ri-information-line"
+                size="112"
+            ></v-icon>
 
-            <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="deleteDialog = false" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleDelete" color="error" class="px-12" type="submit" :loading="isLoading">
-                    Delete
-                </PrimaryButton>
-            </div>
-        </template>
-    </DeleteModal>
+            <h2 class="text-h4 mb-6">Do you want to end this production run?</h2>
 
-    <EditingModal v-if="form.material_id && form.production_line_id" @close="editDialog = false" 
-        :show="editDialog" :dialog-title="`Update ${selectedProductionRun.name}`">
-        <template #default>
-            <v-form @submit.prevent="handleUpdate">
-                <div>
-                    <v-select label="Select Material" density="compact"
-                        :items="materialsOption" v-model="form.material_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    ></v-select>
-                    <v-select class="mt-4" label="Select Production Line" density="compact"
-                        :items="productionLinesOption" v-model="form.production_line_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    ></v-select>
-                    <div class="mt-4">
-                        <DateTimePicker @cleared="clearStartDate" v-model="form.start_date_time" placeholder="Start Datetime" />
-                    </div>
-                    <div class="mt-4">
-                        <DateTimePicker @cleared="clearEndDate" v-model="form.end_date_time" placeholder="End Datetime" />
-                    </div>
-                    <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
-                        {{ errorMessage }}
-                    </VAlert>
-                </div>
-            </v-form>
-            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
-                {{ errorMessage }}
-            </VAlert>
-            <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="editDialog = false" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleUpdate" color="primary" class="px-12" type="submit" :loading="isLoading">
+            <div class="text-end">
+                <v-btn color="secondary" variant="outlined" @click="triggerEndDialog = false" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleEndProductionRun" color="primary" class="px-12" :loading="triggerEndLoading">
                     Update
                 </PrimaryButton>
             </div>
-        </template>
-    </EditingModal>
+        </v-sheet>
+    </v-dialog>
+
 
     <Toast :show="toast.show" :message="toast.message"/>
 
