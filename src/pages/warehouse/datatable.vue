@@ -2,10 +2,15 @@
 import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
+import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+
+
+
 
 const emits = defineEmits(['pagination-changed']);
 
@@ -14,11 +19,11 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    plantsOption: Array
 });
 
 const editDialog = ref(false);
-const deleteDialog = ref(false);
-const selectedUser = ref(null);
+const selectedWarehouse = ref(null);
 const isLoading = ref(false);
 const serverItems = ref([]);
 const loading = ref(true);
@@ -28,6 +33,7 @@ const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const errorMessage = ref(null)
 const filters = ref(null);
+const router = useRouter();
 
 const headers = [
     {
@@ -43,8 +49,10 @@ const headers = [
         key: 'plant_id',
     },
     {
-        title: 'DATE CREATED',
-        key: 'created_at',
+        title: 'STORAGE LAYERS',
+        key: 'layer_count',
+        align: 'center',
+        sortable: false,
     },
     {
         title: 'LAST UPDATED AT',
@@ -92,49 +100,27 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 const toast = ref({
-    message: 'User deleted successfully!',
+    message: 'Warehouse updated successfully!',
     color: 'success',
     show: false
 });
 
 const editItem = (item) => {
-    selectedUser.value = item;
+    selectedWarehouse.value = item;
     form.value.name = item.name;
-    form.value.email = item.email;
+    form.value.code = item.code;
+    form.value.plant_id = item.plant_id;
+    form.value.layer_count = item.layer_count;
     errorMessage.value = '';
     editDialog.value = true;
 }  
 
-const deleteItem = (item) => {
-    selectedUser.value = item;
-    deleteDialog.value = true;
-}
-
-const handleDelete = async () => {
-    isLoading.value = true;
-    toast.value.show = false
-    try {
-        const response = await ApiService.delete(`users/${selectedUser.value.id}/delete`)
-        isLoading.value = false;
-        deleteDialog.value = false
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
-            search: props.search
-        });
-        toast.value.message = 'User deleted successfully!'
-        toast.value.show = true;
-    } catch (error) {
-        console.error('Error deleting:', error);
-    }
-}
 
 const handleUpdate = async () => {
     isLoading.value = true;
     toast.value.show = false
     try {
-        const response = await ApiService.put(`users/${selectedUser.value.id}/update`, form.value)
+        const response = await ApiService.put(`warehouse/${selectedWarehouse.value.id}/update`, form.value)
         isLoading.value = false;
         editDialog.value = false
         loadItems({
@@ -143,7 +129,7 @@ const handleUpdate = async () => {
             sortBy: [{key: 'created_at', order: 'desc'}],
             search: props.search
         });
-        toast.value.message = 'User updated successfully!'
+        toast.value.message = 'Warehouse updated successfully!'
         toast.value.show = true;
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
@@ -164,8 +150,16 @@ const applyFilters = (data) => {
 
 const form = ref({
     'name': null,
-    'email': null,
+    'code': null,
+    'plant_id': null,
+    'layer_count': null,
 });
+
+const viewMap = (item) => {
+    router.push({
+        path: `/warehouse-map/${generateSlug(item.name)}`,
+    });
+}
 
 defineExpose({
     loadItems,
@@ -198,33 +192,54 @@ defineExpose({
         {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
     </template>
 
-
-
     <!-- Actions -->
     <template #item.actions="{ item }">
       <div class="d-flex gap-1">
+
         <IconBtn
           size="small"
           @click="editItem(item)"
         >
           <VIcon icon="ri-pencil-line" />
         </IconBtn>
+        <IconBtn
+          size="small"
+          @click="viewMap(item)"
+        >
+          <VIcon icon="ri-map-2-line" />
+        </IconBtn>
       </div>
     </template>
     </VDataTableServer>
-    <EditingModal v-if="form.name && form.email" @close="editDialog = false" 
-        :show="editDialog" :dialog-title="`Update ${selectedUser.name}`">
+    <EditingModal v-if="form.name && form.code" @close="editDialog = false" 
+        :show="editDialog" :dialog-title="`Update ${selectedWarehouse.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
+                <v-select class="mt-4" label="Select Plant" density="compact"
+                    :items="plantsOption" v-model="form.plant_id"
+                    :rules="[value => !!value || 'Plant is required']"
+                >
+                </v-select>
+                <div class="mt-4">
+                    <v-text-field class="mt-6" density="compact" 
+                        label="Layer Count"
+                        v-model="form.layer_count" 
+                        type="number"
+                        :min="1"
+                        :max="10"
+                        hint="This sets the level of layer in the warehouse"
+                        :rules="[value => !!value || 'Storage layer count is required']"
+                    />
+                </div>
                 <v-text-field class="mt-6" density="compact" 
                     label="Name"
                     v-model="form.name" 
-                    :rules="[value => !!value || 'User name is required']"
+                    :rules="[value => !!value || 'Name is required']"
                 />
                 <v-text-field class="mt-6" density="compact" 
-                    label="Email address"
-                    v-model="form.email" 
-                    :rules="[value => !!value || 'Email address is required']"
+                    label="Code"
+                    v-model="form.code" 
+                    :rules="[value => !!value || 'Code is required']"
                 />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
@@ -238,7 +253,6 @@ defineExpose({
             </div>
         </template>
     </EditingModal>
-
 
     <Toast :show="toast.show" :message="toast.message"/>
 
