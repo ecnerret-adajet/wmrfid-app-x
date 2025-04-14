@@ -1,54 +1,254 @@
 <script setup>
+import EditingModal from '@/components/EditingModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
-import axios from 'axios';
+import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { onMounted, ref } from 'vue';
+import Moment from 'moment';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import batchDataTable from './batchDataTable.vue';
 
 const route = useRoute();
 const router = useRouter();
-const shipment = ref(null);
-const isLoading = ref(false);
+const loading = ref(false);
 const batch = route.params.batch; // Get the batch from URL
 const searchValue = ref('');
 const pageLoading = ref(false);
 const tagTypesOption = ref([]);
-const sequenceOption = ref([]);
+const materialsOption = ref([]);
 const statisticsData = ref(null);
+const sequenceOption = ref([]);
+const selectedTagType = ref(null);
+const changeBatchModal = ref(false);
+const changeBatchLoading = ref(false);
+const errorMessage = ref(null);
 
-onMounted(async () => {
+const serverItems = ref([]);
+const totalItems = ref(0);
+const itemsPerPage = ref(10);
+const page = ref(1);
+const sortQuery = ref('-created_at');
+const selectedItems = ref([])
+const filters = ref([])
+
+const headers = [
+    {
+        title: 'MATERIAL',
+        key: 'material_id',
+    },
+    {
+        title: 'PHYSICAL ID',
+        key: 'physical_id',
+    },
+    {
+        title: 'TYPE',
+        key: 'type',
+        sortable: false
+    },
+    {
+        title: 'MFG DATE',
+        key: 'mfg_date',
+    },
+    {
+        title: 'IS WRAPPED',
+        key: 'is_wrapped',
+        align: 'center',
+        sortable: false
+    },
+    {
+        title: 'CURRENT AGE',
+        key: 'age',
+        align: 'center'
+    },
+    {
+        title: 'QUANTITY',
+        key: 'quantity',
+        align: 'center'
+    },
+]
+
+const batchUpdateForm = reactive({
+    material_id: null,
+    mfg_date: null,
+    reason: null,
+    miller_name: null,
+    selectedRfid: [],
+    type: 'inventory'
+});
+
+const lastOptions = ref({});
+const currentOptions = ref({});
+const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+    const options = { page, itemsPerPage, sortBy, search: searchValue.value };
+
+    // Check if the options are the same as the last call
+    const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options);
+    if (isSame) return;
+
+    // Store the current options
+    lastOptions.value = options;
+    currentOptions.value = options;
+
+    pageLoading.value = true
+    if (sortBy && sortBy.length > 0) {
+        const sort = sortBy[0];  // Assuming single sort field
+        sortQuery.value = `${sort.key}`;  // Default ascending order
+        if (sort.order === 'desc') {
+            sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
+        }
+    } else {
+        sortQuery.value = '-created_at';
+    }
+
+    ApiService.query(`inventories/get-data/${batch}`,{
+        params: {
+            page,
+            itemsPerPage,
+            sort: sortQuery.value,
+            search: searchValue.value,
+            filters: filters.value
+        }
+        })
+        .then((response) => {
+            const { table, statistics, tag_types, materials } = response.data
+            
+            totalItems.value = table.total;
+            serverItems.value = table.data
+            
+            statisticsData.value = statistics
+
+            tagTypesOption.value = [
+                { value: null, title: 'All' }, 
+                ...tag_types.map(item => ({
+                    value: item.id,
+                    title: item.title 
+                }))
+            ];
+
+            materialsOption.value = materials
+
+            pageLoading.value = false
+        })
+        .catch((error) => {
+            console.log(error);
+            pageLoading.value = false
+        });
+}
+watch(selectedTagType, async (newVal) => {
     pageLoading.value = true;
     try {
-        // Fetch shipment details from API
-        const response = await axios.get(`inventories/get-data-dropdown/${batch}`);
-        const { tag_types, sequence, statistics } = response.data; 
-      
-        tagTypesOption.value = tag_types.map(item => ({
-            value: item.id,
-            title: item.name 
-        }));
-        sequenceOption.value = sequence
-        statisticsData.value = statistics
-      console.log(statisticsData.value);
-      
-        pageLoading.value = false; // Stop loading
+        const response = await ApiService.query(`inventories/get-data/${batch}`, {
+            params: {
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: searchValue.value,
+                [`filters[tag_type_id]`]: newVal
+            }
+        });
+
+        const { table, statistics } = response.data
+            
+            totalItems.value = table.total;
+            serverItems.value = table.data
+            
+            statisticsData.value = statistics
+       
+
+            pageLoading.value = false
     } catch (error) {
-        console.error("Batch not found:", error);
+        console.error("Error fetching filtered data:", error);
+        pageLoading.value = false;
     } finally {
-        pageLoading.value = false; // Stop loading
+        pageLoading.value = false;
     }
 });
+
+const totalQuantity = computed(() => {
+    return statisticsData.value?.reduce((sum, item) => {
+        return sum + Number(item.total_quantity || 0)
+    }, 0)
+})
+
+const nearExpiryTotal = computed(() => {
+    return statisticsData.value?.reduce((sum, item) => {
+        return sum + Number(item.near_expiry || 0)
+    }, 0)
+})
+
+const wrappedTotal = computed(() => {
+    return statisticsData.value?.reduce((sum, item) => {
+        return sum + Number(item.wrapped_items || 0)
+    }, 0)
+})
+
+const availableTotal = computed(() => {
+    return statisticsData.value?.reduce((sum, item) => {
+        return sum + Number(item.available_items || 0)
+    }, 0)
+})
 
 const handleSearch = debounce((search) => {
     searchValue.value = search;
 }, 500);
 
+const handleViewBatch = (inventory) => {
+    router.push(`/inventories/${inventory.batch}`);
+}
+
+
+const changeBatch = () => {
+    changeBatchModal.value = true;
+}
+
+const cancelChangeBatch = () => {
+    clearChangeBatch()
+    changeBatchModal.value = false;
+}
+
+const clearChangeBatch = () => {
+    batchUpdateForm.material_id = null;
+    batchUpdateForm.mfg_date = null;
+    batchUpdateForm.batch = null;
+    batchUpdateForm.reason = null;
+    batchUpdateForm.miller_name = null;
+}
+
+const handleChangeBatch = async () => {
+    changeBatchLoading.value = true;
+    toast.value.show = false;
+    batchUpdateForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
+        changeBatchLoading.value = false;
+        toast.value.message = 'Batch updated successfully!'
+        toast.value.show = true;
+        clearChangeBatch();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{key: 'created_at', order: 'desc'}],
+            search: searchValue.value
+        });
+        changeBatchModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        changeBatchLoading.value = false;
+    }
+}
+
+const toast = ref({
+    message: 'Batch updated successfully!',
+    color: 'success',
+    show: false
+});
+
 </script>
 
 <template>
-    <v-progress-linear v-if="pageLoading" indeterminate color="primary" class="mt-5"></v-progress-linear>
-    <div v-else>
+    <div>
         <div>
             <v-row>
                 <v-col cols="3">
@@ -78,7 +278,7 @@ const handleSearch = debounce((search) => {
                             Total Quantity
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ statisticsData?.total_quantity }}
+                            {{ totalQuantity || 0 }}
                             </div>
                         </div>
                         </div>
@@ -111,7 +311,7 @@ const handleSearch = debounce((search) => {
                             Near Expiry
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ statisticsData?.near_expiry }}
+                            {{ nearExpiryTotal || 0 }}
                             </div>
                         </div>
                         </div>
@@ -145,7 +345,7 @@ const handleSearch = debounce((search) => {
                             Wrapped Items
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ statisticsData?.wrapped_items }}
+                            {{ wrappedTotal || 0 }}
                             </div>
                         </div>
                         </div>
@@ -178,7 +378,7 @@ const handleSearch = debounce((search) => {
                             Available Items
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ statisticsData?.available_items }}
+                            {{ availableTotal || 0 }}
                             </div>
                         </div>
                         </div>
@@ -195,7 +395,7 @@ const handleSearch = debounce((search) => {
                     
                     <VCol md="2" class="d-flex justify-center align-center">
                         <v-select class="mt-1" label="Filter by Type" density="compact"
-                            :items="tagTypesOption" 
+                            :items="tagTypesOption" v-model="selectedTagType" 
                         >
                         </v-select>
                     </VCol>
@@ -209,12 +409,140 @@ const handleSearch = debounce((search) => {
                 <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
 
                 <v-card-text class="mx-2">
-                    <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
+                    <div class="mb-4 d-flex justify-between align-center">
+                        <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
+                        <v-spacer></v-spacer>
+                        <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
+                            Change Batch
+                        </v-btn>
+                    </div>
                     <div class="mt-2">
-                        <batch-data-table :batch="batch" :search="searchValue"/>
+                        <VDataTableServer
+                            v-model:items-per-page="itemsPerPage"
+                            v-model="selectedItems"
+                            :headers="headers"
+                            :items="serverItems"
+                            :items-length="totalItems"
+                            :loading="pageLoading"
+                            item-value="id"
+                            :search="searchValue"
+                            @update:options="loadItems"
+                            show-select
+                            return-object
+                            class="text-no-wrap"
+                        >
+
+                            <template #item.batch="{ item }">
+                                <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
+                                    {{ item.batch }}
+                                </span>
+                            </template>
+
+                            <template #item.material_id="{ item }">
+                                {{ item.material?.description }}
+                            </template>
+
+                            <template #item.physical_id="{ item }">
+                                {{ item.rfid?.name }}
+                            </template>
+
+                            <template #item.type="{ item }">
+                                {{ item.type }}
+                            </template>
+
+                            <template #item.mfg_date="{ item }">
+                                {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                            </template>
+
+                            <template #item.is_wrapped="{ item }">
+                                <div class="d-flex justify-center align-center">
+                                    <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
+                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+                                </div>
+                            </template>
+
+                            <template #item.age="{ item }">
+                                {{  item.current_age }}
+                            </template>
+
+                            <template #item.latest_created_at="{ item }">
+                                {{ item.latest_created_at ? Moment(item.latest_created_at).format('MMMM D, YYYY') : '' }}
+                            </template>
+
+                            <template #item.updated_at="{ item }">
+                                {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+                            </template>
+
+                        </VDataTableServer>
                     </div>
                 </v-card-text>
             </v-card>
         </div>
     </div>
+    <EditingModal @close="changeBatchModal = false" max-width="900px"
+        :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
+        <template #default>
+            <v-form @submit.prevent="handleChangeBatch">
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-select
+                            label="Select Material"
+                            density="compact"
+                            :items="materialsOption"
+                            v-model="batchUpdateForm.material_id"
+                            :rules="[value => !!value || 'Please select an item from the list']"
+                        />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker
+                            v-model="batchUpdateForm.mfg_date"
+                            placeholder="Select Manufacturing Date"
+                        />
+                    </v-col>
+                </v-row>
+
+                <v-text-field class="mt-4" density="compact" 
+                    label="Miller Name"
+                    v-model="batchUpdateForm.miller_name" 
+                />
+                <v-textarea class="mt-4"
+                    clear-icon="ri-close-line"
+                    label="Reason"
+                    v-model="batchUpdateForm.reason"
+                    clearable
+                ></v-textarea>
+    
+            </v-form>
+            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                {{ errorMessage }}
+            </VAlert>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                        <th>Material</th>
+                        <th>Receipt Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.material?.description ?? 'N/A' }}</td>
+                        <td>
+                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="cancelChangeBatch" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit" :loading="changeBatchLoading">
+                    Update
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
 </template>

@@ -86,7 +86,7 @@ const batchUpdateForm = reactive({
     reason: null,
     miller_name: null,
     selectedRfid: [],
-    type: 'activity_log'
+    type: 'inventory_log'
 });
 
 const lastOptions = ref({});
@@ -137,7 +137,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 { value: null, title: 'All' }, 
                 ...tag_types.map(item => ({
                     value: item.id,
-                    title: item.name 
+                    title: item.title 
                 }))
             ];
 
@@ -484,11 +484,23 @@ const toast = ref({
         :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleChangeBatch">
-                <v-select label="Select Material" density="compact"
-                    :items="materialsOption" v-model="batchUpdateForm.material_id"
-                    :rules="[value => !!value || 'Please select an item from the list']"
-                ></v-select>
-                <DatePicker class="mt-4" v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date"/>
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-select
+                            label="Select Material"
+                            density="compact"
+                            :items="materialsOption"
+                            v-model="batchUpdateForm.material_id"
+                            :rules="[value => !!value || 'Please select an item from the list']"
+                        />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker
+                            v-model="batchUpdateForm.mfg_date"
+                            placeholder="Select Manufacturing Date"
+                        />
+                    </v-col>
+                </v-row>
                 <v-text-field class="mt-4" density="compact" 
                     label="Miller Name"
                     v-model="batchUpdateForm.miller_name" 
