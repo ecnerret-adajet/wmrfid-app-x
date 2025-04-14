@@ -21,6 +21,7 @@ const shipment = ref(null);
 const noAccessLog = ref(false);
 const dialogVisible = ref(false);
 const errorMessage = ref(null);
+const loadedCounter = ref(0);
 
 // initialize null shipment data
 const shipmentData = reactive({
@@ -55,6 +56,72 @@ const fetchData = async () => {
     }
 };
 
+const determinePalletConversion = (quantity, default_pallet_capacity) => {
+    let checkPallet = Math.ceil(quantity / default_pallet_capacity);
+    return checkPallet;
+};
+
+const checkLoadedPallets = (batch) => {
+    return new Promise((resolve, reject) => {
+        ApiService.post(`check-loaded-pallets`,{
+            batches: batch,
+            start: this.loadTime.load_start,
+            end: this.loadTime.load_end,
+            shipment: shipment.value,
+            bay_no: this.$route.params.location
+        })
+        .then(response => {
+            resolve(response.data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+};
+
+const sapLoadEnd = async (shipmentNumber) => {
+    ApiService.get(`picklist/load-end/${shipmentNumber}`)
+    .then(response => {
+        if (response.data.status == 'S') {
+            // display success message here
+
+        } else {
+            dialogVisible.value = true;
+            errorMessage.value = 'Loadend failed!'
+        }
+    })
+};
+                                      
+const fetchLoadStatus = async (shipmentNumber) => {
+    try {
+        const response = await ApiService.get(`check-loading-status/${shipmentNumber}`);
+
+        // If success
+        if (response.data.load_status == 'B') {
+
+            // call the sap load end
+            sapLoadEnd(shipmentNumber);
+        } 
+
+        shipmentData.deliveries.forEach(item => {
+            checkLoadedPallets(item.batch)
+            .then(result => {
+                item.expected = result;
+                if(determineSapQuantity(item.quantity, item.default_pallet_capacity) === result) {
+                    // console.log('check if result count is correct: ', result)
+                    loadedCounter.value++;
+                }
+            })
+        });
+
+        // here to check the mismatches
+
+    } catch (error) {
+        console.error('Error fetching shipment details:', error);
+    }
+    
+};
+
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
         const response = await ApiService.get(`picklist/shipment-picklist/${shipmentNumber}`);
@@ -62,7 +129,10 @@ const fetchShipmentDetails = async (shipmentNumber) => {
         // If success
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
-            shipmentData.shipment = response.data;
+            shipmentData.shipment = response.data; 
+            
+            fetchLoadStatus(shipmentNumber);
+
         } else {
             dialogVisible.value = true;
             errorMessage.value = 'Error encountered. Please contact admin.'
