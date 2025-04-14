@@ -15,6 +15,14 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    storageLocations: {
+        type: Array,
+        default: () => []
+    },
+    rolesOption: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const editDialog = ref(false);
@@ -98,6 +106,8 @@ const editItem = (item) => {
     selectedUser.value = item;
     form.value.name = item.name;
     form.value.email = item.email;
+    form.value.storage_location_ids = item.storage_locations
+    form.value.role_id = item.roles.length > 0 ? item.roles[0].id : 1;
     errorMessage.value = '';
     editDialog.value = true;
 }  
@@ -162,6 +172,8 @@ const applyFilters = (data) => {
 const form = ref({
     'name': null,
     'email': null,
+    'storage_location_ids': [],
+    'role_id': null
 });
 
 defineExpose({
@@ -229,6 +241,11 @@ defineExpose({
         :show="editDialog" :dialog-title="`Update ${selectedUser.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
+                <v-select class="mt-4" label="Select Role" density="compact"
+                    :items="rolesOption" v-model="form.role_id"
+                    :rules="[value => !!value || 'Role is required']"
+                >
+                </v-select>
                 <v-text-field class="mt-6" density="compact" 
                     label="Name"
                     v-model="form.name" 
@@ -238,6 +255,17 @@ defineExpose({
                     label="Email address"
                     v-model="form.email" 
                     :rules="[value => !!value || 'Email address is required']"
+                />
+                <v-select class="mt-4"
+                    v-model="form.storage_location_ids"
+                    :items="storageLocations"
+                    item-title="name"
+                    item-value="id"
+                    label="Select Storage Locations"
+                    chips
+                    multiple
+                    return-object
+                    :rules="[value => !!value || 'Please select an item from the list']"
                 />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
