@@ -34,10 +34,10 @@ watch(
 
 </script>
 <template>
-    <v-dialog v-model="dialogVisible" max-width="600px">
+    <v-dialog v-model="dialogVisible" max-width="700px">
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
-            <div class="text-h4 text-bold-emphasis ps-2">
+            <div class="text-h5 text-bold-emphasis ps-2">
                 {{ dialogTitle }}
             </div>
             <v-btn

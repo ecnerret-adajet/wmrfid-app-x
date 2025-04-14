@@ -96,6 +96,18 @@ export const routes = [
             },
         },
         {
+            path: 'production-runs/:batch',
+            name: 'production-runs.show',
+            component: () => import('@/pages/productionRuns/show.vue'),
+            meta: {
+                pageTitle: "Batch Details",
+                breadcrumbs: (route) => [
+                    { label: "Production Runs", link: "/production-runs" },
+                    { label: `${route.params.batch}`, link: `/production-runs/${route.params.batch}` }
+                ],
+            },
+        },
+        {
             path: 'inventories',
             name: 'inventories',
             component: () => import('@/pages/inventories/index.vue'),

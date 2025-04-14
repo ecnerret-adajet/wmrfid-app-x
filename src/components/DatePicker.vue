@@ -27,7 +27,7 @@ watch(date, (newDate) => {
 
 </script>
 <template>
-    <Datepicker v-model="date" :format="customDateFormat" auto-position="top"  @cleared="emit('cleared')" :is-24="false" position="left"/>
+    <Datepicker v-model="date" :format="customDateFormat" auto-position="bottom" :enable-time-picker="false" @cleared="emit('cleared')" :is-24="false" position="left"/>
 </template>
 <style>
     .dp__menu {

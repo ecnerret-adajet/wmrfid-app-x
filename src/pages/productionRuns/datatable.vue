@@ -5,6 +5,7 @@ import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import Moment from "moment";
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
 const emits = defineEmits(['pagination-changed']);
@@ -24,6 +25,7 @@ const props = defineProps({
     }
 });
 
+const router = useRouter();
 const triggerEndDialog = ref(false);
 const selectedProductionRun = ref(null);
 const triggerEndLoading = ref(false);
@@ -52,6 +54,12 @@ const headers = [
     {
         title: 'QUANTITY',
         key: 'total_quantity',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'TYPE',
+        key: 'rfid_type',
         align: 'center',
         sortable: false,
     },
@@ -134,6 +142,10 @@ const applyFilters = (data) => {
     });
 }
 
+const handleViewBatch = (inventory) => {
+    router.push(`/production-runs/${inventory.batch}`);
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -154,6 +166,12 @@ defineExpose({
         class="text-no-wrap"
     >
 
+    <template #item.batch="{ item }">
+        <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
+            {{ item.batch }}
+        </span>
+    </template>
+
     <template #item.material_id="{ item }">
         {{ item.material?.description }}
     </template>
@@ -171,14 +189,7 @@ defineExpose({
     </template>
 
     <template #item.total_quantity="{ item }">
-       <div>
-            <div class="font-weight-bold">
-                {{ item.total_quantity }}
-            </div>
-            <span class="text-subtitle-1 font-weight-bold">
-                {{ item.rfid_type }}
-            </span>
-        </div>
+        {{ item.total_quantity }}
     </template>
 
     <template #item.end_date_time="{ item }">
