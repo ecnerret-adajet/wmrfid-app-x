@@ -165,6 +165,31 @@ export const routes = [
               ],
             },
         },
+
+        {
+            path: 'rfid',
+            name: 'rfid',
+            component: () => import('@/pages/rfid/index.vue'),
+            meta: {
+              pageTitle: "RFID Master",
+              breadcrumbs: [
+                  { label: "RFID Master", link: "/rfid" },
+              ],
+            },
+        },
+        {
+            path: 'rfid/:type/:physicalId',
+            name: 'rfid.show',
+            component: () => import('@/pages/rfid/show.vue'),
+            meta: {
+                pageTitle: "RFID Master",
+                breadcrumbs: (route) => [
+                    { label: "RFID Master", link: "/rfid" },
+                    { label: `${route.params.physicalId}`, link: `/rfid/${route.params.physicalId}` }
+                ],
+            },
+        },
+
         {
           path: 'account-settings',
           name: 'account-settings',

@@ -8,7 +8,7 @@ import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { computed, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { VTextarea } from 'vuetify/components';
 
 const route = useRoute();
@@ -88,6 +88,8 @@ const batchUpdateForm = reactive({
     selectedRfid: [],
     type: 'inventory_log'
 });
+
+const router = useRouter();
 
 const lastOptions = ref({});
 const currentOptions = ref({});
@@ -193,8 +195,8 @@ const handleSearch = debounce((search) => {
     searchValue.value = search;
 }, 500);
 
-const handleViewRfid = (rfid_code) => {
-    console.log(rfid_code);
+const handleViewRfid = (item) => {
+    router.push(`/rfid/${item.type_slug}/${item.rfid?.name}`);
 }
 
 const changeBatch = () => {

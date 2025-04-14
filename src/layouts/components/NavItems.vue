@@ -7,7 +7,6 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-const showRegistrationModal = ref(false);
 const showMappingModal = ref(false)
 
 const openRfidRegistrationModal = (event) => {
@@ -54,30 +53,7 @@ const fetchRfidRegistrationData = async () => {
     }
 };
 
-const proceedRegister = () => {
-    if (registrationModalForm.value.isValid) {
-        if (!form.value.tag_type_id || !form.value.storage_location_id) {
-            console.error("Tag Type or Storage Location is not selected.");
-            return; // Return early if form values are not set
-        }
 
-        let tagType = tagTypes.value.find(item => item.value === form.value.tag_type_id);
-        let storageLocation = storageLocations.value.find(item => item.value === form.value.storage_location_id);
-
-        if (!tagType || !storageLocation) {
-            console.error("Invalid Tag Type or Storage Location selected.");
-            return;
-        }
-
-        if (tagType.name && storageLocation.name) {
-            // Construct the dynamic path
-            router.push({
-                path: `/rfid-registration/${generateSlug(tagType.name)}/${generateSlug(storageLocation.name)}`,
-            });
-            showRegistrationModal.value = false;
-        }
-    }
-}
 
 const proceedMapping = () => {
     if (mappingModalForm.value.isValid) {
@@ -119,7 +95,9 @@ const proceedMapping = () => {
 
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
-    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/>
+    <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
+    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-box-2-line', to: '/rfid'}"/>
+
     <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->
@@ -127,34 +105,6 @@ const proceedMapping = () => {
     <VerticalNavLink :item="{ title: 'Users', icon: 'ri-user-line', to: '/users'}"/>
     <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-group-line', to: '/roles'}"/>
     <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions'}"/>
-
-    <!--  RFID Registration  -->
-    <AddingModal @close="showRegistrationModal = false" :show="showRegistrationModal" :dialogTitle="'Select Type and Location'" >
-        <template #default>
-            <v-form @submit.prevent="proceedRegister" ref="registrationModalForm">
-                <div>
-                    <label class="font-weight-bold">RFID Type</label>
-                    <v-select class="mt-1" label="Select Type" density="compact"
-                        :items="tagTypes" v-model="form.tag_type_id" 
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    >
-                    </v-select>
-                </div>
-                <div class="mt-4">
-                    <label class="font-weight-bold">Location</label>
-                    <v-select class="mt-1" label="Select Location" density="compact"
-                        :items="storageLocations" v-model="form.storage_location_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    >
-                    </v-select>
-                </div>
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="showRegistrationModal = false" class="px-12 mr-3">Cancel</v-btn>
-                    <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
-                </div>
-            </v-form>
-        </template>
-    </AddingModal>
 
     <!-- Warehouse Mapping  -->
     <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'" >
