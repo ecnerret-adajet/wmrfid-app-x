@@ -7,7 +7,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
 
 const dialogVisible = ref(false)
@@ -18,6 +18,8 @@ const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
 const errorMessage = ref(null)
+const storageLocations = ref([])
+const rolesOption = ref([]);
 const toast = ref({
     message: 'User successfully created!',
     color: 'success',
@@ -35,6 +37,36 @@ const filters = reactive({
     created_at: null,
     updated_at: null,
 });
+
+onMounted(() => {
+    fetchDataDropdown();
+})
+
+const fetchDataDropdown = async () => {
+    try {
+        const preReqData = await ApiService.get('users/get-data-dropdown');
+        const { storage_locations, roles } = preReqData.data
+        console.log(preReqData.data);
+        
+        storageLocations.value = storage_locations.map(item => ({
+            id: item.id,
+            value: item.id,
+            title: item.name,
+            label: item.name,
+            name: item.name
+        }));
+
+        rolesOption.value = roles.map(item => ({
+            id: item.id,
+            value: item.id,
+            title: item.title,
+            label: item.title,
+            name: item.title
+        }));
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+};
 
 const isFiltersEmpty = computed(() => {
     return !filters.created_at && 
@@ -81,6 +113,8 @@ const openDialog = () => {
 const form = ref({
     'name': null,
     'email': null,
+    'storage_location_ids': [],
+    'role_id': null,
 });
 
 const submit = async () => {
@@ -97,6 +131,8 @@ const submit = async () => {
         toast.value.show = true;
         form.value.name = null;
         form.value.email = null;
+        form.value.storage_location_ids = []
+        form.value.role_id = null;
         errorMessage.value = ''
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
@@ -126,7 +162,7 @@ const submit = async () => {
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+        <datatable ref="datatableRef" :storage-locations="storageLocations" :roles-option="rolesOption" @pagination-changed="onPaginationChanged" 
             :search="searchValue"
         />
     </VCard>
@@ -134,6 +170,11 @@ const submit = async () => {
     <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New User'" >
         <template #default>
             <v-form @submit.prevent="submit">
+                <v-select class="mt-4" label="Select Role" density="compact"
+                    :items="rolesOption" v-model="form.role_id"
+                    :rules="[value => !!value || 'Role is required']"
+                >
+                </v-select>
                 <v-text-field class="mt-6" density="compact" 
                     label="Full Name"
                     v-model="form.name" 
@@ -143,6 +184,17 @@ const submit = async () => {
                     label="Email Address"
                     v-model="form.email" 
                     :rules="[value => !!value || 'Email address is required']"
+                />
+                <v-select class="mt-4"
+                    v-model="form.storage_location_ids"
+                    :items="storageLocations"
+                    item-title="name"
+                    item-value="id"
+                    label="Select Storage Locations"
+                    chips
+                    multiple
+                    return-object
+                    :rules="[value => !!value || 'Please select an item from the list']"
                 />
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                     {{ errorMessage }}
