@@ -1,4 +1,5 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
@@ -20,18 +21,33 @@ const loading = ref(false);
 const shipment = ref(null);
 const noAccessLog = ref(false);
 const dialogVisible = ref(false);
+const syncingLoading = ref(false);
 const errorMessage = ref(null);
 const loadedCounter = ref(0);
+const setTimeInSeconds = ref(120);
+const refreshTimer = ref(null);
+const totalRead = ref(0);
+const actualRead = ref(0);
 
 // initialize null shipment data
 const shipmentData = reactive({
     deliveries: [],
     shipment: {}
-})
+});
 
 onMounted(() => {
     fetchData();  
-})
+});
+
+const reloadPageInterval = () => {
+    setInterval(() => {
+        setTimeInSeconds.value -= 1;
+        refreshTimer.value = setTimeInSeconds.value;
+        if (setTimeInSeconds.value === 1) {
+            window.location.reload();
+        }
+    }, 1000);
+};
 
 const fetchData = async () => {
     loading.value = true;
@@ -91,18 +107,21 @@ const sapLoadEnd = async (shipmentNumber) => {
         }
     })
 };
-                                      
+
+
+// checkLoadTime in the old version
 const fetchLoadStatus = async (shipmentNumber) => {
     try {
         const response = await ApiService.get(`check-loading-status/${shipmentNumber}`);
 
         // If success
         if (response.data.load_status == 'B') {
-
-            // call the sap load end
-            sapLoadEnd(shipmentNumber);
+            // verify if the total read pallets is equal to the actual read pallets
+            if(totalRead.value === actualRead.value) {
+                // call the sap load end
+                sapLoadEnd(shipmentNumber);
+            }
         } 
-
         shipmentData.deliveries.forEach(item => {
             checkLoadedPallets(item.batch)
             .then(result => {
@@ -130,6 +149,8 @@ const fetchShipmentDetails = async (shipmentNumber) => {
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
             shipmentData.shipment = response.data; 
+
+            totalRead.value = shipmentData.shipment?.total_pallet_to_load;
             
             fetchLoadStatus(shipmentNumber);
 
@@ -143,9 +164,35 @@ const fetchShipmentDetails = async (shipmentNumber) => {
     
 };
 
-const refreshData = () => {
-    
-}
+const showSyncConfirmModal = ref(false);
+
+const triggerLoadingSync = () => {
+    showSyncConfirmModal.value = true;
+};
+
+const proceedSync = () => {
+    showSyncConfirmModal.value = false;
+    // Place the original sync logic here, or call the actual sync function
+    if (shipmentData.shipment?.shipment_number) {
+        sapLoadSync(shipmentData.shipment.shipment_number);
+    }
+};
+
+const cancelSync = () => {
+    showSyncConfirmModal.value = false;
+};
+
+const sapLoadSync = (shipmentNumber) => {
+    ApiService.get(`picklist/sync/${shipmentNumber}`)
+    .then(response => {
+        if (response.status == 200) {
+            // success message here
+        }
+    })
+    .catch((error) => {
+        // error message here for something went wrong
+    })
+};
 
 const close = () => {
     dialogVisible.value = false
@@ -437,6 +484,25 @@ const toast = ref({
             </div>
         </v-sheet>
     </v-dialog>
+
+    <DefaultModal
+        :show="showSyncConfirmModal"
+        dialogTitle="Proceed with Sync?"
+        maxWidth="400px"
+        minHeight="200px"
+        @close="cancelSync"
+    >
+        <template #default>
+            <div class="text-center">
+                <p class="mb-6 text-h5">Are you sure you want to proceed with this action?</p>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="cancelSync" class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="proceedSync" class="px-8">Proceed</v-btn>
+                </div>
+            </div>
+        </template>
+    </DefaultModal>
+
 </template>
 
 <style scoped>
