@@ -7,73 +7,88 @@ import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
+import axios from "axios";
 import Moment from 'moment';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
+const route = useRoute();
+const router = useRouter();
+const shipment = ref(null);
+const pageLoading = ref(false);
+const shipmentNumber = route.params.shipmentNumber;
+const errorMessage = ref(null);
+const deliveryItems = ref([])
+
+// UNUSED 
 
 const refreshData = () => {
     console.log('Reshreshing...');
 }
 
-const value = ref(10)
-const bufferValue = ref(20)
-const interval = ref(0)
-const responseToast = ref(false)
-const toastTimeout = ref(2000)
-
-watch(value, val => {
-    if (val >= 100) {
-        value.value = 100; // Ensure it caps at 100%
-        bufferValue.value = 100; // Set buffer to 100% as well
-        clearInterval(interval.value); // Stop the interval once it reaches 100%
-        console.log('Progress Complete');
-        responseToast.value = true;
-    }
+onMounted(() => {
+    fetchData();  
 })
 
-  onMounted(() => {
-    startBuffer()
-  })
-  onBeforeUnmount(() => {
-    clearInterval(interval.value)
-  })
+const fetchData = async () => {
+    pageLoading.value = true;
+    try {
+        const response = await axios.get(`shipment/${shipmentNumber}/picklist`);
+        shipment.value = response.data
+    
+        // Fetch all deliveries and included delivery items inside deliveryItems array
+        if (shipment.value?.deliveries?.length) {
+            shipment.value.deliveries.forEach(delivery => {
+                if (delivery.items?.length) {
+                    delivery.items.forEach(item => {
+                        deliveryItems.value.push(item);
+                    });
+            }
+            });
+        }
+        console.log(shipment.value);
+        console.log(deliveryItems.value);
 
-function startBuffer () {
-    clearInterval(interval.value)
-    interval.value = setInterval(() => {
-      value.value += Math.random() * (15 - 5) + 10
-      bufferValue.value += Math.random() * (15 - 5) + 8
-    }, 2000)
-}
+    } catch (error) {
+        errorMessage.value = error.response?.data?.error || 'An unexpected error occurred.';
+    } finally {
+        pageLoading.value = false
+    }
+};
+
+
+const responseToast = ref(false)
+const toastTimeout = ref(2000)
 
 const toast = ref({
     message: 'Inventory refreshed',
     color: 'success',
     show: false
 });
+
+const displayPlateNumber = computed(() => {
+  return shipment.value?.plate_number_1 || 
+         shipment.value?.plate_number_2 || 
+         shipment.value?.plate_number_3 || 
+         ""; // Default value if none exist
+});
+
+const formatDateTime = (date, time) => {
+    if (!date || !time || date === '00000000' || time === '000000') return '';
+    return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
+};
+
+const determineSapQuantity = (quantity, default_pallet_capacity) => {
+    if (default_pallet_capacity != 0) {
+        return Math.ceil(quantity / default_pallet_capacity);
+    } else {
+        return Math.ceil(quantity / 40);
+    }
+}
   
 </script>
 <template>
-    
     <div class="mt-4 px-8 whiteBackground">
-        <!-- <v-progress-linear
-            v-model="value"
-            :buffer-value="bufferValue"
-            color="primary"
-            height="25"
-            class="my-4 progress-with-icon"
-        >
-            <template v-slot:default="{ value }">
-                <v-icon v-if="value > 0 && value < 100"
-                    class="ri-truck-line ml-4 icon-moving"
-                    color="primary"
-                    :style="{ left: value + '%' }"
-                    size="30"
-                >
-                </v-icon>
-                <strong :class="value <= 50 ? 'text-primary' : 'text-white'">{{ Math.ceil(value) }}%</strong>
-            </template>
-        </v-progress-linear> -->
         <VRow >
             <VCol md="8" >
                 <VList lines="one" density="compact" style="border: 2px solid #329b62; padding-top: 0px !important;">
@@ -100,7 +115,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">00000012345</span>
+                                        <span class="font-weight-bold">{{ shipment?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -111,7 +126,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Gate in</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                       <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span>
+                                       <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
                                     </VCol>
                                 </VRow>
                               
@@ -127,7 +142,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Plate Number</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">CAG 4869</span>
+                                        <span class="font-weight-bold">{{ displayPlateNumber }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -138,7 +153,8 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load Start</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{Moment(new Date()).format('MMMM D, YYYY hh:mm:ss A')}}</span>
+                                        <span class="font-weight-bold">{{ formatDateTime(shipment?.loadstart_date, shipment?.loadstart_time) }}</span>
+
                                     </VCol>
                                 </VRow>
                                
@@ -154,7 +170,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Driver Name</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">Juan Dela Cruz</span>
+                                        <span class="font-weight-bold">{{ shipment?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -165,7 +181,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load End</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{Moment(new Date()).format('MMMM D, YYYY hh:mm:ss A')}}</span>
+                                        <span class="font-weight-bold">{{ formatDateTime(shipment?.loadend_date, shipment?.loadend_time) }}</span>
                                     </VCol>
                                 </VRow> 
                             </VCol>
@@ -181,7 +197,7 @@ const toast = ref({
                                         <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Hauler Name</span>
                                     </VCol>
                                     <VCol md="6" class="d-inline-flex align-center">
-                                        <div class="font-weight-bold">Hauler Group Sample Name Incorporated</div>
+                                        <div class="font-weight-bold">{{ shipment?.hauler_name }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -196,7 +212,7 @@ const toast = ref({
             <VCol md="4">
                 <v-sheet class="mx-auto px-6 py-4" elevation="2" style="height: 100%; display: flex; flex-direction: column; background-color: #00A36C;">
                     <div class="text-h4 text-white text-bold-emphasis font-weight-black">
-                        Bay No. 2
+                        Bay No. {{ shipment?.bay_no || 0 }}
                     </div>
                     <div>
                         <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">0</h2>

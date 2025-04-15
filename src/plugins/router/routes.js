@@ -199,7 +199,7 @@ export const routes = [
       ],
     },
     {
-        path: '/picklist',
+        path: '/picklist/:shipmentNumber',
         component: () => import('@/pages/picklist.vue'), 
         meta: {
             pageTitle: "Picklist Screen"

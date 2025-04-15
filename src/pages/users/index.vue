@@ -6,6 +6,8 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import JwtService from '@/services/JwtService';
+import axios from 'axios';
 import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
@@ -17,9 +19,11 @@ const tablePerPage = ref(10);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
-const errorMessage = ref(null)
-const storageLocations = ref([])
+const errorMessage = ref(null);
+const storageLocations = ref([]);
+const plantsOption = ref([]);
 const rolesOption = ref([]);
+
 const toast = ref({
     message: 'User successfully created!',
     color: 'success',
@@ -44,18 +48,15 @@ onMounted(() => {
 
 const fetchDataDropdown = async () => {
     try {
-        const preReqData = await ApiService.get('users/get-data-dropdown');
-        const { storage_locations, roles } = preReqData.data
-        console.log(preReqData.data);
-        
-        storageLocations.value = storage_locations.map(item => ({
-            id: item.id,
-            value: item.id,
-            title: item.name,
-            label: item.name,
-            name: item.name
-        }));
+        const token = JwtService.getToken();
 
+        const response = await axios.get('/users/get-data-dropdown', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const { roles, plants } = response.data;
         rolesOption.value = roles.map(item => ({
             id: item.id,
             value: item.id,
@@ -63,6 +64,7 @@ const fetchDataDropdown = async () => {
             label: item.title,
             name: item.title
         }));
+        plantsOption.value = plants
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -113,9 +115,25 @@ const openDialog = () => {
 const form = ref({
     'name': null,
     'email': null,
+    'plant_ids': [],
     'storage_location_ids': [],
     'role_id': null,
 });
+
+watch(
+    () => form.value.plant_ids,
+    (selectedPlantIds) => {
+        const locations = selectedPlantIds.flatMap(plant => plant.storage_locations || []);
+        const uniqueLocations = locations.filter(
+            (loc, index, self) => 
+                index === self.findIndex(l => l.id === loc.id)
+        );
+
+        // Assign to the storageLocations ref
+        storageLocations.value = uniqueLocations;
+    },
+);
+
 
 const submit = async () => {
     isLoading.value = true;
@@ -132,6 +150,7 @@ const submit = async () => {
         form.value.name = null;
         form.value.email = null;
         form.value.storage_location_ids = []
+        form.value.plant_ids = []
         form.value.role_id = null;
         errorMessage.value = ''
     } catch (error) {
@@ -140,6 +159,7 @@ const submit = async () => {
         isLoading.value = false;
     }
 }
+
 
 </script>
 
@@ -162,7 +182,7 @@ const submit = async () => {
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" :storage-locations="storageLocations" :roles-option="rolesOption" @pagination-changed="onPaginationChanged" 
+        <datatable ref="datatableRef" :plants-option="plantsOption" :roles-option="rolesOption" @pagination-changed="onPaginationChanged" 
             :search="searchValue"
         />
     </VCard>
@@ -186,6 +206,18 @@ const submit = async () => {
                     :rules="[value => !!value || 'Email address is required']"
                 />
                 <v-select class="mt-4"
+                    v-model="form.plant_ids"
+                    :items="plantsOption"
+                    item-title="title"
+                    item-value="id"
+                    label="Select Plants"
+                    chips
+                    multiple
+                    return-object
+                    closable-chips
+                    :rules="[value => !!value || 'Please select an item from the list']"
+                />
+                <v-select class="mt-4"
                     v-model="form.storage_location_ids"
                     :items="storageLocations"
                     item-title="name"
@@ -194,6 +226,7 @@ const submit = async () => {
                     chips
                     multiple
                     return-object
+                    closable-chips
                     :rules="[value => !!value || 'Please select an item from the list']"
                 />
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">

@@ -50,12 +50,8 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
           class="d-flex"
           v-html="logo"
         /> -->
-        <img :src="alc_logo" alt="" srcset="" width="60">
+        <img class="mx-auto" :src="alc_logo" alt="" srcset="" width="190">
         <!-- eslint-enable -->
-
-        <h1 class="font-weight-medium leading-normal text-xl text-uppercase">
-          WMRFID
-        </h1>
       </RouterLink>
 
       <IconBtn

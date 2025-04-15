@@ -89,9 +89,6 @@ const handleUpdate = async () => {
       <VCard class="auth-card pa-4 pt-7">
             <VCardItem class="justify-center">
                     <!-- <div class="d-flex" v-html="logo" /> -->
-                    <h2 class="font-weight-medium text-2xl text-uppercase">
-                        WMRFID
-                    </h2>
             </VCardItem>
             <VCardText class="pt-2">
                 <h4 class="text-h4 mb-1">
