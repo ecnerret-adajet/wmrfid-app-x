@@ -15,7 +15,7 @@ const props = defineProps({
         type: String,
         default: ''
     },
-    storageLocations: {
+    plantsOption: {
         type: Array,
         default: () => []
     },
@@ -37,6 +37,7 @@ const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const errorMessage = ref(null)
 const filters = ref(null);
+const storageLocations = ref([]);
 
 const headers = [
     {
@@ -108,6 +109,7 @@ const editItem = (item) => {
     form.value.email = item.email;
     form.value.storage_location_ids = item.storage_locations
     form.value.role_id = item.roles.length > 0 ? item.roles[0].id : 1;
+    form.value.plant_ids = item.plants.map(plant => plant.id);
     errorMessage.value = '';
     editDialog.value = true;
 }  
@@ -173,8 +175,34 @@ const form = ref({
     'name': null,
     'email': null,
     'storage_location_ids': [],
-    'role_id': null
+    'role_id': null,
+    'plant_ids': [],
 });
+
+
+
+
+watch(
+    () => form.value.plant_ids,
+    (selectedPlantIds) => {
+
+        const matchedPlants = props.plantsOption.filter(plant =>
+            selectedPlantIds.includes(plant.id)
+        );
+
+        // Collect and flatten storage_locations from matched plants
+        const locations = matchedPlants.flatMap(plant => plant.storage_locations || []);
+
+        const uniqueLocations = locations.filter(
+            (loc, index, self) => index === self.findIndex(l => l.id === loc.id)
+        );
+
+        storageLocations.value = uniqueLocations;
+
+    },
+    { immediate: true, deep: true } // This will ensure it runs immediately when the component mounts
+);
+
 
 defineExpose({
     loadItems,
@@ -257,6 +285,15 @@ defineExpose({
                     :rules="[value => !!value || 'Email address is required']"
                 />
                 <v-select class="mt-4"
+                    v-model="form.plant_ids"
+                    :items="plantsOption"
+                    label="Select Plants"
+                    chips
+                    multiple
+                    closable-chips
+                    :rules="[value => !!value || 'Please select an item from the list']"
+                />
+                <v-select class="mt-4"
                     v-model="form.storage_location_ids"
                     :items="storageLocations"
                     item-title="name"
@@ -265,6 +302,7 @@ defineExpose({
                     chips
                     multiple
                     return-object
+                    closable-chips
                     :rules="[value => !!value || 'Please select an item from the list']"
                 />
             </v-form>

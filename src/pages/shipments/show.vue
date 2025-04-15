@@ -1,60 +1,136 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
+import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import deliveriesDataTable from './deliveriesDataTable.vue';
-import reservedOrdersDataTable from './reservedOrdersDataTable.vue';
 
 const route = useRoute();
 const router = useRouter();
-const shipment = ref(null);
+const shipmentData = ref(null);
 const pageLoading = ref(false);
 const shipmentNumber = route.params.shipmentNumber; // Get the shipment number from URL
 
-onMounted(async () => {
-    pageLoading.value = true;
-    try {
-        // Fetch shipment details from API
-        const response = await axios.get(`shipments/${shipmentNumber}`);
-        const { data } = response.data; 
-        shipment.value = data; // Set shipment details
-        pageLoading.value = false; // Stop loading
-    } catch (error) {
-        console.error("Shipment not found:", error);
-        router.replace('/404'); // Redirect to 404 page
-    } finally {
-        pageLoading.value = false; // Stop loading
+// Delivery table variables
+const serverItems = ref([]);
+const loading = ref(true);
+const totalItems = ref(0);
+const itemsPerPage = ref(10);
+const page = ref(1);
+const sortQuery = ref('-updated_at'); // Default sort
+const deliveryItemsModalOpen = ref(false);
+const selectedDelivery = ref(null);
+const searchValue = ref('');
+
+const headers = [
+    {
+        title: 'DELIVERY DOCUMENT',
+        key: 'delivery_document',
+    },
+    {
+        title: 'PLANT',
+        key: 'plant_id',
+    },
+    {
+        title: 'SHIP TO',
+        key: 'ship_to_name',
+    },
+    {
+        title: 'SOLD TO',
+        key: 'sold_to_name',
+    },
+    {
+        title: 'LAST UPDATED AT',
+        key: 'updated_at',
+    },
+    {
+        title: 'CREATED AT',
+        key: 'created_at',
+    },
+]
+
+
+const lastOptions = ref({});
+const currentOptions = ref({});
+const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
+    const options = { page, itemsPerPage, sortBy, search: searchValue.value };
+
+    // Check if the options are the same as the last call
+    const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options);
+    if (isSame) return;
+
+    // Store the current options
+    lastOptions.value = options;
+    currentOptions.value = options;
+    
+    pageLoading.value = true
+    if (sortBy && sortBy.length > 0) {
+        const sort = sortBy[0];  // Assuming single sort field
+        sortQuery.value = `${sort.key}`;  // Default ascending order
+        if (sort.order === 'desc') {
+            sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
+        }
+    } else {
+        sortQuery.value = '-updated_at';
     }
+
+    try {
+        const token = JwtService.getToken();
+    
+        const response = await axios.get(`/shipments/${shipmentNumber}`, {
+            params: {
+                page,
+                itemsPerPage,
+                sort: sortQuery.value,
+                search: searchValue.value
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const { shipment, deliveries_table, reserved_orders_table  } = response.data;
+        console.log(response.data);
+        shipmentData.value = shipment
+        totalItems.value = deliveries_table.total;
+        serverItems.value = deliveries_table.data;
+
+    } catch (error) {
+        console.log(error);
+    } finally {
+        pageLoading.value = false;
+    }
+}
+
+onMounted(async () => {
 });
 
 const displayPlateNumber = computed(() => {
-  return shipment.value?.plate_number_1 || 
-         shipment.value?.plate_number_2 || 
-         shipment.value?.plate_number_3 || 
+  return shipmentData.value?.plate_number_1 || 
+    shipmentData.value?.plate_number_2 || 
+    shipmentData.value?.plate_number_3 || 
          "N/A"; // Default value if none exist
 });
 
-const goToScreen = (screen) => {
-    // Add parameters
-    const route = screen === 'picklist' ? '/picklist' : '/curtain';
-    window.open(route, '_blank');
+const handleViewDelivery = (delivery) => {
+    selectedDelivery.value = delivery
+    deliveryItemsModalOpen.value = true;
 }
 
+const closeModal = () => {
+    deliveryItemsModalOpen.value = false;
+}
 
 </script>
 
 <template>
-    <v-progress-linear v-if="pageLoading" indeterminate color="primary" class="mt-5"></v-progress-linear>
-    <div v-else>
+  
+    <div>
         <v-card>
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
-                    
-                    <div class="d-flex gap-2">
-                        <v-btn color="primary" @click="goToScreen('picklist')" class="px-8">View Picklist</v-btn>
-                    </div>
                 </div>
 
                 <VList lines="one" density="compact" class="mt-4">
@@ -66,7 +142,7 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment?.shipment_number }}</span>
+                                        <span class="font-weight-medium">{{ shipmentData?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -77,7 +153,7 @@ const goToScreen = (screen) => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium">
-                                            {{ shipment?.check_in_date ? Moment(shipment?.check_in_date).format('MMMM D, YYYY') : '--' }}
+                                            {{ shipmentData?.check_in_date ? Moment(shipmentData?.check_in_date).format('MMMM D, YYYY') : '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -92,7 +168,7 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment?.hauler_name }}</span>
+                                        <span class="font-weight-medium">{{ shipmentData?.hauler_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -116,19 +192,11 @@ const goToScreen = (screen) => {
                                         <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipment?.driver_name }}</span>
+                                        <span class="font-weight-medium">{{ shipmentData?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <!-- <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Shipment</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">00000012345</span>
-                                    </VCol>
-                                </VRow> -->
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -136,21 +204,82 @@ const goToScreen = (screen) => {
                 </VList>
             </v-card-title>
         </v-card>
-        <v-card class="mt-2">
-            <v-card-text class="mx-2">
-                <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
-                <div class="mt-2">
-                    <deliveries-data-table />
-                </div>
-            </v-card-text>
-        </v-card>
-        <v-card class="mt-2">
-            <v-card-text class="mx-2">
-                <h4 class="text-h4 font-weight-black text-primary">Reserved Orders</h4>
-                <div class="mt-2">
-                    <reserved-orders-data-table />
-                </div>
-            </v-card-text>
-        </v-card>
+        <v-progress-linear v-if="pageLoading" indeterminate color="primary" class="mt-5"></v-progress-linear>
+        <div v-else>
+            <v-card class="mt-2">
+                <v-card-text class="mx-2">
+                    <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
+                    <div class="mt-2">
+                        <VDataTableServer
+                            v-model:items-per-page="itemsPerPage"
+                            :headers="headers"
+                            :items="serverItems"
+                            :items-length="totalItems"
+                            :loading="pageLoading"
+                            item-value="id"
+                            :search="searchValue"
+                            @update:options="loadItems"
+                            class="text-no-wrap"
+                        >
+
+                            <template #item="{ item }">
+                                <tr @click="handleViewDelivery(item)" class="clickable-row">
+                                    <td>{{ item.delivery_document }}</td>
+                                    <td>{{ item.plant?.name }}</td>
+                                    <td>{{ item.ship_to_name }}</td>
+                                    <td>{{ item.sold_to_name }}</td>
+                                    <td>{{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}</td>
+                                    <td>{{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}</td>
+                                </tr>
+                            </template>
+
+                        </VDataTableServer>
+                    </div>
+                </v-card-text>
+            </v-card>
+            <!-- <v-card class="mt-2">
+                <v-card-text class="mx-2">
+                    <h4 class="text-h4 font-weight-black text-primary">Reserved Orders</h4>
+                    <div class="mt-2">
+                        <reserved-orders-data-table />
+                    </div>
+                </v-card-text>
+            </v-card> -->
+        </div>
     </div>
+    <DefaultModal :dialog-title="'Delivery Items'" :show="deliveryItemsModalOpen" @close="closeModal">
+        <v-table class="mt-4">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Material</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in selectedDelivery.items" :key="index">
+                    <td>{{ item.item }}</td>
+                    <td>{{ item.material }}</td>
+                    <td>{{ item.material_desc }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.sales_unit }}</td>
+                </tr>
+            </tbody>
+        </v-table>
+    </DefaultModal>
+
 </template>
+
+<style scoped>
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.clickable-row:hover {
+    background-color: rgba(173,215,192, 0.3); 
+}
+</style>

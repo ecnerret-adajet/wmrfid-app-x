@@ -5,7 +5,8 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
-import ApiService from '@/services/ApiService';
+import JwtService from '@/services/JwtService';
+import axios from 'axios';
 import { debounce } from 'lodash';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -142,7 +143,7 @@ const clearFilters = () => {
     filters.tag_type_id = null;
 };
 
-const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     pageLoading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -154,41 +155,45 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`rfid/get-data`,{
-        params: {
-            page,
-            itemsPerPage,
-            sort: sortQuery.value,
-            search: searchValue.value,
-            filters: filters
-        }
-        })
-        .then((response) => {
-            const { table, statistics, tag_types, storage_locations } = response.data
-            
-            totalItems.value = table.total;
-            serverItems.value = table.data
-            
-            // statisticsData.value = statistics
-
-            tagTypesOption.value = tag_types.map(item => ({
-                value: item.id,
-                title: item.title,
-                name: item.title 
-            }));
-
-            storageLocations.value = storage_locations.map(item => ({
-                value: item.id,
-                title: item.name,
-                name: item.name 
-            }));
-
-            pageLoading.value = false
-        })
-        .catch((error) => {
-            console.log(error);
-            pageLoading.value = false
+    try {
+        const token = JwtService.getToken();
+    
+        const response = await axios.get('/rfid/get-data', {
+            params: {
+                page,
+                itemsPerPage,
+                sort: sortQuery.value,
+                search: searchValue.value,
+                filters: filters
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
         });
+
+        const { table, statistics, tag_types, storage_locations } = response.data;
+        totalItems.value = table.total;
+        serverItems.value = table.data;
+
+        // statisticsData.value = statistics;
+
+        tagTypesOption.value = tag_types.map(item => ({
+            value: item.id,
+            title: item.title,
+            name: item.title
+        }));
+
+        storageLocations.value = storage_locations.map(item => ({
+            value: item.id,
+            title: item.name,
+            name: item.name
+        }));
+
+    } catch (error) {
+        console.log(error);
+    } finally {
+        pageLoading.value = false;
+    }
 }
 
 const handleViewRfid = (item) => {
