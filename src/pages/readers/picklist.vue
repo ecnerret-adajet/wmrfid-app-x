@@ -49,20 +49,31 @@ const reloadPageInterval = () => {
     }, 1000);
 };
 
+const refreshData = () => {
+
+}
+
 const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
         shipment.value = response.data
-
-        if (response.data.shipment_number == 'NO SHIPMENT') {
-            errorMessage.value = 'No shipment detected. Please tap again';
-            dialogVisible.value = true
+        
+        if (response.data.original?.error) {
+            errorMessage.value = response.data.original.error;
+            dialogVisible.value = true;
         } else {
-            if (shipment.value?.shipment_number && shipment.value?.shipment_number !== "") {
-                await fetchShipmentDetails(shipment.value.shipment_number);
-            }  
-            dialogVisible.value = false
+            // Check if the shipment number is 'NO SHIPMENT' from the response
+            if (response.data.shipment_number === 'NO SHIPMENT') {
+                errorMessage.value = 'No shipment detected. Please tap again';
+                dialogVisible.value = true;
+            } else {
+                // Proceed with fetching shipment details if the shipment number is valid
+                if (shipment.value?.shipment_number && shipment.value?.shipment_number !== "") {
+                    await fetchShipmentDetails(shipment.value.shipment_number);
+                }
+                dialogVisible.value = false;
+            }
         }
     } catch (error) {
         dialogVisible.value = true
