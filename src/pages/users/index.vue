@@ -7,6 +7,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
@@ -23,6 +24,7 @@ const errorMessage = ref(null);
 const storageLocations = ref([]);
 const plantsOption = ref([]);
 const rolesOption = ref([]);
+const authStore = useAuthStore();
 
 const toast = ref({
     message: 'User successfully created!',
@@ -164,26 +166,33 @@ const submit = async () => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="9">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
-        <VCol md="1" class="d-flex justify-center align-center">
-                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                    <template v-slot:prepend>
-                        <v-icon color="white"></v-icon>
-                    </template>
-                    Filter
-                </v-btn>
-        </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="openDialog">Add User</v-btn>
-        </VCol>
-    </VRow>
+
+    <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
+
+        <v-btn
+            class="d-flex align-center"
+            prepend-icon="ri-equalizer-line"
+            @click="filterModalOpen"
+        >
+            <template #prepend>
+            <v-icon color="white"></v-icon>
+            </template>
+            Filter
+        </v-btn>
+
+        <v-btn
+            v-if="authStore.user.is_super_admin"
+            class="d-flex justify-center align-center"
+            @click="openDialog"
+        >
+            Add User
+        </v-btn>
+    </div>
 
     <VCard>
         <datatable ref="datatableRef" :plants-option="plantsOption" :roles-option="rolesOption" @pagination-changed="onPaginationChanged" 
-            :search="searchValue"
+            :search="searchValue" 
         />
     </VCard>
 
@@ -205,7 +214,9 @@ const submit = async () => {
                     v-model="form.email" 
                     :rules="[value => !!value || 'Email address is required']"
                 />
-                <v-select class="mt-4"
+                
+                <!-- Show only if not super admin role selected -->
+                <v-select class="mt-4" v-if="form.role_id !== 1"
                     v-model="form.plant_ids"
                     :items="plantsOption"
                     item-title="title"
@@ -217,7 +228,7 @@ const submit = async () => {
                     closable-chips
                     :rules="[value => !!value || 'Please select an item from the list']"
                 />
-                <v-select class="mt-4"
+                <v-select class="mt-4" v-if="form.role_id !== 1"
                     v-model="form.storage_location_ids"
                     :items="storageLocations"
                     item-title="name"

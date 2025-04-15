@@ -152,7 +152,6 @@ const save = async () => {
                 items: state.layout,
                 removedItems : removedItems 
             };
-            console.log(payload.items);
             
             const response = await ApiService.post('warehouse-mapping/store', payload)
             toast.message = 'Map updated successfully!'
@@ -234,8 +233,6 @@ const proceedRemove = () => {
 const saveEdit = () => {
     if (actionForm.value.isValid) {
         const item = state.layout.find(obj => obj.i === selectedItem.i);
-        console.log(item);
-        console.log(selectedItem);
         
         if (!item) return;
         

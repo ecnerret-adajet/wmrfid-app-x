@@ -1,5 +1,5 @@
 <script setup>
-import { useAuthStore, } from '@/stores/auth';
+import { useAuthStore } from '@/stores/auth';
 import avatar1 from '@images/avatars/avatar-1.png';
 import { useRouter } from 'vue-router';
 
@@ -60,14 +60,14 @@ const handleLogout = () => {
             </template>
 
             <VListItemTitle class="font-weight-semibold">
-              John Doe
+              {{ store.user.name || 'User' }}
             </VListItemTitle>
-            <VListItemSubtitle>Admin</VListItemSubtitle>
+            <!-- <VListItemSubtitle>Admin</VListItemSubtitle> -->
           </VListItem>
           <VDivider class="my-2" />
 
           <!-- 👉 Profile -->
-          <VListItem link>
+          <!-- <VListItem link>
             <template #prepend>
               <VIcon
                 class="me-2"
@@ -77,7 +77,7 @@ const handleLogout = () => {
             </template>
 
             <VListItemTitle>Profile</VListItemTitle>
-          </VListItem>
+          </VListItem> -->
 
           <!-- 👉 Settings -->
           <VListItem link>
@@ -93,7 +93,7 @@ const handleLogout = () => {
           </VListItem>
 
           <!-- 👉 Pricing -->
-          <VListItem link>
+          <!-- <VListItem link>
             <template #prepend>
               <VIcon
                 class="me-2"
@@ -103,7 +103,7 @@ const handleLogout = () => {
             </template>
 
             <VListItemTitle>Pricing</VListItemTitle>
-          </VListItem>
+          </VListItem> -->
 
           <!-- 👉 FAQ -->
           <VListItem link>

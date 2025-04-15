@@ -10,6 +10,10 @@ import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
 
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+
 const dialogVisible = ref(false)
 const searchValue = ref('');
 const datatableRef = ref(null);
@@ -42,7 +46,6 @@ const fetchDataDropdown = async () => {
         const preReqData = await ApiService.get('warehouse/get-data-dropdown');
         const { plants } = preReqData.data
         plantsOption.value = plants
-        console.log(plantsOption);
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -132,22 +135,28 @@ const submit = async () => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="9">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
-        <VCol md="1" class="d-flex justify-center align-center">
-                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                    <template v-slot:prepend>
-                        <v-icon color="white"></v-icon>
-                    </template>
-                    Filter
-                </v-btn>
-        </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="openDialog">Add New Storage Location</v-btn>
-        </VCol>
-    </VRow>
+    <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
+
+        <v-btn
+            class="d-flex align-center"
+            prepend-icon="ri-equalizer-line"
+            @click="filterModalOpen"
+        >
+            <template #prepend>
+            <v-icon color="white"></v-icon>
+            </template>
+            Filter
+        </v-btn>
+
+        <v-btn
+            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            class="d-flex justify-center align-center"
+            @click="openDialog"
+        >
+            Add New Storage Location
+        </v-btn>
+    </div>
 
     <VCard>
         <datatable ref="datatableRef" :plants-option="plantsOption" @pagination-changed="onPaginationChanged" 

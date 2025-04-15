@@ -1,7 +1,7 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
 import { useAuthStore } from '@/stores/auth';
-import logo from '@images/logo.svg?raw';
+import alc_logo from '@images/alc.png';
 import { useRouter } from "vue-router";
 import { VForm } from 'vuetify/components/VForm';
 
@@ -48,16 +48,10 @@ const handleLogin = async (values) => {
         <VCard class="auth-card pa-4 pt-7" max-width="448">
             <VCardItem class="justify-center">
                 <RouterLink to="/" class="d-flex align-center gap-3">
-                    <div class="d-flex" v-html="logo" />
-                    <h2 class="font-weight-medium text-2xl text-uppercase">
-                        WMRFID
-                    </h2>
+                    <img class="mx-auto" :src="alc_logo" alt="" srcset="" width="190">
                 </RouterLink>
             </VCardItem>
             <VCardText class="pt-2">
-                <h4 class="text-h4 mb-1">
-                    Welcome to WMRFID
-                </h4>
                 <p class="mb-0">
                     Please sign-in to your account
                 </p>

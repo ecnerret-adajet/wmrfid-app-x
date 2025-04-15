@@ -3,6 +3,7 @@ import VerticalNavSectionTitle from '@/@layouts/components/VerticalNavSectionTit
 import AddingModal from '@/components/AddingModal.vue';
 import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -13,6 +14,7 @@ const openRfidRegistrationModal = (event) => {
     showRegistrationModal.value = true;
 }
 
+const authStore = useAuthStore();
 const tagTypes = ref([]);
 const storageLocations = ref([]);
 const registrationModalForm = ref(null);
@@ -101,10 +103,10 @@ const proceedMapping = () => {
     <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 
     <!-- Authentication Section  -->
-    <VerticalNavSectionTitle :item="{ heading: 'Authentication'}" />
-    <VerticalNavLink :item="{ title: 'Users', icon: 'ri-user-line', to: '/users'}"/>
-    <VerticalNavLink :item="{ title: 'Roles', icon: 'ri-group-line', to: '/roles'}"/>
-    <VerticalNavLink :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions'}"/>
+    <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"  :item="{ heading: 'Authentication'}" />
+    <VerticalNavLink v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin" :item="{ title: 'Users', icon: 'ri-user-line', to: '/users'}"/>
+    <VerticalNavLink v-if="authStore.user?.is_super_admin" :item="{ title: 'Roles', icon: 'ri-group-line', to: '/roles'}"/>
+    <VerticalNavLink v-if="authStore.user?.is_super_admin" :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions'}"/>
 
     <!-- Warehouse Mapping  -->
     <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'" >

@@ -6,9 +6,12 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
+
+const authStore = useAuthStore();
 
 const dialogVisible = ref(false)
 const datatableRef = ref(null);
@@ -141,22 +144,30 @@ const clearFilters = () => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="9">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
-        <VCol md="1" class="d-flex justify-center align-center">
-                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                    <template v-slot:prepend>
-                        <v-icon color="white"></v-icon>
-                    </template>
-                    Filter
-                </v-btn>
-        </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="openDialog">Add Reader</v-btn>
-        </VCol>
-    </VRow>
+   
+
+    <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
+
+        <v-btn
+            class="d-flex align-center"
+            prepend-icon="ri-equalizer-line"
+            @click="filterModalOpen"
+        >
+            <template #prepend>
+            <v-icon color="white"></v-icon>
+            </template>
+            Filter
+        </v-btn>
+    
+        <v-btn
+            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            class="d-flex justify-center align-center"
+            @click="openDialog"
+        >
+            Add Reader
+        </v-btn>
+    </div>
     
     <VCard>
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 

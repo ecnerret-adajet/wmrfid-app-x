@@ -9,8 +9,9 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
+import { useAuthStore } from '@/stores/auth';
 
-
+const authStore = useAuthStore();
 
 const emits = defineEmits(['pagination-changed']);
 
@@ -62,6 +63,7 @@ const headers = [
         title: 'ACTIONS',
         key: 'actions',
         sortable: false,
+        align: 'center'
     },
 ]
 
@@ -194,9 +196,9 @@ defineExpose({
 
     <!-- Actions -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
+      <div class="d-flex gap-1 justify-center align-center">
 
-        <IconBtn
+        <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"
           size="small"
           @click="editItem(item)"
         >

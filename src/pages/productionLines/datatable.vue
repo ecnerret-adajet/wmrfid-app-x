@@ -4,11 +4,14 @@ import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import Moment from "moment";
 import { ref } from 'vue';
 import { VDataTableServer } from 'vuetify/components';
 
 const emits = defineEmits(['pagination-changed']);
+
+const authStore = useAuthStore();
 
 const props = defineProps({
     search: {
@@ -63,6 +66,7 @@ const headers = [
         title: 'ACTIONS',
         key: 'actions',
         sortable: false,
+        align: 'center'
     },
 ]
 
@@ -217,8 +221,8 @@ defineExpose({
 
     <!-- Actions -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
-        <IconBtn
+      <div class="d-flex gap-1 justify-center align-center">
+        <IconBtn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
           size="small"
           @click="editItem(item)"
         >

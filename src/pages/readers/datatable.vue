@@ -5,9 +5,12 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { READER_STATUS } from '@/composables/useEnums';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+
+
 
 const emits = defineEmits(['pagination-changed']);
 
@@ -26,6 +29,7 @@ const props = defineProps({
     },
 });
 
+const authStore = useAuthStore();
 const editDialog = ref(false);
 const deleteDialog = ref(false);
 const selectedReader = ref(null);
@@ -245,7 +249,7 @@ defineExpose({
             </v-menu>
         </template>
 
-        <IconBtn
+        <IconBtn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
           size="small"
           @click="editItem(item)"
         >

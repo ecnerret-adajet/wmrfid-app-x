@@ -4,9 +4,11 @@ import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import Moment from "moment";
 import { ref } from 'vue';
 import { VDataTableServer } from 'vuetify/components';
+
 
 const emits = defineEmits(['pagination-changed']);
 
@@ -22,9 +24,10 @@ const props = defineProps({
     rolesOption: {
         type: Array,
         default: () => []
-    }
+    },
 });
 
+const authStore = useAuthStore();
 const editDialog = ref(false);
 const deleteDialog = ref(false);
 const selectedUser = ref(null);
@@ -233,14 +236,14 @@ defineExpose({
 
     <!-- Actions -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
+      <div v-if="authStore.user?.is_super_admin" class="d-flex gap-1">
         <IconBtn
           size="small"
           @click="editItem(item)"
         >
           <VIcon icon="ri-pencil-line" />
         </IconBtn>
-        <IconBtn
+        <IconBtn 
           size="small"
           @click="deleteItem(item)"
         >
@@ -284,7 +287,7 @@ defineExpose({
                     v-model="form.email" 
                     :rules="[value => !!value || 'Email address is required']"
                 />
-                <v-select class="mt-4"
+                <v-select class="mt-4" v-if="form.role_id !== 1"
                     v-model="form.plant_ids"
                     :items="plantsOption"
                     label="Select Plants"
@@ -293,9 +296,10 @@ defineExpose({
                     closable-chips
                     :rules="[value => !!value || 'Please select an item from the list']"
                 />
-                <v-select class="mt-4"
+                <v-select class="mt-4" 
                     v-model="form.storage_location_ids"
                     :items="storageLocations"
+                    v-if="form.role_id !== 1"
                     item-title="name"
                     item-value="id"
                     label="Select Storage Locations"

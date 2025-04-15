@@ -6,13 +6,17 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+
+
 
 const searchValue = ref('');
 const serverItems = ref([]);
@@ -233,22 +237,23 @@ const proceedRegister = () => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="9">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
-        <VCol md="1" class="d-flex justify-center align-center">
-            <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                <template v-slot:prepend>
-                    <v-icon color="white"></v-icon>
-                </template>
-                Filter
-            </v-btn>
-        </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block @click="handleRegister">Register RFID</v-btn>
-        </VCol>
-    </VRow>
+    <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
+
+        <v-btn
+            class="d-flex align-center"
+            prepend-icon="ri-equalizer-line"
+            @click="filterModalOpen"
+        >
+            <template #prepend>
+            <v-icon color="white"></v-icon>
+            </template>
+            Filter
+        </v-btn>
+        <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            @click="handleRegister">Register RFID
+        </v-btn>
+    </div>
 
     <VCard>
         <VDataTableServer
