@@ -5,11 +5,13 @@ import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
+import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
+import axios from 'axios';
 
 const authStore = useAuthStore();
 
@@ -35,37 +37,41 @@ const sortQuery = ref('-created_at'); // Default sort
 const errorMessage = ref(null)
 const filters = ref(null);
 const router = useRouter();
+const multipleMaterialModal = reactive({
+    show: false,
+    title: 'Allow Multiple Materials in Blocks?',
+    message: 'Enabling this allows multiple materials to be placed in warehouse block.',
+    warehouse: null,
+    loading: false,
+    value: false,
+});
 
-const headers = [
-    {
-        title: 'WAREHOUSE',
-        key: 'name',
-    },
-    {
-        title: 'CODE',
-        key: 'code',
-    },
-    {
-        title: 'PLANT',
-        key: 'plant_id',
-    },
-    {
-        title: 'STORAGE LAYERS',
-        key: 'layer_count',
+const headers = computed(() => {
+    const baseHeaders = [
+        { title: 'WAREHOUSE', key: 'name' },
+        { title: 'CODE', key: 'code' },
+        { title: 'PLANT', key: 'plant_id' },
+        { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
+        { title: 'LAST UPDATED AT', key: 'updated_at' },
+    ];
+    if (authStore.user?.is_super_admin) {
+        baseHeaders.splice(4, 0, {
+            title: 'Allow Multiple Materials',
+            key: 'blocks_allow_multiple_materials',
+            sortable: false,
         align: 'center',
-        sortable: false,
-    },
-    {
-        title: 'LAST UPDATED AT',
-        key: 'updated_at',
-    },
-    {
+        });
+    }
+
+    baseHeaders.push({
         title: 'ACTIONS',
         key: 'actions',
         sortable: false,
-        align: 'center'
-    },
-]
+        align: 'center',
+    });
+
+    return baseHeaders;
+});
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     
@@ -91,7 +97,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         })
         .then((response) => {
             totalItems.value = response.data.total;
-            serverItems.value = response.data.data
+            serverItems.value = response.data.data.map(item => ({
+                ...item,
+                blocks_allow_multiple_materials_bool: !!item.blocks_allow_multiple_materials
+            }));
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -163,10 +172,60 @@ const viewMap = (item) => {
     });
 }
 
+const handleAllowMultiple = async () => {
+    multipleMaterialModal.loading = true
+    try {
+        const token = JwtService.getToken();
+        const flag = multipleMaterialModal.warehouse?.blocks_allow_multiple_materials == false ? true : false;
+
+        const response = await axios.patch(
+            `warehouse/${multipleMaterialModal.warehouse?.id}/update-multiple-materials-flag`,
+            {
+                blocks_allow_multiple_materials: flag
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        if (response.data) {
+            toast.value.message = 'Warehouse updated successfully!';
+            toast.value.show = true;
+            loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: props.search
+            });
+        }
+    } catch (error) {
+        console.error('Error updating warehouse:', error);
+    } finally {
+        multipleMaterialModal.loading = false;
+        multipleMaterialModal.show = false;
+    }
+}
+
+const onToggleSwitch = (warehouse) => {
+    if (warehouse) {
+        multipleMaterialModal.warehouse = warehouse;
+        multipleMaterialModal.title = warehouse.blocks_allow_multiple_materials == false ?
+            `Allow Multiple Materials` : `Disallow Multiple Materials`;
+        multipleMaterialModal.message = warehouse.blocks_allow_multiple_materials == false ?
+            `Enabling this will allow multiple materials in <strong>${warehouse.name}</strong> to be placed in a warehouse block.` : 
+            `Disabling this will prevent multiple materials from being placed in the warehouse block at <strong>${warehouse.name}</strong>`;
+        multipleMaterialModal.show = true;
+    }
+}
+
 defineExpose({
     loadItems,
     applyFilters
 })
+
+
 </script>
 
 <template>
@@ -181,6 +240,44 @@ defineExpose({
         @update:options="loadItems"
         class="text-no-wrap"
     >
+
+    <template v-slot:headers="{ columns, isSorted, getSortIcon, toggleSort }">
+      <tr>
+        <template v-for="column in columns" :key="column.key">
+          <th>
+            <div class="d-flex justify-center align-center">
+              <span
+                class="me-2 cursor-pointer"
+                @click="column.sortable && toggleSort(column)"
+                v-text="column.title"
+              ></span>
+
+              <v-icon
+                v-if="isSorted(column)"
+                :icon="getSortIcon(column)"
+                color="medium-emphasis"
+              ></v-icon>
+
+                <v-tooltip v-if="column.key == 'blocks_allow_multiple_materials'" 
+                    text="Enabling this allows multiple materials to be placed in warehouse block.">
+                    <template v-slot:activator="{ props }">
+                        <i v-bind="props" class="ri-question-line text-xl"></i>
+                    </template>
+                </v-tooltip>
+            </div>
+          </th>
+        </template>
+      </tr>
+    </template>
+
+    <template #item.blocks_allow_multiple_materials="{ item }">
+        <v-switch
+            class="d-flex justify-center" readonly
+            :model-value="item.blocks_allow_multiple_materials_bool"
+            @change="onToggleSwitch(item)" 
+            color="primary"
+        ></v-switch>
+    </template>
 
     <template #item.plant_id="{ item }">
         {{ item.plant?.name }}
@@ -256,6 +353,28 @@ defineExpose({
         </template>
     </EditingModal>
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <v-dialog v-model="multipleMaterialModal.show" max-width="600px" persistent>
+    
+        <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
+            <v-icon
+                class="mb-5"
+                color="primary"
+                icon="ri-information-line"
+                size="112"
+            ></v-icon>
+
+            <h2 class="text-h4">{{ multipleMaterialModal.title }}</h2>
+            <p class="text-subtitle text-grey-700 font-weight-medium mb-6 mt-4" v-html="multipleMaterialModal.message">
+            </p>
+            <div class="text-end">
+                <v-btn color="secondary" variant="outlined" @click="multipleMaterialModal.show = false" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleAllowMultiple" color="primary" class="px-12" :loading="multipleMaterialModal.loading">
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </v-sheet>
+    </v-dialog>
+
+    <Toast :show="toast.show" :message="toast.message" color="success" @update:show="toast.show = $event"/>
 
 </template>

@@ -192,9 +192,6 @@ const clearFilters = () => {
                     <div class="mt-4">
                         <DateTimePicker v-model="form.start_date_time" placeholder="Start Datetime" />
                     </div>
-                    <div class="mt-4">
-                        <DateTimePicker v-model="form.end_date_time" placeholder="End Datetime" />
-                    </div>
                     <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                         {{ errorMessage }}
                     </VAlert>

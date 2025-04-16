@@ -30,6 +30,19 @@ const headers = [
         title: 'DESCRIPTION',
         key: 'description',
     },
+
+    {
+        title: 'MATERIAL TYPE',
+        key: 'material_type',
+        align: 'center',
+        sortable: false
+    },
+    {
+        title: 'MAX STORAGE PERIOD',
+        key: 'max_storage_period',
+        align: 'center',
+        sortable: false
+    },
     {
         title: 'BU MATERIAL',
         key: 'bu_material',

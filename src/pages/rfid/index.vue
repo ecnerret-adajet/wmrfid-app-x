@@ -48,6 +48,10 @@ const headers = [
         key: 'rfid_code',
     },
     {
+        title: 'STORAGE LOCATION',
+        key: 'storage_location',
+    },
+    {
         title: 'PHYSICAL ID',
         key: 'physical_id',
     },

@@ -150,7 +150,7 @@ const submit = async () => {
         </v-btn>
 
         <v-btn
-            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            v-if="authStore.user?.is_super_admin"
             class="d-flex justify-center align-center"
             @click="openDialog"
         >
