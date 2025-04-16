@@ -130,7 +130,7 @@ const fetchLoadStatus = async (shipmentNumber) => {
             // verify if the total read pallets is equal to the actual read pallets
             if(totalRead.value === actualRead.value) {
                 // call the sap load end
-                sapLoadEnd(shipmentNumber);
+                // sapLoadEnd(shipmentNumber);
             }
         } 
         shipmentData.deliveries.forEach(item => {
