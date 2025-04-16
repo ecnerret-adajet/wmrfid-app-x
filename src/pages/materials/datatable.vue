@@ -30,7 +30,10 @@ const headers = [
         title: 'DESCRIPTION',
         key: 'description',
     },
-
+    {
+        title: 'PLANT',
+        key: 'plant',
+    },
     {
         title: 'MATERIAL TYPE',
         key: 'material_type',
@@ -117,6 +120,10 @@ defineExpose({
         @update:options="loadItems"
         class="text-no-wrap"
     >
+
+    <template #item.plant="{ item }">
+        {{ item.plant?.name  }}
+    </template>
 
     <template #item.created_at="{ item }">
         {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
