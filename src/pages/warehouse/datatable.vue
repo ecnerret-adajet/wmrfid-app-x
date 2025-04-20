@@ -167,9 +167,16 @@ const form = ref({
 });
 
 const viewMap = (item) => {
-    router.push({
-        path: `/warehouse-map/${generateSlug(item.name)}`,
-    });
+    if (authStore.user?.is_warehouse_operator) {
+        router.push({
+            path: `operator/${generateSlug(item.name)}/movement`,
+        });
+    } else {
+        router.push({
+            path: `/warehouse-map/${generateSlug(item.name)}`,
+        });
+    }
+    
 }
 
 const handleAllowMultiple = async () => {

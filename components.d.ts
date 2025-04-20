@@ -7,6 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActiveShipments: typeof import('./src/components/dashboard/ActiveShipments.vue')['default']
     AddingModal: typeof import('./src/components/AddingModal.vue')['default']
     BlockAssignModal: typeof import('./src/components/BlockAssignModal.vue')['default']
     Breadcrumbs: typeof import('./src/components/Breadcrumbs.vue')['default']
@@ -21,11 +22,13 @@ declare module 'vue' {
     EditingModal: typeof import('./src/components/EditingModal.vue')['default']
     ErrorHeader: typeof import('./src/components/ErrorHeader.vue')['default']
     FilteringModal: typeof import('./src/components/FilteringModal.vue')['default']
+    InventoryAgeChart: typeof import('./src/components/dashboard/InventoryAgeChart.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     MapBlockAssignModal: typeof import('./src/components/MapBlockAssignModal.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
+    RecentProductionRuns: typeof import('./src/components/dashboard/RecentProductionRuns.vue')['default']
     ResponseModal: typeof import('./src/components/ResponseModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
@@ -33,5 +36,10 @@ declare module 'vue' {
     SessionExpiredModal: typeof import('./src/components/SessionExpiredModal.vue')['default']
     ThemeSwitcher: typeof import('./src/@core/components/ThemeSwitcher.vue')['default']
     Toast: typeof import('./src/components/Toast.vue')['default']
+    TodayProduction: typeof import('./src/components/dashboard/TodayProduction.vue')['default']
+    TotalBatchesToday: typeof import('./src/components/dashboard/TotalBatchesToday.vue')['default']
+    TotalInventoryItems: typeof import('./src/components/dashboard/TotalInventoryItems.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
+    WarehouseUtilization: typeof import('./src/components/dashboard/WarehouseUtilization.vue')['default']
   }
 }

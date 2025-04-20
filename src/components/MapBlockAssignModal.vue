@@ -6,6 +6,7 @@ import { ref } from 'vue';
 import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
 import Toast from './Toast.vue';
+import Moment from 'moment';
 
 const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
 
@@ -473,7 +474,9 @@ const handleSearch = debounce((search) => {
                 <tr class="text-no-wrap">
                     <td style="width: 200px;">{{ item.rfid?.name }}</td>
                     <td class="text-center" style="width: 200px;">{{ item.batch }}</td>
-                    <td style="width: 200px;">{{ item.mfg_date }}</td>
+                    <td style="width: 200px;">
+                        {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                    </td>
                     <td style="width: 200px;">
                         <div v-if="enableBinTransfer && item.isAssigned" class="d-flex justify-end align-center">
                             <v-btn @click="binTransfer(item)" class="px-5" type="button" color="info">
