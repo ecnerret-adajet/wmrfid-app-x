@@ -227,6 +227,12 @@ const onToggleSwitch = (warehouse) => {
     }
 }
 
+const handleViewWarehouse = (item) => {
+    router.push({
+        path: `/warehouse/${generateSlug(item.name)}/overview`,
+    });
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -275,6 +281,12 @@ defineExpose({
           </th>
         </template>
       </tr>
+    </template>
+
+    <template #item.name="{ item }">
+        <span @click="handleViewWarehouse(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
+            {{ item.name }}
+        </span>
     </template>
 
     <template #item.blocks_allow_multiple_materials="{ item }">

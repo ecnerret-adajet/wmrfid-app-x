@@ -165,7 +165,25 @@ export const routes = [
               ],
             },
         },
-
+        {
+            path: 'warehouse/:location/overview',
+            name: 'warehouse.show',
+            component: () => import('@/pages/warehouse/show.vue'),
+            meta: {
+                pageTitle: "Storage Location",
+                breadcrumbs: (route) => {
+                    const unslugify = (slug) =>
+                      slug
+                        .replace(/-/g, ' ')              // replace dashes with spaces
+                        .replace(/\b\w/g, l => l.toUpperCase()); // capitalize each word
+              
+                    return [
+                      { label: "Storage Location", link: "/warehouse" },
+                      { label: unslugify(route.params.location), link: `/warehouse/${route.params.location}/overview` }
+                    ]
+                }
+            },
+        },
         {
             path: 'rfid',
             name: 'rfid',
@@ -229,9 +247,18 @@ export const routes = [
     },
     {
         path: '/warehouse-map/:location',
-        component: () => import('@/pages/warehouse/map.vue'), 
+        name: 'warehouse-map',
+        component: () => import('@/pages/warehouse/showMap.vue'), 
         meta: {
             pageTitle: "Warehouse Map"
+        },
+    },
+    {
+        path: '/warehouse-map/:location/edit',
+        name: 'warehouse-map.edit',
+        component: () => import('@/pages/warehouse/editMap.vue'), 
+        meta: {
+            pageTitle: "Edit - Warehouse Map"
         },
     },
     {

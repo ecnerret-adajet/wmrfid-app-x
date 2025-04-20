@@ -91,7 +91,6 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         });
 
         const { shipment, deliveries_table, reserved_orders_table  } = response.data;
-        console.log(response.data);
         shipmentData.value = shipment
         totalItems.value = deliveries_table.total;
         serverItems.value = deliveries_table.data;

@@ -280,17 +280,18 @@ const handleBack = () => {
 </script>
 
 <template>
-    <v-card class="mx-4 mt-3 px-3 py-4" style="border-radius: 0px !important;">
-        <div>
-            <v-btn @click="handleBack()"
-                class="ma-2"
-                color="grey-700"
-                icon="ri-arrow-left-line"
-                variant="text"
-            ></v-btn>
-        </div>
+    <v-card class="mx-4 mt-4 px-3 py-4" style="border-radius: 0px !important;">
+        
         <v-card-title class="d-flex justify-space-between align-center">
-            <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Map</h3>
+            <div class="d-inline-flex align-center">
+                <v-btn @click="handleBack()"
+                    class="ma-2"
+                    color="grey-700"
+                    icon="ri-arrow-left-line"
+                    variant="text"
+                ></v-btn>
+                <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Map</h3>
+            </div>
             <div class="d-flex justify-end">
                 <v-btn color="primary-2" 
                     @click="editCancelClicked"
