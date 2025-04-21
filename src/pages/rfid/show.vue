@@ -6,6 +6,7 @@ import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import History from './history.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -49,7 +50,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         })
         .then((response) => {
             const { table, rfid_data } = response.data
-            
+         
             totalItems.value = table.total;
             serverItems.value = table.data
             rfidData.value = rfid_data
@@ -242,5 +243,6 @@ const handleSearch = debounce((search) => {
                 </v-card>
             </div>
         </div>
+        <History class="mt-4" v-if="rfidData && rfidData.rfid_history && rfidData.rfid_history.length > 0" :rfid-data="rfidData"/>
     </div>
 </template>

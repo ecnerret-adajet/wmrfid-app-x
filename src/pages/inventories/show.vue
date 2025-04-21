@@ -253,9 +253,9 @@ const toast = ref({
             <v-row>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4"
+                        class="pa-4 bg-grey-100"
                         elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -286,9 +286,9 @@ const toast = ref({
                 </v-col>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4"
+                        class="pa-4 bg-grey-100"
                         elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -320,9 +320,9 @@ const toast = ref({
             
                 <v-col cols="3">
                     <v-card
-                        class="pa-4"
+                        class="pa-4 bg-grey-100"
                         elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -353,9 +353,9 @@ const toast = ref({
                 </v-col>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4"
+                        class="pa-4 bg-grey-100"
                         elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div

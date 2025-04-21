@@ -203,7 +203,7 @@ export const routes = [
                 pageTitle: "RFID Master",
                 breadcrumbs: (route) => [
                     { label: "RFID Master", link: "/rfid" },
-                    { label: `${route.params.physicalId}`, link: `/rfid/${route.params.physicalId}` }
+                    { label: `${route.params.physicalId}`, link: `/rfid/${route.params.type}/${route.params.physicalId}` }
                 ],
             },
         },
