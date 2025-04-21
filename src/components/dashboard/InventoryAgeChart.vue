@@ -1,12 +1,25 @@
 <script setup>
 import { ref } from 'vue';
 
-const series = ref([
-  {
-    name: 'Items',
-    data: [50, 35, 40, 10, 160], // Replace with your actual values
-  },
-])
+const props = defineProps({
+    data: {
+        type: Array,
+        default: () => [], // available, taken, reserved
+    },
+})
+
+const series = ref([])
+
+watch(() => props.data, (newVal) => {
+    series.value = []
+    if (newVal && Array.isArray(newVal)) {
+        series.value.push({
+            name: 'Materials',  
+            data: newVal,           
+        });
+    }
+}, { immediate: true });
+
 
 const chartOptions = ref({
   chart: {
@@ -39,7 +52,7 @@ const chartOptions = ref({
   colors: ['#2196F3'], // Blue
   tooltip: {
     y: {
-      formatter: (val) => `${val} items`,
+      formatter: (val) => `${val} qty`,
     },
   },
 })
@@ -51,12 +64,24 @@ const chartOptions = ref({
             Inventory Age Distribution
         </v-card-title>
     <v-card-text>
-      <VueApexCharts
-        type="bar"
-        height="350"
-        :options="chartOptions"
-        :series="series"
-      />
+      
+    </v-card-text>
+    <v-card-text class="d-flex justify-center align-center" >
+        <v-progress-circular
+            v-if="series.length === 0"
+            color="primary"
+            indeterminate
+        ></v-progress-circular>
+        <div v-else-if="series.every(val => val === 0)" class="text-center">
+            <span class="text-subtitle-1 font-weight-medium text-grey-600">No blocks found</span>
+        </div>
+        <VueApexCharts v-else
+            type="bar"
+            height="350"
+            width="450"
+            :options="chartOptions"
+            :series="series"
+        />
     </v-card-text>
     </v-card>
 </template>
