@@ -34,6 +34,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SearchInput: typeof import('./src/components/SearchInput.vue')['default']
     SessionExpiredModal: typeof import('./src/components/SessionExpiredModal.vue')['default']
+    SmartAssignModal: typeof import('./src/components/SmartAssignModal.vue')['default']
     ThemeSwitcher: typeof import('./src/@core/components/ThemeSwitcher.vue')['default']
     Toast: typeof import('./src/components/Toast.vue')['default']
     TodayProduction: typeof import('./src/components/dashboard/TodayProduction.vue')['default']

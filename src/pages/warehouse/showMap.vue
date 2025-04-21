@@ -1,10 +1,11 @@
 <script setup>
 import MapBlockAssignModal from '@/components/MapBlockAssignModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
+import SmartAssignModal from '@/components/SmartAssignModal.vue';
 import Toast from '@/components/Toast.vue';
 import { convertSlugToOriginal } from '@/composables/useHelpers';
-import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
+import axios from 'axios';
 import { debounce } from 'lodash';
 import { onMounted, reactive, ref, watch } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
@@ -37,6 +38,7 @@ const layersData = ref(null);
 const isFiltered = ref(false);
 const openAssignModal = ref(false);
 const storageLocationModel = ref(null);
+const smartAssignModal = ref(false);
 const selectedBlock = reactive({
     layers: [],
     data: null
@@ -76,15 +78,13 @@ const fetchStorageLocationInformation = async () => {
     state.layout = [];
     loading.value = true;
     try {
-        const response = await ApiService.get(`warehouse/get-storage-location-information/${storageLocation}`);
-        const { storage_location, layers_data, blocks } = response.data
- 
-        storageLocationModel.value = storage_location
+        const response = await axios.get(`warehouse/get-storage-location-information/${storageLocation}`);
+        const { details } = response.data
+
+        storageLocationModel.value = details.storage_location
+        layersData.value = details.layers_data;
         
-        layersData.value = layers_data;
-        
-        // Transform blocks data into GridItem format
-        state.layout = blocks.map((item, index) => ({
+        state.layout = details.blocks?.map((item, index) => ({
             i: String(index),
             x: item.x || 0, // Default to 0 if x is not provided
             y: item.y || 0, // Default to 0 if y is not provided
@@ -113,10 +113,13 @@ const fetchFilteredMap = async () => {
     state.layout = [];
     mapLoading.value = true;
     try {
-        const response = await ApiService.get(`warehouse/get-blocks/${storageLocation}/${searchValue.value}`);
-        const { storage_location, layers_data, blocks } = response.data
-        console.log(blocks);
-        state.layout = blocks.map((item, index) => ({
+        const response = await axios.get(`warehouse/get-storage-location-information/${storageLocation}/${searchValue.value}`);
+        const { details, inventories } = response.data
+
+        storageLocationModel.value = details.storage_location
+        layersData.value = details.layers_data;
+
+        state.layout = details.blocks?.map((item, index) => ({
             i: String(index),
             x: item.x || 0, // Default to 0 if x is not provided
             y: item.y || 0, // Default to 0 if y is not provided
@@ -196,7 +199,6 @@ const handleEditMap = () => {
 </script>
 
 <template>
-   
         <v-card elevation="2" class="mx-4 mt-4 px-3 py-4" style="border-radius: 0px !important;">
             <v-card-title class="d-flex justify-space-between align-center">
                 <div class="d-inline-flex align-center">
@@ -262,10 +264,16 @@ const handleEditMap = () => {
                                 </VCol>
                             </VRow>
                         </VListItem>
-                    
+                        
                         <!-- Add item as needed  -->
                     </VList>
             </v-card-text>
+            <div class="d-flex justify-end">
+                <!-- <v-btn color="primary-light" @click="smartAssignModal = true"
+                    class="px-9 mr-6 text-grey-100">
+                    Smart Assign
+                </v-btn> -->
+            </div>
         </v-card>
         <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
 
@@ -354,7 +362,11 @@ const handleEditMap = () => {
         @assign-success="onAssignSuccess"
         @action-success="actionSuccess"
         :show="openAssignModal" @close="openAssignModal = false"/>
+
+    <SmartAssignModal :storage-location="storageLocation" :show="smartAssignModal" @close="smartAssignModal = false"/>
+
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+
 </template>
 
 <style scoped>
