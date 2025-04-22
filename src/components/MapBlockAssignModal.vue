@@ -47,6 +47,10 @@ const headers = [
         sortable: false
     },
     {
+        title: 'Material',
+        key: 'material_id',
+    },
+    {
         title: 'BATCH',
         key: 'batch',
         align: 'center',
@@ -116,6 +120,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
         })
         .then((response) => {
+            
             totalItems.value = response.data.total;
             serverItems.value = response.data.data.map(item => ({
                 id: item.id,
@@ -127,6 +132,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 batch: item.batch,
                 mfg_date: item.mfg_date,
                 isAssigned: item.block_id !== null ? true : false,
+                material_id: item.material_id,
+                material: item.material
             }));
 
             loading.value = false
@@ -166,6 +173,7 @@ const loadAvailableBlocks = ({ page, itemsPerPage, sortBy, layerSearch }) => {
         })
         .then((response) => {
             totalLayerItems.value = response.data.total;
+
             layerItems.value = response.data.data.map(item => ({
                 id: item.id,
                 label: item.label,
@@ -211,6 +219,19 @@ const assign = (item) => {
 }
 
 const proceedAssign = async () => {
+    let allow_multiple_materials = props.block.data?.allowMultipleMaterials;
+    let selectedMaterialId = selectedInventory.value?.material_id;
+    
+    const hasDifferentMaterial = props.block.data?.inventories?.some(inv => inv.material_id !== selectedMaterialId);
+
+    if (!allow_multiple_materials && hasDifferentMaterial) {
+        toast.value.color = 'error';
+        toast.value.message = 'Different materials on same block is not allowed. Please contact admin.'
+        toast.value.show = true;
+        confirmModalOpen.value = false;
+        return;
+    }
+
     try {
         const response = await axios.post(`warehouse/assign-inventory`, {
             block: props.block.data,
@@ -333,7 +354,7 @@ const handleSearch = debounce((search) => {
 
 </script>
 <template>
-    <DefaultModal :dialog-title="'Block Details'" max-width="800px" :show="show" @close="closeModal">
+    <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal">
         <p class="text-h3 font-weight-black text-grey-700">{{block.data.lot?.label }} - {{ block.data.label }}</p>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
                 <template 
@@ -473,7 +494,8 @@ const handleSearch = debounce((search) => {
             <template v-slot:item="{ item }">
                 <tr class="text-no-wrap">
                     <td style="width: 200px;">{{ item.rfid?.name }}</td>
-                    <td class="text-center" style="width: 200px;">{{ item.batch }}</td>
+                    <td style="width: 150px;">{{ item.material?.description }}</td>
+                    <td class="text-center" style="width: 100px;">{{ item.batch }}</td>
                     <td style="width: 200px;">
                         {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
                     </td>

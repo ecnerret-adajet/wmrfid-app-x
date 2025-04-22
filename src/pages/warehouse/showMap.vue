@@ -80,7 +80,7 @@ const fetchStorageLocationInformation = async () => {
     try {
         const response = await axios.get(`warehouse/get-storage-location-information/${storageLocation}`);
         const { details } = response.data
-
+        
         storageLocationModel.value = details.storage_location
         layersData.value = details.layers_data;
         
@@ -98,6 +98,7 @@ const fetchStorageLocationInformation = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
         }));
 
         state.index = state.layout.length;
@@ -133,6 +134,7 @@ const fetchFilteredMap = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
         }));
 
         state.index = state.layout.length;

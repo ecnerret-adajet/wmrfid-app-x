@@ -1,10 +1,10 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
+import { convertSlugToOriginal } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { convertSlugToOriginal } from '@/composables/useHelpers';
 import logsDataTable from './logsDataTable.vue';
 import WarehouseMap from './warehouseMap.vue';
 
@@ -38,7 +38,6 @@ const fetchReaders = async () => {
     try {
         const response = await ApiService.get(`data/get-readers-by-location/${storageLocation}`);
         readers.value = response.data
-        console.log(response.data);
         
         if (readers.value.length > 0) {
             selectedReader.value = readers.value[0].id; // Set default selected tab
@@ -55,7 +54,6 @@ const fetchReaders = async () => {
 
 // Watch for changes in `selectedReader`
 watch(selectedReader, (newReaderId) => {
-    console.log(newReaderId);
     
     const reader = readers.value.find(r => r.id === newReaderId);
     selectedReaderName.value = reader ? reader.name : null;

@@ -254,7 +254,7 @@ const toast = ref({
         <div>
             <v-row>
                 <v-col cols="3">
-                    <v-card
+                    <v-card 
                         class="pa-4"
                         elevation="2"
                         style="border-radius: 4px; background-color: #f9fafb;"
@@ -280,7 +280,7 @@ const toast = ref({
                             Total Count
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ getTotalQuantity }}
+                            {{ getTotalQuantity || 0 }}
                             </div>
                         </div>
                         </div>

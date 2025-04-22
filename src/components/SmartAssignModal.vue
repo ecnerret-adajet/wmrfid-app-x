@@ -99,7 +99,7 @@ const loadInformation = async ({ page, itemsPerPage, sortBy, search }) => {
         const { details, table } = response.data
         totalItems.value = table.total;
         serverItems.value = table.data;
-        console.log(response.data);
+        // console.log(response.data);
         
         layersData.value = details.layers_data;
         

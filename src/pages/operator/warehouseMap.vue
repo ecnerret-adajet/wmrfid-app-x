@@ -88,6 +88,7 @@ const fetchStorageLocationInformation = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
         }));
 
         state.index = state.layout.length;
@@ -105,7 +106,6 @@ const fetchFilteredMap = async () => {
     try {
         const response = await ApiService.get(`warehouse/get-blocks/${props.storageLocation}/${searchValue.value}`);
         const { storage_location, layers_data, blocks } = response.data
-        console.log(blocks);
         state.layout = blocks.map((item, index) => ({
             i: String(index),
             x: item.x || 0, // Default to 0 if x is not provided
@@ -120,6 +120,7 @@ const fetchFilteredMap = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
         }));
 
         state.index = state.layout.length;

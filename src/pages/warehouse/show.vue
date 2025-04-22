@@ -125,6 +125,10 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     }
 }
 
+const handleViewBatch = (inventory) => {
+    router.push(`/inventories/${inventory.batch}`);
+}
+
 </script>
 <template>
     <div>
@@ -239,6 +243,11 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
                     @update:options="loadItems"
                     class="text-no-wrap border"
                 >
+                <template #item.batch="{ item }">
+                    <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
+                        {{ item.batch }}
+                    </span>
+                </template>
                 <template #item.physical_id="{ item }">
                     {{ item.rfid?.name }}
                 </template>

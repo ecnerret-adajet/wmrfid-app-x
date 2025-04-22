@@ -156,32 +156,69 @@ const selectLayer = (index, layer) => {
 }
 
 const assignInventoryToLayerBin = async (layer) => {
+    let selectedMaterialId = props.selectedInventory.inventory?.material_id;
+    // get 1 layer from defaultLayer.value and check storage location config
+    let allow_multiple_materials = defaultLayer.value[0].storage_location?.blocks_allow_multiple_materials;
+    const hasAssigned = defaultLayer.value.some(layer => layer.assigned_inventory);
+    const hasDifferentMaterial = defaultLayer.value.some(layer => {
+        const inv = layer.assigned_inventory;
+        return inv && inv.material_id !== selectedMaterialId;
+    });
 
-    if (defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] && defaultLayer.value[selectedLayerIndex.value]['assigned_inventory'] !== null) {
-        toast.value.message = 'Selected layer has an assigned inventory already!';
-        toast.value.color = 'error';
-        toast.value.show = true;
-    } else {
-
+    // if no inventory assigned to a block yet, assign immediately
+    if (!hasAssigned) {
         try {
-            
             const response = await axios.post(`warehouse/assign-inventory`, {
                 block: selectedBlock.value,
                 position: selectedLayer.value,
                 inventory: props.selectedInventory.inventory
-            }); 
+            });
 
-            if (response.status == 200) {
+            if (response.status === 200) {
                 emits('assign-success');
-            } 
-
+            }
         } catch (error) {
             console.error("Error assigning inventory:", error);
         } finally {
             layerLoading.value = false;
             close();
         }
+        return;
     }
+
+    if (!allow_multiple_materials && hasDifferentMaterial) {
+        toast.value.message = 'Multiple materials on the same block are not allowed. Please contact admin.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        selectedLayer.value = null;
+        selectedLayerIndex.value = -1;
+        return;
+    }
+
+    if (defaultLayer.value[selectedLayerIndex.value]?.assigned_inventory) {
+        toast.value.message = 'Selected layer has an assigned inventory already!';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+
+    try {
+        const response = await axios.post(`warehouse/assign-inventory`, {
+            block: selectedBlock.value,
+            position: selectedLayer.value,
+            inventory: props.selectedInventory.inventory
+        });
+
+        if (response.status === 200) {
+            emits('assign-success');
+        }
+    } catch (error) {
+        console.error("Error assigning inventory:", error);
+    } finally {
+        layerLoading.value = false;
+        close();
+    }
+        
 }
 
 const resetLayers = () => {
