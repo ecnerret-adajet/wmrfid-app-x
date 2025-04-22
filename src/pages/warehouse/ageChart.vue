@@ -1,12 +1,24 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
-const series = ref([
-  {
-    name: 'Items',
-    data: [50, 35, 40, 10, 160], // Replace with your actual values
-  },
-])
+const props = defineProps({
+    data: {
+        type: Array,
+        default: () => [], // available, taken, reserved
+    },
+})
+
+const series = ref([])
+
+watch(() => props.data, (newVal) => {
+    series.value = []
+    if (newVal && Array.isArray(newVal)) {
+        series.value.push({
+            name: 'Materials',  
+            data: newVal,           
+        });
+    }
+}, { immediate: true });
 
 const chartOptions = ref({
   chart: {

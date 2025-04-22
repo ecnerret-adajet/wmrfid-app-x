@@ -115,7 +115,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
         <v-col cols="12"
             sm="12"
             md="3">
-            <v-card
+            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else
                 class="pa-4"
                 elevation="2"
                 style="border-radius: 10px; background-color: #f9fafb;"
@@ -124,16 +125,16 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
                 <div
                     class="d-flex align-center justify-center mr-4"
                     style="
-                    width: 48px;
-                    height: 48px;
-                    background-color: #cae2fa;
-                    border-radius: 12px;
+                        width: 48px;
+                        height: 48px;
+                        background-color: #cae2fa;
+                        border-radius: 12px;
                     "
                 >
                     <v-icon
-                    icon="ri-barcode-box-line"
-                    color="primary"
-                    size="24"
+                        icon="ri-barcode-box-line"
+                        color="primary"
+                        size="24"
                     ></v-icon>
                 </div>
                 <div>
@@ -152,7 +153,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
         <v-col cols="12"
             sm="12"
             md="3">
-            <v-card
+            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else
                 class="pa-4"
                 elevation="2"
                 style="border-radius: 10px; background-color: #f9fafb;"
@@ -187,7 +189,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
         <v-col cols="12"
             sm="12"
             md="3">
-            <v-card
+            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else
                 class="pa-4"
                 elevation="2"
                 style="border-radius: 10px; background-color: #f9fafb;"
@@ -222,7 +225,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
         <v-col cols="12"
             sm="12"
             md="3">
-            <v-card
+            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else
                 class="pa-4"
                 elevation="2"
                 style="border-radius: 10px; background-color: #f9fafb;"
@@ -264,14 +268,16 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             sm="12"
             md="6"
         >
-            <WarehouseUtilization :series="statisticsData?.warehouse_utilization"/>
+            <v-skeleton-loader  v-if="pageLoading" type="card"></v-skeleton-loader>
+            <WarehouseUtilization v-else :series="statisticsData?.warehouse_utilization"/>
         </VCol>
         <VCol
             cols="12"
             sm="12"
             md="6"
         >
-            <InventoryAgeChart :data="statisticsData?.inventory_age"/>
+            <v-skeleton-loader  v-if="pageLoading" type="card"></v-skeleton-loader>
+            <InventoryAgeChart v-else :data="statisticsData?.inventory_age"/>
         </VCol>
     
     
@@ -285,6 +291,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             <VDataTableServer 
                     v-model:items-per-page="itemsPerPage"
                     :headers="headers"
+                    :loading="pageLoading"
                     :items="serverItems"
                     :items-length="totalItems"
                     item-value="id"
@@ -314,5 +321,5 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             </VDataTableServer>
         </v-card-text>
     </v-card>
-    <Loader :show="pageLoading"/>
+    
 </template>
