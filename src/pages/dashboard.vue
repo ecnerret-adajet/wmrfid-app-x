@@ -50,7 +50,8 @@ watch(() => filters.storage_location_id, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: sortQuery.value.replace('-', ''), order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
+        sortBy: [{ key: sortQuery.value.replace('-', ''), 
+        order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
     });
 });
 

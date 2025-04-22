@@ -58,7 +58,8 @@ const headers = [
     {
         title: 'CURRENT AGE',
         key: 'age',
-        align: 'center'
+        align: 'center',
+        sortable: false
     },
     {
         title: 'QUANTITY',
