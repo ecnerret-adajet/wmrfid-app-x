@@ -375,7 +375,12 @@ const handleViewBatch = (inventory) => {
             </template>
 
             <template #item.age="{ item }" class="d-flex align-center justify-center">
-                <span class="mr-1" :class="item.is_expired ? 'text-error' : 'text-warning'">
+                <span class="mr-1" 
+                    :class="item.is_expired 
+                                ? 'text-error' 
+                                : item.is_near_expiry 
+                                    ? 'text-warning' 
+                                    : ''">
                     {{ item.latest_mfg_date ? `${Moment().diff(Moment(item.latest_mfg_date), 'days')} ${Moment().diff(Moment(item.latest_mfg_date), 'days') === 1 ? 'day' : 'days'}` : '' }}
                 </span>
                 <v-tooltip v-if="item.is_near_expiry || item.is_expired" :text="item.is_expired ? 'This batch is already expired' : 'This batch is near expiring'">
@@ -417,5 +422,5 @@ const handleViewBatch = (inventory) => {
         </VDataTableServer>
     </VCard>
  
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message"  @update:show="toast.show = $event"/>
 </template>

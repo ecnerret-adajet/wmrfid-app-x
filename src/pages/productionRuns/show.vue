@@ -134,7 +134,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
             labelStats.value = statisticsData.value.find(item => item.type === 'Label')
             tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
-
+            
             tagTypesOption.value = [
                 { value: null, title: 'All' }, 
                 ...tag_types.map(item => ({
@@ -254,7 +254,8 @@ const toast = ref({
         <div>
             <v-row>
                 <v-col cols="3">
-                    <v-card 
+                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else
                         class="pa-4"
                         elevation="2"
                         style="border-radius: 4px; background-color: #f9fafb;"
@@ -287,7 +288,8 @@ const toast = ref({
                     </v-card>
                 </v-col>
                 <v-col cols="3">
-                    <v-card
+                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else
                         class="pa-4"
                         elevation="2"
                         style="border-radius: 4px; background-color: #f9fafb;"
@@ -313,7 +315,7 @@ const toast = ref({
                             Pallet Count
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ palletStats?.total_quantity || 0 }}
+                            {{ palletStats?.pallet_count || 0 }}
                             </div>
                         </div>
                         </div>
@@ -321,7 +323,8 @@ const toast = ref({
                 </v-col>
             
                 <v-col cols="3">
-                    <v-card
+                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else
                         class="pa-4"
                         elevation="2"
                         style="border-radius: 4px; background-color: #f9fafb;"
@@ -347,14 +350,15 @@ const toast = ref({
                             Label Count
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ labelStats?.total_quantity || 0 }}
+                            {{ labelStats?.label_count || 0 }}
                             </div>
                         </div>
                         </div>
                     </v-card>
                 </v-col>
                 <v-col cols="3">
-                    <v-card
+                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else
                         class="pa-4"
                         elevation="2"
                         style="border-radius: 4px; background-color: #f9fafb;"
@@ -380,7 +384,7 @@ const toast = ref({
                             Toner Bag
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ tonerBagStats?.total_quantity || 0 }}
+                            {{ tonerBagStats?.toner_bag_count || 0 }}
                             </div>
                         </div>
                         </div>
