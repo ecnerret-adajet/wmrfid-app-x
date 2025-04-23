@@ -62,7 +62,7 @@ const fetchDropdownData = async () => {
         });
 
         const { materials, production_lines, tag_types, storage_locations, statistics } = response.data
-        console.log(response.data);
+ 
         statisticsData.value = statistics
         productionLinesOption.value = production_lines.map(item => ({
             value: item.id,
@@ -221,7 +221,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
         })
         .then((response) => {
-            console.log(response.data.data);
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
             loading.value = false
@@ -542,33 +541,19 @@ const handleViewBatch = (item) => {
                 {{ item.material?.description }}
             </template>
 
-            <template #item.production_line_id="{ item }">
-                {{ item.production_run?.production_line?.name }}
-            </template>
-
             <template #item.latest_mfg_date="{ item }">
-                <span v-if="item.latest_mfg_date">{{ item.latest_mfg_date ? Moment(item.latest_mfg_date).format('MMMM D, YYYY') : '' }}</span>
-                <v-chip
-                    v-else
-                    color="warning"
-                    size="small">
-                    Pending
-                </v-chip>
+                <span v-if="item.start_date_time">{{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY') : '' }}</span>
             </template>
 
             <template #item.rfid_type="{ item }">
-                <span v-if="item.rfid_type !== 'Unknown'">{{ item.rfid_type }}</span>
-                <v-chip
-                    v-else
-                    color="warning"
-                    size="small">
-                    Pending
-                </v-chip>
+                <span>{{ item.tag_type_name }}</span>
             </template>
 
             <template #item.total_quantity="{ item }">
                 {{ item.total_quantity }}
             </template>
+
+          
 
             <template #item.start_date_time="{ item }">
                 {{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
