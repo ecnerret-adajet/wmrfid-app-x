@@ -374,8 +374,20 @@ const handleViewBatch = (inventory) => {
                 {{ item.material?.description }}
             </template>
 
-            <template #item.age="{ item }">
-                {{ item.latest_mfg_date ? `${Moment().diff(Moment(item.latest_mfg_date), 'days')} ${Moment().diff(Moment(item.latest_mfg_date), 'days') === 1 ? 'day' : 'days'}` : '' }}
+            <template #item.age="{ item }" class="d-flex align-center justify-center">
+                <span class="mr-1" :class="item.is_expired ? 'text-error' : 'text-warning'">
+                    {{ item.latest_mfg_date ? `${Moment().diff(Moment(item.latest_mfg_date), 'days')} ${Moment().diff(Moment(item.latest_mfg_date), 'days') === 1 ? 'day' : 'days'}` : '' }}
+                </span>
+                <v-tooltip v-if="item.is_near_expiry || item.is_expired" :text="item.is_expired ? 'This batch is already expired' : 'This batch is near expiring'">
+                    <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" v-if="item.is_near_expiry || item.is_expired"
+                            :color="item.is_expired ? 'error' : 'warning'"
+                            icon="ri-error-warning-line"
+                        >
+                        </v-icon>
+                    </template>
+                </v-tooltip>
+                
             </template>
 
             <template #item.stock_status="{ item }">

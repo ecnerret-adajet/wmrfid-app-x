@@ -50,6 +50,12 @@ const headers = [
         key: 'mfg_date',
     },
     {
+        title: 'IS LOADED',
+        key: 'is_loaded',
+        align: 'center',
+        sortable: false
+    },
+    {
         title: 'IS WRAPPED',
         key: 'is_wrapped',
         align: 'center',
@@ -115,7 +121,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             
             totalItems.value = table.total;
             serverItems.value = table.data
-            
+
             statisticsData.value = statistics
 
             tagTypesOption.value = [
@@ -171,9 +177,9 @@ const totalQuantity = computed(() => {
     }, 0)
 })
 
-const nearExpiryTotal = computed(() => {
+const loadedItemsTotal = computed(() => {
     return statisticsData.value?.reduce((sum, item) => {
-        return sum + Number(item.near_expiry || 0)
+        return sum + Number(item.loaded_items || 0)
     }, 0)
 })
 
@@ -297,22 +303,22 @@ const toast = ref({
                             style="
                             width: 48px;
                             height: 48px;
-                            background-color: #fdecea;
+                            background-color: #e0f2fe;
                             border-radius: 12px;
                             "
                         >
                             <v-icon
-                            icon="ri-error-warning-line"
-                            color="error"
+                            icon="ri-truck-line"
+                            color="info"
                             size="24"
                             ></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Near Expiry
+                            Loaded Items
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ nearExpiryTotal || 0 }}
+                            {{ loadedItemsTotal || 0 }}
                             </div>
                         </div>
                         </div>
@@ -458,6 +464,13 @@ const toast = ref({
                             <template #item.is_wrapped="{ item }">
                                 <div class="d-flex justify-center align-center">
                                     <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
+                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+                                </div>
+                            </template>
+
+                            <template #item.is_loaded="{ item }">
+                                <div class="d-flex justify-center align-center">
+                                    <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
                                     <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
                                 </div>
                             </template>
