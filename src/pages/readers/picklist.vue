@@ -427,16 +427,14 @@ const toast = ref({
                                 </VCol>
                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-right: 1px solid #fff;">
                                     <div class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
-                                        <span v-if="delivery.quantity_all !== null || !delivery.quantity_all">
-                                            <span v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
-                                                {{ delivery.inventory.length }}
-                                            </span>
-                                            <span v-else class="text-error text-h4 font-weight-black">
-                                                NO STOCK
-                                            </span>
+                                        <span v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
+                                            {{ delivery.inventory.length }}
+                                        </span>
+                                        <span v-else class="text-error text-h4 font-weight-black">
+                                            NO STOCK
                                         </span>
                                         <span v-else class="display-3">
-                                            {{ determineSapQuantity(delivery.quantity_all, delivery.default_pallet_capacity) }}
+                                            {{ determineSapQuantity(delivery.quantity, delivery.default_pallet_capacity) }}
                                         </span>
                                     </div>
                                 </VCol>
