@@ -92,10 +92,9 @@ const checkLoadedPallets = (batch) => {
     return new Promise((resolve, reject) => {
         ApiService.post(`check-loaded-pallets`,{
             batches: batch,
-            start: this.loadTime.load_start,
-            end: this.loadTime.load_end,
             shipment: shipment.value,
-            bay_no: this.$route.params.location
+            bay_no: bay,
+            reader_id: readerId
         })
         .then(response => {
             resolve(response.data);
