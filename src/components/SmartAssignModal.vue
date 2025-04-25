@@ -1,10 +1,11 @@
 <script setup>
 import axios from 'axios';
+import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref } from 'vue';
-import { GridItem, GridLayout } from 'vue-grid-layout-v3';
+import SearchInput from './SearchInput.vue';
 
-const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
+const emits = defineEmits(['close', 'assign-success']);
 
 const props = defineProps({
     show: {
@@ -34,10 +35,7 @@ const totalItems = ref(0);
 const itemsPerPage = ref(5);
 const page = ref(1);
 const sortQuery = ref('-updated_at'); // Default sort
-
-const storageLocationModel = ref(null);
-const layersData = ref(null);
-const blocks = ref([]);
+const selectedInventory = ref(null);
 
 const headers = [
     {
@@ -66,12 +64,7 @@ const headers = [
 ]
 
 onMounted(() => {
-    loadInformation({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'updated_at', order: 'desc'}],
-        search: searchValue.value
-    });
+   
 })
 
 const loadInformation = async ({ page, itemsPerPage, sortBy, search }) => {
@@ -85,10 +78,9 @@ const loadInformation = async ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    state.layout = [];
     loading.value = true;
     try {
-        const response = await axios.get(`warehouse/get-warehouse-information/${props.storageLocation}`, {
+        const response = await axios.get(`warehouse/get-unassigned-inventories/${props.storageLocation}`, {
             params: {
                 page,
                 itemsPerPage,
@@ -96,37 +88,16 @@ const loadInformation = async ({ page, itemsPerPage, sortBy, search }) => {
                 search: searchValue.value,
             },
         });
-        const { details, table } = response.data
-        totalItems.value = table.total;
-        serverItems.value = table.data;
-        // console.log(response.data);
+        totalItems.value = response.data.total;
+        serverItems.value = response.data.data
         
-        layersData.value = details.layers_data;
-        
-        // Transform blocks data into GridItem format
-        state.layout = details.blocks?.map((item, index) => ({
-            i: String(index),
-            x: item.x || 0, // Default to 0 if x is not provided
-            y: item.y || 0, // Default to 0 if y is not provided
-            w: item.w || 3, // Default width
-            h: item.h || 2, // Default height
-            label: item.label || 'Unnamed', // Use name from API
-            type: item.type || 'unknown', 
-            isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
-            inventories: item.inventories || null,
-            inventoriesCount: item.inventories_count || 0,
-            layers: item.layers || [],
-            lot: item.lot || null,
-            id: item.id || null,
-        }));
-
-        state.index = state.layout.length;
     } catch (error) {
         console.error('Error fetching data:', error);
     } finally {
         loading.value = false;
     }
 };
+
 
 const dialogVisible = ref(props.show);
 
@@ -146,17 +117,100 @@ watch(
     }
 )
 
-const assign = (item) => {
-    console.log(item);
+const loadingItem = ref(null);
+// Coordinates for starting position
+// Ideally, these should come from the storage location model as each warehouse has its own coordinates for pre-assigning area
+const positionX = ref(0);
+const positionY = ref(0);
+const assignConfirmation = ref(false);
+const suggestedBlock = ref(null);
+
+const assign = async (item) => {
+    selectedInventory.value = item;
+    loadingItem.value = item.id;
+    try {
+        const response = await axios.get(`warehouse/get-nearest-block/${props.storageLocation}`, {
+            params: {
+                positionX: positionX.value,
+                positionY: positionY.value,
+                material_id: item.material?.id
+            },
+        });
+
+        if (response.status === 200) {
+            suggestedBlock.value = response.data
+            console.log(suggestedBlock.value);
+            assignConfirmation.value = true;
+        } else {
+            console.error('Failed to fetch nearest block.');
+        }
+    } catch (error) {
+        console.error('Error during assign request:', error);
+    } finally {
+        // Reset loading state after request completion
+        loadingItem.value = null;
+    }
 }
 
+// Declining auto assignment
+const isDeclining = ref(false);
+const declinedAssign = async () => {
+    isDeclining.value = true
+    try {
+        const response = await axios.get(`warehouse/save-declined-auto-assignment/${props.storageLocation}`, {
+            params: {
+                inventory_id: selectedInventory.value.id,
+                block_id: suggestedBlock.value.id
+            },
+        });
+
+    } catch (error) {
+        console.error('Error during assign request:', error);
+    } finally {
+        isDeclining.value = false;
+        // Close also the current modal
+        assignConfirmation.value = false;
+        dialogVisible.value = false;
+    }
+}
+
+// Accepting auto assigning
+const isAssigning = ref(false);
+const onAssign = async () => {
+    isAssigning.value = true
+    try {
+        const response = await axios.post(`warehouse/auto-assignment/${props.storageLocation}`, {
+            inventory_id: selectedInventory.value.id,
+            block_id: suggestedBlock.value.id
+        });
+
+        if (response.status == 200) {
+            suggestedBlock.value = null;
+            selectedInventory.value = null;
+            emits('assign-success');
+        } 
+
+    } catch (error) {
+        console.error('Error during assign request:', error);
+    } finally {
+        isAssigning.value = false;
+        // Close also the current modal
+        assignConfirmation.value = false;
+        dialogVisible.value = false;
+    }
+ 
+}
+
+const handleSearch = debounce((search) => {
+    searchValue.value = search;
+}, 500);
 
 </script>
 <template>
-     <v-dialog
+    <v-dialog
+        width="900px"
         v-model="dialogVisible"
         transition="dialog-bottom-transition"
-        fullscreen
     >
         <v-card>
             <v-btn @click="emits('close')"
@@ -178,16 +232,18 @@ const assign = (item) => {
                             1. Select an inventory from the table.
                         </v-list-item>
                         <v-list-item class="text-grey-700 text-emphasis">
-                            2. Click assign and the system will automatically find the nearest appropriate bin location.
+                            2. Click 'Assign' and the system will automatically find the nearest appropriate bin location.
                         </v-list-item>
                     </v-list>
                 </div>
-                <VRow class="h-100 align-stretch">
+             
+                <VRow class="h-100 ">
                     <VCol
-                        md="5"
                         class="pe-4"
                         style="border-right: 1px solid #e0e0e0;"
                     >
+                        <SearchInput @update:search="handleSearch" placeholder="Search inventory"/>
+
                         <VDataTableServer 
                             v-model:items-per-page="itemsPerPage"
                             :headers="headers"
@@ -203,12 +259,12 @@ const assign = (item) => {
                             <tr class="text-no-wrap">
                                 <td style="width: 200px;">{{ item.rfid?.name }}</td>
                                 <td class="text-center" style="width: 200px;">{{ item.batch }}</td>
-                                <td style="width: 200px;">
+                                <td class="text-center" style="width: 100px;">
                                     {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
                                 </td>
                                 <td style="width: 200px;">
-                                    <div  class="d-flex justify-end align-center">
-                                        <v-btn @click="assign(item)" class="px-5" type="button" color="primary-light">
+                                    <div class="d-flex justify-end align-center">
+                                        <v-btn @click="assign(item)" :loading="loadingItem === item.id" class="px-5" type="button" color="primary-light">
                                             Assign
                                         </v-btn>
                                     </div>
@@ -217,108 +273,55 @@ const assign = (item) => {
                         </template>
                         </VDataTableServer>
                     </VCol>
-
-                    <VCol md="7">
-                        <div class="d-flex align-center justify-space-between px-4">
-                            <div class="d-flex align-center">
-                                <template v-for="(layer, index) in layersData" :key="index">
-                                    <div :style="{
-                                        width: '30px', 
-                                        height: '30px', 
-                                        borderRadius: '25px', 
-                                        marginLeft: index > 0 ? '25px' : '0px', 
-                                        marginRight: '5px',
-                                        backgroundColor: layer.layer === 4 ? '#a06ee2' : 
-                                                        (layer.layer === 3 ? '#48a348' : 
-                                                        (layer.layer === 2 ? '#4877f7' : '#eece70'))
-                                    }"></div>
-                                    {{ layer.label }}
-                                </template>
-                                <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                                        margin-right: 5px; background-color: #f0edf2"></div>
-                                Empty
-                            </div>
-                        </div>
-                        <div>
-                            <GridLayout class="border mt-2"
-                                v-model:layout="state.layout"
-                                v-if="state.layout.length > 0"
-                                :col-num="148"
-                                :row-height="15"
-                                style="min-height: 200px;"
-                                :is-draggable="false"
-                                :is-resizable="false"
-                                :responsive="false"
-                                :vertical-compact="false"
-                                :prevent-collision="true"
-                                :use-css-transforms="true"
-                                :margin="[1, 1]"
-                            >
-                                <GridItem
-                                    v-for="item in state.layout"
-                                    :key="item.i"
-                                    :static="item.static"
-                                    :x="item.x"
-                                    :y="item.y"
-                                    :w="item.w"
-                                    :h="item.h"
-                                    :i="item.i"
-                                    :min-w="2.5"
-                                    :min-h="2"
-                                    :class="{
-                                        'cursor-pointer': item.type !== 'lot',
-                                        'bg-primary-light': item.type == 'lot',
-                                        'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
-                                        'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
-                                        'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
-                                        'layer-4': item.type !== 'lot' && item.inventoriesCount === 4,
-                                        'empty-layer': item.type !== 'lot' && item.inventoriesCount === 0,
-                                    }"
-                                    @click="item.type !== 'lot' && handleBlockClick(item)"
-                                    :is-resizable="false"
-                                >
-                                    <span class="text">{{item.label}}</span>
-                                </GridItem>
-                            </GridLayout>
-                            <div v-else class="border mt-2" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
-                                <p class="text-center mt-4 text-h4 font-weight-bold">No results found</p>
-                            </div>
-                        </div>
-                    </VCol>
                 </VRow>
             </v-card-text>
+            <v-card-actions class="d-flex justify-end mr-2">
+                <v-btn @click="emits('close')" color="secondary" variant="flat" class="ma-2 px-6">Cancel</v-btn>
+            </v-card-actions>
         </v-card>
     </v-dialog>
+    <v-dialog v-if="suggestedBlock" v-model="assignConfirmation" max-width="600px" persistent>
+        <v-sheet
+            class="pa-4 text-center mx-auto"
+            elevation="12"
+            max-width="600"
+            rounded="lg"
+            width="100%"
+        >
+            <v-icon
+            class="mb-1"
+            color="info"
+            icon="ri-information-line"
+            size="64"
+            ></v-icon>
+
+            <h2 class="text-h5 mb-6">Bin Selection</h2>
+
+            <p class="mb-4 text-medium-emphasis text-body-1">
+                This inventory is suggested to be placed in <strong>Block {{ suggestedBlock.lot?.label }} - {{ suggestedBlock.label }}</strong>. Do you want to proceed?
+            </p>
+
+            <v-divider class="mb-4"></v-divider>
+
+            <div class="text-end">
+                <v-btn
+                    class="text-none"
+                    color="info"
+                    variant="flat"
+                    :loading="isDeclining"
+                    @click="declinedAssign"
+                >
+                    Choose Manually
+                </v-btn>
+                <v-btn
+                    class="text-none ml-3 px-8"
+                    color="success"
+                    variant="flat"
+                    @click="onAssign"
+                >
+                    Confirm
+                </v-btn>
+            </div>
+        </v-sheet>
+    </v-dialog>
 </template>
-
-<style scoped>
-.layer-1 {
-    background-color: #eece70;
-    color: white;
-}
-.layer-2 {
-    background-color: #4877f7;
-    color: white;
-
-}
-
-.layer-3 {
-    background-color: #48a348;
-    color: white;
-
-}
-
-.layer-4 {
-    background-color: #a06ee2;
-    color: white;
-
-}
-.empty-layer, .layer-0 {
-    background-color: #f0edf2;
-}
-
-.highlighted-item {
-    border: 3px solid #00833c;  /* Green border to indicate selection */
-}
-
-</style>
