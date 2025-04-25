@@ -173,7 +173,7 @@ defineExpose({
     <!-- Actions -->
     <template #item.action="{ item }">
         <div class="d-flex gap-1">
-            <v-menu location="start"> 
+            <v-menu location="center"> 
                 <template v-slot:activator="{ props }">
                     <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                 </template>
@@ -192,7 +192,8 @@ defineExpose({
     </template>
     </VDataTableServer>
 
-    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto">
+    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
+        class="position-absolute d-flex align-center justify-center">
         <v-table class="mt-4">
                 <thead>
                     <tr>
@@ -210,7 +211,7 @@ defineExpose({
                         <td>{{ item.item }}</td>
                         <td>{{ item.storage_location_id }}</td>
                         <td>{{ item.material }}</td>
-                        <td>{{ item.material_description }} </td>
+                        <td>{{ item.material_desc }} </td>
                         <td>{{ item.quantity }}</td>
                         <td>{{ item.base_uom }}</td>
                         <td>{{ item.batch_item_number }}</td>
