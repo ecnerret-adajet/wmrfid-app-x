@@ -19,6 +19,10 @@ const props = defineProps({
     minHeight: {
         type: String,
         default: '400px'
+    },
+    fullscreen: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -42,7 +46,7 @@ watch(
 
 </script>
 <template>
-    <v-dialog v-model="dialogVisible" :max-width="maxWidth" :min-height="minHeight">
+    <v-dialog v-model="dialogVisible" :max-width="maxWidth" :min-height="minHeight" :fullscreen="fullscreen">
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
             <div class="text-h5 text-bold-emphasis ps-2">

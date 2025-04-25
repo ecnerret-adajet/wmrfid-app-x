@@ -172,8 +172,8 @@ defineExpose({
     
     <!-- Actions -->
     <template #item.action="{ item }">
-        <div class="d-flex gap-1">
-            <v-menu location="center"> 
+        <div class="d-flex justify-center gap-1">
+            <v-menu location="start"> 
                 <template v-slot:activator="{ props }">
                     <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                 </template>
@@ -193,7 +193,7 @@ defineExpose({
     </VDataTableServer>
 
     <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
-        class="position-absolute d-flex align-center justify-center">
+        class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
         <v-table class="mt-4">
                 <thead>
                     <tr>
