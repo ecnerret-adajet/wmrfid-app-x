@@ -271,10 +271,10 @@ const handleEditMap = () => {
                     </VList>
             </v-card-text>
             <div class="d-flex justify-end">
-                <!-- <v-btn color="primary-light" @click="smartAssignModal = true"
-                    class="px-9 mr-6 text-grey-100">
+                <v-btn color="primary-light" @click="smartAssignModal = true"
+                    class="px-8 mr-6 text-grey-100">
                     Smart Assign
-                </v-btn> -->
+                </v-btn>
             </div>
         </v-card>
         <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -365,7 +365,10 @@ const handleEditMap = () => {
         @action-success="actionSuccess"
         :show="openAssignModal" @close="openAssignModal = false"/>
 
-    <SmartAssignModal :storage-location="storageLocation" :show="smartAssignModal" @close="smartAssignModal = false"/>
+    <SmartAssignModal :storage-location="storageLocation" 
+        :show="smartAssignModal" 
+        @assign-success="onAssignSuccess"
+        @close="smartAssignModal = false"/>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
