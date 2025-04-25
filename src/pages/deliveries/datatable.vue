@@ -35,7 +35,7 @@ const headers = [
     },
     {
         title: 'CUSTOMER',
-        key: 'customer_name',
+        key: 'ship_to_customer',
     },
     {
         title: 'SHIPMENT',
@@ -149,7 +149,7 @@ defineExpose({
     </template>
 
 
-    <template #item.plant="{ item }">
+    <template #item.plant_name="{ item }">
         {{ item?.plant?.name }}
     </template>
 
@@ -157,11 +157,19 @@ defineExpose({
         {{ item.ship_to_customer }}
     </template>
 
-    <template #item.shipment="{ item }">
+    <template #item.shipment_number="{ item }">
         {{ item.shipment?.shipment_number }}
     </template>
 
-    <template #item.status="{ item }">
+    <template #item.items="{ item }">
+        {{ item.items.length }}
+    </template>
+
+    <template #item.reserved_pallets="{ item }">
+        0
+    </template>
+
+    <!-- <template #item.status="{ item }">
         <v-chip 
             v-if="!item.load_end_date || item.load_end_time"
             class="ma-2"
@@ -180,7 +188,7 @@ defineExpose({
         >
         Pending
         </v-chip>
-    </template>
+    </template> -->
     
 
 
