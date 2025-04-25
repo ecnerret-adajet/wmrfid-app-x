@@ -1,6 +1,7 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
+import JwtService from '@/services/JwtService';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
@@ -9,6 +10,7 @@ import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
+import axios from 'axios';
 import Moment from 'moment';
 import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -72,7 +74,6 @@ const fetchData = async () => {
                 if (shipment.value?.shipment_number && shipment.value?.shipment_number !== "") {
                     await fetchShipmentDetails(shipment.value.shipment_number);
                 }
-                dialogVisible.value = false;
             }
         }
     } catch (error) {
@@ -153,8 +154,17 @@ const fetchLoadStatus = async (shipmentNumber) => {
 
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
-        const response = await ApiService.get(`picklist/shipment-picklist/${shipmentNumber}`);
-
+        const token = JwtService.getToken();
+        const response = await axios.get(`picklist/shipment-picklist/${shipmentNumber}`, {
+            params: {
+                reader_id: readerId
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        console.log(response);
+        
         // If success
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
@@ -165,8 +175,11 @@ const fetchShipmentDetails = async (shipmentNumber) => {
             fetchLoadStatus(shipmentNumber);
 
         } else {
-            dialogVisible.value = true;
-            errorMessage.value = 'Error encountered. Please contact admin.'
+            if (response.data.result == 'F') {
+                errorMessage.value = response.data.message !== '' ? response.data.message : 'Error encountered. Please contact admin.'
+                dialogVisible.value = true;
+            }
+            
         }
     } catch (error) {
         console.error('Error fetching shipment details:', error);
@@ -239,6 +252,7 @@ const toast = ref({
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2"></v-progress-linear>
 
     <div v-else class="mt-2 px-8 whiteBackground">
+        
         <div>
             <VRow >
                 <VCol md="8" >
