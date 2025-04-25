@@ -153,7 +153,17 @@ export const routes = [
                 ],
             },
         },
-
+        {
+            path: 'deliveries',
+            name: 'deliveries',
+            component: () => import('@/pages/deliveries/index.vue'),
+            meta: {
+              pageTitle: "Deliveries",
+              breadcrumbs: [
+                  { label: "Deliveries", link: "/deliveries" },
+              ],
+            },
+        },
         {
             path: 'warehouse',
             name: 'warehouse',

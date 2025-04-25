@@ -81,8 +81,9 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
     <!-- Shipments Section  -->
-    <VerticalNavSectionTitle :item="{ heading: 'Test Label Here'}" />
+    <VerticalNavSectionTitle :item="{ heading: 'Transactions'}" />
     <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments'}"/>
+    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/deliveries'}"/>
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
 
