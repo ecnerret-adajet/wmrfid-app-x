@@ -114,8 +114,8 @@ const applyFilters = (data) => {
 }
 
 const items = [
-    { title: 'View Picklist' },
-    { title: 'View Curtain Screen' },
+    { title: 'View Delivery Items' },
+    { title: 'Reserved Pallets' },
 ]
 
 const handleViewDelivery = (delivery) => {
@@ -158,7 +158,7 @@ defineExpose({
     </template>
 
     <template #item.shipment_number="{ item }">
-        {{ item.shipment?.shipment_number }}
+        {{ item.shipment_number }}
     </template>
 
     <template #item.items="{ item }">
@@ -193,7 +193,7 @@ defineExpose({
 
 
     <!-- Actions -->
-    <!-- <template #item.actions="{ item }">
+    <template #item.actions="{ item }">
         <div class="d-flex gap-1">
             <v-menu location="start"> 
                 <template v-slot:activator="{ props }">
@@ -210,7 +210,7 @@ defineExpose({
                 </v-list>
             </v-menu>
         </div>
-    </template> -->
+    </template>
     </VDataTableServer>
 
     <Toast :show="toast.show" :message="toast.message"/>
