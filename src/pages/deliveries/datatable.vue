@@ -1,4 +1,5 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { ref } from 'vue';
@@ -23,6 +24,8 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
+const showDeliveryItems = ref(false);
+const deliveryData = ref([]);
 
 const headers = [
     {
@@ -49,12 +52,6 @@ const headers = [
         title: 'RESERVED PALLETS',
         key: 'reserved_pallets',
     },
-    // {
-    //     title: 'STATUS',
-    //     key: 'status',
-    //     align: 'center',
-    //     sortable: false,
-    // },
     {
         title: 'ACTION',
         key: 'action',
@@ -113,13 +110,18 @@ const applyFilters = (data) => {
     });
 }
 
-const items = [
+const actionList = [
     { title: 'View Delivery Items' },
     { title: 'Reserved Pallets' },
 ]
 
 const handleViewDelivery = (delivery) => {
     router.push(`/deliveries/${delivery.delivery_document}`);
+}
+
+const handleViewDeliveryItems = (delivery) => {
+    deliveryData.value = delivery;
+    showDeliveryItems.value = true;
 }
 
 defineExpose({
@@ -148,7 +150,6 @@ defineExpose({
         </span>
     </template>
 
-
     <template #item.plant_name="{ item }">
         {{ item?.plant?.name }}
     </template>
@@ -168,32 +169,9 @@ defineExpose({
     <template #item.reserved_pallets="{ item }">
         0
     </template>
-
-    <!-- <template #item.status="{ item }">
-        <v-chip 
-            v-if="!item.load_end_date || item.load_end_time"
-            class="ma-2"
-            color="success"
-            outlined
-            label
-        >
-        Success
-        </v-chip>
-        <v-chip
-            v-else
-            class="ma-2"
-            color="primary-2-light"
-            outlined
-            label
-        >
-        Pending
-        </v-chip>
-    </template> -->
     
-
-
     <!-- Actions -->
-    <template #item.actions="{ item }">
+    <template #item.action="{ item }">
         <div class="d-flex gap-1">
             <v-menu location="start"> 
                 <template v-slot:activator="{ props }">
@@ -201,17 +179,45 @@ defineExpose({
                 </template>
                 <v-list>
                 <v-list-item
-                    v-for="(item, i) in items"
+                    @click="handleViewDeliveryItems(item)"
+                    v-for="(action, i) in actionList"
                         :key="i"
                         :value="i"
                     >
-                    <v-list-item-title>{{ item.title }}</v-list-item-title>
+                    <v-list-item-title>{{ action.title }}</v-list-item-title>
                 </v-list-item>
                 </v-list>
             </v-menu>
         </div>
     </template>
     </VDataTableServer>
+
+    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto">
+        <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Item No.</th>
+                        <th>Sloc</th>
+                        <th>Material</th>
+                        <th>Material Desc</th>
+                        <th>Quantity</th>
+                        <th>UOM</th>
+                        <th>Batch</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in deliveryData?.items" :key="index">
+                        <td>{{ item.item }}</td>
+                        <td>{{ item.storage_location_id }}</td>
+                        <td>{{ item.material }}</td>
+                        <td>{{ item.material_description }} </td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.base_uom }}</td>
+                        <td>{{ item.batch_item_number }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+    </DefaultModal>
 
     <Toast :show="toast.show" :message="toast.message"/>
 
