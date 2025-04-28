@@ -120,8 +120,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
         })
         .then((response) => {
-            
             totalItems.value = response.data.total;
+        
             serverItems.value = response.data.data.map(item => ({
                 id: item.id,
                 label: item.label,
@@ -173,13 +173,15 @@ const loadAvailableBlocks = ({ page, itemsPerPage, sortBy, layerSearch }) => {
         })
         .then((response) => {
             totalLayerItems.value = response.data.total;
-
+            
             layerItems.value = response.data.data.map(item => ({
                 id: item.id,
                 label: item.label,
                 inventories_count: item.inventories.length || 0,
                 isSelected: false,
-                lot: item.lot || null
+                lot: item.lot || null,
+                allowMultipleMaterials: item.blocks_allow_multiple_materials == 1 ? true : false,
+                inventories: item.inventories || []
             }));
 
             layersLoading.value = false
@@ -302,6 +304,19 @@ const proceedAction = async () => {
             }
 
         } else {
+            let allow_multiple_materials = selectedNewBlock.value?.allowMultipleMaterials
+            let selectedMaterialId = selectedInventory.value?.material_id;
+            
+            const hasDifferentMaterial = selectedNewBlock.value?.inventories?.some(inv => inv.material_id !== selectedMaterialId);
+
+            if (!allow_multiple_materials && hasDifferentMaterial) {
+                toast.value.color = 'error';
+                toast.value.message = 'Different materials on same block is not allowed. Please contact admin.'
+                toast.value.show = true;
+                confirmModalOpen.value = false;
+                actionModalOpen.value = false;
+                return;
+            }
             const response = await axios.post('warehouse/bin-transfer', {
                 block: props.block.data,
                 inventory: selectedInventory.value,
