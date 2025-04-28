@@ -35,7 +35,7 @@ const props = defineProps({
                             </div>
                         <div>
                             <span class="text-h6 font-weight-medium text-grey-800">{{ event.title }}</span>
-                            <p class="font-weight-light">{{ event.event }}</p>
+                            <p class="font-weight-light" v-html="event.event"></p>
                         </div>
                         </div>
                         <div class="text-caption text-secondary mt-1">
