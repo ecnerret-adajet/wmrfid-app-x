@@ -6,11 +6,10 @@ import Toast from '@/components/Toast.vue';
 import { READER_STATUS } from '@/composables/useEnums';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
+import Moment from 'moment';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
-
-
 
 const emits = defineEmits(['pagination-changed']);
 
@@ -57,6 +56,10 @@ const headers = [
     {
         title: 'STORAGE LOCATION',
         key: 'storage_location_id',
+    },
+    {
+        title: 'Last Log',
+        key: 'last_log',
     },
     {
         title: 'STATUS',
@@ -221,6 +224,12 @@ defineExpose({
         {{ item.storage_location?.name }}
     </template>
 
+    <template #item.last_log="{ item }">
+        <span v-if="item.last_log?.first_seen_timestamp">
+            {{ item.last_log?.first_seen_timestamp ? Moment(item.last_log?.first_seen_timestamp).format('MMMM D, YYYY h:mm A') : '' }}
+        </span>
+    </template>
+
     <template #item.status="{ item }">
         <div class="d-flex gap-1 ml-3">
             <VBadge v-if="item.status == READER_STATUS.ACTIVE" content="ACTIVE" color="success pa-3 px-8"  />
@@ -243,7 +252,7 @@ defineExpose({
                         :key="i"
                         :value="i"
                     >
-                    <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location.bay_no)" class="px-4">Bay No. {{ antenna.bay_location.bay_no }} - {{ antenna.bay_location.description }}</v-list-item-title>
+                    <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location.bay_no)" class="px-4">Bay No. {{ antenna.bay_location.bay_no }}</v-list-item-title>
                 </v-list-item>
                 </v-list>
             </v-menu>
