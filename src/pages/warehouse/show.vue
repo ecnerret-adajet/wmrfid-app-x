@@ -36,6 +36,12 @@ const headers = [
         sortable: false
     },
     {
+        title: 'Location',
+        key: 'location',
+        sortable: false,
+        align: 'center'
+    },
+    {
         title: 'Type',
         key: 'type',
         sortable: false
@@ -50,7 +56,7 @@ const headers = [
         key: 'mfg_date',
     },
     {
-        title: 'TOTAL QUANTITY',
+        title: 'QUANTITY',
         key: 'quantity',
         align: 'center'
     },
@@ -248,6 +254,14 @@ const handleViewBatch = (inventory) => {
                         {{ item.batch }}
                     </span>
                 </template>
+                <template #item.location="{ item }">
+                    <v-chip v-if="item.block" color="success" variant="flat">
+                        <span class="px-5">{{ item.block?.lot?.label }} - {{ item.block?.label }}</span>
+                    </v-chip>
+                    <v-chip v-else color="warning" variant="flat">
+                        <span>Unassigned</span>
+                    </v-chip>
+                </template>
                 <template #item.physical_id="{ item }">
                     {{ item.rfid?.name }}
                 </template>
@@ -255,7 +269,7 @@ const handleViewBatch = (inventory) => {
                     {{ item.material?.description }}
                 </template>
                 <template #item.mfg_date="{ item }">
-                    {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY h:mm A') : '' }}
+                    {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
                 </template>
             </VDataTableServer>
         </v-card>
