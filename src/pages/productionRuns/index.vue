@@ -183,6 +183,12 @@ const headers = [
         align: 'center',
     },
     {
+        title: 'RFID COUNT',
+        key: 'inventory_log_count',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'TYPE',
         key: 'rfid_type',
         align: 'center',
