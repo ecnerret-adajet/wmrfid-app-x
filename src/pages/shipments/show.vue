@@ -138,20 +138,20 @@ const closeModal = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Shipment</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipmentData?.shipment_number }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Check-in Date</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" style="margin-top: 1px;">Check-in Date</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">
+                                        <span class="font-weight-medium text-medium-emphasis">
                                             {{ shipmentData?.check_in_date ? Moment(shipmentData?.check_in_date).format('MMMM D, YYYY') : '--' }}
                                         </span>
                                     </VCol>
@@ -164,20 +164,20 @@ const closeModal = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Hauler</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipmentData?.hauler_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.hauler_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Plate Number</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Plate Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ displayPlateNumber }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -188,10 +188,10 @@ const closeModal = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black " style="margin-top: 1px;">Driver</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ shipmentData?.driver_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>

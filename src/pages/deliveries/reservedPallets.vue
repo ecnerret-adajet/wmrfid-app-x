@@ -1,7 +1,6 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
-import { ref } from 'vue';
-import { VIcon } from 'vuetify/components';
+import { onMounted, ref } from 'vue';
 
 const props = defineProps({
     show: {
@@ -20,7 +19,11 @@ const handleClose = () => {
     emit('close');
 };
 
-const activeTab = ref('available');
+onMounted(() => {
+    console.log(props.deliveryData);
+})
+
+const activeTab = ref('available_stocks');
 
 // Sample data for Available Stocks
 const availableStocks = ref([
@@ -64,220 +67,271 @@ const otherStocks = ref([
         class="position-absolute d-flex align-center justify-center" 
         :fullscreen="true"
     >
-        <!-- Delivery Information Section -->
-        <div class="delivery-info-section pa-4">
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">ALC Delivery:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.delivery_document || '0080029054' }}</div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Delivery Item No:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.item_no || '000010' }}</div>
-                    </div>
-                </v-col>
-            </v-row>
+        <v-card>
+            <div class="d-flex justify-space-between align-center px-4 mt-4">
+                <h4 class="text-h4 mx-4 font-weight-black text-primary">Delivery Details</h4>
+            </div>
+            <v-card-title>
+                <VList lines="one"  density="compact" class="mt-4">
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow  class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.delivery_document ||  '0080029054' }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Delivery Item No.</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">
+                                            {{ deliveryData?.item_no || '000010' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.bu_delivery || '1080022633' }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Material</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">
+                                            {{ deliveryData?.material || '1100000144' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Party</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_name || 'GRACIOUS MAJESTY DISTRIBUTION INC.' }}</span>
+                                        <div class="text-subtitle-1">{{ deliveryData?.ship_to_code || '0011004585' }}</div>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Material Description</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">
+                                            {{ deliveryData?.material_description || 'FL WAS Gold Flour C' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Address</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_address || 'B6 L4 SOUTH SUSANA HOMES BACOOR 4102' }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plant & Storage Location</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.plant?.name || '2111 - PFMC Mariveles (Flour) Plant' }}</span>
+                                        <div class="text-subtitle-1">{{ deliveryData?.storage_location?.name || 'W107 - FG WAREHOUSE' }}</div>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.delivery_date || 'March 25, 2025' }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Required Quantity</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">
+                                            {{ deliveryData?.required_qty || '600' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">{{ deliveryData?.age || '30-60 days' }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Open Quantity</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="text-medium-emphasis">
+                                            {{ deliveryData?.open_qty || '600' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                   
+                    <!-- Add item as needed  -->
+                </VList>
+            </v-card-title>
+            <v-divider class="my-4"></v-divider>
 
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">BU Delivery:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.bu_delivery || '1080022633' }}</div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Material:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.material || '1100000144' }}</div>
-                    </div>
-                </v-col>
-            </v-row>
-
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Ship-to-Party:</div>
-                        <div class="detail-value ml-2">
-                            {{ deliveryData?.ship_to_name || 'GRACIOUS MAJESTY DISTRIBUTION INC.' }}
-                            <div>{{ deliveryData?.ship_to_code || '0011004585' }}</div>
-                        </div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Material Description:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.material_desc || 'FL WAS Gold Flour C' }}</div>
-                    </div>
-                </v-col>
-            </v-row>
-
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Ship-to-Address:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.ship_to_address || 'B6 L4 SOUTH SUSANA HOMES BACOOR 4102' }}</div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Plant / Sloc:</div>
-                        <div class="detail-value ml-2">
-                            {{ deliveryData?.plant_name || '2111 - PFMC Mariveles (Flour) Plant' }}
-                            <div>{{ deliveryData?.storage_location || 'W107 - FG WAREHOUSE' }}</div>
-                        </div>
-                    </div>
-                </v-col>
-            </v-row>
-
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Delivery Date:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.delivery_date || '2025-04-30' }}</div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Required Quantity:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.required_qty || '600 BAG' }}</div>
-                    </div>
-                </v-col>
-            </v-row>
-
-            <v-row class="delivery-details">
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Age:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.age || '1 - 60 Days' }}</div>
-                    </div>
-                </v-col>
-                <v-col cols="12" md="6" class="detail-item">
-                    <div class="d-flex">
-                        <div class="detail-label">Open Quantity:</div>
-                        <div class="detail-value ml-2">{{ deliveryData?.open_qty || '600 BAG' }}</div>
-                    </div>
-                </v-col>
-            </v-row>
-        </div>
-
-        <!-- Tabs Section -->
-        <div class="tabs-section">
-            <div class="v-slide-group__container">
-                <div class="v-slide-group__content">
-                    <a
-                        class="v-btn v-tab-item--selected v-tab--selected v-theme--light text-primary v-btn--density-default v-btn--size-default v-btn--variant-text v-tab"
-                        href="javascript:void(0);"
-                        :class="{ 'text-primary': activeTab === 'available' }"
-                        tabindex="0"
-                        role="tab"
-                        :aria-selected="activeTab === 'available'"
-                        value="available"
-                        @click="activeTab = 'available'"
-                    >
+            <v-card-text>
+                <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs" hide-slider>
+                    <v-tab value="available_stocks" class="text-h5">
                         Available Stocks
-                    </a>
-                    <a
-                        class="v-btn v-theme--light v-btn--density-default v-btn--size-default v-btn--variant-text v-tab"
-                        href="javascript:void(0);"
-                        :class="{ 'text-primary': activeTab === 'other' }"
-                        tabindex="-1"
-                        role="tab"
-                        :aria-selected="activeTab === 'other'"
-                        value="other"
-                        @click="activeTab = 'other'"
-                    >
+                    </v-tab>
+                    <v-tab value="other_stocks" class="text-h5">
                         Other Stocks
-                    </a>
-                </div>
-            </div>
+                    </v-tab>
+                </v-tabs>
 
-            <div class="tab-content">
-                <!-- Available Stocks Tab -->
-                <div v-if="activeTab === 'available'">
-                    <v-table density="compact" class="stock-table elevation-0">
-                        <thead>
-                            <tr>
-                                <th>Batch Code</th>
-                                <th>Mfg Date</th>
-                                <th>Expiration Date</th>
-                                <th>Age</th>
-                                <th>Avail. Qty</th>
-                                <th>Avail Pallets</th>
-                                <th>Split Qty</th>
-                                <th>Min. Pallet</th>
-                                <th>Min. Qty</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(item, index) in availableStocks" :key="index" :class="{ 'selected-row': item.selected }">
-                                <td>{{ item.batch_code }}</td>
-                                <td>{{ item.mfg_date }}</td>
-                                <td>{{ item.expiration_date }}</td>
-                                <td>{{ item.age }}</td>
-                                <td>{{ item.avail_qty }}</td>
-                                <td>{{ item.avail_pallets }}</td>
-                                <td>{{ item.split_qty }}</td>
-                                <td>{{ item.min_pallet }}</td>
-                                <td>{{ item.min_qty }}</td>
-                                <td>
-                                    <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </v-table>
-                </div>
+                <v-tabs-window v-model="activeTab" class="mt-4">
+                    <v-tabs-window-item value="available_stocks">
+                        <v-table density="compact" class="stock-table elevation-0">
+                            <thead>
+                                <tr>
+                                    <th>Batch Code</th>
+                                    <th>Mfg Date</th>
+                                    <th>Expiration Date</th>
+                                    <th>Age</th>
+                                    <th>Avail. Qty</th>
+                                    <th>Avail Pallets</th>
+                                    <th>Split Qty</th>
+                                    <th>Min. Pallet</th>
+                                    <th>Min. Qty</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in availableStocks" :key="index" :class="{ 'selected-row': item.selected }">
+                                    <td>{{ item.batch_code }}</td>
+                                    <td>{{ item.mfg_date }}</td>
+                                    <td>{{ item.expiration_date }}</td>
+                                    <td>{{ item.age }}</td>
+                                    <td>{{ item.avail_qty }}</td>
+                                    <td>{{ item.avail_pallets }}</td>
+                                    <td>{{ item.split_qty }}</td>
+                                    <td>{{ item.min_pallet }}</td>
+                                    <td>{{ item.min_qty }}</td>
+                                    <td>
+                                        <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </v-tabs-window-item>
 
-                <!-- Other Stocks Tab -->
-                <div v-if="activeTab === 'other'">
-                    <v-table density="compact" class="stock-table elevation-0">
-                        <thead>
-                            <tr>
-                                <th>Batch Code</th>
-                                <th>Mfg Date</th>
-                                <th>Expiration Date</th>
-                                <th>Age</th>
-                                <th>Avail. Qty</th>
-                                <th>Avail Pallets</th>
-                                <th>Split Qty</th>
-                                <th>Min. Pallet</th>
-                                <th>Min. Qty</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(item, index) in otherStocks" :key="index" :class="{ 'selected-row': item.selected }">
-                                <td>{{ item.batch_code }}</td>
-                                <td>{{ item.mfg_date }}</td>
-                                <td>{{ item.expiration_date }}</td>
-                                <td>{{ item.age }}</td>
-                                <td>{{ item.avail_qty }}</td>
-                                <td>{{ item.avail_pallets }}</td>
-                                <td>{{ item.split_qty }}</td>
-                                <td>{{ item.min_pallet }}</td>
-                                <td>{{ item.min_qty }}</td>
-                                <td>
-                                    <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </v-table>
-                </div>
-            </div>
-        </div>
+                    <v-tabs-window-item value="other_stocks">
+                        <v-table density="compact" class="stock-table elevation-0">
+                            <thead>
+                                <tr>
+                                    <th>Batch Code</th>
+                                    <th>Mfg Date</th>
+                                    <th>Expiration Date</th>
+                                    <th>Age</th>
+                                    <th>Avail. Qty</th>
+                                    <th>Avail Pallets</th>
+                                    <th>Split Qty</th>
+                                    <th>Min. Pallet</th>
+                                    <th>Min. Qty</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in otherStocks" :key="index" :class="{ 'selected-row': item.selected }">
+                                    <td>{{ item.batch_code }}</td>
+                                    <td>{{ item.mfg_date }}</td>
+                                    <td>{{ item.expiration_date }}</td>
+                                    <td>{{ item.age }}</td>
+                                    <td>{{ item.avail_qty }}</td>
+                                    <td>{{ item.avail_pallets }}</td>
+                                    <td>{{ item.split_qty }}</td>
+                                    <td>{{ item.min_pallet }}</td>
+                                    <td>{{ item.min_qty }}</td>
+                                    <td>
+                                        <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </v-tabs-window-item>
+                </v-tabs-window>
 
-        <!-- Action Buttons -->
-        <div class="d-flex justify-end mt-4 pa-4">
-            <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back To Delivery Items</v-btn>
-            <v-btn color="success" elevation="0">Reserve Available Pallets</v-btn>
-        </div>
+                 <!-- Action Buttons -->
+                <div class="d-flex justify-end mt-4 pa-4">
+                    <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back To Delivery Items</v-btn>
+                    <v-btn color="success" elevation="0">Reserve Available Pallets</v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
     </DefaultModal>
 </template>
 
 <style scoped>
+.custom-tabs {
+  border-bottom: none !important;
+  box-shadow: none !important; /* if there's a shadow */
+}
 .delivery-details {
     margin-bottom: 8px;
 }

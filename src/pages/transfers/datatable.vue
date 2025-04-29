@@ -1,11 +1,9 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
-import ReservedPallets from './reservedPallets.vue';
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -31,6 +29,12 @@ const deliveryData = ref([]);
 
 const headers = [
     {
+        title: '',
+        key: 'action',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'PO ITEM',
         key: 'po_item',
     },
@@ -40,7 +44,14 @@ const headers = [
     },
     {
         title: 'Type',
-        key: 'document_type',
+        key: 'type',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'Material',
+        key: 'material',
+        sortable: false,
     },
     {
         title: 'Storage Location',
@@ -53,17 +64,14 @@ const headers = [
     {
         title: 'PO qty',
         key: 'po_qty',
-    },
-    {
-        title: 'RESERVED PALLETS',
-        key: 'reserved_pallets',
-    },
-    {
-        title: 'ACTION',
-        key: 'action',
         align: 'center',
         sortable: false,
     },
+    {
+        title: 'RESERVED PALLETS',
+        key: 'reserved_qty',
+    },
+    
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -91,6 +99,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
+            console.log(serverItems.value);
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -161,6 +170,18 @@ defineExpose({
         </span>
     </template>
 
+    <template #item.type="{ item }">
+        Stock Transfer Order 
+        <!-- TODO:: Confirm value -->
+    </template>
+
+    <template #item.material="{ item }">
+        <div class="d-flex flex-column">
+            <span class="font-weight-bold">{{ item.material_code }}</span>
+            <span>{{ item.material_description }}</span>
+        </div>
+    </template>
+
     <template #item.plant_name="{ item }">
         {{ item?.plant?.name }}
     </template>
@@ -173,18 +194,22 @@ defineExpose({
         {{ item.shipment_number }}
     </template>
 
+    <template #item.storage_location="{ item }">
+        {{ item?.storage_location?.name }}
+    </template>
+
     <template #item.items="{ item }">
         {{ item.items.length }}
     </template>
 
-    <template #item.reserved_pallets="{ item }">
-        0
+    <template #item.po_qty="{ item }">
+        {{ item.quantity }}
     </template>
-    
+
     <!-- Actions -->
     <template #item.action="{ item }">
         <div class="d-flex justify-center gap-1">
-            <v-menu location="start"> 
+            <v-menu location="end"> 
                 <template v-slot:activator="{ props }">
                     <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                 </template>
@@ -204,7 +229,7 @@ defineExpose({
     </VDataTableServer>
 
     <!-- Delivery items modal -->
-    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
+    <!-- <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
         class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
         <v-table class="mt-4">
                 <thead>
@@ -230,14 +255,14 @@ defineExpose({
                     </tr>
                 </tbody>
             </v-table>
-    </DefaultModal>
+    </DefaultModal> -->
 
     <!-- Show Reserved Pallets Modal -->
-    <ReservedPallets 
+    <!-- <ReservedPallets 
         :show="showReservedPallets" 
         :delivery-data="deliveryData" 
         @close="showReservedPallets = false"
-    />
+    /> -->
 
     <Toast :show="toast.show" :message="toast.message"/>
 

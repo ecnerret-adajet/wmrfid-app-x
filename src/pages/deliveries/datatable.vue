@@ -91,6 +91,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
+            console.log(serverItems.value);
+            
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -213,31 +215,27 @@ defineExpose({
     <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
         class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
         <v-card>
-
             <v-card-title>
-                <div class="mx-4 mt-4 text-primary font-weight-bold">
-                    
-                </div>
                 <VList lines="one" density="compact" class="mt-4">
                     <VListItem>
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-medium">Shipment</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-primary">{{ deliveryData?.shipment_number }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-medium" >Hauler</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-primary">
+                                        <span class="font-weight-medium text-medium-emphasis">
                                             {{ deliveryData?.shipment?.hauler_name }}
                                         </span>
                                     </VCol>
@@ -250,20 +248,20 @@ defineExpose({
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-medium" >Plant</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plant</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-primary">{{ deliveryData?.plant?.name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-medium" >Plate Number</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plate Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-primary">{{ displayPlateNumber }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -274,10 +272,10 @@ defineExpose({
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-medium " >Driver</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-primary">{{ deliveryData?.shipment?.driver_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -321,7 +319,7 @@ defineExpose({
     </DefaultModal>
 
     <!-- Show Reserved Pallets Modal -->
-    <ReservedPallets 
+    <ReservedPallets v-if="deliveryData"
         :show="showReservedPallets" 
         :delivery-data="deliveryData" 
         @close="showReservedPallets = false"
