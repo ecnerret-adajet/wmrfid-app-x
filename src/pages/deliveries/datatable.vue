@@ -2,7 +2,7 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import ReservedPallets from './reservedPallets.vue';
@@ -49,10 +49,14 @@ const headers = [
     {
         title: 'ITEMS',
         key: 'items',
+        align: 'center',
+        sortable: false
     },
     {
         title: 'RESERVED PALLETS',
         key: 'reserved_pallets',
+        align: 'center',
+        sortable: false
     },
     {
         title: 'ACTION',
@@ -125,11 +129,17 @@ const handleAction = (delivery, action) => {
     deliveryData.value = delivery;
     if(action.key == 'view_delivery_items') {
         showDeliveryItems.value = true;
-    }
-    if(action.key == 'reserved_pallets') {
+    } else if (action.key == 'reserved_pallets') {
         showReservedPallets.value = true;
     }
 }
+
+const displayPlateNumber = computed(() => {
+  return deliveryData.value?.shipment?.plate_number_1 || 
+    deliveryData.value?.shipment?.plate_number_2 || 
+    deliveryData.value?.shipment?.plate_number_3 || 
+         "N/A"; // Default value if none exist
+});
 
 defineExpose({
     loadItems,
@@ -202,30 +212,112 @@ defineExpose({
     <!-- Delivery items modal -->
     <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
         class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
-        <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>Item No.</th>
-                        <th>Sloc</th>
-                        <th>Material</th>
-                        <th>Material Desc</th>
-                        <th>Quantity</th>
-                        <th>UOM</th>
-                        <th>Batch</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in deliveryData?.items" :key="index">
-                        <td>{{ item.item }}</td>
-                        <td>{{ item.storage_location_id }}</td>
-                        <td>{{ item.material }}</td>
-                        <td>{{ item.material_desc }} </td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.base_uom }}</td>
-                        <td>{{ item.batch_item_number }}</td>
-                    </tr>
-                </tbody>
-            </v-table>
+        <v-card>
+
+            <v-card-title>
+                <div class="mx-4 mt-4 text-primary font-weight-bold">
+                    
+                </div>
+                <VList lines="one" density="compact" class="mt-4">
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-medium">Shipment</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-primary">{{ deliveryData?.shipment_number }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-medium" >Hauler</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-primary">
+                                            {{ deliveryData?.shipment?.hauler_name }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-medium" >Plant</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-primary">{{ deliveryData?.plant?.name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-medium" >Plate Number</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-primary">{{ displayPlateNumber }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-medium " >Driver</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-primary">{{ deliveryData?.shipment?.driver_name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <!-- Add item as needed  -->
+                </VList>
+            </v-card-title>
+        <v-divider class="my-4"></v-divider>
+
+            <v-card-text>
+                <v-table class="mt-4 striped">
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Storage Location</th>
+                            <th>Material</th>
+                            <th>Material Desc</th>
+                            <th class="text-center">Quantity</th>
+                            <th class="text-center">UOM</th>
+                            <th class="text-center">Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in deliveryData?.items" :key="index">
+                            <td>{{ item.item }}</td>
+                            <td>{{ item.storage_location?.name ?? '' }}</td>
+                            <td>{{ item.material }}</td>
+                            <td>{{ item.material_desc }} </td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-center">{{ item.base_uom }}</td>
+                            <td class="text-center">{{ item.batch_item_number }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </v-card-text>
+        </v-card>
+           
     </DefaultModal>
 
     <!-- Show Reserved Pallets Modal -->

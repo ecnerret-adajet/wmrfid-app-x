@@ -58,7 +58,6 @@ watch(
                 @click="emit('close')"
             ></v-btn>
         </v-card-title>
-  
         <v-card-text class="mt-4">
             <slot></slot>
         </v-card-text>
