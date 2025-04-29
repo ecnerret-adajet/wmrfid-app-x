@@ -108,6 +108,30 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Storage Location</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.storage_location?.name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Plant</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.storage_location?.plant?.name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">RFID Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
@@ -188,7 +212,7 @@ const handleSearch = debounce((search) => {
                             <v-chip v-if="rfidData?.epc_data.length > 0"
                                 v-for="(epc, index) in rfidData?.epc_data"
                                 :key="index"
-                                class="ma-2"
+                                class="mb-1"
                                 label
                             >
                                 {{ epc.epc }}

@@ -486,7 +486,7 @@ const toast = ref({
         </div>
     </div>
 
-    <EditingModal @close="changeBatchModal = false" 
+    <EditingModal @close="changeBatchModal = false" max-width="900px"
         :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleChangeBatch">

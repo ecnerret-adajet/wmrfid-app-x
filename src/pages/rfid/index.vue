@@ -1,21 +1,23 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
 import DefaultModal from '@/components/DefaultModal.vue';
+import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
+import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import Moment from 'moment';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-
 
 
 const searchValue = ref('');
@@ -25,14 +27,15 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
 const storageLocations = ref([]);
-
+const errorMessage = ref(null);
 const registrationModalForm = ref(null);
-
+const materialsOption = ref([]);
 const selectedItems = ref([]);
 const tagTypesOption = ref([]);
 const pageLoading = ref(false);
 const showEpcModal = ref(false);
 const epcData = ref([])
+const changeBatchModal = ref(false);
 
 const showRegistrationModal = ref(false);
 
@@ -40,6 +43,14 @@ const toast = ref({
     message: 'RFID success',
     color: 'success',
     show: false
+});
+
+const batchUpdateForm = reactive({
+    material_id: null,
+    mfg_date: null,
+    reason: null,
+    selectedRfid: [],
+    type: 'inventory' 
 });
 
 const headers = [
@@ -179,11 +190,12 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { table, statistics, tag_types, storage_locations } = response.data;
+        const { table, statistics, tag_types, storage_locations, materials } = response.data;
         totalItems.value = table.total;
         serverItems.value = table.data;
 
         // statisticsData.value = statistics;
+        materialsOption.value = materials
 
         tagTypesOption.value = tag_types.map(item => ({
             value: item.id,
@@ -213,6 +225,10 @@ const viewEpc = (item) => {
     showEpcModal.value = true;
 }
 
+const changeBatch = () => {
+    changeBatchModal.value = true;
+}
+
 const proceedRegister = () => {
     if (registrationModalForm.value.isValid) {
         if (!form.tag_type_id || !form.storage_location_id) {
@@ -238,6 +254,53 @@ const proceedRegister = () => {
     }
 }
 
+const changeBatchLoading = ref(false);
+
+const cancelChangeBatch = () => {
+    clearChangeBatch()
+    changeBatchModal.value = false;
+}
+
+const clearChangeBatch = () => {
+    batchUpdateForm.material_id = null;
+    batchUpdateForm.mfg_date = null;
+    batchUpdateForm.batch = null;
+    batchUpdateForm.reason = null;
+    batchUpdateForm.miller_name = null;
+}
+
+const handleChangeBatch = async () => {
+    changeBatchLoading.value = true;
+    toast.value.show = false;
+    
+    // Overwrite id with inventory_id
+    selectedItems.value.forEach(item => {
+        item.id = item.inventory_id;
+    });
+
+    batchUpdateForm.selectedRfid = selectedItems.value
+    
+    try {
+        const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
+        changeBatchLoading.value = false;
+        toast.value.message = 'Batch updated successfully!'
+        toast.value.show = true;
+        clearChangeBatch();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{key: 'created_at', order: 'desc'}],
+            search: searchValue.value
+        });
+        changeBatchModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        changeBatchLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -257,10 +320,17 @@ const proceedRegister = () => {
         <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
             @click="handleRegister">Register RFID
         </v-btn>
+        <!-- Disable if no selected items or selected items has no batch yet -->
+        <v-btn @click="changeBatch" :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" 
+            class="px-5" type="button" color="primary-light">
+            Change Batch
+        </v-btn>
     </div>
 
     <VCard>
+  
         <VDataTableServer
+            v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}"
             v-model:items-per-page="itemsPerPage"
             v-model="selectedItems"
             :headers="headers"
@@ -388,5 +458,69 @@ const proceedRegister = () => {
         </template>
     </AddingModal>
  
-    <Toast :show="toast.show" :message="toast.message"/>
+    <EditingModal @close="changeBatchModal = false" max-width="900px"
+        :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
+        <template #default>
+            <v-form @submit.prevent="handleChangeBatch">
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-select
+                            label="Select Material"
+                            density="compact"
+                            :items="materialsOption"
+                            v-model="batchUpdateForm.material_id"
+                            :rules="[value => !!value || 'Please select an item from the list']"
+                        />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker
+                            v-model="batchUpdateForm.mfg_date"
+                            placeholder="Select Manufacturing Date"
+                        />
+                    </v-col>
+                </v-row>
+                <v-text-field class="mt-4" density="compact" 
+                    label="Miller Name"
+                    v-model="batchUpdateForm.miller_name" 
+                />
+                <v-textarea class="mt-4"
+                    clear-icon="ri-close-line"
+                    label="Reason"
+                    v-model="batchUpdateForm.reason"
+                    clearable
+                ></v-textarea>
+    
+            </v-form>
+            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                {{ errorMessage }}
+            </VAlert>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                        <th>Material</th>
+                        <th>Receipt Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.material_name ?? 'N/A' }}</td>
+                        <td>
+                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="cancelChangeBatch" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit" :loading="changeBatchLoading">
+                    Update
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
 </template>

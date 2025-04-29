@@ -139,7 +139,6 @@ const assign = async (item) => {
 
         if (response.status === 200) {
             suggestedBlock.value = response.data
-            console.log(suggestedBlock.value);
             assignConfirmation.value = true;
         } else {
             console.error('Failed to fetch nearest block.');

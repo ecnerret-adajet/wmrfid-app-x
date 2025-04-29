@@ -65,6 +65,7 @@ const headers = [
         title: 'STATUS',
         key: 'status',
         sortable: false,
+        align: 'center'
     },
     {
         title: 'IP ADDRESS',

@@ -231,14 +231,10 @@ const handleChangeBatch = async () => {
         toast.value.message = 'Batch updated successfully!'
         toast.value.show = true;
         clearChangeBatch();
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
-            search: searchValue.value
-        });
         changeBatchModal.value = false;
         errorMessage.value = null;
+
+        await router.push('/inventories');
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
