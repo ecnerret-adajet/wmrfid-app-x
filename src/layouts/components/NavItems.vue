@@ -84,6 +84,7 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Transactions'}" />
     <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments'}"/>
     <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/deliveries'}"/>
+    <VerticalNavLink :item="{ title: 'Transfer Orders', icon: 'ri-truck-line', to: '/transfer-orders'}"/>
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
 

@@ -1,0 +1,351 @@
+<script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
+import { ref } from 'vue';
+import { VIcon } from 'vuetify/components';
+
+const props = defineProps({
+    show: {
+        type: Boolean,
+        default: false
+    },
+    deliveryData: {
+        type: Object,
+        default: () => ({})
+    }
+});
+
+const emit = defineEmits(['close']);
+
+const handleClose = () => {
+    emit('close');
+};
+
+const activeTab = ref('available');
+
+// Sample data for Available Stocks
+const availableStocks = ref([
+    {
+        batch_code: 'WGRCJD25',
+        mfg_date: '2025-04-25',
+        expiration_date: '2025-06-24',
+        age: '3 DAY(S)',
+        avail_qty: '2,280 BAG',
+        avail_pallets: '55 PALLET',
+        split_qty: '600 BAG(S)',
+        min_pallet: '15 PALLET',
+        min_qty: '600 BAG',
+        selected: true
+    }
+]);
+
+// Sample data for Other Stocks
+const otherStocks = ref([
+    {
+        batch_code: 'WGRCJD26',
+        mfg_date: '2025-04-26',
+        expiration_date: '2025-06-25',
+        age: '2 DAY(S)',
+        avail_qty: '3,720 BAG',
+        avail_pallets: '87 PALLET',
+        split_qty: '0 BAG(S)',
+        min_pallet: '0 PALLET',
+        min_qty: '3480 BAG',
+        selected: false
+    }
+]);
+</script>
+
+<template>
+    <DefaultModal 
+        :dialog-title="`${deliveryData?.delivery_document} - Reserved Pallets`" 
+        :show="show" 
+        @close="handleClose" 
+        min-height="auto"
+        class="position-absolute d-flex align-center justify-center" 
+        :fullscreen="true"
+    >
+        <!-- Delivery Information Section -->
+        <div class="delivery-info-section pa-4">
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">ALC Delivery:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.delivery_document || '0080029054' }}</div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Delivery Item No:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.item_no || '000010' }}</div>
+                    </div>
+                </v-col>
+            </v-row>
+
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">BU Delivery:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.bu_delivery || '1080022633' }}</div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Material:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.material || '1100000144' }}</div>
+                    </div>
+                </v-col>
+            </v-row>
+
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Ship-to-Party:</div>
+                        <div class="detail-value ml-2">
+                            {{ deliveryData?.ship_to_name || 'GRACIOUS MAJESTY DISTRIBUTION INC.' }}
+                            <div>{{ deliveryData?.ship_to_code || '0011004585' }}</div>
+                        </div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Material Description:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.material_desc || 'FL WAS Gold Flour C' }}</div>
+                    </div>
+                </v-col>
+            </v-row>
+
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Ship-to-Address:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.ship_to_address || 'B6 L4 SOUTH SUSANA HOMES BACOOR 4102' }}</div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Plant / Sloc:</div>
+                        <div class="detail-value ml-2">
+                            {{ deliveryData?.plant_name || '2111 - PFMC Mariveles (Flour) Plant' }}
+                            <div>{{ deliveryData?.storage_location || 'W107 - FG WAREHOUSE' }}</div>
+                        </div>
+                    </div>
+                </v-col>
+            </v-row>
+
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Delivery Date:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.delivery_date || '2025-04-30' }}</div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Required Quantity:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.required_qty || '600 BAG' }}</div>
+                    </div>
+                </v-col>
+            </v-row>
+
+            <v-row class="delivery-details">
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Age:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.age || '1 - 60 Days' }}</div>
+                    </div>
+                </v-col>
+                <v-col cols="12" md="6" class="detail-item">
+                    <div class="d-flex">
+                        <div class="detail-label">Open Quantity:</div>
+                        <div class="detail-value ml-2">{{ deliveryData?.open_qty || '600 BAG' }}</div>
+                    </div>
+                </v-col>
+            </v-row>
+        </div>
+
+        <!-- Tabs Section -->
+        <div class="tabs-section">
+            <div class="v-slide-group__container">
+                <div class="v-slide-group__content">
+                    <a
+                        class="v-btn v-tab-item--selected v-tab--selected v-theme--light text-primary v-btn--density-default v-btn--size-default v-btn--variant-text v-tab"
+                        href="javascript:void(0);"
+                        :class="{ 'text-primary': activeTab === 'available' }"
+                        tabindex="0"
+                        role="tab"
+                        :aria-selected="activeTab === 'available'"
+                        value="available"
+                        @click="activeTab = 'available'"
+                    >
+                        Available Stocks
+                    </a>
+                    <a
+                        class="v-btn v-theme--light v-btn--density-default v-btn--size-default v-btn--variant-text v-tab"
+                        href="javascript:void(0);"
+                        :class="{ 'text-primary': activeTab === 'other' }"
+                        tabindex="-1"
+                        role="tab"
+                        :aria-selected="activeTab === 'other'"
+                        value="other"
+                        @click="activeTab = 'other'"
+                    >
+                        Other Stocks
+                    </a>
+                </div>
+            </div>
+
+            <div class="tab-content">
+                <!-- Available Stocks Tab -->
+                <div v-if="activeTab === 'available'">
+                    <v-table density="compact" class="stock-table elevation-0">
+                        <thead>
+                            <tr>
+                                <th>Batch Code</th>
+                                <th>Mfg Date</th>
+                                <th>Expiration Date</th>
+                                <th>Age</th>
+                                <th>Avail. Qty</th>
+                                <th>Avail Pallets</th>
+                                <th>Split Qty</th>
+                                <th>Min. Pallet</th>
+                                <th>Min. Qty</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, index) in availableStocks" :key="index" :class="{ 'selected-row': item.selected }">
+                                <td>{{ item.batch_code }}</td>
+                                <td>{{ item.mfg_date }}</td>
+                                <td>{{ item.expiration_date }}</td>
+                                <td>{{ item.age }}</td>
+                                <td>{{ item.avail_qty }}</td>
+                                <td>{{ item.avail_pallets }}</td>
+                                <td>{{ item.split_qty }}</td>
+                                <td>{{ item.min_pallet }}</td>
+                                <td>{{ item.min_qty }}</td>
+                                <td>
+                                    <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </div>
+
+                <!-- Other Stocks Tab -->
+                <div v-if="activeTab === 'other'">
+                    <v-table density="compact" class="stock-table elevation-0">
+                        <thead>
+                            <tr>
+                                <th>Batch Code</th>
+                                <th>Mfg Date</th>
+                                <th>Expiration Date</th>
+                                <th>Age</th>
+                                <th>Avail. Qty</th>
+                                <th>Avail Pallets</th>
+                                <th>Split Qty</th>
+                                <th>Min. Pallet</th>
+                                <th>Min. Qty</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, index) in otherStocks" :key="index" :class="{ 'selected-row': item.selected }">
+                                <td>{{ item.batch_code }}</td>
+                                <td>{{ item.mfg_date }}</td>
+                                <td>{{ item.expiration_date }}</td>
+                                <td>{{ item.age }}</td>
+                                <td>{{ item.avail_qty }}</td>
+                                <td>{{ item.avail_pallets }}</td>
+                                <td>{{ item.split_qty }}</td>
+                                <td>{{ item.min_pallet }}</td>
+                                <td>{{ item.min_qty }}</td>
+                                <td>
+                                    <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-end mt-4 pa-4">
+            <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back To Delivery Items</v-btn>
+            <v-btn color="success" elevation="0">Reserve Available Pallets</v-btn>
+        </div>
+    </DefaultModal>
+</template>
+
+<style scoped>
+.delivery-details {
+    margin-bottom: 8px;
+}
+
+.detail-item {
+    padding: 2px 10px;
+    border-radius: 4px;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #546e7a;
+    min-width: 150px;
+    flex-shrink: 0;
+}
+
+.detail-value {
+    color: #263238;
+    flex-grow: 1;
+}
+
+.tabs-section {
+    border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.v-slide-group__container {
+    padding: 0 16px;
+}
+
+.v-slide-group__content {
+    display: flex;
+}
+
+.v-tab {
+    min-width: 150px;
+    border-bottom: 2px solid transparent;
+    margin-right: 8px;
+    text-transform: capitalize;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    font-size: 14px;
+}
+
+.v-tab--selected {
+    border-bottom: 2px solid #4CAF50;
+    font-weight: 600;
+}
+
+.text-primary {
+    color: #4CAF50 !important;
+}
+
+.stock-table {
+    /* border: 1px solid #e0e0e0; */
+    /* border-radius: 4px; */
+    overflow: hidden;
+}
+
+.stock-table th {
+    background-color: #f5f5f5;
+    color: rgba(0, 0, 0, 0.6);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    height: 40px;
+}
+
+.selected-row {
+    background-color: #e8f5e9;
+}
+</style>

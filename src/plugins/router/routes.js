@@ -165,6 +165,17 @@ export const routes = [
             },
         },
         {
+            path: 'transfer-orders',
+            name: 'transfer-orders',
+            component: () => import('@/pages/transfers/index.vue'),
+            meta: {
+              pageTitle: "Transfer Orders",
+              breadcrumbs: [
+                  { label: "Transfer Orders", link: "/transfer-orders" },
+              ],
+            },
+        },
+        {
             path: 'warehouse',
             name: 'warehouse',
             component: () => import('@/pages/warehouse/index.vue'),

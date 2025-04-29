@@ -31,24 +31,28 @@ const deliveryData = ref([]);
 
 const headers = [
     {
-        title: 'DELIVERY NUMBER',
-        key: 'delivery_document',
+        title: 'PO ITEM',
+        key: 'po_item',
     },
     {
-        title: 'PLANT',
-        key: 'plant_name',
+        title: 'PO NUMBER',
+        key: 'po_number',
     },
     {
-        title: 'CUSTOMER',
-        key: 'ship_to_customer',
+        title: 'Type',
+        key: 'document_type',
     },
     {
-        title: 'SHIPMENT',
-        key: 'shipment_number',
+        title: 'Storage Location',
+        key: 'storage_location',
     },
     {
-        title: 'ITEMS',
-        key: 'items',
+        title: 'Supplying Plant',
+        key: 'supplying_plant',
+    },
+    {
+        title: 'PO qty',
+        key: 'po_qty',
     },
     {
         title: 'RESERVED PALLETS',
@@ -75,7 +79,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query('datatable/deliveries',{
+    ApiService.query('datatable/purchase-orders',{
         params: {
             page,
             itemsPerPage,
