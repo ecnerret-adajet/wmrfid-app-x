@@ -70,21 +70,23 @@ const proceedMapping = () => {
 </script>
 
 <template>
-    <VerticalNavLink :item="{ title: 'Dashboard', icon: 'ri-home-smile-line', to: '/dashboard'}"/>
+    <VerticalNavLink :item="{ title: 'Dashboard', icon: 'ri-dashboard-line', to: '/dashboard'}"/>
     
     <!-- Warehouse Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse'}" />
     <VerticalNavLink :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories'}"/>
-    <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-picture-in-picture-line', to: '/production-runs'}"/>
-    <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line', to: '/warehouse'}" />
+    <VerticalNavLink :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs'}"/>
+    <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-home-gear-line', to: '/warehouse'}" />
 
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Transactions'}" />
     <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments'}"/>
-    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/deliveries'}"/>
-    <VerticalNavLink :item="{ title: 'Transfer Orders', icon: 'ri-truck-line', to: '/transfer-orders'}"/>
+    <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries'}"/>
+    <VerticalNavLink :item="{ title: 'Transfer Orders', icon: 'ri-exchange-box-line', to: '/transfer-orders'}"/>
+    <VerticalNavLink :item="{ title: 'Fumigations', icon: 'ri-shield-check-line', to: '/fumigations'}"/>
+
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
 
@@ -94,13 +96,13 @@ const proceedMapping = () => {
    
     <!-- Master Data Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'Master Data'}" />
-    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-folder-open-line', to: '/materials'}"/>
-    <VerticalNavLink :item="{ title: 'Production Lines', icon: 'ri-database-line', to: '/production-lines'}"/>
+    <VerticalNavLink :item="{ title: 'Materials', icon: 'ri-stack-line', to: '/materials'}"/>
+    <VerticalNavLink :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines'}"/>
 
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle :item="{ heading: 'RFID Components'}" />
     <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
-    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-box-2-line', to: '/rfid'}"/>
+    <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-database-2-line', to: '/rfid'}"/>
 
     <VerticalNavLink :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers'}"/>
 

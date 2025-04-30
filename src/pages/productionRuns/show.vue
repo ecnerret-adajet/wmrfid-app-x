@@ -34,6 +34,17 @@ const sortQuery = ref('-created_at');
 const selectedItems = ref([])
 const filters = ref([])
 
+// Fumigation variables
+const fumigateModal = ref(false)
+const fumigateLoading = ref(false)
+const fumigateForm = reactive({
+    remarks: null,
+    startDate: null,
+    endDate: null,
+    batch: null,
+    items: []
+})
+
 const headers = [
     {
         title: 'RFID CODE',
@@ -241,6 +252,56 @@ const handleChangeBatch = async () => {
     }
 }
 
+const fumigate = () => {
+    fumigateModal.value = true;
+}
+
+const handleFumigate = async () => {
+    fumigateLoading.value = true;
+    toast.value.show = false;
+    fumigateForm.items = selectedItems.value
+    fumigateForm.batch = batch
+
+    if (!fumigateForm.startDate || !fumigateForm.endDate || !fumigateForm.remarks) {
+        errorMessage.value = 'Start Date, End Date, and Remarks are required.';
+        fumigateLoading.value = false;
+        return; 
+    }
+    
+    try {
+        const response = await ApiService.post('production-runs/fumigate', fumigateForm)
+        fumigateLoading.value = false;
+        toast.value.message = 'Fumigation request created successfully'
+        toast.value.show = true;
+        clearFumigateForm();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{key: 'updated_at', order: 'desc'}],
+            search: searchValue.value
+        });
+        fumigateModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        fumigateLoading.value = false;
+    }
+}
+
+const cancelFumigate = () => {
+    clearFumigateForm()
+    fumigateModal.value = false;
+}
+
+const clearFumigateForm = () => {
+    fumigateForm.remarks = null;
+    fumigateForm.startDate = null;
+    fumigateForm.endDate = null;
+    fumigateForm.batch = null;
+    fumigateForm.items = [];
+}
+
 const toast = ref({
     message: 'Batch updated successfully!',
     color: 'success',
@@ -414,6 +475,10 @@ const toast = ref({
                             <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
                                 Change Batch
                             </v-btn>
+
+                            <v-btn @click="fumigate" :disabled="selectedItems.length === 0" class="px-5 ml-2" type="button" color="primary-light">
+                                Fumigate
+                            </v-btn>
                         </div>
 
                         <VDataTableServer
@@ -517,7 +582,6 @@ const toast = ref({
                     v-model="batchUpdateForm.reason"
                     clearable
                 ></v-textarea>
-    
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -545,6 +609,63 @@ const toast = ref({
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelChangeBatch" class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit" :loading="changeBatchLoading">
+                    Update
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
+    <EditingModal @close="fumigateModal = false" max-width="900px"
+        :show="fumigateModal" :dialog-title="`Fumigation Request`">
+        <template #default>
+            <v-form @submit.prevent="handleFumigate">
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <DatePicker 
+                            v-model="fumigateForm.startDate"
+                            placeholder="Select Start Date"
+                        />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker 
+                            v-model="fumigateForm.endDate"
+                            placeholder="Select End Date"
+                        />
+                    </v-col>
+                </v-row>
+                <v-textarea class="mt-4"
+                    clear-icon="ri-close-line"
+                    label="Remarks"
+                    v-model="fumigateForm.remarks"
+                    clearable
+                ></v-textarea>
+            </v-form>
+            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                {{ errorMessage }}
+            </VAlert>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                        <th>Material</th>
+                        <th>Receipt Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.material?.description ?? 'N/A' }}</td>
+                        <td>
+                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="cancelFumigate" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleFumigate" color="primary" class="px-12" type="submit" :loading="fumigateLoading">
                     Update
                 </PrimaryButton>
             </div>

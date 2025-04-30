@@ -225,6 +225,17 @@ export const routes = [
                 ],
             },
         },
+        {
+            path: 'fumigations',
+            name: 'fumigations',
+            component: () => import('@/pages/fumigation/index.vue'),
+            meta: {
+              pageTitle: "Fumigations",
+              breadcrumbs: [
+                  { label: "Fumigations", link: "/fumigations" },
+              ],
+            },
+        },
 
         {
           path: 'account-settings',
