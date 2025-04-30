@@ -32,7 +32,7 @@ const route = useRoute();
 const router = useRouter();
 const storageLocation = route.params.location;
 const plantCode = route.params.plant;
-const searchValue = ref('')
+const searchValue = ref(route.query.search || '');
 const loading = ref(true);
 const mapLoading = ref(true);
 const layersData = ref(null);
@@ -81,6 +81,10 @@ const filteredLayout = computed(() =>
 
 onMounted(() => {
     state.index = state.layout.length;
+    // Check for search query in the route params and set the search value
+    if (route.query.search) {
+        searchValue.value = route.query.search;
+    }
     fetchStorageLocationInformation()
 })
 
@@ -108,7 +112,8 @@ const fetchStorageLocationInformation = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
-            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
+            under_fumigation: item.under_fumigation
         }));
 
         state.index = state.layout.length;
@@ -264,8 +269,13 @@ const handleEditMap = () => {
                         {{ layer.label }}
                     </template>
                     <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                            margin-right: 5px; background-color: #f0edf2"></div>
+                            margin-right: 5px; background-color: #f0edf2">
+                    </div>
                     Empty
+                    <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                            margin-right: 5px; background-color: #f7897e">
+                    </div>
+                    Under Fumigation
                 </div>
 
                 <div class="d-flex align-center">
@@ -304,6 +314,7 @@ const handleEditMap = () => {
                         :class="{
                             'cursor-pointer': item.type !== 'lot' && item.clickable,
                             'bg-primary-light': item.type == 'lot',
+                            'under-fumigation': item.under_fumigation,
                             'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
                             'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                             'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
@@ -383,6 +394,10 @@ const handleEditMap = () => {
 
 .empty-layer {
     background-color: #f0edf2;
+}
+
+.under-fumigation {
+    background-color: #f7897e;
 }
 
 .vue-grid-layout {

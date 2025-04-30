@@ -271,7 +271,14 @@ const handleActionClick = (action, layer, index) => {
     selectedInventory.value = layer.assigned_inventory;
     selectedLayerIndex.value = index;
     selectedLayer.value = layer;
-    
+
+    if (layer.assigned_inventory && layer.assigned_inventory.under_fumigation == true) {
+        toast.value.color = 'error';
+        toast.value.message = 'Items under fumigation cannot be transfered or return to mill.'
+        toast.value.show = true;
+        return;
+    }
+
     if (action === 'Bin Transfer') {
         enableBinTransfer.value = true;
         binTransferDetails.value = 'Select inventory to transfer bin'
@@ -350,6 +357,7 @@ const proceedAction = async () => {
 };
 
 const binTransfer = (item) => {
+    
     selectedNewBlock.value = item;
     selectedAction.title = 'Bin Transfer';
     selectedAction.message = `Transfer selected RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong> to bin location <strong>${selectedNewBlock.value.lot?.label} - ${selectedNewBlock.value.label}</strong>?`;
@@ -601,8 +609,9 @@ const handleSearch = debounce((search) => {
     background-color: #f0edf2;
 }
 
-.highlighted-item {
-    border: 3px solid #00833c;  /* Green border to indicate selection */
+.under-fumigation {
+    background-color: #f7897e;
 }
+
 
 </style>

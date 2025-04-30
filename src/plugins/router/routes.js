@@ -292,7 +292,7 @@ export const routes = [
         component: () => import('@/pages/warehouse/showMap.vue'), 
         meta: {
             pageTitle: "Warehouse Map"
-        },
+        }
     },
     {
         path: '/warehouse-map/:plant/:location/edit',

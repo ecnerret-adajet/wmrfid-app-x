@@ -1,4 +1,5 @@
 <script setup>
+import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
@@ -114,7 +115,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
             loading.value = false
-            console.log(serverItems.value);
         })
         .catch((error) => {
             console.log(error);
@@ -243,7 +243,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 </template>
                 <template #item.block_location="{ item }">
                     <v-btn
-                        :to="`/fumigations/${id}`"
+                        :to="{
+                            path: `/warehouse-map/${item.storage_location?.plant_code}/${generateSlug(item.storage_location?.name)}`,
+                            query: { search: item.block?.lot?.label }
+                        }"
                         color="primary-light"
                         variant="outlined"
                         size="small"
