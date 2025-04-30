@@ -280,7 +280,7 @@ const editCancelClicked = () => {
 
 const handleBack = () => {
     router.push({
-        path: `/warehouse`,
+        path: `/warehouse-map/${plantCode}/${storageLocation}`,
     });
 }
 </script>

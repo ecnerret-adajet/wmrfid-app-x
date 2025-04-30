@@ -4,7 +4,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 
 const props = defineProps({
@@ -44,22 +44,31 @@ const toast = ref({
 
 const handleSearch = debounce((search) => {
     searchValue.value = search;
-    isFiltered.value = true;
-    if (searchValue.value) {
-        fetchFilteredMap()
-    } else {
-        fetchStorageLocationInformation(); 
-        isFiltered.value = false;
-    }
 }, 500);
 
-watch(searchValue, (newValue) => {
-    if (newValue === '') {
-        isFiltered.value = false;
-        state.index = state.layout.length;
-        fetchStorageLocationInformation();
+const isFiltering = computed(() => searchValue.value.trim() !== '');
+
+const isMatch = (item) => {
+    const search = searchValue.value.toLowerCase();
+    if (item.type === 'block') {
+        return item.lot?.label?.toLowerCase().includes(search);
+    } else if (item.type === 'lot') {
+        return item.label?.toLowerCase().includes(search);
     }
-});
+    return false;
+};
+
+const filteredLayout = computed(() =>
+  state.layout.map(item => {
+    const matched = isMatch(item);
+    return {
+      ...item,
+      dimmed: isFiltering.value && !matched,
+      clickable: matched || !isFiltering.value
+    };
+  })
+);
+
 
 onMounted(() => {
     state.index = state.layout.length;
@@ -101,37 +110,6 @@ const fetchStorageLocationInformation = async () => {
     }
 };
 
-const fetchFilteredMap = async () => {
-    state.layout = [];
-    mapLoading.value = true;
-    try {
-        const response = await ApiService.get(`warehouse/get-blocks/${props.plantCode}/${props.storageLocation}/${searchValue.value}`);
-        const { storage_location, layers_data, blocks } = response.data
-        state.layout = blocks.map((item, index) => ({
-            i: String(index),
-            x: item.x || 0, // Default to 0 if x is not provided
-            y: item.y || 0, // Default to 0 if y is not provided
-            w: item.w || 3, // Default width
-            h: item.h || 2, // Default height
-            label: item.label || 'Unnamed', // Use name from API
-            type: item.type || 'unknown', 
-            isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
-            inventories: item.inventories || null,
-            inventoriesCount: item.inventories_count || 0,
-            layers: item.layers || [],
-            lot: item.lot || null,
-            id: item.id || null,
-            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false
-        }));
-
-        state.index = state.layout.length;
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    } finally {
-        mapLoading.value = false
-    }
-};
-
 const handleBlockClick = (item) => {
     selectedBlock.data = item;
     selectedBlock.layers = item.layers;
@@ -139,13 +117,10 @@ const handleBlockClick = (item) => {
 }
 
 const onAssignSuccess = () => {
-    if(isFiltered.value) {
-        fetchFilteredMap()
-        openAssignModal.value = false;
-    } else {
-        fetchStorageLocationInformation()
-        openAssignModal.value = false;
-    }
+    fetchStorageLocationInformation()
+    openAssignModal.value = false;
+    searchValue.value = '';
+    isFiltered.value = false;
     toast.value.message = 'Inventory assigned successfully!';
     toast.value.color = 'success';
     toast.value.show = true;
@@ -160,18 +135,11 @@ const actionSuccess = (type) => {
     toast.value.color = 'success';
     toast.value.show = true;
 
-    const fetchFunction = isFiltered.value ? fetchFilteredMap : fetchStorageLocationInformation;
-    fetchFunction();
+    fetchStorageLocationInformation();
     
     openAssignModal.value = false;
 };
 
-const getItemColor = (inventoriesCount) => {
-    if (inventoriesCount >= 4) return '#ac84e0'; // Layer 4 color
-    if (inventoriesCount === 3) return '#afe1af'; // Layer 3 color
-    if (inventoriesCount === 2) return '#e9869a'; // Layer 2 color
-    return '#ffeeba'; // Default layer 1 color
-};
 
 </script>
 
@@ -205,12 +173,11 @@ const getItemColor = (inventoriesCount) => {
             </div>
         </div>
 
-        <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
 
         <!-- Map area  -->
-        <div v-else>
-            <GridLayout class="border mt-2"
-                v-model:layout="state.layout"
+        <div >
+            <GridLayout class="border mt-2 "
+                v-model:layout="filteredLayout"
                 v-if="state.layout.length > 0"
                 :col-num="148"
                 :row-height="15"
@@ -224,7 +191,7 @@ const getItemColor = (inventoriesCount) => {
                 :margin="[1, 1]"
             >
                 <GridItem
-                    v-for="item in state.layout"
+                    v-for="item in filteredLayout"
                     :key="item.i"
                     :static="item.static"
                     :x="item.x"
@@ -234,19 +201,31 @@ const getItemColor = (inventoriesCount) => {
                     :i="item.i"
                     :min-w="2.5"
                     :min-h="2"
+                    
                     :class="{
-                        'cursor-pointer': item.type !== 'lot',
+                        'cursor-pointer': item.type !== 'lot' && item.clickable,
                         'bg-primary-light': item.type == 'lot',
                         'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
                         'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                         'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
                         'layer-4': item.type !== 'lot' && item.inventoriesCount === 4,
                         'empty-layer': item.type !== 'lot' && item.inventoriesCount === 0,
+                        'dimmed-block': item.dimmed,
+                        'highlighted-block': !item.dimmed
                     }"
-                    @click="item.type !== 'lot' && handleBlockClick(item)"
+                    @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)"
                     :is-resizable="false"
                 >
-                    <span class="text">{{item.label}}</span>
+                    <div
+                        class="text"
+                        :class="{
+                            'dimmed-block': item.dimmed,
+                            'highlighted-block': !item.dimmed
+                        }"
+                    >
+                        {{ item.label }}
+                    </div>
+                    <!-- <span class="text" >{{item.label}}</span> -->
                 </GridItem>
             </GridLayout>
             <div v-else class="border mt-2" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
@@ -263,6 +242,18 @@ const getItemColor = (inventoriesCount) => {
 </template>
 
 <style scoped>
+
+.dimmed-block {
+  opacity: 0.1;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.highlighted-block {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.6s ease;
+}
 .layer-1 {
     background-color: #eece70;
     color: white;
