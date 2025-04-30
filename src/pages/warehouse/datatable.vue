@@ -33,7 +33,7 @@ const loading = ref(true);
 const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
-const sortQuery = ref('-created_at'); // Default sort
+const sortQuery = ref('name'); // Default sort
 const errorMessage = ref(null)
 const filters = ref(null);
 const router = useRouter();
@@ -48,11 +48,11 @@ const multipleMaterialModal = reactive({
 
 const headers = computed(() => {
     const baseHeaders = [
-        { title: 'WAREHOUSE', key: 'name' },
-        { title: 'CODE', key: 'code' },
-        { title: 'PLANT', key: 'plant_id' },
+        { title: 'WAREHOUSE', key: 'name',  },
+        { title: 'CODE', key: 'code', align: 'center' },
+        { title: 'PLANT', key: 'plant_id', align: 'center' },
         { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
-        { title: 'LAST UPDATED AT', key: 'updated_at' },
+        { title: 'LAST UPDATED AT', key: 'updated_at', align: 'center' },
     ];
     if (authStore.user?.is_super_admin) {
         baseHeaders.splice(4, 0, {
@@ -83,7 +83,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
         }
     } else {
-        sortQuery.value = '-created_at';
+        sortQuery.value = 'name';
     }
 
     ApiService.query('datatable/warehouse',{
@@ -137,7 +137,7 @@ const handleUpdate = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{key: 'name', order: 'asc'}],
             search: props.search
         });
         toast.value.message = 'Warehouse updated successfully!'
@@ -154,7 +154,7 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'created_at', order: 'desc'}],
+        sortBy: [{key: 'name', order: 'asc'}],
         search: props.search
     });
 }
@@ -169,11 +169,11 @@ const form = ref({
 const viewMap = (item) => {
     if (authStore.user?.is_warehouse_operator) {
         router.push({
-            path: `operator/${generateSlug(item.name)}/movement`,
+            path: `operator/${item.plant_code}/${generateSlug(item.name)}/movement`,
         });
     } else {
         router.push({
-            path: `/warehouse-map/${generateSlug(item.name)}`,
+            path: `/warehouse-map/${item.plant_code}/${generateSlug(item.name)}`,
         });
     }
     
@@ -203,7 +203,7 @@ const handleAllowMultiple = async () => {
             loadItems({
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
-                sortBy: [{key: 'created_at', order: 'desc'}],
+                sortBy: [{key: 'name', order: 'asc'}],
                 search: props.search
             });
         }
@@ -229,7 +229,7 @@ const onToggleSwitch = (warehouse) => {
 
 const handleViewWarehouse = (item) => {
     router.push({
-        path: `/warehouse/${generateSlug(item.name)}/overview`,
+        path: `/warehouse/${item.plant_code}/${generateSlug(item.name)}/overview`,
     });
 }
 

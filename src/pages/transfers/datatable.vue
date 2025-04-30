@@ -1,9 +1,11 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+import ReservedPallets from './reservedPallets.vue';
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -62,14 +64,46 @@ const headers = [
         key: 'supplying_plant',
     },
     {
+        title: 'Plant',
+        key: 'plant',
+    },
+    {
+        title: 'UOM',
+        key: 'uom',
+    },
+    {
         title: 'PO qty',
         key: 'po_qty',
         align: 'center',
         sortable: false,
     },
     {
-        title: 'RESERVED PALLETS',
-        key: 'reserved_qty',
+        title: 'GI qty',
+        key: 'gi_qty',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'Remaining qty',
+        key: 'remaining_qty',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'Status',
+        key: 'status',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'Release Ind.',
+        key: 'release_indicator',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'SAP Server',
+        key: 'sap_server',
     },
     
 ]
@@ -127,7 +161,7 @@ const applyFilters = (data) => {
 
 const actionList = [
     { title: 'View Delivery Items', key: 'view_delivery_items' },
-    { title: 'Reserved Pallets', key: 'reserved_pallets' },
+    { title: 'Reserve Pallets', key: 'reserved_pallets' },
 ]
 
 const handleViewDelivery = (delivery) => {
@@ -176,14 +210,24 @@ defineExpose({
     </template>
 
     <template #item.material="{ item }">
-        <div class="d-flex flex-column">
+        <div class="d-flex flex-column py-3">
             <span class="font-weight-bold">{{ item.material_code }}</span>
             <span>{{ item.material_description }}</span>
         </div>
     </template>
 
-    <template #item.plant_name="{ item }">
-        {{ item?.plant?.name }}
+    <template #item.plant="{ item }">
+        <div class="d-flex flex-column py-3">
+            <span class="font-weight-bold">{{ item.plant?.plant_code }}</span>
+            <span>{{ item.plant?.name }}</span>
+        </div>
+    </template>
+
+    <template #item.supplying_plant="{ item }">
+        <div class="d-flex flex-column py-3">
+            <span class="font-weight-bold">{{ item.supplying_plant?.plant_code }}</span>
+            <span>{{ item.supplying_plant?.name }}</span>
+        </div>
     </template>
 
     <template #item.ship_to_customer="{ item }">
@@ -195,7 +239,10 @@ defineExpose({
     </template>
 
     <template #item.storage_location="{ item }">
-        {{ item?.storage_location?.name }}
+        <div class="d-flex flex-column py-3">
+            <span class="font-weight-bold">{{ item.storage_location?.code }}</span>
+            <span>{{ item.storage_location?.name }}</span>
+        </div>
     </template>
 
     <template #item.items="{ item }">
@@ -204,6 +251,10 @@ defineExpose({
 
     <template #item.po_qty="{ item }">
         {{ item.quantity }}
+    </template>
+
+    <template #item.release_indicator="{ item }">
+        {{ item.purchase_order?.release_indicator }}
     </template>
 
     <!-- Actions -->
@@ -229,7 +280,7 @@ defineExpose({
     </VDataTableServer>
 
     <!-- Delivery items modal -->
-    <!-- <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
+    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
         class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
         <v-table class="mt-4">
                 <thead>
@@ -255,14 +306,14 @@ defineExpose({
                     </tr>
                 </tbody>
             </v-table>
-    </DefaultModal> -->
+    </DefaultModal>
 
     <!-- Show Reserved Pallets Modal -->
-    <!-- <ReservedPallets 
+    <ReservedPallets 
         :show="showReservedPallets" 
         :delivery-data="deliveryData" 
         @close="showReservedPallets = false"
-    /> -->
+    />
 
     <Toast :show="toast.show" :message="toast.message"/>
 

@@ -19,7 +19,7 @@ const searchValue = ref('');
 const datatableRef = ref(null);
 const tablePerPage = ref(10);
 const tablePage = ref(1);
-const tableSort = ref('-created_at')
+const tableSort = ref('name')
 const isLoading = ref(false);
 const errorMessage = ref(null)
 const plantsOption = ref([])
@@ -114,7 +114,7 @@ const submit = async () => {
     try {
         const response = await ApiService.post('warehouse/store', form.value)
         if (datatableRef.value) {
-            datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{key: 'created_at', 'order': 'desc'}], search: searchValue.value });
+            datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{key: 'name', 'order': 'asc'}], search: searchValue.value });
         }
         isLoading.value = false;
         dialogVisible.value = false

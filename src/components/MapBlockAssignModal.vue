@@ -16,7 +16,8 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    storageLocation: String
+    storageLocation: String,
+    plant: String
 });
 
 const selectedLayerIndex = ref(-1);
@@ -111,7 +112,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-updated_at';
     }
     
-    ApiService.query(`warehouse/get-grouped-inventories/${props.storageLocation}`,{
+    ApiService.query(`warehouse/get-grouped-inventories/${props.plant}/${props.storageLocation}`,{
         params: {
             page,
             itemsPerPage,
@@ -163,7 +164,7 @@ const loadAvailableBlocks = ({ page, itemsPerPage, sortBy, layerSearch }) => {
         sortQuery.value = '-blocks.updated_at';
     }
     
-    ApiService.query(`warehouse/get-available-blocks/${props.storageLocation}`,{
+    ApiService.query(`warehouse/get-available-blocks/${props.plant}/${props.storageLocation}`,{
         params: {
             page,
             itemsPerPage,
@@ -539,12 +540,12 @@ const handleSearch = debounce((search) => {
     </DefaultModal>
     
     <!-- Assign Confirmation  -->
-    <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="500">
+    <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="700">
         <v-card class="py-8 px-6">
             <div class="mx-auto">
                 <i class="ri-add-box-line" style="font-size: 54px;"></i>
             </div>
-            <p class="mt-4 text-h4 text-center">Assign RFID with physical ID of <span class="font-weight-black">{{ selectedInventory.rfid?.name }}</span> 
+            <p class="mt-4 text-h4 text-center text-high-emphasis">Assign RFID with physical ID of <span class="font-weight-bold">{{ selectedInventory.rfid?.name }}</span> 
                 to <span class="font-weight-black">{{selectedLayer.layer_name}}</span> of <span class="font-weight-black">{{block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
           
             <v-card-actions class="mt-5">

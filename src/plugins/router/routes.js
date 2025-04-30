@@ -187,20 +187,17 @@ export const routes = [
             },
         },
         {
-            path: 'warehouse/:location/overview',
+            path: 'warehouse/:plant/:location/overview',
             name: 'warehouse.show',
             component: () => import('@/pages/warehouse/show.vue'),
             meta: {
                 pageTitle: "Storage Location",
                 breadcrumbs: (route) => {
                     const unslugify = (slug) =>
-                      slug
-                        .replace(/-/g, ' ')              // replace dashes with spaces
-                        .replace(/\b\w/g, l => l.toUpperCase()); // capitalize each word
-              
+                        slug.replace(/-/g, ' ').toUpperCase();
                     return [
                       { label: "Storage Location", link: "/warehouse" },
-                      { label: unslugify(route.params.location), link: `/warehouse/${route.params.location}/overview` }
+                      { label: unslugify(route.params.location), link: `/warehouse/${route.params.plant}/${route.params.location}/overview` }
                     ]
                 }
             },
@@ -259,7 +256,7 @@ export const routes = [
         },
     },
     {
-        path: '/rfid-registration/:type/:location',
+        path: '/rfid-registration/:type/:plant/:location',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {
             middleware: "auth",
@@ -267,7 +264,7 @@ export const routes = [
         },
     },
     {
-        path: '/warehouse-map/:location',
+        path: '/warehouse-map/:plant/:location',
         name: 'warehouse-map',
         component: () => import('@/pages/warehouse/showMap.vue'), 
         meta: {
@@ -275,7 +272,7 @@ export const routes = [
         },
     },
     {
-        path: '/warehouse-map/:location/edit',
+        path: '/warehouse-map/:plant/:location/edit',
         name: 'warehouse-map.edit',
         component: () => import('@/pages/warehouse/editMap.vue'), 
         meta: {
@@ -283,7 +280,7 @@ export const routes = [
         },
     },
     {
-        path: '/operator/:location/movement',
+        path: '/operator/:plant/:location/movement',
         component: () => import('@/pages/operator/movement.vue'), 
         meta: {
             pageTitle: "Warehouse Movement"

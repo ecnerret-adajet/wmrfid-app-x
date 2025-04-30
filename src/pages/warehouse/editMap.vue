@@ -2,7 +2,7 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
-import { convertSlugToOriginal } from '@/composables/useHelpers';
+import { convertSlugToUpperCase } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import { reactive } from 'vue';
@@ -22,6 +22,7 @@ const state = reactive({
 const route = useRoute();
 const router = useRouter();
 const storageLocation = route.params.location;
+const plantCode = route.params.plant;
 const showLoader = ref(false);
 const actionDialog = ref(false);
 const showBlockDetailsModal = ref(false);
@@ -66,9 +67,13 @@ const fetchMapData = async () => {
     showLoader.value = true;
     try {
         const response = await axios.get('/warehouse/get-map', {
-            params: { storageLocation }
+            params: { 
+                plantCode: plantCode,
+                storageLocation : storageLocation
+            }
         });
         const { items, storage_location } = response.data;
+        
         storageLocationModel.value = storage_location
         
         // Transform API data into GridItem format
@@ -149,6 +154,7 @@ const save = async () => {
         try {
             const payload = {
                 storage_location: storageLocation,
+                plant: plantCode,
                 items: state.layout,
                 removedItems : removedItems 
             };
@@ -290,7 +296,7 @@ const handleBack = () => {
                     icon="ri-arrow-left-line"
                     variant="text"
                 ></v-btn>
-                <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Map</h3>
+                <h3 class="font-weight-black text-uppercase text-primary">{{ convertSlugToUpperCase(storageLocation) }} Map</h3>
             </div>
             <div class="d-flex justify-end">
                 <v-btn color="primary-2" 
@@ -341,7 +347,7 @@ const handleBack = () => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium">
-                                            {{ storageLocationModel?.plant?.address ?? '--' }}
+                                            {{ storageLocationModel?.plant?.city ?? '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>

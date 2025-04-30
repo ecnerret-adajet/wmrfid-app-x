@@ -131,8 +131,8 @@ const closeModal = () => {
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
                 </div>
-
-                <VList lines="one" density="compact" class="mt-4">
+                <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                <VList v-else lines="one" density="compact" class="mt-4">
                     <VListItem>
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">

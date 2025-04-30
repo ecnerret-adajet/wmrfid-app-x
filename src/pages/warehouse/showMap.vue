@@ -3,7 +3,7 @@ import MapBlockAssignModal from '@/components/MapBlockAssignModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import SmartAssignModal from '@/components/SmartAssignModal.vue';
 import Toast from '@/components/Toast.vue';
-import { convertSlugToOriginal } from '@/composables/useHelpers';
+import { convertSlugToUpperCase } from '@/composables/useHelpers';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
@@ -31,6 +31,7 @@ const state = reactive({
 const route = useRoute();
 const router = useRouter();
 const storageLocation = route.params.location;
+const plantCode = route.params.plant;
 const searchValue = ref('')
 const loading = ref(true);
 const mapLoading = ref(true);
@@ -78,7 +79,7 @@ const fetchStorageLocationInformation = async () => {
     state.layout = [];
     loading.value = true;
     try {
-        const response = await axios.get(`warehouse/get-storage-location-information/${storageLocation}`);
+        const response = await axios.get(`warehouse/get-storage-location-information/${plantCode}/${storageLocation}`);
         const { details } = response.data
         
         storageLocationModel.value = details.storage_location
@@ -114,7 +115,7 @@ const fetchFilteredMap = async () => {
     state.layout = [];
     mapLoading.value = true;
     try {
-        const response = await axios.get(`warehouse/get-storage-location-information/${storageLocation}/${searchValue.value}`);
+        const response = await axios.get(`warehouse/get-storage-location-information/${plantCode}/${storageLocation}/${searchValue.value}`);
         const { details, inventories } = response.data
 
         storageLocationModel.value = details.storage_location
@@ -194,7 +195,7 @@ const handleBack = () => {
 
 const handleEditMap = () => {
     router.push({
-        path: `/warehouse-map/${storageLocation}/edit`,
+        path: `/warehouse-map/${plantCode}/${storageLocation}/edit`,
     });
 }
 
@@ -210,7 +211,7 @@ const handleEditMap = () => {
                         icon="ri-arrow-left-line"
                         variant="text"
                     ></v-btn>
-                    <h3 class="font-weight-black">{{ convertSlugToOriginal(storageLocation) }} Map</h3>
+                    <h3 class="font-weight-black text-uppercase text-primary">{{ convertSlugToUpperCase(storageLocation) }} Map</h3>
                 </div>
                 <div class="d-flex justify-end">
                     <v-btn color="primary-light"
@@ -259,7 +260,7 @@ const handleEditMap = () => {
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
                                             <span class="font-weight-medium">
-                                                {{ storageLocationModel?.plant?.address ?? '--' }}
+                                                {{ storageLocationModel?.plant?.city ?? '--' }}
                                             </span>
                                         </VCol>
                                     </VRow>
@@ -360,12 +361,12 @@ const handleEditMap = () => {
         </div>
 
        
-    <MapBlockAssignModal :storage-location="storageLocation" :block="selectedBlock" 
+    <MapBlockAssignModal :storage-location="storageLocation" :plant="plantCode" :block="selectedBlock" 
         @assign-success="onAssignSuccess"
         @action-success="actionSuccess"
         :show="openAssignModal" @close="openAssignModal = false"/>
 
-    <SmartAssignModal :storage-location="storageLocation" 
+    <SmartAssignModal :storage-location="storageLocation" :plant="plantCode"
         :show="smartAssignModal" 
         @assign-success="onAssignSuccess"
         @close="smartAssignModal = false"/>

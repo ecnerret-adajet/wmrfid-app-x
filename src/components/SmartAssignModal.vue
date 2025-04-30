@@ -12,7 +12,8 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    storageLocation: String
+    storageLocation: String,
+    plant: String,
 });
 
 const state = reactive({
@@ -80,7 +81,7 @@ const loadInformation = async ({ page, itemsPerPage, sortBy, search }) => {
 
     loading.value = true;
     try {
-        const response = await axios.get(`warehouse/get-unassigned-inventories/${props.storageLocation}`, {
+        const response = await axios.get(`warehouse/get-unassigned-inventories/${props.plant}/${props.storageLocation}`, {
             params: {
                 page,
                 itemsPerPage,
@@ -129,7 +130,7 @@ const assign = async (item) => {
     selectedInventory.value = item;
     loadingItem.value = item.id;
     try {
-        const response = await axios.get(`warehouse/get-nearest-block/${props.storageLocation}`, {
+        const response = await axios.get(`warehouse/get-nearest-block/${props.plant}/${props.storageLocation}`, {
             params: {
                 positionX: positionX.value,
                 positionY: positionY.value,
@@ -156,7 +157,7 @@ const isDeclining = ref(false);
 const declinedAssign = async () => {
     isDeclining.value = true
     try {
-        const response = await axios.get(`warehouse/save-declined-auto-assignment/${props.storageLocation}`, {
+        const response = await axios.get(`warehouse/save-declined-auto-assignment/${props.plant}/${props.storageLocation}`, {
             params: {
                 inventory_id: selectedInventory.value.id,
                 block_id: suggestedBlock.value.id
@@ -178,7 +179,7 @@ const isAssigning = ref(false);
 const onAssign = async () => {
     isAssigning.value = true
     try {
-        const response = await axios.post(`warehouse/auto-assignment/${props.storageLocation}`, {
+        const response = await axios.post(`warehouse/auto-assignment/${props.plant}/${props.storageLocation}`, {
             inventory_id: selectedInventory.value.id,
             block_id: suggestedBlock.value.id
         });

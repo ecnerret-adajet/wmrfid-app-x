@@ -11,6 +11,7 @@ const pageLoading = ref(true);
 const route = useRoute();
 const router = useRouter();
 const storageLocation = route.params.location;
+const plantCode = route.params.plant;
 const storageLocationModel = ref(null);
 const warehouseUtilization = ref([]);
 const inventoryAge = ref([]);
@@ -71,7 +72,7 @@ const loadData = async () => {
     try {
         const token = JwtService.getToken();
     
-        const response = await axios.get(`/warehouse/${storageLocation}/get-warehouse-information`, {
+        const response = await axios.get(`/warehouse/${plantCode}/${storageLocation}/get-warehouse-information`, {
             params: {
                 
             },
@@ -108,7 +109,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     try {
         const token = JwtService.getToken();
     
-        const response = await axios.get(`/warehouse/${storageLocation}/get-inventories`, {
+        const response = await axios.get(`/warehouse/${plantCode}/${storageLocation}/get-inventories`, {
             params: {
                 page,
                 itemsPerPage,
@@ -143,7 +144,7 @@ const handleViewBatch = (inventory) => {
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Warehouse Details</h4>
-                    <v-btn color="primary-light" @click="$router.push({ name: 'warehouse-map', params: { location: storageLocation } })">
+                    <v-btn color="primary-light" @click="$router.push({ name: 'warehouse-map', params: { plant: plantCode ,location: storageLocation } })">
                         View Warehouse Map
                     </v-btn>
                 </div>

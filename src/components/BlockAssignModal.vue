@@ -11,6 +11,7 @@ const emits = defineEmits(['close', 'assign-success']);
 const props = defineProps({
     selectedInventory: Object,
     storageLocation: String,
+    plantCode: String,
     show: {
         type: Boolean,
         default: false
@@ -67,7 +68,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-updated_at';
     }
 
-    ApiService.query(`warehouse/get-blocks/${props.storageLocation}`,{
+    ApiService.query(`warehouse/get-blocks/${props.plantCode}/${props.storageLocation}`,{
         params: {
             page,
             itemsPerPage,
@@ -97,7 +98,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 const getLayer = async (block) => {
     layerLoading.value = true;
     try {
-        const response = await axios.get(`warehouse/get-inventories-in-block/${props.storageLocation}/${block ?? ''}`); 
+        const response = await axios.get(`warehouse/get-inventories-in-block/${props.plantCode}/${props.storageLocation}/${block ?? ''}`); 
         defaultLayer.value = response.data.reverse();
     } catch (error) {
         console.error("Error fetching layers:", error);

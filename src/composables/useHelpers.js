@@ -8,8 +8,6 @@ export const generateSlug = (str) => {
         .replace(/-+$/, '');      // Remove trailing hyphens
 };
 
-export const convertSlugToOriginal = (slug) => {
-    return slug
-        .replace(/-/g, ' ') // Replace hyphens with spaces
-        .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize each word
+export const convertSlugToUpperCase = (slug) => {
+    return slug.replace(/-/g, ' ').toUpperCase();
 };

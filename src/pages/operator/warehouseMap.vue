@@ -9,6 +9,7 @@ import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 
 const props = defineProps({
     storageLocation: String,
+    plantCode: String
 });
 
 const state = reactive({
@@ -69,12 +70,12 @@ const fetchStorageLocationInformation = async () => {
     state.layout = [];
     loading.value = true;
     try {
-        const response = await ApiService.get(`warehouse/get-storage-location-information/${props.storageLocation}`);
-        const { storage_location, layers_data, blocks } = response.data
-        layersData.value = layers_data;
-        
+        const response = await ApiService.get(`warehouse/get-storage-location-information/${props.plantCode}/${props.storageLocation}`);
+        const { details } = response.data
+        layersData.value = details.layers_data;
+         
         // Transform blocks data into GridItem format
-        state.layout = blocks.map((item, index) => ({
+        state.layout = details.blocks?.map((item, index) => ({
             i: String(index),
             x: item.x || 0, // Default to 0 if x is not provided
             y: item.y || 0, // Default to 0 if y is not provided
@@ -104,7 +105,7 @@ const fetchFilteredMap = async () => {
     state.layout = [];
     mapLoading.value = true;
     try {
-        const response = await ApiService.get(`warehouse/get-blocks/${props.storageLocation}/${searchValue.value}`);
+        const response = await ApiService.get(`warehouse/get-blocks/${props.plantCode}/${props.storageLocation}/${searchValue.value}`);
         const { storage_location, layers_data, blocks } = response.data
         state.layout = blocks.map((item, index) => ({
             i: String(index),
@@ -254,6 +255,7 @@ const getItemColor = (inventoriesCount) => {
         </div>
     </div>
     <MapBlockAssignModal :storage-location="storageLocation" :block="selectedBlock" 
+        :plant="plantCode"
         @assign-success="onAssignSuccess"
         @action-success="actionSuccess"
         :show="openAssignModal" @close="openAssignModal = false"/>

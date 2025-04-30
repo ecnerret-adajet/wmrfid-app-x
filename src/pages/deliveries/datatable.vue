@@ -120,7 +120,9 @@ const applyFilters = (data) => {
 
 const actionList = [
     { title: 'View Delivery Items', key: 'view_delivery_items' },
-    { title: 'Reserved Pallets', key: 'reserved_pallets' },
+    { title: 'Reserve Pallets', key: 'reserved_pallets' },
+    { title: 'View Reserved Pallets', key: 'view_reserved_pallets' },
+
 ]
 
 const handleViewDelivery = (delivery) => {

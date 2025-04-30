@@ -19,6 +19,7 @@ const props = defineProps({
         default: ''
     },
     storageLocation: String,
+    plantCode: String,
     page: {
         type: Number,
         default: 1,
@@ -84,7 +85,7 @@ const loadItems = (options = {}) => {
     const updatedSearch = options.search ?? props.search;
     const updatedReaderName = props.readerName; // Always use latest value
     loading.value = true;
-    ApiService.query(`data/get-antenna-logs/${props.storageLocation}`, {
+    ApiService.query(`data/get-antenna-logs/${props.plantCode}/${props.storageLocation}`, {
         params: {
             page: updatedPage,
             itemsPerPage: updatedItemsPerPage,
@@ -294,6 +295,7 @@ defineExpose({
     </VDataTableServer>
     <BlockAssignModal v-if="selectedInventory" :show="assignModalOpen" 
         :selected-inventory="selectedInventory" :storage-location="storageLocation"
+        :plant-code="plantCode"
         @close="assignModalOpen = false" @assign-success="onAssignSuccess"
     />
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>

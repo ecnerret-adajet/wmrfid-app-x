@@ -1,6 +1,5 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
-import { convertSlugToOriginal } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -97,7 +96,7 @@ const handleSearch = debounce((search) => {
                     <h4 class="text-h4 font-weight-black text-primary">RFID Details</h4>
                     <v-badge class="ml-3"
                         color="primary-light"
-                        :content="convertSlugToOriginal(rfidType)"
+                        :content="convertSlugToUpperCase(rfidType)"
                         inline
                     ></v-badge>
                 </div>

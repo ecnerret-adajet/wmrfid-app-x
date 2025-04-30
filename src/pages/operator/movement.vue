@@ -1,6 +1,6 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
-import { convertSlugToOriginal } from '@/composables/useHelpers';
+import { convertSlugToUpperCase } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import { onMounted, ref } from 'vue';
@@ -11,7 +11,7 @@ import WarehouseMap from './warehouseMap.vue';
 const route = useRoute();
 const router = useRouter();
 const storageLocation = route.params.location;
-
+const plantCode = route.params.plant;
 const isWarehouseMap = ref(false);
 const selectedReader = ref(null);
 const selectedReaderName = ref(null);
@@ -36,7 +36,7 @@ onMounted(() => {
 const fetchReaders = async () => {
     loading.value = true;
     try {
-        const response = await ApiService.get(`data/get-readers-by-location/${storageLocation}`);
+        const response = await ApiService.get(`data/get-readers-by-location/${plantCode}/${storageLocation}`);
         readers.value = response.data
         
         if (readers.value.length > 0) {
@@ -92,7 +92,7 @@ const handleBack = () => {
             </div>
             <div class="d-flex justify-between align-center px-6 pb-4">
                 <h4 class="text-h3 font-weight-black text-primary">
-                    {{ isWarehouseMap ? convertSlugToOriginal(storageLocation) + ' Map' : convertSlugToOriginal(storageLocation) + ' Operator Screen' }}
+                    {{ isWarehouseMap ? convertSlugToUpperCase(storageLocation) + ' Map' : convertSlugToUpperCase(storageLocation) + ' Operator Screen' }}
                 </h4>
                 <v-btn class="bg-primary-light ml-auto" @click="toggleButton">
                     {{ isWarehouseMap ? `Operator's Screen` : 'Warehouse Map' }}
@@ -100,7 +100,7 @@ const handleBack = () => {
             </div>
         </v-card>
         <v-card v-if="isWarehouseMap" elevation="1" class="mt-4 px-6 py-4">
-            <WarehouseMap :storageLocation="storageLocation"></WarehouseMap>
+            <WarehouseMap :storageLocation="storageLocation" :plant-code="plantCode"></WarehouseMap>
         </v-card>
         <v-card v-else elevation="1" class="mt-4 px-6 py-4">
             <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -125,6 +125,7 @@ const handleBack = () => {
             <div v-if="!loading && readers.length > 0" class="mt-4">
                 <logsDataTable :storage-location="storageLocation"
                     :key="selectedReader.id"
+                    :plant-code="plantCode"
                     :search="searchValue" :page="tablePage"
                     :items-per-page="tablePerPage"
                     @pagination-changed="onPaginationChanged"
