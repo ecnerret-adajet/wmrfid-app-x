@@ -230,10 +230,22 @@ export const routes = [
             name: 'fumigations',
             component: () => import('@/pages/fumigation/index.vue'),
             meta: {
-              pageTitle: "Fumigations",
-              breadcrumbs: [
+                pageTitle: "Fumigations",
+                breadcrumbs: [
                   { label: "Fumigations", link: "/fumigations" },
               ],
+            },
+        },
+
+        {
+            path: 'fumigations/:id',
+            name: 'fumigations.show',
+            component: () => import('@/pages/fumigation/show.vue'),
+            meta: {
+                pageTitle: "Fumigations",
+                breadcrumbs: (route) => [
+                    { label: "Fumigations", link: `/fumigations/${route.params.id}` }
+                ],
             },
         },
 

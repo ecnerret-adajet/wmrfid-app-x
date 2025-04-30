@@ -1,5 +1,6 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
+import { convertSlugToUpperCase } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -49,7 +50,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         })
         .then((response) => {
             const { table, rfid_data } = response.data
-         
+            console.log(rfid_data);
+            
             totalItems.value = table.total;
             serverItems.value = table.data
             rfidData.value = rfid_data
@@ -90,13 +92,20 @@ const handleSearch = debounce((search) => {
 
 <template>
     <div>
-        <v-card elevation="2">
+        <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+        <v-card v-else elevation="2">
             <v-card-title>
                 <div class="d-flex align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">RFID Details</h4>
                     <v-badge class="ml-3"
                         color="primary-light"
                         :content="convertSlugToUpperCase(rfidType)"
+                        inline
+                    ></v-badge>
+
+                    <v-badge v-if="rfidData?.inventory?.under_fumigation"
+                        color="warning"
+                        content="UNDER FUMIGATION"
                         inline
                     ></v-badge>
                 </div>

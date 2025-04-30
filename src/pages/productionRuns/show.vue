@@ -84,6 +84,12 @@ const headers = [
         sortable: false
     },
     {
+        title: 'Under Fumigation',
+        key: 'under_fumigation',
+        align: 'center',
+        sortable: false
+    },
+    {
         title: 'CURRENT AGE',
         key: 'age',
         align: 'center'
@@ -253,6 +259,15 @@ const handleChangeBatch = async () => {
 }
 
 const fumigate = () => {
+    selectedItems.value // check all under_fumigation column, if atleast 1 is true, dont allow
+    const hasUnderFumigation = selectedItems.value.some(item => item.under_fumigation);
+    if (hasUnderFumigation) {
+        toast.value.message = 'Some selected items are already under fumigation. Please deselect them before proceeding.'
+        toast.value.color = 'warning'
+        toast.value.show = true;
+        return;
+    }
+
     fumigateModal.value = true;
 }
 
@@ -530,6 +545,18 @@ const toast = ref({
                                 <i v-if="item.is_empty" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
                                 <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
                             </div>
+                        </template>
+
+                        <template #item.under_fumigation="{ item }">
+                            <v-btn
+                                v-if="item.under_fumigation"
+                                :to="`/fumigations/${item.fumigation_request_id}`"
+                                color="warning"
+                                variant="outlined"
+                                size="small"
+                            >
+                             Fumigated
+                            </v-btn>
                         </template>
 
                         <template #item.age="{ item }">
