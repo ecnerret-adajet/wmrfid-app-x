@@ -1,6 +1,5 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
-import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -93,7 +92,7 @@ const otherStocks = ref([
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">
-                                            {{ deliveryData?.delivery_reserved_order?.delivery_item_number }}
+                                            {{ deliveryData?.item_number }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -108,7 +107,7 @@ const otherStocks = ref([
                                         <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.bu_delivery }}</span>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.bu_delivery || '1080022633' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -119,7 +118,7 @@ const otherStocks = ref([
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">
-                                            {{ deliveryData?.delivery_reserved_order?.material_code }}
+                                            {{ deliveryData?.material || '1100000144' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -134,8 +133,8 @@ const otherStocks = ref([
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Party</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_name }}</span>
-                                        <div class="text-subtitle-1">{{ deliveryData?.ship_to_customer }}</div>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_name || 'GRACIOUS MAJESTY DISTRIBUTION INC.' }}</span>
+                                        <div class="text-subtitle-1">{{ deliveryData?.ship_to_code || '0011004585' }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -146,7 +145,7 @@ const otherStocks = ref([
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">
-                                            {{ deliveryData?.delivery_reserved_order?.material_description }}
+                                            {{ deliveryData?.material_description || 'FL WAS Gold Flour C' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -161,7 +160,7 @@ const otherStocks = ref([
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Address</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_address }}</span>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.ship_to_address || 'B6 L4 SOUTH SUSANA HOMES BACOOR 4102' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -171,8 +170,8 @@ const otherStocks = ref([
                                         <span class="text-h6 font-weight-bold text-high-emphasis" >Plant & Storage Location</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.plant?.name }}</span>
-                                        <div class="text-subtitle-1">{{ deliveryData?.storage_location?.name }}</div>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.plant?.name || '2111 - PFMC Mariveles (Flour) Plant' }}</span>
+                                        <div class="text-subtitle-1">{{ deliveryData?.storage_location?.name || 'W107 - FG WAREHOUSE' }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -183,14 +182,10 @@ const otherStocks = ref([
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">
-                                            Delivery Date
-                                        </span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">
-                                            {{ deliveryData?.delivery_date ? Moment(deliveryData?.delivery_date).format('MMMM D, YYYY') : '' }}
-                                        </span>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.delivery_date || 'March 25, 2025' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -216,7 +211,7 @@ const otherStocks = ref([
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.age || '--' }}</span>
+                                        <span class="text-medium-emphasis">{{ deliveryData?.age || '30-60 days' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
