@@ -57,6 +57,12 @@ const headers = [
         align: 'center',
     },
     {
+        title: 'STATUS',
+        key: 'status',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'Fumigation Age',
         key: 'fumigation_age',
         align: 'center',
@@ -164,6 +170,27 @@ const handleViewBatch = (item) => {
 
             <template #item.end_date="{ item }">
                 <span v-if="item.end_date">{{ item.end_date ? Moment(item.end_date).format('MMMM D, YYYY') : '' }}</span>
+            </template>
+
+            <template #item.status="{ item }">
+                <v-badge v-if="item.status == 'scheduled'"
+                        color="info"
+                        :content="item.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
+                <v-badge v-else-if="item.status == 'in progress'"
+                        color="warning"
+                        :content="item.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
+                <v-badge v-else-if="item.status == 'completed'"
+                        color="success"
+                        :content="item.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
             </template>
 
             <template #item.action="{ item }">

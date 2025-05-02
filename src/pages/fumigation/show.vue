@@ -128,8 +128,26 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     <v-card>
         <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
         <v-card-text v-else>
-            <div class="d-flex justify-space-between align-center px-4 ">
-                <h4 class="text-h4 font-weight-black text-primary">Fumigation Details</h4>
+            <div class="d-flex align-center px-4 ">
+                <h4 class="text-h4 font-weight-black text-primary mr-2">Fumigation Details</h4>
+                <v-badge v-if="requestData?.status == 'scheduled'"
+                        color="info"
+                        :content="requestData?.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
+                <v-badge v-else-if="requestData?.status == 'in progress'"
+                        color="warning"
+                        :content="requestData?.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
+                <v-badge v-else-if="requestData?.status == 'completed'"
+                        color="success"
+                        :content="requestData?.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
             </div>
             <VList lines="one" density="compact" class="mt-4">
                 <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
@@ -242,8 +260,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                     {{ item.rfid?.name }}
                 </template>
                 <template #item.block_location="{ item }">
-                    <v-btn
-                        :to="{
+                    <v-btn :to="{
                             path: `/warehouse-map/${item.storage_location?.plant_code}/${generateSlug(item.storage_location?.name)}`,
                             query: { search: item.block?.lot?.label }
                         }"

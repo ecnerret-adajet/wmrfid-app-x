@@ -274,7 +274,7 @@ const handleActionClick = (action, layer, index) => {
 
     if (layer.assigned_inventory && layer.assigned_inventory.under_fumigation == true) {
         toast.value.color = 'error';
-        toast.value.message = 'Items under fumigation cannot be transfered or return to mill.'
+        toast.value.message = 'Items under fumigation cannot be transferred or return to mill.'
         toast.value.show = true;
         return;
     }
