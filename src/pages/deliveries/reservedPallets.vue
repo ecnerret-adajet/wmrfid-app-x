@@ -1,6 +1,4 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
-import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -60,7 +58,26 @@ const otherStocks = ref([
 </script>
 
 <template>
-    <DefaultModal 
+    <v-dialog v-model="dialogVisible" :max-width="maxWidth" :min-height="minHeight" :fullscreen="fullscreen">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+            <div class="text-h5 text-bold-emphasis ps-2">
+                {{ dialogTitle }}
+            </div>
+            <v-btn
+                icon="ri-close-line"
+                variant="text"
+                @click="emit('close')"
+            ></v-btn>
+        </v-card-title>
+        <v-card-text class="mt-4">
+            <slot></slot>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+
+    <!-- <DefaultModal 
         :dialog-title="`${deliveryData?.delivery_document} - Reserved Pallets`" 
         :show="show" 
         @close="handleClose" 
@@ -235,7 +252,7 @@ const otherStocks = ref([
                         </VRow>
                     </VListItem>
                    
-                    <!-- Add item as needed  -->
+         
                 </VList>
             </v-card-title>
             <v-divider class="my-4"></v-divider>
@@ -322,14 +339,13 @@ const otherStocks = ref([
                     </v-tabs-window-item>
                 </v-tabs-window>
 
-                 <!-- Action Buttons -->
                 <div class="d-flex justify-end mt-4 pa-4">
                     <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back To Delivery Items</v-btn>
                     <v-btn color="success" elevation="0">Reserve Available Pallets</v-btn>
                 </div>
             </v-card-text>
         </v-card>
-    </DefaultModal>
+    </DefaultModal> -->
 </template>
 
 <style scoped>

@@ -1,9 +1,16 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
-import { computed, ref } from 'vue';
+import JwtService from '@/services/JwtService';
+import axios from 'axios';
+import Moment from 'moment';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+import DeliveryItemData from './deliveryItemData.vue';
+import ShipmentData from './shipmentData.vue';
+
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -126,18 +133,351 @@ const handleViewDelivery = (delivery) => {
 
 const handleAction = (delivery, action) => {
     deliveryData.value = delivery;
-    console.log(delivery);
     if(action.key == 'view_delivery_items') {
         showDeliveryItems.value = true;
     } 
 }
 
-const displayPlateNumber = computed(() => {
-  return deliveryData.value?.shipment?.plate_number_1 || 
-    deliveryData.value?.shipment?.plate_number_2 || 
-    deliveryData.value?.shipment?.plate_number_3 || 
-         "N/A"; // Default value if none exist
+const showStocks = ref(false);
+const selectedDeliveryItem = ref(null);
+
+const deliveryOrder = reactive({
+    selected_delivery_item: null,
+
+    filter: {
+        loading_available_stocks: false
+    },
+
+    product_age: null,
+
+    form: {
+        errors: {}
+    },
+
+    async checkAgeRange(object) {
+        const token = JwtService.getToken();
+        return axios.post(`deliveries/get-age-range`, {
+            delivery_item_no: object.item_number,
+            material_code: object.material_code,
+            delivery_id: object.delivery_id
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(({ data }) => {
+            this.product_age = data;
+            deliveryData.value.age = data;
+            return data;
+        })
+        .catch(({ response }) => {
+            this.form.errors = response.data.errors;
+        });
+    },
+
+    async fetchAvailableCommodities(params) {
+        const token = JwtService.getToken();
+        return axios.post(`inventories/get-available-commodities-sap`, {
+            material_code: params.material_code,
+            delivery_document: params.delivery_document,
+            item_number: params.item_number,
+            delivery_quantity: params.delivery_quantity,
+            sales_unit: params.sales_unit,
+            from: this.product_age.from,
+            to: this.product_age.to,
+            sloc: params.storage_location,
+            plant_code: params.plant
+
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(({ data }) => {
+            console.log(data);
+            let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
+            let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
+            availableStocks.value = data.map((item, index) => {
+                const isFirst = index === 0;
+                const shouldSelect = isFirst || item.is_selected === true || item.is_selected === 'true';
+                if (shouldSelect) {
+                    const split_qty = remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty;
+                    console.log('Split qty: ' + split_qty);
+                    
+                    if (remainingRequiredQty >= splitQty) {
+                        remainingRequiredQty -= splitQty;
+                    }
+
+                    // First item should always be selected
+                    return {
+                        ...item,
+                        is_selected: true,
+                        split_qty,
+                    };
+                }
+
+                return {
+                    ...item,
+                    is_selected: false,
+                    split_qty: 0,
+                };
+            });
+        })
+        .catch(({ response }) => {
+            this.form.errors = response.data.errors;
+        });
+    },
+
+    async fetchOtherAvailableCommodities(params) {
+        const token = JwtService.getToken();
+        return axios.post(`inventories/get-other-commodities-sap`, {
+            material_code: params.material_code,
+            delivery_document: params.delivery_document,
+            item_number: params.item_number,
+            delivery_quantity: params.delivery_quantity,
+            sales_unit: params.sales_unit,
+            from: this.product_age.from,
+            to: this.product_age.to,
+            sloc: params.storage_location,
+            plant_code: params.plant
+
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(({ data }) => {
+            let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
+            let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
+            otherStocks.value = data.map((item) => {
+                if(item.is_selected === true || item.is_selected === 'true') {
+                
+                    const finalItem = {
+                        ...item,
+                        split_qty: remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty  
+                    }
+                    console.log('remaining required qty: ' + remainingRequiredQty);
+                    console.log('Split qty: ' + splitQty);
+                    
+                    if(remainingRequiredQty >= splitQty) {
+                        remainingRequiredQty = remainingRequiredQty - splitQty;
+                    }
+                    return finalItem;
+                }
+                return { 
+                    ...item, 
+                    split_qty: 0,
+                };
+            });
+        })
+        .catch(({ response }) => {
+            this.form.errors = response.data.errors;
+        });
+    },
+
+    async fetchOpenQuantity(params) {
+        const token = JwtService.getToken();
+        return axios.post(`deliveries/get-open-quantity`, {
+            delivery_document: params.delivery_document,
+            delivery_item_number: params.item_number,
+            delivery_quantity: params.delivery_quantity,
+            sloc: params.storage_location,
+            plant_code: params.plant
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(({ data }) => {
+            deliveryData.value.open_quantity = data;
+            return data;
+        })
+        .catch(({ response }) => {
+            this.form.errors = response.data.errors;
+        });
+    },
+
 });
+
+const assignPallet = (item) => {
+    selectedDeliveryItem.value = item;
+    return new Promise(async (resolve, reject) => {
+        try {
+            showStocks.value = !showStocks.value;
+
+            selectedDeliveryItem.value = item;
+            deliveryOrder.selected_delivery_item = item;
+
+            if (showStocks.value === true) {
+                const delParams = {
+                    delivery_id: deliveryData.value.id,
+                    material_code: selectedDeliveryItem.value.material,
+                    delivery_document: deliveryData.value.delivery_document,
+                    item_number: selectedDeliveryItem.value.item_number,
+                    delivery_quantity: selectedDeliveryItem.value.quantity,
+                    sales_unit: selectedDeliveryItem.value.sales_unit,
+                    storage_location: selectedDeliveryItem.value.storage_location?.code,
+                    plant: selectedDeliveryItem.value.plant?.plant_code,
+                    default_pallet_quantity: selectedDeliveryItem.value.material_model?.default_pallet_quantity
+                };
+
+                deliveryOrder.filter.loading_available_stocks = true;
+
+                await deliveryOrder.checkAgeRange(delParams);
+                await deliveryOrder.fetchAvailableCommodities(delParams);
+                await deliveryOrder.fetchOtherAvailableCommodities(delParams);
+                await deliveryOrder.fetchOpenQuantity(delParams);
+            }
+
+            resolve();
+        } catch (error) {
+            reject(error);
+        } finally {
+            deliveryOrder.filter.loading_available_stocks = false;
+        }
+    });
+} 
+
+const closeModal = () => {
+    showStocks.value = false
+    availableStocks.value = []
+    otherStocks.value = []
+    showDeliveryItems.value = false
+}
+
+const activeTab = ref('available_stocks');
+const availableStocks = ref([]);
+const otherStocks = ref([]);
+const submitProposalLoading = ref(false);
+const customerApprovalRemarks = ref(null);
+const customerApprovalFile = ref(null);
+
+const refForm = ref(null);
+
+const selectedAvailableBatches = computed(() => {
+    return availableStocks.value.filter(item => item.is_selected);
+});
+
+const selectedOtherBatches = computed(() => {
+    return otherStocks.value.filter(item => item.is_selected);
+});
+
+const expirationChecking = (date) => {
+    const currentDate = Moment();
+    const comparisonDate = Moment(date).format('YYYY-MM-DD');
+    return currentDate.isAfter(comparisonDate);
+};
+
+const submitProposal = async () => {
+    if (activeTab.value !== 'available_stocks') {
+        if (!customerApprovalFile.value) {
+            toast.value.color = 'error';
+            toast.value.message = 'Please choose a file';
+            toast.value.show = true;
+            return; 
+        }
+
+        if (!customerApprovalRemarks.value) {
+            toast.value.color = 'error';
+            toast.value.message = 'Please input remarks';
+            toast.value.show = true;
+            return; 
+        }
+    }
+
+ 
+    let formData = new FormData();
+    formData.append('delivery_id', deliveryData.value.id);
+    formData.append('delivery_item_id', selectedDeliveryItem.value.id);
+    formData.append('material_name', selectedDeliveryItem.value.material_desc);
+    formData.append('material_code', parseInt(selectedDeliveryItem.value.material));
+    formData.append('delivery_document', deliveryData.value.delivery_document);
+    formData.append('item_number', selectedDeliveryItem.value.item_number);
+    formData.append('delivery_quantity', selectedDeliveryItem.value.quantity);
+    formData.append('numerator', selectedDeliveryItem.value.numerator);
+    formData.append('denominator', selectedDeliveryItem.value.denominator);
+    formData.append('plant', selectedDeliveryItem.value.plant?.plant_code);
+    formData.append('sloc', selectedDeliveryItem.value.storage_location?.code);
+    formData.append('mode', activeTab.value);
+    formData.append('stock_exception', activeTab.value !== 'available_stocks');
+
+    if (activeTab.value !== 'available_stocks') {
+        formData.append('customer_approval_document', customerApprovalFile.value);
+        formData.append('customer_approval_remarks', customerApprovalRemarks.value);
+    }
+
+    const selectedBatches = activeTab.value === 'available_stocks'
+        ? selectedAvailableBatches.value
+        : selectedOtherBatches.value;
+
+    formData.append(`batches`, JSON.stringify(selectedBatches));
+
+    // If available stocks and no selected batch (pre-selected has been deselected)
+    if (activeTab.value === 'available_stocks' && selectedAvailableBatches.value.length === 0) {
+        toast.value.color = 'error';
+        toast.value.message = 'Please select batch';
+        toast.value.show = true;
+        return;
+    }
+
+    // If other stocks and no selected batch
+    if (activeTab.value !== 'available_stocks' && selectedOtherBatches.value.length === 0) {
+        toast.value.color = 'error';
+        toast.value.message = 'Please select batch';
+        toast.value.show = true;
+        return;
+    }
+    
+    try {
+        submitProposalLoading.value = true;
+        const token = JwtService.getToken();
+        const { data } = await axios.post(
+            `deliveries/delivery-order-proposed`,
+            formData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+        if (!data.success) {
+            console.log(data.errors)
+            // Handle validation errors
+            // const errorMsg = data.errors?.customer_approval_document?.[0] 
+            const batchPickError = data.errors?.length > 0 ? data.errors?.[0] : null
+            
+            if (batchPickError) {
+                toast.value.color = 'error';
+                toast.value.message = batchPickError;
+                toast.value.show = true;
+                closeModal()
+            }
+
+            return;
+        } 
+
+        // Proceed normally if successful
+        if (data.success) {
+            toast.value.color = 'success';
+            toast.value.message = "Successfully reserved";
+            toast.value.show = true;
+            closeModal()
+        }
+        
+    } catch (response) {
+        console.log(response);
+    } finally {
+        submitProposalLoading.value = false;
+        customerApprovalFile.value = null;
+        customerApprovalRemarks.value = null;
+    }
+    
+}
 
 defineExpose({
     loadItems,
@@ -216,139 +556,20 @@ defineExpose({
                 <v-btn
                     icon="ri-close-line"
                     variant="text"
-                    @click="showDeliveryItems = false"
+                    @click="closeModal"
                 ></v-btn>
                 
             </v-card-title>
             <v-card-text>
-                <VList lines="one" density="compact">
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment_number }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Shipment Number</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">
-                                            {{ deliveryData?.shipment?.hauler_name }}
-                                        </span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >BU Delivery</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.plant?.name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plant & Storage Location</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Party</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Address</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Address</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Address</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ deliveryData?.delivery_date || 'March 25, 2025' }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Required Quantity</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">
-                                            {{ deliveryData?.required_qty || '600' }}
-                                        </span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                </VList>
+                <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
+                <div v-else>
+                    <DeliveryItemData v-if="showStocks" :delivery-data="deliveryData" :selected-delivery-item="selectedDeliveryItem"/>
+                    <ShipmentData v-else :delivery-data="deliveryData"/>
+                </div>
+
                 <v-divider class="my-4 mx-5"></v-divider>
-                <v-card-text>
+                <v-card-text v-if="!showStocks">
+
                     <v-table class="mt-4 striped">
                         <thead>
                             <tr>
@@ -357,8 +578,8 @@ defineExpose({
                                 <th class="text-center">Quantity</th>
                                 <th class="text-center">Storage Location</th>
                                 <th class="text-center">Batch</th>
-                                <th class="text-center">Picking</th>
-                                <th class="text-center">GI</th>
+                                <!-- <th class="text-center">Picking</th>
+                                <th class="text-center">GI</th> -->
                                 <th class="text-center">Pallet Status</th>
                                 <th class="text-center"></th>
                             </tr>
@@ -380,8 +601,8 @@ defineExpose({
                                     </div>
                                 </td>
                                 <td class="text-center">{{ item.batch }}</td>
-                                <td class="text-center">1</td>
-                                <td class="text-center">1</td>
+                                <!-- <td class="text-center"></td>
+                                <td class="text-center">1</td> -->
                                 <td class="text-center">
                                     <v-badge 
                                         color="warning"
@@ -392,6 +613,7 @@ defineExpose({
                                 </td>
                                 <td class="text-center">
                                     <v-btn
+                                        @click="assignPallet(item)"
                                         color="primary-light"
                                         variant="outlined"
                                         size="small"
@@ -403,120 +625,201 @@ defineExpose({
                         </tbody>
                     </v-table>
                 </v-card-text>
+                <v-card-text v-else>
+                    <v-skeleton-loader v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
+                    <v-tabs v-else v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
+                        <v-tab value="available_stocks" class="text-h5">
+                            Available Stocks
+                        </v-tab>
+                        <v-tab value="other_stocks" class="text-h5">
+                            Other Stocks
+                        </v-tab>
+                    </v-tabs>
+
+                    <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
+                    <v-tabs-window v-else v-model="activeTab" class="mt-4" >
+                        <v-tabs-window-item value="available_stocks">
+                            <v-table density="compact" class="stock-table elevation-0">
+                                <thead>
+                                    <tr>
+                                        <th>Batch Code</th>
+                                        <th>Mfg Date</th>
+                                        <th>Expiration Date</th>
+                                        <th>Age</th>
+                                        <th>Avail. Qty</th>
+                                        <th>Avail Pallets</th>
+                                        <th>Split Qty</th>
+                                        <th>Min. Pallet</th>
+                                        <th>Min. Qty</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in availableStocks" :key="index" 
+                                        :class="{ 
+                                            'selected-row': item.is_selected, 
+                                            'bg-grey-100 opacity-20': item.inventory.length === 0
+                                        }
+                                    ">
+                                        <td>{{ item.BATCH }}</td>
+                                        <td>
+                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                        </td>
+                                        <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
+                                            {{ item.SLED_STR }} 
+                                        </td>
+                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                        <!-- Avail Quantity  -->
+                                        <td>
+                                            {{ numberWithComma(item.BAG) }}
+                                            {{ selectedDeliveryItem?.sales_unit }}
+                                        </td>
+
+                                        <!-- AVAIL PALLETS  -->
+                                        <td>
+                                            {{ item.inventory.length }} PALLET
+                                            
+                                        </td>
+                                        <!-- Split QTY  -->
+                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
+
+                                        <td
+                                            class="text-uppercase"
+                                            :class="{ 'text-error': item.saved_reserved != null }"
+                                        >
+                                            {{ item.split_qty_pallets }}
+                                            Pallet
+                                            
+                                        </td>
+                                        <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                                        <td >
+                                            <v-checkbox v-model="item.is_selected"
+                                                hide-details 
+                                                :disabled="item.inventory.length == 0 || expirationChecking(item.SLED_STR)"
+                                                density="compact">
+                                            </v-checkbox>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-tabs-window-item>
+
+                        <v-tabs-window-item value="other_stocks">
+                            <div class="my-4 border pa-4">
+                                <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document</div>
+                                <v-file-input
+                                    accept="image/*,application/pdf"
+                                    v-model="customerApprovalFile"
+                                    density="compact"
+                                    prepend-icon=""
+                                    label="Choose file"
+                                ></v-file-input>
+                                <div class="text-subtitle-1 font-weight-medium mt-4">Remarks</div>
+                                <v-textarea class="mt-1"
+                                    clear-icon="ri-close-line"
+                                    placeholder="Remarks/Comments"
+                                    v-model="customerApprovalRemarks"
+                                    clearable
+                                ></v-textarea>
+                            </div>
+                            <v-table density="compact" class="stock-table elevation-0">
+                                <thead>
+                                    <tr>
+                                        <th>Batch Code</th>
+                                        <th>Mfg Date</th>
+                                        <th>Expiration Date</th>
+                                        <th>Age</th>
+                                        <th>Avail. Qty</th>
+                                        <th>Avail Pallets</th>
+                                        <th>Split Qty</th>
+                                        <th>Min. Pallet</th>
+                                        <th>Min. Qty</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in otherStocks" :key="index" 
+                                        :class="{ 
+                                            'selected-row': item.is_selected, 
+                                            'bg-grey-100 opacity-20': item.inventory.length === 0
+                                        }
+                                    ">
+                                        <td>{{ item.BATCH }}</td>
+                                        <td>
+                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                        </td>
+                                        <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
+                                            {{ item.SLED_STR }} 
+                                        </td>
+                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                        <!-- Avail Quantity  -->
+                                        <td>
+                                            {{ numberWithComma(item.BAG) }}
+                                            {{ selectedDeliveryItem?.sales_unit }}
+                                        </td>
+
+                                        <!-- AVAIL PALLETS  -->
+                                        <td>
+                                            {{ item.inventory.length }} PALLET
+                                            
+                                        </td>
+
+                                        <!-- Split QTY  -->
+                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
+
+                                        <td
+                                            class="text-uppercase"
+                                            :class="{ 'text-error': item.saved_reserved != null }"
+                                        >
+                                            {{ item.split_qty_pallets }}
+                                            Pallet
+                                        </td>
+                                        <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                                        <!-- <td v-if="!expirationChecking(item.SLED_STR)">
+                                            <v-checkbox v-model="item.is_selected"
+                                                hide-details 
+                                                :disabled="expirationChecking(item.SLED_STR)"
+                                                density="compact">
+                                            </v-checkbox>
+                                        </td> -->
+
+                                        <td >
+                                            <v-checkbox v-model="item.is_selected"
+                                                hide-details 
+                                                :disabled="item.inventory.length == 0 || expirationChecking(item.SLED_STR)"
+                                                density="compact">
+                                            </v-checkbox>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-tabs-window-item>
+                    </v-tabs-window>
+
+                    <!-- Action Buttons -->
+                    <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
+                    <div v-else class="d-flex justify-end mt-4 py-4">
+                        <v-btn variant="outlined" color="grey" class="mr-2" @click="closeModal">Back To Delivery Items</v-btn>
+                        <v-btn color="success" type="submit"  elevation="0" @click="submitProposal" :loading="submitProposalLoading">Reserve Available Pallets</v-btn>
+                    </div>
+                </v-card-text>
             </v-card-text>
         </v-card>
     </v-dialog>
-
-    <!-- <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
-        class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
-        <v-card>
-            <v-card-title>
-                <VList lines="one" density="compact" class="mt-4">
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Shipment</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment_number }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Hauler</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">
-                                            {{ deliveryData?.shipment?.hauler_name }}
-                                        </span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plant</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.plant?.name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >Plate Number</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Driver</span>
-                                    </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ deliveryData?.shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                </VList>
-            </v-card-title>
-        <v-divider class="my-4"></v-divider>
-
-            <v-card-text>
-                <v-table class="mt-4 striped">
-                    <thead>
-                        <tr>
-                            <th>Item No.</th>
-                            <th>Storage Location</th>
-                            <th>Material</th>
-                            <th>Material Desc</th>
-                            <th class="text-center">Quantity</th>
-                            <th class="text-center">UOM</th>
-                            <th class="text-center">Batch</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(item, index) in deliveryData?.items" :key="index">
-                            <td>{{ item.item_number }}</td>
-                            <td>{{ item.storage_location?.name ?? '' }}</td>
-                            <td>{{ item.material }}</td>
-                            <td>{{ item.material_desc }} </td>
-                            <td class="text-center">{{ item.quantity }}</td>
-                            <td class="text-center">{{ item.base_uom }}</td>
-                            <td class="text-center">{{ item.batch_item_number }}</td>
-                        </tr>
-                    </tbody>
-                </v-table>
-            </v-card-text>
-        </v-card>
-           
-    </DefaultModal> -->
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
 </template>
 
 <style scoped>
+.custom-tabs {
+  border-bottom: none !important;
+  box-shadow: none !important; 
+}
+
+.selected-row {
+    background-color: #e8f5e9;
+}
 
 .hover-underline {
     position: relative;

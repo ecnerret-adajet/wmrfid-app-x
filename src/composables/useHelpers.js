@@ -11,3 +11,15 @@ export const generateSlug = (str) => {
 export const convertSlugToUpperCase = (slug) => {
     return slug.replace(/-/g, ' ').toUpperCase();
 };
+
+export const numberWithComma = (number) => {
+    const parsed = Number(number);
+
+    if (!isNaN(parsed)) {
+        return parsed.toLocaleString('en-US', {
+            maximumFractionDigits: 0,
+        });
+    }
+
+    return '0';
+};
