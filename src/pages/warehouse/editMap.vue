@@ -53,7 +53,8 @@ const selectedItem = reactive({
     inventoriesCount: 0,
     lot_id: null,
     title: null,
-    type: 'block' // default block
+    type: 'block', // default block
+    blocks: [] // For lot type
 });
 
 const toast = reactive({
@@ -75,7 +76,7 @@ const fetchMapData = async () => {
         const { items, storage_location } = response.data;
         
         storageLocationModel.value = storage_location
-        
+       
         // Transform API data into GridItem format
         state.layout = items.map((item, index) => ({
             i: String(index),
@@ -90,7 +91,8 @@ const fetchMapData = async () => {
             lot_id: item.lot_id,
             isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
             inventories: item.inventories || null,
-            inventoriesCount: item.inventories_count || 0
+            inventoriesCount: item.inventories_count || 0,
+            blocks: item.blocks || []
         }));
 
         initialLayout.value = JSON.parse(JSON.stringify(state.layout));
@@ -210,26 +212,65 @@ const openEditModal = (item) => {
     selectedItem.index = item.index;
     selectedItem.title = item.label;
     selectedItem.lot_id = item.lot_id;
+    selectedItem.inventories = item.inventories;
+    selectedItem.blocks = item.blocks;
     actionDialog.value = true;
 }
 
 const actionForm = ref(null);
 
 const removeItem = () => {
-    if (selectedItem.type == 'lot') {
+    if (selectedItem.type === 'lot') {
+        const hasInventoryInBlocks = selectedItem.blocks?.some(block => {
+            return block.inventories && block.inventories.length > 0;
+        });
+
+        if (hasInventoryInBlocks) {
+            toast.color = 'error';
+            toast.message = 'Cannot remove this lot. One or more blocks have inventories.';
+            toast.show = true;
+            return;
+        }
+
         warningModalOpen.value = true;
-    } else {
+    } else  {
+        if (selectedItem.inventories && selectedItem.inventories.length > 0) {
+            toast.color = 'error';
+            toast.message = 'Cannot remove this block. It has inventories.';
+            toast.show = true;
+            return;
+        }
         proceedRemove();
     }
 };
 
 const proceedRemove = () => {
-    // Find all blocks associated with the selected lot
-    const lotAndBlocks = state.layout.filter(item => item.lot_id === selectedItem.lot_id);
+    if (selectedItem.type === 'block') {
+        // Remove the selected block
+        state.layout = state.layout.filter(item => item.i !== selectedItem.i);
+        removedItems.push(selectedItem);
+    } else if (selectedItem.type === 'lot') {
+        // Get all block from the lot
+        const blocks = selectedItem.blocks
+        const lotId = blocks.length > 0 ? blocks[0].lot_id : null;
+      
+        // Remove the lot and its blocks from the layout
+        state.layout = state.layout.filter(item => {
+            // Remove the lot using its unique label
+            if (item.type === 'lot' && item.label === selectedItem.label) {
+                return false;
+            }
+            // Remove blocks that belong to this lot
+            if (item.type === 'block' && item.lot_id === lotId) {
+                return false;
+            }
+            return true;
+        });
 
-    // Filter out removed items
-    state.layout = state.layout.filter(item => item.i !== selectedItem.i && item.lot_id !== selectedItem.lot_id);
-    removedItems.push(...lotAndBlocks);
+        // Push lot and blocks into removedItems
+        removedItems.push(selectedItem, ...blocks);
+    }
+    
     actionDialog.value = false; // Close dialog after removing
     if (warningModalOpen.value) {
         warningModalOpen.value = false;
@@ -253,6 +294,10 @@ const saveEdit = () => {
 
 const clearItems = () => {
     state.layout = [];
+
+    // Clear removed items array
+    removedItems.splice(0, removedItems.length);
+
     selectedItem.i = null;
     selectedItem.label = null;
     selectedItem.type = null;
@@ -273,7 +318,10 @@ const editCancelClicked = () => {
         // Save the current layout before enabling edit mode
         initialLayout.value = JSON.parse(JSON.stringify(state.layout));
     }
-    
+
+    // Clear removed items array
+    removedItems.splice(0, removedItems.length);
+
     // Toggle edit mode
     editEnabled.value = !editEnabled.value;
 };
