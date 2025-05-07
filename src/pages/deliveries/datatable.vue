@@ -96,7 +96,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            console.log(serverItems.value);
             
             loading.value = false
 
@@ -133,6 +132,8 @@ const handleViewDelivery = (delivery) => {
 
 const handleAction = (delivery, action) => {
     deliveryData.value = delivery;
+    console.log(deliveryData.value);
+    
     if(action.key == 'view_delivery_items') {
         showDeliveryItems.value = true;
     } 
@@ -200,27 +201,21 @@ const deliveryOrder = reactive({
             let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
             let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
             availableStocks.value = data.map((item, index) => {
-                const isFirst = index === 0;
-                const shouldSelect = isFirst || item.is_selected === true || item.is_selected === 'true';
-                if (shouldSelect) {
+                if (item.is_selected) {
                     const split_qty = remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty;
-                    console.log('Split qty: ' + split_qty);
                     
                     if (remainingRequiredQty >= splitQty) {
                         remainingRequiredQty -= splitQty;
                     }
 
-                    // First item should always be selected
                     return {
                         ...item,
-                        is_selected: true,
                         split_qty,
                     };
                 }
 
                 return {
                     ...item,
-                    is_selected: false,
                     split_qty: 0,
                 };
             });
@@ -252,23 +247,22 @@ const deliveryOrder = reactive({
         .then(({ data }) => {
             let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
             let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
-            otherStocks.value = data.map((item) => {
-                if(item.is_selected === true || item.is_selected === 'true') {
-                
-                    const finalItem = {
-                        ...item,
-                        split_qty: remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty  
-                    }
-                    console.log('remaining required qty: ' + remainingRequiredQty);
-                    console.log('Split qty: ' + splitQty);
+            otherStocks.value = data.map((item, index) => {
+                if (item.is_selected) {
+                    const split_qty = remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty;
                     
-                    if(remainingRequiredQty >= splitQty) {
-                        remainingRequiredQty = remainingRequiredQty - splitQty;
+                    if (remainingRequiredQty >= splitQty) {
+                        remainingRequiredQty -= splitQty;
                     }
-                    return finalItem;
+
+                    return {
+                        ...item,
+                        split_qty,
+                    };
                 }
-                return { 
-                    ...item, 
+
+                return {
+                    ...item,
                     split_qty: 0,
                 };
             });
@@ -388,7 +382,6 @@ const submitProposal = async () => {
             return; 
         }
     }
-
  
     let formData = new FormData();
     formData.append('delivery_id', deliveryData.value.id);
@@ -578,8 +571,8 @@ defineExpose({
                                 <th class="text-center">Quantity</th>
                                 <th class="text-center">Storage Location</th>
                                 <th class="text-center">Batch</th>
-                                <!-- <th class="text-center">Picking</th>
-                                <th class="text-center">GI</th> -->
+                                <th class="text-center">Picking</th>
+                                <th class="text-center">GI</th>
                                 <th class="text-center">Pallet Status</th>
                                 <th class="text-center"></th>
                             </tr>
@@ -593,16 +586,16 @@ defineExpose({
                                         <span>{{ item.material_desc }}</span>
                                     </div>
                                 </td>
-                                <td class="text-center">{{ item.delivery_reserved_order?.total_qty }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
                                 <td class="text-center">
                                     <div class="d-flex flex-column py-3">
-                                        <span class="font-weight-bold">{{ item.delivery_reserved_order?.storage_location?.plant_code }}</span>
-                                        <span>{{ item.delivery_reserved_order?.storage_location?.code }} - {{ item.delivery_reserved_order?.storage_location?.name }}</span>
+                                        <span class="font-weight-bold">{{ item?.storage_location?.plant_code }}</span>
+                                        <span>{{ item?.storage_location?.code }} - {{ item?.storage_location?.name }}</span>
                                     </div>
                                 </td>
                                 <td class="text-center">{{ item.batch }}</td>
-                                <!-- <td class="text-center"></td>
-                                <td class="text-center">1</td> -->
+                                <td class="text-center">{{ deliveryData?.picking_status }}</td>
+                                <td class="text-center">{{ deliveryData?.goods_issue_status }}</td>
                                 <td class="text-center">
                                     <v-badge 
                                         color="warning"
@@ -678,7 +671,6 @@ defineExpose({
                                         <!-- AVAIL PALLETS  -->
                                         <td>
                                             {{ item.inventory.length }} PALLET
-                                            
                                         </td>
                                         <!-- Split QTY  -->
                                         <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
@@ -775,14 +767,6 @@ defineExpose({
                                             Pallet
                                         </td>
                                         <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
-                                        <!-- <td v-if="!expirationChecking(item.SLED_STR)">
-                                            <v-checkbox v-model="item.is_selected"
-                                                hide-details 
-                                                :disabled="expirationChecking(item.SLED_STR)"
-                                                density="compact">
-                                            </v-checkbox>
-                                        </td> -->
-
                                         <td >
                                             <v-checkbox v-model="item.is_selected"
                                                 hide-details 

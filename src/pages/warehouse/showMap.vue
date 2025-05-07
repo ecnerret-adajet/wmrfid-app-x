@@ -200,21 +200,21 @@ const handleEditMap = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Plant</span>
+                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium">{{ storageLocationModel?.plant?.name ?? '--' }}</span>
+                                        <span class="font-weight-medium">{{ storageLocationModel?.code ?? '--' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Plant Code</span>
+                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Plant</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium">
-                                            {{ storageLocationModel?.plant?.plant_code ?? '--' }}
+                                            {{ storageLocationModel?.plant?.name ?? '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -231,6 +231,18 @@ const handleEditMap = () => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium">
                                             {{ storageLocationModel?.plant?.city ?? '--' }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-black" style="margin-top: 1px;">Plant Code</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium">
+                                            {{ storageLocationModel?.plant?.plant_code ?? '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>

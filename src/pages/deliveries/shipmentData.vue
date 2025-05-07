@@ -17,7 +17,7 @@ const props = defineProps({
                             <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
                         </VCol>
                         <VCol class="d-inline-flex align-center">
-                            <span class="font-weight-medium text-medium-emphasis">{{ deliveryData.delivery_document }}</span>
+                            <span class="font-weight-medium text-medium-emphasis">{{ deliveryData.bu_delivery }}</span>
                         </VCol>
                     </VRow>
                 </VCol>
@@ -43,7 +43,7 @@ const props = defineProps({
                             <span class="text-h6 font-weight-bold text-high-emphasis" >BU Delivery</span>
                         </VCol>
                         <VCol class="d-inline-flex align-center">
-                            <span class="font-weight-medium text-medium-emphasis">{{ deliveryData.bu_delivery || null }}</span>
+                            <span class="font-weight-medium text-medium-emphasis">{{ deliveryData.delivery_document || null }}</span>
                         </VCol>
                     </VRow>
                 </VCol>
@@ -88,7 +88,7 @@ const props = defineProps({
                             <span class="text-h6 font-weight-bold text-high-emphasis ">Truckscale #</span>
                         </VCol>
                         <VCol class="d-inline-flex align-center">
-                            <span class="font-weight-medium text-medium-emphasis">123</span>
+                            <span class="font-weight-medium text-medium-emphasis"></span>
                         </VCol>
                     </VRow>
                 </VCol>
