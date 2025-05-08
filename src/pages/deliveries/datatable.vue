@@ -58,12 +58,6 @@ const headers = [
         sortable: false
     },
     {
-        title: 'RESERVED PALLETS',
-        key: 'reserved_pallets',
-        align: 'center',
-        sortable: false
-    },
-    {
         title: 'ACTION',
         key: 'action',
         align: 'center',
@@ -299,6 +293,7 @@ const deliveryOrder = reactive({
 
 const assignPallet = (item) => {
     selectedDeliveryItem.value = item;
+    console.log(selectedDeliveryItem.value);
     return new Promise(async (resolve, reject) => {
         try {
             showStocks.value = !showStocks.value;
@@ -472,6 +467,10 @@ const submitProposal = async () => {
     
 }
 
+const cancelProposal = () => {
+    console.log('call cancel proposal');
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -514,10 +513,6 @@ defineExpose({
         {{ item.items.length }}
     </template>
 
-    <template #item.reserved_pallets="{ item }">
-        0
-    </template>
-    
     <!-- Actions -->
     <template #item.action="{ item }">
         <div class="d-flex justify-center gap-1">
@@ -570,7 +565,6 @@ defineExpose({
                                 <th>Material</th>
                                 <th class="text-center">Quantity</th>
                                 <th class="text-center">Storage Location</th>
-                                <th class="text-center">Batch</th>
                                 <th class="text-center">Picking</th>
                                 <th class="text-center">GI</th>
                                 <th class="text-center">Pallet Status</th>
@@ -593,16 +587,33 @@ defineExpose({
                                         <span>{{ item?.storage_location?.code }} - {{ item?.storage_location?.name }}</span>
                                     </div>
                                 </td>
-                                <td class="text-center">{{ item.batch }}</td>
                                 <td class="text-center">{{ deliveryData?.picking_status }}</td>
                                 <td class="text-center">{{ deliveryData?.goods_issue_status }}</td>
                                 <td class="text-center">
-                                    <v-badge 
+                                    <!-- If no reservation yet -->
+                                    <v-badge v-if="!item.delivery_reserved_order"
                                         color="warning"
                                         content="No Pallet"
                                         class="text-uppercase"
                                         inline
                                     ></v-badge>
+                                    <!-- if reserved full quantity  -->
+                                    <v-badge v-else-if="item.delivery_reserved_order && (item.delivery_reserved_order.total_reserved_pallets === item.delivery_reserved_order.total_qty)"
+                                        color="success"
+                                        content="Reserved"
+                                        class="text-uppercase"
+                                        inline
+                                    ></v-badge>
+                                    <!-- If partially reserved  -->
+                                    <div v-else class="d-flex flex-column py-3">
+                                        <v-badge 
+                                            color="info"
+                                            content="Partially Reserved"
+                                            class="text-uppercase"
+                                            inline
+                                        ></v-badge>
+                                        <span class="mt-1">{{ item?.delivery_reserved_order?.total_reserved_pallets }} out of {{ item.delivery_reserved_order.total_qty }} {{ item.base_uom }}(S)</span>
+                                    </div>
                                 </td>
                                 <td class="text-center">
                                     <v-btn
@@ -784,6 +795,7 @@ defineExpose({
                     <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
                     <div v-else class="d-flex justify-end mt-4 py-4">
                         <v-btn variant="outlined" color="grey" class="mr-2" @click="closeModal">Back To Delivery Items</v-btn>
+                        <v-btn v-if="selectedDeliveryItem?.delivery_reserved_order" variant="outlined" color="warning" class="mr-2" @click="cancelProposal">Cancel Proposal</v-btn>
                         <v-btn color="success" type="submit"  elevation="0" @click="submitProposal" :loading="submitProposalLoading">Reserve Available Pallets</v-btn>
                     </div>
                 </v-card-text>

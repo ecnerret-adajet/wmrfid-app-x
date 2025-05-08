@@ -133,7 +133,8 @@ const props = defineProps({
                         </VCol>
                         <VCol class="d-inline-flex align-center">
                             <span class="text-medium-emphasis">
-                                {{ selectedDeliveryItem?.quantity }}
+                                {{ selectedDeliveryItem?.quantity || 0 }}
+                                {{ selectedDeliveryItem?.sales_unit }}(S)
                             </span>
                         </VCol>
                     </VRow>
@@ -161,7 +162,7 @@ const props = defineProps({
                         <VCol class="d-inline-flex align-center">
                             <span class="text-medium-emphasis">
                                 {{ deliveryData?.open_quantity || 0 }}
-                                {{ selectedDeliveryItem?.sales_unit }}
+                                {{ selectedDeliveryItem?.sales_unit }}(S)
                             </span>
                         </VCol>
                     </VRow>
