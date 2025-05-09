@@ -126,7 +126,6 @@ const handleViewDelivery = (delivery) => {
 
 const handleAction = (delivery, action) => {
     deliveryData.value = delivery;
-    console.log(deliveryData.value);
     
     if(action.key == 'view_delivery_items') {
         showDeliveryItems.value = true;
@@ -443,6 +442,12 @@ const submitProposal = async () => {
                 toast.value.color = 'error';
                 toast.value.message = batchPickError;
                 toast.value.show = true;
+                loadItems({
+                    page: page.value,
+                    itemsPerPage: itemsPerPage.value,
+                    sortBy: [{key: 'created_at', order: 'desc'}],
+                    search: props.search
+                });
                 closeModal()
             }
 
@@ -454,6 +459,12 @@ const submitProposal = async () => {
             toast.value.color = 'success';
             toast.value.message = "Successfully reserved";
             toast.value.show = true;
+            loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: props.search
+            });
             closeModal()
         }
         
@@ -467,8 +478,71 @@ const submitProposal = async () => {
     
 }
 
-const cancelProposal = () => {
-    console.log('call cancel proposal');
+const cancelProposalLoading = ref(false);
+const cancelConfirmationModal = ref(false);
+
+const cancelProposal = async () => {
+    try {
+        cancelProposalLoading.value = true;
+        const token = JwtService.getToken();
+        const { data } = await axios.post(
+            `deliveries/delivery-order-remove`,
+            {
+                delivery_id: deliveryData.value.id,
+                delivery_document: deliveryData.value.delivery_document,
+                delivery_item_number: selectedDeliveryItem.value.item_number,
+                plant: selectedDeliveryItem.value.plant?.plant_code,
+                storage_location: selectedDeliveryItem.value.storage_location?.code
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        
+        if (!data.success) {
+            // Handle validation errors
+            // const errorMsg = data.errors?.customer_approval_document?.[0] 
+            const cancelBatchError = data.errors?.length > 0 ? data.errors?.[0] : null
+            
+            if (cancelBatchError) {
+                toast.value.color = 'error';
+                toast.value.message = cancelBatchError;
+                toast.value.show = true;
+                loadItems({
+                    page: page.value,
+                    itemsPerPage: itemsPerPage.value,
+                    sortBy: [{key: 'created_at', order: 'desc'}],
+                    search: props.search
+                });
+                closeModal()
+            }
+
+        } 
+
+        // Proceed normally if successful
+        if (data.success) {
+            toast.value.color = 'success';
+            toast.value.message = "Successfully cancelled reserved pallets";
+            toast.value.show = true;
+            closeModal()
+        }
+        
+    } catch (response) {
+        console.log(response);
+    } finally {
+        cancelProposalLoading.value = false;
+        cancelConfirmationModal.value = false
+        customerApprovalFile.value = null;
+        customerApprovalRemarks.value = null;
+    }
+}
+
+const handleCancelProposal = () => {
+    cancelConfirmationModal.value = true;
 }
 
 defineExpose({
@@ -591,14 +665,14 @@ defineExpose({
                                 <td class="text-center">{{ deliveryData?.goods_issue_status }}</td>
                                 <td class="text-center">
                                     <!-- If no reservation yet -->
-                                    <v-badge v-if="!item.delivery_reserved_order"
+                                    <v-badge v-if="item.delivery_reserved_orders.length === 0"
                                         color="warning"
                                         content="No Pallet"
                                         class="text-uppercase"
                                         inline
                                     ></v-badge>
                                     <!-- if reserved full quantity  -->
-                                    <v-badge v-else-if="item.delivery_reserved_order && (item.delivery_reserved_order.total_reserved_pallets === item.delivery_reserved_order.total_qty)"
+                                    <v-badge v-else-if="item.delivery_reserved_orders.length > 0 && (item.total_reserved_pallets === item.quantity)"
                                         color="success"
                                         content="Reserved"
                                         class="text-uppercase"
@@ -612,7 +686,7 @@ defineExpose({
                                             class="text-uppercase"
                                             inline
                                         ></v-badge>
-                                        <span class="mt-1">{{ item?.delivery_reserved_order?.total_reserved_pallets }} out of {{ item.delivery_reserved_order.total_qty }} {{ item.base_uom }}(S)</span>
+                                        <span class="mt-1">{{ item.total_reserved_pallets }} out of {{ item.quantity }} {{ item.sales_unit }}(S)</span>
                                     </div>
                                 </td>
                                 <td class="text-center">
@@ -662,7 +736,7 @@ defineExpose({
                                     <tr v-for="(item, index) in availableStocks" :key="index" 
                                         :class="{ 
                                             'selected-row': item.is_selected, 
-                                            'bg-grey-100 opacity-20': item.inventory.length === 0
+                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
                                         }
                                     ">
                                         <td>{{ item.BATCH }}</td>
@@ -698,7 +772,7 @@ defineExpose({
                                         <td >
                                             <v-checkbox v-model="item.is_selected"
                                                 hide-details 
-                                                :disabled="item.inventory.length == 0 || expirationChecking(item.SLED_STR)"
+                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
                                                 density="compact">
                                             </v-checkbox>
                                         </td>
@@ -744,7 +818,7 @@ defineExpose({
                                     <tr v-for="(item, index) in otherStocks" :key="index" 
                                         :class="{ 
                                             'selected-row': item.is_selected, 
-                                            'bg-grey-100 opacity-20': item.inventory.length === 0
+                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
                                         }
                                     ">
                                         <td>{{ item.BATCH }}</td>
@@ -764,9 +838,7 @@ defineExpose({
                                         <!-- AVAIL PALLETS  -->
                                         <td>
                                             {{ item.inventory.length }} PALLET
-                                            
                                         </td>
-
                                         <!-- Split QTY  -->
                                         <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
 
@@ -776,12 +848,13 @@ defineExpose({
                                         >
                                             {{ item.split_qty_pallets }}
                                             Pallet
+                                            
                                         </td>
                                         <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
                                         <td >
                                             <v-checkbox v-model="item.is_selected"
                                                 hide-details 
-                                                :disabled="item.inventory.length == 0 || expirationChecking(item.SLED_STR)"
+                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
                                                 density="compact">
                                             </v-checkbox>
                                         </td>
@@ -795,13 +868,38 @@ defineExpose({
                     <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
                     <div v-else class="d-flex justify-end mt-4 py-4">
                         <v-btn variant="outlined" color="grey" class="mr-2" @click="closeModal">Back To Delivery Items</v-btn>
-                        <v-btn v-if="selectedDeliveryItem?.delivery_reserved_order" variant="outlined" color="warning" class="mr-2" @click="cancelProposal">Cancel Proposal</v-btn>
+                        <v-btn v-if="selectedDeliveryItem?.delivery_reserved_orders?.length > 0" variant="outlined" color="warning" class="mr-2" @click="handleCancelProposal">
+                            Cancel Reserved Pallets
+                        </v-btn>
                         <v-btn color="success" type="submit"  elevation="0" @click="submitProposal" :loading="submitProposalLoading">Reserve Available Pallets</v-btn>
                     </div>
                 </v-card-text>
             </v-card-text>
         </v-card>
     </v-dialog>
+
+    <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+        <v-card class="pa-4">
+            <div class="text-center">
+                <v-icon
+                    class="mb-5"
+                    color="error"
+                    icon="ri-close-circle-line"
+                    size="112"
+                ></v-icon>
+                <p class="mb-6 text-h5">Are you sure you want to cancel reserved pallets?</p>
+                <p class="font-weight-medium text-medium-emphasis">
+                    This will cancel {{ selectedDeliveryItem.total_reserved_pallets }} reserved {{selectedDeliveryItem.sales_unit}}(s), 
+                    initially held for {{ selectedDeliveryItem.quantity }} required {{ selectedDeliveryItem.sales_unit }}(s).
+                </p>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="cancelConfirmationModal = false" class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="cancelProposal" :loading="cancelProposalLoading" class="px-8">Proceed</v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-dialog>
+
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
