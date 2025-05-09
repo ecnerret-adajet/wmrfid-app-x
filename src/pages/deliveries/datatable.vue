@@ -518,7 +518,7 @@ const cancelProposal = async () => {
                     sortBy: [{key: 'created_at', order: 'desc'}],
                     search: props.search
                 });
-                closeModal()
+                // closeModal()
             }
 
         } 
@@ -528,7 +528,7 @@ const cancelProposal = async () => {
             toast.value.color = 'success';
             toast.value.message = "Successfully cancelled reserved pallets";
             toast.value.show = true;
-            closeModal()
+            // closeModal()
         }
         
     } catch (response) {
