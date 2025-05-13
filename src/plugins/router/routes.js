@@ -176,6 +176,28 @@ export const routes = [
             },
         },
         {
+            path: 'sto-outbound',
+            name: 'sto-outbound',
+            component: () => import('@/pages/transfersOutbound/index.vue'),
+            meta: {
+              pageTitle: "Transfer Orders Outbound",
+              breadcrumbs: [
+                  { label: "Transfer Orders Outbound", link: "/sto-outbound" },
+              ],
+            },
+        },
+        {
+            path: 'sto-inbound',
+            name: 'sto-inbound',
+            component: () => import('@/pages/transfersInbound/index.vue'),
+            meta: {
+              pageTitle: "Transfer Orders Inbound",
+              breadcrumbs: [
+                  { label: "Transfer Orders Inbound", link: "/sto-inbound" },
+              ],
+            },
+        },
+        {
             path: 'warehouse',
             name: 'warehouse',
             component: () => import('@/pages/warehouse/index.vue'),
