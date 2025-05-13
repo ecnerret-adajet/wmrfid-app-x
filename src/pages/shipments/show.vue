@@ -50,9 +50,12 @@ const headers = [
     },
 ]
 
-
 const lastOptions = ref({});
 const currentOptions = ref({});
+
+
+// TODO:: Consider separating the API for calling the header and for the datatable
+// to avoid loading the header if next/prev page 
 const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     const options = { page, itemsPerPage, sortBy, search: searchValue.value };
 
@@ -90,7 +93,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { shipment, deliveries_table, reserved_orders_table  } = response.data;
+        const { shipment, deliveries_table  } = response.data;
         shipmentData.value = shipment
         totalItems.value = deliveries_table.total;
         serverItems.value = deliveries_table.data;
@@ -203,8 +206,7 @@ const closeModal = () => {
                 </VList>
             </v-card-title>
         </v-card>
-        <v-progress-linear v-if="pageLoading" indeterminate color="primary" class="mt-5"></v-progress-linear>
-        <div v-else>
+        <div >
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
