@@ -90,7 +90,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -505,7 +504,6 @@ const cancelProposal = async () => {
         
         if (!data.success) {
             // Handle validation errors
-            // const errorMsg = data.errors?.customer_approval_document?.[0] 
             const cancelBatchError = data.errors?.length > 0 ? data.errors?.[0] : null
             
             if (cancelBatchError) {
@@ -672,7 +670,7 @@ defineExpose({
                                         inline
                                     ></v-badge>
                                     <!-- if reserved full quantity  -->
-                                    <v-badge v-else-if="item.delivery_reserved_orders.length > 0 && (item.total_reserved_pallets === item.quantity)"
+                                    <v-badge v-else-if="item.delivery_reserved_orders.length > 0 && (parseInt(item.total_reserved_pallets) === parseInt(item.quantity))"
                                         color="success"
                                         content="Reserved"
                                         class="text-uppercase"

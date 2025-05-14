@@ -260,7 +260,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                     {{ item.rfid?.name }}
                 </template>
                 <template #item.block_location="{ item }">
-                    <v-btn :to="{
+                    <v-btn v-if="item.block?.label" :to="{
                             path: `/warehouse-map/${item.storage_location?.plant_code}/${generateSlug(item.storage_location?.name)}`,
                             query: { search: item.block?.lot?.label }
                         }"
@@ -270,6 +270,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                     >
                         {{ item?.block?.lot?.label }} - {{ item?.block?.label }}
                     </v-btn>
+                   
+                    <v-badge v-else
+                            color="warning"
+                            content="Unassigned"
+                            class="text-uppercase"
+                            inline
+                    ></v-badge>
                 </template>
             </VDataTableServer>
         </v-card-text>
