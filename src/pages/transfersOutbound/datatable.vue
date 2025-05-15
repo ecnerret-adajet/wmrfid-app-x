@@ -68,6 +68,10 @@ const headers = [
         key: 'vendor_name',
     },
     {
+        title: 'Transport Qty',
+        key: 'transport_qty',
+    },
+    {
         title: 'Check In',
         key: 'check_in',
     },
@@ -354,6 +358,10 @@ defineExpose({
     
     <template #item.check_in="{ item }">
         {{ item.transport_tracking?.check_in ? moment(item.transport_tracking?.check_in).format('MMM D, YYYY h:mm A') : '' }}
+    </template>
+    
+    <template #item.transport_qty="{ item }">
+        {{ item.transport_load.qty }}
     </template>
     
     <template #item.loadstart="{ item }">
