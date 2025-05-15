@@ -84,9 +84,9 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Transactions'}" />
     <VerticalNavLink :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments'}"/>
     <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries'}"/>
-    <VerticalNavLink :item="{ title: 'Transfer Orders', icon: 'ri-exchange-box-line', to: '/transfer-orders'}"/>
-    <VerticalNavLink :item="{ title: 'STO Outbound', icon: 'ri-exchange-box-line', to: '/sto-outbound'}"/>
-    <VerticalNavLink :item="{ title: 'STO Inbound', icon: 'ri-exchange-box-line', to: '/sto-inbound'}"/>
+    <VerticalNavLink :item="{ title: 'Transfer Orders', icon: 'ri-shuffle-line', to: '/transfer-orders'}"/>
+    <VerticalNavLink :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound'}"/>
+    <VerticalNavLink :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound'}"/>
     <VerticalNavLink :item="{ title: 'Fumigations', icon: 'ri-shield-check-line', to: '/fumigations'}"/>
 
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->

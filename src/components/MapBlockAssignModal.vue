@@ -134,7 +134,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 mfg_date: item.mfg_date,
                 isAssigned: item.block_id !== null ? true : false,
                 material_id: item.material_id,
-                material: item.material
+                material: item.material,
+                under_fumigation: item.under_fumigation
             }));
 
             loading.value = false
@@ -174,7 +175,6 @@ const loadAvailableBlocks = ({ page, itemsPerPage, sortBy, layerSearch }) => {
         })
         .then((response) => {
             totalLayerItems.value = response.data.total;
-            
             layerItems.value = response.data.data.map(item => ({
                 id: item.id,
                 label: item.label,
@@ -234,6 +234,14 @@ const proceedAssign = async () => {
         confirmModalOpen.value = false;
         return;
     }
+    
+    // TODO:: Check if we should add flag for initial assigning of fumigated items
+    // if (selectedInventory.value && selectedInventory.value.under_fumigation == true) {
+    //     toast.value.color = 'error';
+    //     toast.value.message = 'Items under fumigation cannot be moved, transferred, or return to mill.'
+    //     toast.value.show = true;
+    //     return;
+    // }
 
     try {
         const response = await axios.post(`warehouse/assign-inventory`, {

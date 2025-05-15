@@ -114,8 +114,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                         Apply Filter
                     </PrimaryButton>
                 </div>
-
-                
             </v-form>
         </template>
     </FilteringModal>

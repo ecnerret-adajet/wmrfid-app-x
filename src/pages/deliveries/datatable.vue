@@ -189,7 +189,6 @@ const deliveryOrder = reactive({
             }
         })
         .then(({ data }) => {
-            console.log(data);
             let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
             let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
             availableStocks.value = data.map((item, index) => {

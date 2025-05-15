@@ -1,10 +1,14 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import JwtService from '@/services/JwtService';
+import axios from 'axios';
+import moment from 'moment';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+import HeaderDetails from './headerDetails.vue';
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -24,8 +28,10 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
-const showDeliveryItems = ref(false);
-const deliveryData = ref([]);
+const showReservePallets = ref(false);
+const transferData = ref([]);
+const activeTab = ref('available_stocks');
+const availableStocks = ref([])
 
 const headers = [
     {
@@ -135,17 +141,174 @@ const applyFilters = (data) => {
 }
 
 const actionList = [
-    { title: 'View Delivery Items', key: 'view_delivery_items' },
+    { title: 'Reserve Pallet', key: 'reserve_pallet' },
 ]
 
-const handleViewDelivery = (delivery) => {
-    router.push(`/deliveries/${delivery.delivery_document}`);
+const handleAction = (data, action) => {
+    transferData.value = data;
+    if(action.key == 'reserve_pallet') {
+        fetchAvailableCommodities(transferData.value?.purchase_order_items[0] ?? null)
+        showReservePallets.value = true;
+    }
 }
 
-const handleAction = (delivery, action) => {
-    deliveryData.value = delivery;
-    if(action.key == 'view_delivery_items') {
-        showDeliveryItems.value = true;
+const closeModal = () => {
+    // showStocks.value = false
+    availableStocks.value = []
+    // otherStocks.value = []
+    showReservePallets.value = false
+}
+
+const fetchAvailableCommodities = (purchase_order_item) => {
+    if (purchase_order_item) {
+        isLoading.value = true;
+        const transferQuantity = transferData.value?.transport_load?.qty || 0;
+
+        const payload = {
+            ...purchase_order_item,
+            transfer_quantity: transferQuantity, 
+        };
+
+        const token = JwtService.getToken();
+        return axios.post(`transfer-orders/get-available-commodities-sap`, payload, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(({ data }) => {
+            console.log(data);
+            availableStocks.value = data;
+            let remainingRequiredQty = parseInt(purchase_order_item.delivery_quantity) || 0;
+            let splitQty = params.default_pallet_quantity || 40; // fallback to 40 
+
+            // availableStocks.value = data.map((item, index) => {
+            //     console.log(item);
+                
+            //     if (item.is_selected) {
+            //         const split_qty = remainingRequiredQty < splitQty ? remainingRequiredQty : splitQty;
+                    
+            //         if (remainingRequiredQty >= splitQty) {
+            //             remainingRequiredQty -= splitQty;
+            //         }
+
+            //         return {
+            //             ...item,
+            //             split_qty,
+            //         };
+            //     }
+
+            //     return {
+            //         ...item,
+            //         split_qty: 0,
+            //     };
+            // });
+            
+        })
+        .catch(({ response }) => {
+        }).finally(() => {
+            isLoading.value = false;
+        });
+    }
+}
+
+const expirationChecking = (date) => {
+    const currentDate = moment();
+    const comparisonDate = moment(date).format('YYYY-MM-DD');
+    return currentDate.isAfter(comparisonDate);
+};
+
+const otherStocks = ref([]); // Prepared implem
+
+const selectedAvailableBatches = computed(() => {
+    return availableStocks.value.filter(item => item.is_selected);
+});
+
+const selectedOtherBatches = computed(() => {
+    return otherStocks.value.filter(item => item.is_selected);
+});
+
+const reserveLoading = ref(false);
+const reservePallets = async () => {
+    try {
+        reserveLoading.value = true;
+        let purchaseOrderItem = transferData.value?.purchase_order_items[0];
+        const transferQuantity = transferData.value?.transport_load?.qty || 0;
+
+        let formData = new FormData();
+        // formData.append('material_name', this.po_item_details?.material_description);
+        formData.append('material_code', purchaseOrderItem?.material_code);
+        formData.append('po_number', purchaseOrderItem?.po_number);
+        formData.append('po_item', purchaseOrderItem?.po_item);
+        formData.append('transfer_quantity', transferQuantity);
+        // formData.append('numerator', this.po_item_details?.numerator);
+        formData.append('denominator', purchaseOrderItem?.denominator);
+        formData.append('issuing_sloc_sto', purchaseOrderItem?.issuing_sloc_sto);
+        formData.append('plant', purchaseOrderItem?.supplying_plant);
+        formData.append('uom', purchaseOrderItem?.uom);
+        formData.append('item_category', purchaseOrderItem?.item_category);
+        // formData.append('stock_exception', stock_exception);
+
+        const selectedBatches = activeTab.value === 'available_stocks'
+            ? selectedAvailableBatches.value
+            : selectedOtherBatches.value;
+
+        formData.append(`batches`, JSON.stringify(selectedBatches));
+
+        const token = JwtService.getToken();
+        const { data } = await axios.post(
+            `transfer-orders/transfer-order-proposed`,
+            formData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+
+        console.log(data);
+        
+        if (!data.success) {
+            console.log(data.errors)
+            // Handle validation errors
+            // const errorMsg = data.errors?.customer_approval_document?.[0] 
+            const batchPickError = data.errors?.length > 0 ? data.errors?.[0] : null
+            
+            if (batchPickError) {
+                toast.value.color = 'error';
+                toast.value.message = batchPickError;
+                toast.value.show = true;
+                // loadItems({
+                //     page: page.value,
+                //     itemsPerPage: itemsPerPage.value,
+                //     sortBy: [{key: 'created_at', order: 'desc'}],
+                //     search: props.search
+                // });
+                closeModal()
+            }
+
+            return;
+        } 
+
+        // Proceed normally if successful
+        if (data.success) {
+            toast.value.color = 'success';
+            toast.value.message = "Successfully reserved";
+            toast.value.show = true;
+            loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: props.search
+            });
+            closeModal()
+        }
+        
+    } catch (response) {
+        console.log(response);
+    } finally {
+        reserveLoading.value = false;
     }
 }
 
@@ -190,15 +353,15 @@ defineExpose({
     </template>
     
     <template #item.check_in="{ item }">
-        {{ item.transport_tracking.check_in }}
+        {{ item.transport_tracking?.check_in ? moment(item.transport_tracking?.check_in).format('MMM D, YYYY h:mm A') : '' }}
     </template>
     
     <template #item.loadstart="{ item }">
-        {{ item.transport_tracking.loadstart }}
+        {{ item.transport_tracking?.loadstart ? moment(item.transport_tracking?.loadstart).format('MMM D, YYYY h:mm A') : '' }}
     </template>
     
     <template #item.loadend="{ item }">
-        {{ item.transport_tracking.loadend }}
+        {{ item.transport_tracking?.loadend ? moment(item.transport_tracking?.loadend).format('MMM D, YYYY h:mm A') : '' }}
     </template>
     
     <template #item.issuing="{ item }">
@@ -238,34 +401,128 @@ defineExpose({
     </VDataTableServer>
 
     <!-- Delivery items modal -->
-    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
-        class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
-        <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>Item No.</th>
-                        <th>Sloc</th>
-                        <th>Material</th>
-                        <th>Material Desc</th>
-                        <th>Quantity</th>
-                        <th>UOM</th>
-                        <th>Batch</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in deliveryData?.items" :key="index">
-                        <td>{{ item.item }}</td>
-                        <td>{{ item.storage_location_id }}</td>
-                        <td>{{ item.material }}</td>
-                        <td>{{ item.material_desc }} </td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.base_uom }}</td>
-                        <td>{{ item.batch_item_number }}</td>
-                    </tr>
-                </tbody>
-            </v-table>
-    </DefaultModal>
+    <v-dialog v-model="showReservePallets" max-width="1500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Stock Transfer Order - Batch Picking
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="closeModal"
+                ></v-btn>
+                
+            </v-card-title>
+            <v-card-text>
+                <!-- <v-skeleton-loader  v-if="truie" type="article"></v-skeleton-loader> -->
+                <div>
+                    <HeaderDetails :transfer-order-data="transferData" />
+                </div>
 
+                <v-divider class="my-4 mx-5"></v-divider>
+          
+                <v-card-text>
+                    <!-- <v-skeleton-loader v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader> -->
+                    <div>
+                        <!-- TODO:: Update condition  -->
+                        <div v-if="true === true">
+                            <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
+                                <v-tab value="available_stocks" class="text-h5">
+                                    Available Stocks
+                                </v-tab>
+                                <!-- <v-tab value="other_stocks" class="text-h5">
+                                    Other Stocks
+                                </v-tab> -->
+                            </v-tabs>
+
+                            <v-skeleton-loader  v-if="isLoading" type="article"></v-skeleton-loader>
+                            <v-tabs-window v-else v-model="activeTab" class="mt-4" >
+                                <v-tabs-window-item value="available_stocks">
+                                    <v-table density="compact" class="stock-table elevation-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Batch Code</th>
+                                                <th>Mfg Date</th>
+                                                <th>Expiration Date</th>
+                                                <th>Age</th>
+                                                <th>Avail. Qty</th>
+                                                <th>Avail Pallets</th>
+                                                <th>Split Qty</th>
+                                                <th>Min. Pallet</th>
+                                                <th>Min. Qty</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(item, index) in availableStocks" :key="index" 
+                                                :class="{ 
+                                                    'selected-row': item.is_selected, 
+                                                    'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
+                                                }
+                                            ">
+                                                <td>{{ item.BATCH }}</td>
+                                                <td>
+                                                    {{ item.MANUF_DATE ? moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                                </td>
+                                                <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
+                                                    {{ item.SLED_STR }} 
+                                                </td>
+                                                <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                                <!-- Avail Quantity  -->
+                                                <td>
+                                                    {{ numberWithComma(item.BAG) }}
+                                                    {{ transferData?.purchase_order_items?.[0].uom }}
+                                                </td>
+
+                                                <!-- AVAIL PALLETS  -->
+                                                <td>
+                                                    {{ item.inventory.length }} PALLET
+                                                </td>
+                                                <!-- Split QTY  -->
+                                                <td> {{ numberWithComma(item.split_qty_bag) }} {{ transferData?.purchase_order_items?.[0].uom }}</td>
+
+                                                <td
+                                                    class="text-uppercase"
+                                                    :class="{ 'text-error': item.saved_reserved != null }"
+                                                >
+                                                    {{ item.split_qty_pallets }}
+                                                    Pallet
+                                                    
+                                                </td>
+                                                <td>{{ item.inventory_qty }} {{ transferData?.purchase_order_items?.[0].uom }}</td>
+                                                <td >
+                                                    <v-checkbox v-model="item.is_selected"
+                                                        hide-details 
+                                                        :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                                        density="compact">
+                                                    </v-checkbox>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </v-table>
+                                </v-tabs-window-item>
+                            </v-tabs-window>
+                        </div>
+                        <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
+                            <span class="text-h3 text-primary">Reserved</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <!-- <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader> -->
+                    <div class="d-flex justify-end mt-4 py-4">
+                        <v-btn variant="outlined" color="grey" class="mr-2" @click="closeModal">Back To Delivery Items</v-btn>
+                        <!-- <v-btn v-if="selectedDeliveryItem?.delivery_reserved_orders?.length > 0" variant="outlined" color="warning" class="mr-2" @click="handleCancelProposal">
+                            Cancel Reserved Pallets
+                        </v-btn> -->
+                        <v-btn color="success" type="submit" @click="reservePallets()" 
+                            elevation="0" :loading="reserveLoading">Reserve Available Pallets</v-btn>
+                    </div>
+                </v-card-text>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
     <Toast :show="toast.show" :message="toast.message"/>
 
 </template>

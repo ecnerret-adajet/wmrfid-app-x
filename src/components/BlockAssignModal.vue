@@ -166,6 +166,14 @@ const assignInventoryToLayerBin = async (layer) => {
         return inv && inv.material_id !== selectedMaterialId;
     });
 
+     // TODO:: Check if we should add flag for initial assigning of fumigated items
+    // if (props.selectedInventory.inventory && props.selectedInventory.inventory.under_fumigation == true) {
+    //     toast.value.color = 'error';
+    //     toast.value.message = 'Items under fumigation cannot be moved, transferred, or return to mill.'
+    //     toast.value.show = true;
+    //     return;
+    // }
+
     // if no inventory assigned to a block yet, assign immediately
     if (!hasAssigned) {
         try {
@@ -203,6 +211,7 @@ const assignInventoryToLayerBin = async (layer) => {
         return;
     }
 
+    
     try {
         const response = await axios.post(`warehouse/assign-inventory`, {
             block: selectedBlock.value,

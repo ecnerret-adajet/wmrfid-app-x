@@ -73,6 +73,12 @@ const headers = [
         sortable: false
     },
     {
+        title: 'TYPE',
+        key: 'type',
+        align: 'center',
+        sortable: false
+    },
+    {
         title: 'BATCH',
         key: 'batch',
     },
@@ -344,6 +350,10 @@ const handleChangeBatch = async () => {
         >
         <template #item.physical_id="{ item }">
             {{ item.name }}
+        </template>
+
+        <template #item.type="{ item }">
+            <span class="text-uppercase">{{ item.type }}</span>
         </template>
 
         <template #item.rfid_code="{ item }">
