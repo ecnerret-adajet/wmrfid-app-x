@@ -153,9 +153,13 @@ const palletCalculation = (uom) => {
                         <VCol cols="4" class="d-inline-flex align-center">
                             <span class="text-h6 font-weight-bold text-high-emphasis text-primary">Open Quantity</span>
                         </VCol>
-                        <VCol class="d-inline-flex align-center">
-                             <span class="text-medium-emphasis">{{ purchaseOrderItem?.qty ? numberWithComma(purchaseOrderItem?.qty) : 0}}</span>
+                        <VCol v-if="transferOrderData?.open_quantity" class="d-inline-flex align-center">
+                             <span class="text-medium-emphasis">{{ transferOrderData?.open_quantity ? numberWithComma(transferOrderData?.open_quantity) : 0}}</span>
                              <span>&nbsp;{{ purchaseOrderItem?.uom }}</span>
+                        </VCol>
+                        <VCol v-else class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">{{ purchaseOrderItem?.qty ? numberWithComma(purchaseOrderItem?.qty) : 0}}</span>
+                            <span>&nbsp;{{ purchaseOrderItem?.uom }}</span>
                         </VCol>
                     </VRow>
                 </VCol>

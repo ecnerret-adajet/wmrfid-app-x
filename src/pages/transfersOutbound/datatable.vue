@@ -152,6 +152,7 @@ const handleAction = (data, action) => {
     transferData.value = data;
     if(action.key == 'reserve_pallet') {
         fetchAvailableCommodities(transferData.value?.purchase_order_items[0] ?? null)
+        fetchOpenQuantity()
         showReservePallets.value = true;
     }
 }
@@ -161,6 +162,29 @@ const closeModal = () => {
     availableStocks.value = []
     // otherStocks.value = []
     showReservePallets.value = false
+}
+
+const fetchOpenQuantity = async() => {
+    let purchaseOrderItem = transferData.value?.purchase_order_items[0];
+    const transferQuantity = transferData.value?.transport_load?.qty || 0;
+    const token = JwtService.getToken();
+    return axios.post(`transfer-orders/get-open-quantity`, {
+        po_number: purchaseOrderItem?.po_number,
+        po_item: purchaseOrderItem?.po_item,
+        transfer_quantity: transferQuantity,
+    }, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(({ data }) => {
+        transferData.value.open_quantity = data;
+        return data;
+    })
+    .catch(({ response }) => {
+        this.form.errors = response.data.errors;
+    });
 }
 
 const fetchAvailableCommodities = (purchase_order_item) => {
@@ -423,8 +447,8 @@ defineExpose({
                 
             </v-card-title>
             <v-card-text>
-                <!-- <v-skeleton-loader  v-if="truie" type="article"></v-skeleton-loader> -->
-                <div>
+                <v-skeleton-loader v-if="!transferData" type="article"></v-skeleton-loader>
+                <div v-else>
                     <HeaderDetails :transfer-order-data="transferData" />
                 </div>
 
@@ -479,7 +503,7 @@ defineExpose({
                                                 <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
                                                 <!-- Avail Quantity  -->
                                                 <td>
-                                                    {{ numberWithComma(item.BAG) }}
+                                                    {{ numberWithComma(item.available_quantity) }}
                                                     {{ transferData?.purchase_order_items?.[0].uom }}
                                                 </td>
 
@@ -531,7 +555,7 @@ defineExpose({
             </v-card-text>
         </v-card>
     </v-dialog>
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
 </template>
 
