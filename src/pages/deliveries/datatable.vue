@@ -90,7 +90,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -505,7 +504,6 @@ const cancelProposal = async () => {
         
         if (!data.success) {
             // Handle validation errors
-            // const errorMsg = data.errors?.customer_approval_document?.[0] 
             const cancelBatchError = data.errors?.length > 0 ? data.errors?.[0] : null
             
             if (cancelBatchError) {
@@ -672,7 +670,7 @@ defineExpose({
                                         inline
                                     ></v-badge>
                                     <!-- if reserved full quantity  -->
-                                    <v-badge v-else-if="item.delivery_reserved_orders.length > 0 && (item.total_reserved_pallets === item.quantity)"
+                                    <v-badge v-else-if="item.delivery_reserved_orders.length > 0 && (parseInt(item.total_reserved_pallets) === parseInt(item.quantity))"
                                         color="success"
                                         content="Reserved"
                                         class="text-uppercase"
@@ -705,164 +703,172 @@ defineExpose({
                 </v-card-text>
                 <v-card-text v-else>
                     <v-skeleton-loader v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
-                    <v-tabs v-else v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
-                        <v-tab value="available_stocks" class="text-h5">
-                            Available Stocks
-                        </v-tab>
-                        <v-tab value="other_stocks" class="text-h5">
-                            Other Stocks
-                        </v-tab>
-                    </v-tabs>
+                    <div v-else>
+                        <div v-if="parseInt(selectedDeliveryItem.quantity) !== parseInt(selectedDeliveryItem.total_reserved_pallets)">
 
-                    <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
-                    <v-tabs-window v-else v-model="activeTab" class="mt-4" >
-                        <v-tabs-window-item value="available_stocks">
-                            <v-table density="compact" class="stock-table elevation-0">
-                                <thead>
-                                    <tr>
-                                        <th>Batch Code</th>
-                                        <th>Mfg Date</th>
-                                        <th>Expiration Date</th>
-                                        <th>Age</th>
-                                        <th>Avail. Qty</th>
-                                        <th>Avail Pallets</th>
-                                        <th>Split Qty</th>
-                                        <th>Min. Pallet</th>
-                                        <th>Min. Qty</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(item, index) in availableStocks" :key="index" 
-                                        :class="{ 
-                                            'selected-row': item.is_selected, 
-                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
-                                        }
-                                    ">
-                                        <td>{{ item.BATCH }}</td>
-                                        <td>
-                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
-                                        </td>
-                                        <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
-                                            {{ item.SLED_STR }} 
-                                        </td>
-                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
-                                        <!-- Avail Quantity  -->
-                                        <td>
-                                            {{ numberWithComma(item.BAG) }}
-                                            {{ selectedDeliveryItem?.sales_unit }}
-                                        </td>
+                            <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
+                                <v-tab value="available_stocks" class="text-h5">
+                                    Available Stocks
+                                </v-tab>
+                                <v-tab value="other_stocks" class="text-h5">
+                                    Other Stocks
+                                </v-tab>
+                            </v-tabs>
 
-                                        <!-- AVAIL PALLETS  -->
-                                        <td>
-                                            {{ item.inventory.length }} PALLET
-                                        </td>
-                                        <!-- Split QTY  -->
-                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                            <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
+                            <v-tabs-window v-else v-model="activeTab" class="mt-4" >
+                                <v-tabs-window-item value="available_stocks">
+                                    <v-table density="compact" class="stock-table elevation-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Batch Code</th>
+                                                <th>Mfg Date</th>
+                                                <th>Expiration Date</th>
+                                                <th>Age</th>
+                                                <th>Avail. Qty</th>
+                                                <th>Avail Pallets</th>
+                                                <th>Split Qty</th>
+                                                <th>Min. Pallet</th>
+                                                <th>Min. Qty</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(item, index) in availableStocks" :key="index" 
+                                                :class="{ 
+                                                    'selected-row': item.is_selected, 
+                                                    'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
+                                                }
+                                            ">
+                                                <td>{{ item.BATCH }}</td>
+                                                <td>
+                                                    {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                                </td>
+                                                <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
+                                                    {{ item.SLED_STR }} 
+                                                </td>
+                                                <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                                <!-- Avail Quantity  -->
+                                                <td>
+                                                    {{ numberWithComma(item.BAG) }}
+                                                    {{ selectedDeliveryItem?.sales_unit }}
+                                                </td>
 
-                                        <td
-                                            class="text-uppercase"
-                                            :class="{ 'text-error': item.saved_reserved != null }"
-                                        >
-                                            {{ item.split_qty_pallets }}
-                                            Pallet
-                                            
-                                        </td>
-                                        <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
-                                        <td >
-                                            <v-checkbox v-model="item.is_selected"
-                                                hide-details 
-                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                                density="compact">
-                                            </v-checkbox>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </v-table>
-                        </v-tabs-window-item>
+                                                <!-- AVAIL PALLETS  -->
+                                                <td>
+                                                    {{ item.inventory.length }} PALLET
+                                                </td>
+                                                <!-- Split QTY  -->
+                                                <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
 
-                        <v-tabs-window-item value="other_stocks">
-                            <div class="my-4 border pa-4">
-                                <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document</div>
-                                <v-file-input
-                                    accept="image/*,application/pdf"
-                                    v-model="customerApprovalFile"
-                                    density="compact"
-                                    prepend-icon=""
-                                    label="Choose file"
-                                ></v-file-input>
-                                <div class="text-subtitle-1 font-weight-medium mt-4">Remarks</div>
-                                <v-textarea class="mt-1"
-                                    clear-icon="ri-close-line"
-                                    placeholder="Remarks/Comments"
-                                    v-model="customerApprovalRemarks"
-                                    clearable
-                                ></v-textarea>
-                            </div>
-                            <v-table density="compact" class="stock-table elevation-0">
-                                <thead>
-                                    <tr>
-                                        <th>Batch Code</th>
-                                        <th>Mfg Date</th>
-                                        <th>Expiration Date</th>
-                                        <th>Age</th>
-                                        <th>Avail. Qty</th>
-                                        <th>Avail Pallets</th>
-                                        <th>Split Qty</th>
-                                        <th>Min. Pallet</th>
-                                        <th>Min. Qty</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(item, index) in otherStocks" :key="index" 
-                                        :class="{ 
-                                            'selected-row': item.is_selected, 
-                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
-                                        }
-                                    ">
-                                        <td>{{ item.BATCH }}</td>
-                                        <td>
-                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
-                                        </td>
-                                        <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
-                                            {{ item.SLED_STR }} 
-                                        </td>
-                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
-                                        <!-- Avail Quantity  -->
-                                        <td>
-                                            {{ numberWithComma(item.BAG) }}
-                                            {{ selectedDeliveryItem?.sales_unit }}
-                                        </td>
+                                                <td
+                                                    class="text-uppercase"
+                                                    :class="{ 'text-error': item.saved_reserved != null }"
+                                                >
+                                                    {{ item.split_qty_pallets }}
+                                                    Pallet
+                                                    
+                                                </td>
+                                                <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                                                <td >
+                                                    <v-checkbox v-model="item.is_selected"
+                                                        hide-details 
+                                                        :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                                        density="compact">
+                                                    </v-checkbox>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </v-table>
+                                </v-tabs-window-item>
 
-                                        <!-- AVAIL PALLETS  -->
-                                        <td>
-                                            {{ item.inventory.length }} PALLET
-                                        </td>
-                                        <!-- Split QTY  -->
-                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                                <v-tabs-window-item value="other_stocks">
+                                    <div class="my-4 border pa-4">
+                                        <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document</div>
+                                        <v-file-input
+                                            accept="image/*,application/pdf"
+                                            v-model="customerApprovalFile"
+                                            density="compact"
+                                            prepend-icon=""
+                                            label="Choose file"
+                                        ></v-file-input>
+                                        <div class="text-subtitle-1 font-weight-medium mt-4">Remarks</div>
+                                        <v-textarea class="mt-1"
+                                            clear-icon="ri-close-line"
+                                            placeholder="Remarks/Comments"
+                                            v-model="customerApprovalRemarks"
+                                            clearable
+                                        ></v-textarea>
+                                    </div>
+                                    <v-table density="compact" class="stock-table elevation-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Batch Code</th>
+                                                <th>Mfg Date</th>
+                                                <th>Expiration Date</th>
+                                                <th>Age</th>
+                                                <th>Avail. Qty</th>
+                                                <th>Avail Pallets</th>
+                                                <th>Split Qty</th>
+                                                <th>Min. Pallet</th>
+                                                <th>Min. Qty</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(item, index) in otherStocks" :key="index" 
+                                                :class="{ 
+                                                    'selected-row': item.is_selected, 
+                                                    'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
+                                                }
+                                            ">
+                                                <td>{{ item.BATCH }}</td>
+                                                <td>
+                                                    {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                                </td>
+                                                <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
+                                                    {{ item.SLED_STR }} 
+                                                </td>
+                                                <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                                <!-- Avail Quantity  -->
+                                                <td>
+                                                    {{ numberWithComma(item.BAG) }}
+                                                    {{ selectedDeliveryItem?.sales_unit }}
+                                                </td>
 
-                                        <td
-                                            class="text-uppercase"
-                                            :class="{ 'text-error': item.saved_reserved != null }"
-                                        >
-                                            {{ item.split_qty_pallets }}
-                                            Pallet
-                                            
-                                        </td>
-                                        <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
-                                        <td >
-                                            <v-checkbox v-model="item.is_selected"
-                                                hide-details 
-                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                                density="compact">
-                                            </v-checkbox>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </v-table>
-                        </v-tabs-window-item>
-                    </v-tabs-window>
+                                                <!-- AVAIL PALLETS  -->
+                                                <td>
+                                                    {{ item.inventory.length }} PALLET
+                                                </td>
+                                                <!-- Split QTY  -->
+                                                <td> {{ numberWithComma(item.split_qty_bag) }} {{ selectedDeliveryItem?.sales_unit }}</td>
+
+                                                <td
+                                                    class="text-uppercase"
+                                                    :class="{ 'text-error': item.saved_reserved != null }"
+                                                >
+                                                    {{ item.split_qty_pallets }}
+                                                    Pallet
+                                                    
+                                                </td>
+                                                <td>{{ item.inventory_qty }} {{ selectedDeliveryItem?.sales_unit }}</td>
+                                                <td >
+                                                    <v-checkbox v-model="item.is_selected"
+                                                        hide-details 
+                                                        :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                                        density="compact">
+                                                    </v-checkbox>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </v-table>
+                                </v-tabs-window-item>
+                            </v-tabs-window>
+                        </div>
+                        <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
+                            <span class="text-h3 text-primary">Reserved</span>
+                        </div>
+                    </div>
 
                     <!-- Action Buttons -->
                     <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader>
@@ -871,7 +877,9 @@ defineExpose({
                         <v-btn v-if="selectedDeliveryItem?.delivery_reserved_orders?.length > 0" variant="outlined" color="warning" class="mr-2" @click="handleCancelProposal">
                             Cancel Reserved Pallets
                         </v-btn>
-                        <v-btn color="success" type="submit"  elevation="0" @click="submitProposal" :loading="submitProposalLoading">Reserve Available Pallets</v-btn>
+                        <v-btn color="success" type="submit"  
+                            v-if="parseInt(selectedDeliveryItem.quantity) !== parseInt(selectedDeliveryItem.total_reserved_pallets)"
+                            elevation="0" @click="submitProposal" :loading="submitProposalLoading">Reserve Available Pallets</v-btn>
                     </div>
                 </v-card-text>
             </v-card-text>
