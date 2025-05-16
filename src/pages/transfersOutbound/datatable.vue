@@ -148,11 +148,12 @@ const actionList = [
     { title: 'Reserve Pallet', key: 'reserve_pallet' },
 ]
 
+const dataLoading = ref(false)
 const handleAction = (data, action) => {
     transferData.value = data;
     if(action.key == 'reserve_pallet') {
-        fetchAvailableCommodities(transferData.value?.purchase_order_items[0] ?? null)
         fetchOpenQuantity()
+        fetchAvailableCommodities(transferData.value?.purchase_order_items[0] ?? null)
         showReservePallets.value = true;
     }
 }
@@ -164,27 +165,37 @@ const closeModal = () => {
     showReservePallets.value = false
 }
 
+
 const fetchOpenQuantity = async() => {
     let purchaseOrderItem = transferData.value?.purchase_order_items[0];
     const transferQuantity = transferData.value?.transport_load?.qty || 0;
-    const token = JwtService.getToken();
-    return axios.post(`transfer-orders/get-open-quantity`, {
-        po_number: purchaseOrderItem?.po_number,
-        po_item: purchaseOrderItem?.po_item,
-        transfer_quantity: transferQuantity,
-    }, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+    if (purchaseOrderItem) {
+        dataLoading.value = true
+        const token = JwtService.getToken();
+        try {
+            const { data } = await axios.post(`transfer-orders/get-open-quantity`, {
+                po_number: purchaseOrderItem?.po_number,
+                po_item: purchaseOrderItem?.po_item,
+                transfer_quantity: transferQuantity,
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const { open_quantity, total_reserved_pallets } = data;
+
+            transferData.value.open_quantity = open_quantity;
+            transferData.value.total_reserved_pallets = total_reserved_pallets;
+
+            return { open_quantity, total_reserved_pallets };
+        } catch ({ response }) {
+            this.form.errors = response?.data?.errors || {};
+        } finally {
+            dataLoading.value = false;
         }
-    })
-    .then(({ data }) => {
-        transferData.value.open_quantity = data;
-        return data;
-    })
-    .catch(({ response }) => {
-        this.form.errors = response.data.errors;
-    });
+    }
 }
 
 const fetchAvailableCommodities = (purchase_order_item) => {
@@ -258,6 +269,16 @@ const selectedOtherBatches = computed(() => {
 
 const reserveLoading = ref(false);
 const reservePallets = async () => {
+    const selectedBatches = activeTab.value === 'available_stocks'
+            ? selectedAvailableBatches.value
+            : selectedOtherBatches.value;
+    if (selectedBatches.length === 0) {
+        toast.value.color = 'error';
+        toast.value.message = 'No selected batches';
+        toast.value.show = true;
+        return;
+    }
+
     try {
         reserveLoading.value = true;
         let purchaseOrderItem = transferData.value?.purchase_order_items[0];
@@ -277,10 +298,6 @@ const reservePallets = async () => {
         formData.append('item_category', purchaseOrderItem?.item_category);
         // formData.append('stock_exception', stock_exception);
 
-        const selectedBatches = activeTab.value === 'available_stocks'
-            ? selectedAvailableBatches.value
-            : selectedOtherBatches.value;
-
         formData.append(`batches`, JSON.stringify(selectedBatches));
 
         const token = JwtService.getToken();
@@ -295,8 +312,6 @@ const reservePallets = async () => {
             }
         );
 
-        console.log(data);
-        
         if (!data.success) {
             console.log(data.errors)
             // Handle validation errors
@@ -307,12 +322,12 @@ const reservePallets = async () => {
                 toast.value.color = 'error';
                 toast.value.message = batchPickError;
                 toast.value.show = true;
-                // loadItems({
-                //     page: page.value,
-                //     itemsPerPage: itemsPerPage.value,
-                //     sortBy: [{key: 'created_at', order: 'desc'}],
-                //     search: props.search
-                // });
+                loadItems({
+                    page: page.value,
+                    itemsPerPage: itemsPerPage.value,
+                    sortBy: [{key: 'created_at', order: 'desc'}],
+                    search: props.search
+                });
                 closeModal()
             }
 
@@ -339,6 +354,61 @@ const reservePallets = async () => {
         reserveLoading.value = false;
     }
 }
+const cancelConfirmationModal = ref(false)
+const handleCancelProposal = () => {
+    cancelConfirmationModal.value = true;
+}
+
+const cancelProposalLoading = ref(false)
+const cancelProposal = async() => {
+    cancelProposalLoading.value = true
+    try {
+        let purchaseOrderItem = transferData.value?.purchase_order_items[0];
+        const token = JwtService.getToken();
+        console.log(purchaseOrderItem);
+        
+        const { data } = await axios.post(`transfer-orders/transfer-order-remove`, {
+            po_number: purchaseOrderItem?.po_number,
+            po_item: purchaseOrderItem?.po_item,
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (data.success) {
+            toast.value.color = 'success';
+            toast.value.message = data.message;
+            toast.value.show = true;
+            loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: props.search
+            });
+            cancelConfirmationModal.value = false;
+            closeModal();
+        }
+    } catch ({ response }) {
+        
+    } finally {
+        cancelProposalLoading.value = false;
+    }
+}
+
+const palletCalculation = () => {
+    const purchase_order_item = transferData.value?.purchase_order_items?.[0] ?? null
+    
+    if(purchase_order_item.uom === "KG" || purchase_order_item.uom === 'kg') {
+        return numberWithComma(Math.ceil((transferData.value?.transport_load?.qty / 25) / 40));
+    }
+    if(purchase_order_item.uom === "BAG") {
+        return numberWithComma(Math.ceil(transferData.value?.transport_load?.qty / 40));
+    }
+
+    return numberWithComma(Math.ceil(transferData.value?.transport_load?.qty / 40));
+}
+
 
 defineExpose({
     loadItems,
@@ -447,9 +517,9 @@ defineExpose({
                 
             </v-card-title>
             <v-card-text>
-                <v-skeleton-loader v-if="!transferData" type="article"></v-skeleton-loader>
+                <v-skeleton-loader v-if="dataLoading" type="article"></v-skeleton-loader>
                 <div v-else>
-                    <HeaderDetails :transfer-order-data="transferData" />
+                    <HeaderDetails :transfer-order-data="transferData"/>
                 </div>
 
                 <v-divider class="my-4 mx-5"></v-divider>
@@ -545,9 +615,9 @@ defineExpose({
                     <!-- <v-skeleton-loader  v-if="deliveryOrder.filter.loading_available_stocks" type="article"></v-skeleton-loader> -->
                     <div class="d-flex justify-end mt-4 py-4">
                         <v-btn variant="outlined" color="grey" class="mr-2" @click="closeModal">Back To Delivery Items</v-btn>
-                        <!-- <v-btn v-if="selectedDeliveryItem?.delivery_reserved_orders?.length > 0" variant="outlined" color="warning" class="mr-2" @click="handleCancelProposal">
+                        <v-btn v-if="transferData?.total_reserved_pallets > 0" variant="outlined" color="warning" class="mr-2" @click="handleCancelProposal">
                             Cancel Reserved Pallets
-                        </v-btn> -->
+                        </v-btn>
                         <v-btn color="success" type="submit" @click="reservePallets()" 
                             elevation="0" :loading="reserveLoading">Reserve Available Pallets</v-btn>
                     </div>
@@ -555,6 +625,29 @@ defineExpose({
             </v-card-text>
         </v-card>
     </v-dialog>
+
+    <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+        <v-card class="pa-4">
+            <div class="text-center">
+                <v-icon
+                    class="mb-5"
+                    color="error"
+                    icon="ri-close-circle-line"
+                    size="112"
+                ></v-icon>
+                <p class="mb-6 text-h5">Are you sure you want to cancel reserved pallets?</p>
+                <p class="font-weight-medium text-medium-emphasis">
+                    This will cancel {{ transferData?.total_reserved_pallets }} reserved pallets(s), 
+                    initially held for {{ palletCalculation() }} required pallet(s).
+                </p>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="cancelConfirmationModal = false" class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="cancelProposal" :loading="cancelProposalLoading" class="px-8">Proceed</v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-dialog>
+
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
 </template>

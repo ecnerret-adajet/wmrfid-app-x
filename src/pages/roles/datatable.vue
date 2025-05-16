@@ -107,7 +107,7 @@ const editItem = (item) => {
     selectedRole.value = item;
     form.value.name = item.name;
     form.value.description = item.description;
-    form.value.permissions = item.permissions;
+    form.value.permissions = item.permissions.map(permission => permission.id);
     errorMessage.value = '';
     editDialog.value = true;
 }  

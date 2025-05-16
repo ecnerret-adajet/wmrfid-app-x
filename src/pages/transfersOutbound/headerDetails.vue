@@ -18,7 +18,7 @@ const totalTransportQuantity = computed(() => {
 
 // TODO:: Update calculation 
 const palletCalculation = (uom) => {
-    if(uom === "KG") {
+    if(uom === "KG" || uom === 'kg') {
         return numberWithComma(Math.ceil((props.transferOrderData?.transport_load?.qty / 25) / 40));
     }
     if(uom === "BAG") {
@@ -179,9 +179,19 @@ const palletCalculation = (uom) => {
                         </VCol>
                     </VRow>
                 </VCol>
-                <VCol md="6" class="table-cell d-inline-flex">
-                    
+                <VCol v-if="transferOrderData?.total_reserved_pallets" md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Reserved Pallet(s)</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-high-emphasis">
+                                {{ transferOrderData?.total_reserved_pallets || 0  }}
+                            </span>
+                        </VCol>
+                    </VRow>
                 </VCol>
+              
             </VRow>
         </VListItem>
     </VList>
