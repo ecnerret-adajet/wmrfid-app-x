@@ -33,16 +33,16 @@ const filterModalOpen = () => {
 const form = ref({
     'name': null,
     'reader_type_id': null,
-    'storage_location_id': null,
+    'plant_code': null,
     'ip_address': null
 });
 
 onMounted(() => {
-    fetchReaderTypesAndStorageLocations();
+    fetchReaderTypesAndPlants();
 })
 
 const readerTypes = ref([]);
-const storageLocations = ref([]);
+const plantsOptions = ref([])
 const isLoading = ref(false);
 const toast = ref({
     message: 'New Reader Added!',
@@ -53,14 +53,14 @@ const toast = ref({
 const filters = reactive({
     created_at: null,
     updated_at: null,
-    storage_location_id: null,
+    plant_code: null,
     reader_type_id: null
 });
 
 const isFiltersEmpty = computed(() => {
     return !filters.created_at && 
            !filters.updated_at && 
-           !filters.storage_location_id && 
+           !filters.plant_code && 
            !filters.reader_type_id;
 });
 
@@ -68,20 +68,23 @@ const tablePerPage = ref(10);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 
-const fetchReaderTypesAndStorageLocations = async () => {
+const fetchReaderTypesAndPlants = async () => {
     try {
         const preReqData = await ApiService.get('readers/get-data-dropdown');
-        const { reader_types, storage_locations, reader_status } = preReqData.data
+        const { reader_types, plants } = preReqData.data
+        
+
         readerTypes.value = reader_types.map(item => ({
             value: item.id,
             title: item.name 
         }));
   
-        storageLocations.value = storage_locations.map(item => ({
-            value: item.id,
-            title: item.name
-        }));
-
+        plantsOptions.value = plants
+            .filter(item => item.name !== null)
+            .map(item => ({
+                value: item.plant_code,
+                title: item.name
+            }));
 
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -101,7 +104,7 @@ const submit = async () => {
         toast.value.show = true;
         form.value.name = null;
         form.value.reader_type_id = null;
-        form.value.storage_location_id = null;
+        form.value.plant_code = null;
         form.value.ip_address = null;
     } catch (error) {
         console.error('Error submitting:', error);
@@ -137,7 +140,7 @@ const resetFilter = () => {
 const clearFilters = () => {
     filters.created_at = null;
     filters.updated_at = null;
-    filters.storage_location_id = null;
+    filters.plant_code = null;
     filters.reader_type_id = null;
 };
 
@@ -171,15 +174,15 @@ const clearFilters = () => {
     
     <VCard>
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
-            :search="searchValue" :storage-locations="storageLocations" :reader-types="readerTypes"
+            :search="searchValue" :plants="plantsOptions" :reader-types="readerTypes"
         />
     </VCard>
 
     <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Reader'" >
         <template #default>
             <v-form @submit.prevent="submit">
-                <v-select label="Select Storage Location" density="compact"
-                    :items="storageLocations" v-model="form.storage_location_id"
+                <v-select label="Select Plant" density="compact"
+                    :items="plantsOptions" v-model="form.plant_code"
                     :rules="[value => !!value || 'Please select an item from the list']"
                 >
                 </v-select>
@@ -211,9 +214,9 @@ const clearFilters = () => {
         <template #default>
             <v-form>
                 <div class="mt-6">
-                    <label class="font-weight-bold">Storage Location</label>
-                    <v-select class="mt-1" label="Select Storage Location" density="compact"
-                        :items="storageLocations" v-model="filters.storage_location_id"
+                    <label class="font-weight-bold">Plant</label>
+                    <v-select class="mt-1" label="Select Plant" density="compact"
+                        :items="plantsOptions" v-model="filters.plant_code"
                     >
                     </v-select>
                 </div>
@@ -246,7 +249,7 @@ const clearFilters = () => {
         </template>
     </FilteringModal>
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 
 

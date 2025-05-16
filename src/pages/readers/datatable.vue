@@ -22,7 +22,7 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
-    storageLocations: {
+    plants: {
         type: Array,
         default: () => []
     },
@@ -54,8 +54,8 @@ const headers = [
         key: 'reader_type_id',
     },
     {
-        title: 'STORAGE LOCATION',
-        key: 'storage_location_id',
+        title: 'Plant',
+        key: 'plant_code',
     },
     {
         title: 'Last Log',
@@ -124,7 +124,7 @@ const editItem = (item) => {
     selectedReader.value = item;
     form.value.name = item.name;
     form.value.reader_type_id = item.reader_type?.id;
-    form.value.storage_location_id = item.storage_location?.id
+    form.value.plant_code = item.plant?.plant_code
     form.value.ip_address = item.ip_address
     editDialog.value = true;
 }  
@@ -187,7 +187,7 @@ const applyFilters = (data) => {
 const form = ref({
     'name': null,
     'reader_type_id': null,
-    'storage_location_id': null,
+    'plant_code': null,
     'ip_address': null
 });
 
@@ -221,8 +221,8 @@ defineExpose({
         {{ item.reader_type?.name }}
     </template>
 
-    <template #item.storage_location_id="{ item }">
-        {{ item.storage_location?.name }}
+    <template #item.plant_code="{ item }">
+        {{ item.plant?.name }}
     </template>
 
     <template #item.last_log="{ item }">
@@ -269,6 +269,7 @@ defineExpose({
     </template>
     </VDataTableServer>
 
+    <!-- Not used, but prepared just incase -->
     <DeleteModal @close="deleteDialog = false" :show="deleteDialog" dialog-title="Delete Reader">
         <template #default>
             <VCardText>
@@ -284,12 +285,12 @@ defineExpose({
         </template>
     </DeleteModal>
 
-    <EditingModal v-if="form.name && form.reader_type_id && form.storage_location_id" @close="editDialog = false" 
+    <EditingModal v-if="form.name && form.reader_type_id && form.plant_code" @close="editDialog = false" 
         :show="editDialog" :dialog-title="`Update ${selectedReader.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
-                <v-select label="Select Storage Location" density="compact"
-                    :items="storageLocations" v-model="form.storage_location_id"
+                <v-select label="Select Plant" density="compact"
+                    :items="plants" v-model="form.plant_code"
                     :rules="[value => !!value || 'Please select an item from the list']"
                 >
                 </v-select>
@@ -316,8 +317,5 @@ defineExpose({
             </div>
         </template>
     </EditingModal>
-
-
-    <Toast :show="toast.show" :message="toast.message"/>
-
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
