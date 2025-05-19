@@ -221,6 +221,7 @@ defineExpose({
         {{ item.reader_type?.name }}
     </template>
 
+    <!-- Get plant object and name -->
     <template #item.plant_code="{ item }">
         {{ item.plant?.name }}
     </template>
