@@ -261,7 +261,7 @@ const closeModal = () => {
             </thead>
             <tbody>
                 <tr v-for="(item, index) in selectedDelivery.items" :key="index">
-                    <td>{{ item.item }}</td>
+                    <td>{{ item.item_number }}</td>
                     <td>{{ item.material }}</td>
                     <td>{{ item.material_desc }}</td>
                     <td>{{ item.quantity }}</td>

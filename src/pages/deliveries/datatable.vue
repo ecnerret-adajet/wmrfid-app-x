@@ -563,9 +563,7 @@ defineExpose({
     >
 
     <template #item.delivery_document="{ item }">
-        <span @click="handleViewDelivery(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-            {{ item.delivery_document }}
-        </span>
+        {{ item.delivery_document }}
     </template>
 
     <template #item.plant_name="{ item }">

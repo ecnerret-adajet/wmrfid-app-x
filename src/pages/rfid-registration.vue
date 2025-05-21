@@ -54,23 +54,6 @@ const getTags = async () => {
 };
 
 const getUniqueEpc = (tags) => {
-    // // Run only if not single entry since no comparison needed
-    // console.log(tags);
-    // const filteredTags = tags.filter(tag => 
-    //     ['unregistered', 'unregistered TID', 'Active'].includes(tag.status)
-    // );
-    // console.log(filteredTags);
-    
-    // // Get unique EPCs
-    // const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
-    // console.log(uniqueEpcs);
-    
-    // // If all EPCs are the same (Set size is 1), return the EPC
-    // if (uniqueEpcs.size === 1) {
-    //     return [...uniqueEpcs][0];  // Return single EPC from the Set
-    // } else {
-    //     return null;  // Return null if EPCs are not the same
-    // }
 
     if (!Array.isArray(tags) || tags.length === 0) return null;
 
@@ -233,6 +216,15 @@ const handleClear = () => {
         <v-card-title class="d-flex justify-space-between align-center">
             <VRow>
                 <VCol cols="4" class="d-flex align-start">
+                    <v-btn :to="{
+                            path: `/rfid`,
+                        }"
+                        class="ma-2"
+                        color="grey-700"
+                        icon="ri-arrow-left-line"
+                        variant="text"
+                    >
+                    </v-btn>
                     <div class="text-h2 font-weight-black ps-2">
                     RFID Registration
                     </div>

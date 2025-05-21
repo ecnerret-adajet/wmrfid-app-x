@@ -2,6 +2,7 @@
 import Loader from '@/components/Loader.vue';
 import ApiService from '@/services/ApiService';
 import palletsImage from '@images/curtains/pallets.png';
+import Moment from 'moment';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -13,6 +14,7 @@ const bay = route.params.bay;
 const hasError = ref(false);
 const errorMessage = ref(null);
 const logs = ref([])
+const lastRead = ref(null);
 
 onMounted(() => {
     fetchLoadingCurtain();
@@ -23,8 +25,10 @@ const fetchLoadingCurtain = async () => {
     const url = `loading-curtain/${reader}/${bay}`;
     try {
         const response = await ApiService.get(url);
-        logs.value = response.data
-        console.log(logs.value);
+        const { last_read, loading_curtain } = response.data;
+
+        logs.value = loading_curtain;
+        lastRead.value = last_read;
         isLoading.value = false
     } catch (error) {
         isLoading.value = false
@@ -80,29 +84,40 @@ const fetchLoadingCurtain = async () => {
                 </VCol>
             </VRow>
             <div>
-                <VRow no-gutters style="border: 1px solid #00833c;">
+                <VRow v-if="lastRead" no-gutters style="border: 1px solid #00833c;">
                     <VCol md="3" class="px-3 py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span  class="text-uppercase text-h5 text-primary font-weight-black">
-                                0342-18
+                                {{ lastRead?.rfid?.name }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">EPC1234</span>
+                        <span class="font-weight-black">{{ lastRead?.rfid?.epc }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center" style="border-right: 1px solid #fff;">
-                        <span class="font-weight-black">BATCH3200</span>
+                        <span class="font-weight-black">{{ lastRead?.rfid?.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                    March 30, 2025
+                                     {{ lastRead?.first_seen_timestamp ? Moment(lastRead.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
-                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">12:35 PM</p>
+                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">
+                                    {{ lastRead?.first_seen_timestamp ? Moment(lastRead.first_seen_timestamp).format('h:mm A') : '' }}
+                                </p>
                             </div>
+                        </div>
+                    </VCol>
+                </VRow>
+                <VRow v-else no-gutters style="border: 1px solid #00833c;">
+                    <VCol cols="12" class="px-3 py-4 text-center d-flex justify-center align-center rightBorderedGreen">
+                        <div class="text-center">
+                            <span class="text-uppercase text-h5 text-primary font-weight-black">
+                                No Pallet Found
+                            </span>
                         </div>
                     </VCol>
                 </VRow>
@@ -133,28 +148,30 @@ const fetchLoadingCurtain = async () => {
             <div class="table-wrapper" style="height: 350px;">
 
                 <!-- Loop Row  -->
-                <VRow no-gutters style="border: 1px solid #00833c;">
+                <VRow v-for="(log, index) in logs" :key="index" no-gutters style="border: 1px solid #00833c;">
                     <VCol md="3" class="py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span class="text-uppercase text-h5 text-primary font-weight-black">
-                                0342-18
+                                {{ log.rfid?.name || '' }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">EPC1234</span>
+                        <span class="font-weight-black">{{ log.rfid?.epc || '' }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center" style="border-right: 1px solid #fff;">
-                        <span class="font-weight-black">BATCH3200</span>
+                        <span class="font-weight-black">{{ log.rfid?.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                    March 30, 2025
+                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
-                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">12:35 PM</p>
+                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">
+                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('h:mm A') : '' }}
+                                </p>
                             </div>
                         </div>
                     </VCol>

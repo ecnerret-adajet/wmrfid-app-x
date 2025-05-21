@@ -196,6 +196,11 @@ const showReaderLastTap = (reader, bay) => {
     window.open(url, '_blank');
 }
 
+const showCurtainScreen = (reader, bay) => {
+    const url = `/loading-latest/${reader.id}/${bay}`;
+    window.open(url, '_blank');
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -242,31 +247,79 @@ defineExpose({
 
     <!-- Actions -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1 justify-center">
-        <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
-            <v-menu location="start"> 
-                <template v-slot:activator="{ props }">
-                    <v-btn icon="ri-truck-line" variant="text" v-bind="props" color="grey"></v-btn>
-                </template>
-                <v-list>
-                <v-list-item
-                    v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" 
-                        :key="i"
-                        :value="i"
-                    >
-                    <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location.bay_no)" class="px-4">Bay No. {{ antenna.bay_location.bay_no }}</v-list-item-title>
-                </v-list-item>
-                </v-list>
-            </v-menu>
-        </template>
+        <div class="d-flex gap-1 justify-center">
+            <!-- Picklist  -->
+            <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
+                <v-menu location="start">
+                    <template v-slot:activator="{ props: menuProps }">
+                        <v-tooltip location="top">
+                            <template v-slot:activator="{ props: tooltipProps }">
+                                <v-btn 
+                                    icon="ri-truck-line" 
+                                    variant="text" 
+                                    color="grey" 
+                                    v-bind="{ ...menuProps, ...tooltipProps }"
+                                ></v-btn>
+                            </template>
+                            <span>View Picklist Screen</span>
+                        </v-tooltip>
+                    </template>
+                    <v-list>
+                        <v-list-item
+                            v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" 
+                            :key="i"
+                            :value="i"
+                        >
+                            <v-list-item-title 
+                                @click="showReaderLastTap(item, antenna.bay_location.bay_no)" 
+                                class="px-4"
+                            >
+                                Bay No. {{ antenna.bay_location.bay_no }}
+                            </v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+            </template>
+            <!-- Loading Curtain -->
+            <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
+                <v-menu location="start">
+                    <template v-slot:activator="{ props: menuProps }">
+                        <v-tooltip location="top">
+                            <template v-slot:activator="{ props: tooltipProps }">
+                                <v-btn 
+                                    icon="ri-computer-line" 
+                                    variant="text" 
+                                    color="grey" 
+                                    v-bind="{ ...menuProps, ...tooltipProps }"
+                                ></v-btn>
+                            </template>
+                            <span>View Loading Curtain Screen</span>
+                        </v-tooltip>
+                    </template>
+                    <v-list>
+                        <v-list-item
+                            v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" 
+                            :key="i"
+                            :value="i"
+                        >
+                            <v-list-item-title 
+                                @click="showCurtainScreen(item, antenna.bay_location.bay_no)" 
+                                class="px-4"
+                            >
+                                Bay No. {{ antenna.bay_location.bay_no }}
+                            </v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+            </template>
 
-        <IconBtn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-          size="small"
-          @click="editItem(item)"
-        >
-          <VIcon icon="ri-pencil-line" />
-        </IconBtn>
-      </div>
+            <IconBtn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+                size="small"
+                @click="editItem(item)"
+            >
+            <VIcon icon="ri-pencil-line" />
+            </IconBtn>
+        </div>
     </template>
     </VDataTableServer>
 
