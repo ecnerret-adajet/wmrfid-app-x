@@ -46,7 +46,7 @@ const fetchLoadingCurtain = async () => {
             <!-- Latest Pallet Label -->
             <div class="position-absolute" style="z-index: 9; left: 50px; top: 90px;">
                 <span class="text-h1 font-weight-black text-grey-700">Latest Pallet </span>
-                <span class="text-h1 font-weight-black text-primary-2">(Bay 1)</span>
+                <span class="text-h1 font-weight-black text-primary-2">(Bay {{ bay }})</span>
             </div>
 
             <!-- Image -->
