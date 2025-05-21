@@ -12,6 +12,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    maxWidth: {
+        type: String,
+        default: '600px'
+    },
 });
 
 const dialogVisible = ref(props.show);
@@ -34,7 +38,7 @@ watch(
 
 </script>
 <template>
-    <v-dialog v-model="dialogVisible" max-width="600px">
+    <v-dialog v-model="dialogVisible" :max-width="maxWidth">
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
             <div class="text-h5 text-bold-emphasis ps-2">

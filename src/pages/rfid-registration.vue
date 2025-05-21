@@ -24,10 +24,12 @@ const responseMessage = ref('Not all unregistered EPC values are the same. Pleas
 
 // Get values from the URL
 const tagType = route.params.type;
-const storageLocation = route.params.location;
+const storageLocation = route.params.location ?? null;
+const plantCode = route.params.plant;
 
 const form = reactive({
     storage_location: null,
+    plant_code: plantCode,
     group_no: null,
     name: null,
     is_defective: 'no',
@@ -52,19 +54,28 @@ const getTags = async () => {
 };
 
 const getUniqueEpc = (tags) => {
-    // Run only if not single entry since no comparison needed
+    // // Run only if not single entry since no comparison needed
+    // console.log(tags);
+    // const filteredTags = tags.filter(tag => 
+    //     ['unregistered', 'unregistered TID', 'Active'].includes(tag.status)
+    // );
+    // console.log(filteredTags);
     
-    const filteredTags = tags.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID');
+    // // Get unique EPCs
+    // const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
+    // console.log(uniqueEpcs);
+    
+    // // If all EPCs are the same (Set size is 1), return the EPC
+    // if (uniqueEpcs.size === 1) {
+    //     return [...uniqueEpcs][0];  // Return single EPC from the Set
+    // } else {
+    //     return null;  // Return null if EPCs are not the same
+    // }
 
-    // Get unique EPCs
-    const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
-    
-    // If all EPCs are the same (Set size is 1), return the EPC
-    if (uniqueEpcs.size === 1) {
-        return [...uniqueEpcs][0];  // Return single EPC from the Set
-    } else {
-        return null;  // Return null if EPCs are not the same
-    }
+    if (!Array.isArray(tags) || tags.length === 0) return null;
+
+    const uniqueEpcs = new Set(tags.map(tag => tag.epc));
+    return uniqueEpcs.size === 1 ? [...uniqueEpcs][0] : null;
     
 };
 
@@ -78,7 +89,7 @@ const removeItem = (index) => {
 
 watch(tags, (newTags) => {
     if (newTags.length > 0) {
-        let epc = getUniqueEpc(tags.value);
+        let epc = getUniqueEpc(newTags);
         // Show modal if mismatched EPCs
         if (!epc && newTags.length > 1) {
             responseModal.value = true
@@ -129,6 +140,7 @@ const submit = async () => {
             form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
             form.storage_location = storageLocation;
             form.tag_type = tagType
+            form.plant_code = plantCode;
             isLoading.value = true;
             toast.value.show = false;
             try {
@@ -172,6 +184,8 @@ const addToExistingTag = async () => {
     form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
     form.storage_location = storageLocation;
     form.tag_type = tagType
+    form.plant_code = plantCode
+
     addingLoading.value = true;
     
     try {
@@ -196,6 +210,7 @@ const clearForm = () => {
     form.is_defective = 'no'; // Reset to no
     form.tag_type = null;
     form.to_be_added_tags = []
+    form.plant_code = null;
 }
 
 const handleClear = () => {
@@ -354,9 +369,17 @@ const handleClear = () => {
             </tbody>
         </v-table>
     </v-card>
-    <AddingModal @close="cancelAdd" :show="addExistingModal" >
+    <AddingModal @close="cancelAdd" :show="addExistingModal" max-width="700px">
         <template #default>
-            <div class="text-h4 text-grey-800 mb-4 font-weight-medium">
+            <div class="text-center mx-auto">
+                <v-icon
+                    class="mb-5"
+                    color="primary"
+                    icon="ri-function-add-line"
+                    size="64"
+                ></v-icon>
+            </div>
+            <div class="text-h4 text-center mb-4 text-medium-emphasis">
                 Are you sure you want to add unregistered tags to an existing tag with physical ID of 
                 <strong class="text-primary font-weight-black">{{ form.name }}</strong>?
             </div>

@@ -12,13 +12,12 @@ import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-
 
 const searchValue = ref('');
 const serverItems = ref([]);
@@ -26,7 +25,10 @@ const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
-const storageLocations = ref([]);
+const allStorageLocations = ref([]); // all slocs
+const storageLocations = ref([]); // filtered slocs based on plant_code
+const plantsOption = ref([]);
+
 const errorMessage = ref(null);
 const registrationModalForm = ref(null);
 const materialsOption = ref([]);
@@ -133,6 +135,7 @@ const filters = reactive({
 const form = reactive({
     tag_type_id: null,
     storage_location_id: null,
+    plant_code: null
 });
 
 const isFiltersEmpty = computed(() => {
@@ -196,7 +199,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { table, statistics, tag_types, storage_locations, materials } = response.data;
+        const { table, statistics, tag_types, storage_locations, materials, plants } = response.data;
         totalItems.value = table.total;
         serverItems.value = table.data;
 
@@ -209,10 +212,15 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             name: item.title
         }));
 
-        storageLocations.value = storage_locations.map(item => ({
-            value: item.id,
-            title: item.name,
-            name: item.name
+        allStorageLocations.value = storage_locations;
+
+        // Apply initial filter (if any plant_code is already selected)
+        updateFilteredStorageLocations();
+
+        plantsOption.value = plants.map(item => ({
+            value: item.plant_code,
+            title: `${item.plant_code} - ${item.name}`, 
+            name: `${item.plant_code} - ${item.name}`
         }));
 
     } catch (error) {
@@ -236,28 +244,36 @@ const changeBatch = () => {
 }
 
 const proceedRegister = () => {
+ 
     if (registrationModalForm.value.isValid) {
-        if (!form.tag_type_id || !form.storage_location_id) {
-            console.error("Tag Type or Storage Location is not selected.");
+
+        if (!form.tag_type_id || !form.plant_code) {
+            console.error("Tag Type and Plant is not selected.");
             return; // Return early if form values are not set
         }
 
         let tagType = tagTypesOption.value.find(item => item.value === form.tag_type_id);
         let storageLocation = storageLocations.value.find(item => item.value === form.storage_location_id);
-
-        if (!tagType || !storageLocation) {
-            console.error("Invalid Tag Type or Storage Location selected.");
+        let plant = plantsOption.value.find(item => item.value === form.plant_code);
+    
+        if (!tagType || !plant) {
+            console.error("Invalid Tag Type and Plant selected.");
             return;
         }
 
-        if (tagType.name && storageLocation.name) {
-            // Construct the dynamic path
-            router.push({
-                path: `/rfid-registration/${generateSlug(tagType.name)}/${generateSlug(storageLocation.name)}`,
-            });
+        const slugType = generateSlug(tagType.name);
+        const slugPlant = generateSlug(plant.value);
+        const slugLocation = storageLocation?.name ? generateSlug(storageLocation.name) : null;
+        
+        if (tagType.name && plant.value) {
+            // Construct the path depending on whether location is set
+            const path = slugLocation
+                ? `/rfid-registration/${slugType}/${slugPlant}/${slugLocation}`
+                : `/rfid-registration/${slugType}/${slugPlant}`;
+            router.push({ path });
             showRegistrationModal.value = false;
         }
-    }
+    } 
 }
 
 const changeBatchLoading = ref(false);
@@ -306,6 +322,34 @@ const handleChangeBatch = async () => {
         changeBatchLoading.value = false;
     }
 }
+
+const updateFilteredStorageLocations = () => {
+    if (form.plant_code) {
+        storageLocations.value = allStorageLocations.value
+            .filter(loc => loc.plant_code === form.plant_code)
+            .map(loc => ({
+                value: loc.id,
+                title: loc.name,
+                name: loc.name
+            }));
+
+        // Optionally reset invalid selection
+        if (!storageLocations.value.some(loc => loc.value === form.storage_location_id)) {
+            form.storage_location_id = null;
+        }
+    } else {
+        storageLocations.value = allStorageLocations.value.map(loc => ({
+            value: loc.id,
+            title: loc.name,
+            name: loc.name
+        }));
+    }
+};
+
+// Auto-update when plant_code changes
+watch(() => form.plant_code, () => {
+    updateFilteredStorageLocations();
+});
 
 </script>
 
@@ -445,9 +489,17 @@ const handleChangeBatch = async () => {
         <template #default>
             <v-form @submit.prevent="proceedRegister" ref="registrationModalForm">
                 <div>
-                    <label class="font-weight-bold">RFID Type</label>
+                    <label class="font-weight-bold">RFID Type<span class="text-error">*</span></label>
                     <v-select class="mt-1" label="Select Type" density="compact"
                         :items="tagTypesOption" v-model="form.tag_type_id" 
+                        :rules="[value => !!value || 'Please select an item from the list']"
+                    >
+                    </v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Plant<span class="text-error">*</span></label>
+                    <v-select class="mt-1" label="Select Plant" density="compact"
+                        :items="plantsOption" v-model="form.plant_code"
                         :rules="[value => !!value || 'Please select an item from the list']"
                     >
                     </v-select>
@@ -456,7 +508,6 @@ const handleChangeBatch = async () => {
                     <label class="font-weight-bold">Location</label>
                     <v-select class="mt-1" label="Select Location" density="compact"
                         :items="storageLocations" v-model="form.storage_location_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
                     >
                     </v-select>
                 </div>
