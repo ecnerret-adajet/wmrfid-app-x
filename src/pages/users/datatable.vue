@@ -143,6 +143,13 @@ const handleDelete = async () => {
 }
 
 const handleUpdate = async () => {
+    if (Array.isArray(form.value.storage_location_ids) && form.value.storage_location_ids.length === 0) {
+        toast.value.color = "error"
+        toast.value.message = "Please select atleast 1 storage location"
+        toast.value.show = true;
+        return;
+    }
+
     isLoading.value = true;
     toast.value.show = false
     try {
@@ -182,9 +189,6 @@ const form = ref({
     'plant_ids': [],
 });
 
-
-
-
 watch(
     () => form.value.plant_ids,
     (selectedPlantIds) => {
@@ -205,7 +209,6 @@ watch(
     },
     { immediate: true, deep: true } // This will ensure it runs immediately when the component mounts
 );
-
 
 defineExpose({
     loadItems,
@@ -294,7 +297,9 @@ defineExpose({
                     chips
                     multiple
                     closable-chips
-                    :rules="[value => !!value || 'Please select an item from the list']"
+                    :rules="[
+                        value => (Array.isArray(value) && value.length > 0) || 'Please select an item from the list'
+                    ]"
                 />
                 <v-select class="mt-4" 
                     v-model="form.storage_location_ids"
@@ -307,7 +312,9 @@ defineExpose({
                     multiple
                     return-object
                     closable-chips
-                    :rules="[value => !!value || 'Please select an item from the list']"
+                    :rules="[
+                        value => (Array.isArray(value) && value.length > 0) || 'Please select at least one storage location'
+                    ]"
                 />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
@@ -322,7 +329,5 @@ defineExpose({
         </template>
     </EditingModal>
 
-
-    <Toast :show="toast.show" :message="toast.message"/>
-
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>

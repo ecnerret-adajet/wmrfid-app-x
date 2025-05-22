@@ -7,6 +7,7 @@ import Moment from "moment";
 import { ref, watch } from 'vue';
 
 const storageLocations = ref([]);
+const plantsOption = ref([]);
 const totalItems = ref(0);
 const itemsPerPage = ref(5);
 const serverItems = ref([]);
@@ -15,15 +16,21 @@ const pageLoading = ref(false);
 const sortQuery = ref('-created_at'); // Default sort
 const statisticsData = ref(null);
 const filters = reactive({
-    storage_location_id: null,
+    storage_location_id: null, // Prepared for future usage
+    plant_id: null
 })
 
 const headers = [
     {
-        title: 'STORAGE LOCATION',
-        key: 'storage_location_id',
+        title: 'PLANT',
+        key: 'plant_id',
         sortable: false
     },
+    // {
+    //     title: 'STORAGE LOCATION',
+    //     key: 'storage_location_id',
+    //     sortable: false
+    // },
     {
         title: 'MATERIAL',
         key: 'material_id',
@@ -46,7 +53,7 @@ const headers = [
     },
 ]
 
-watch(() => filters.storage_location_id, () => {
+watch(() => filters.plant_id, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -82,7 +89,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             }
         });
 
-        const { table, statistics, storage_locations } = response.data;
+        const { table, statistics, storage_locations, plants } = response.data;
         
         totalItems.value = table.total;
         serverItems.value = table.data;
@@ -95,6 +102,11 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             name: item.name
         }));
 
+        plantsOption.value = plants.map(item => ({
+            value: item.id,
+            title: item.name,
+            name: item.name
+        }));
     } catch (error) {
         console.log(error);
     } finally {
@@ -105,8 +117,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 </script>
 
 <template>
-    <v-select class="mx-4 mb-4" style="width: 380px;" label="Select Storage Location" density="compact"
-        :items="[{ title: 'All', value: null }, ...storageLocations]" v-model="filters.storage_location_id"
+    <v-select class="mx-4 mb-4" style="width: 380px;" label="Select Plant" density="compact"
+        :items="[{ title: 'All', value: null }, ...plantsOption]" v-model="filters.plant_id"
         :rules="[value => value !== undefined || 'Please select an item from the list']"
     >
     </v-select>
@@ -281,7 +293,6 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             <InventoryAgeChart v-else :data="statisticsData?.inventory_age"/>
         </VCol>
     
-    
     </VRow>
 
     <v-card class="mx-4 mt-4" elevation="2">
@@ -299,8 +310,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
                     @update:options="loadItems"
                     class="text-no-wrap"
             >
-                <template #item.storage_location_id="{ item }">
-                    {{ item.production_line?.reader?.storage_location?.name }}
+                <template #item.plant_id="{ item }">
+                    {{ item.production_line?.reader?.plant?.name}}
                 </template>
                 <template #item.material_id="{ item }">
                     {{ item.material?.description }}

@@ -20,8 +20,8 @@ const chartOptions = ref({
   chart: {
     type: 'donut',
   },
-  labels: ['Available Space', 'Taken Space'],
-  colors: ['#4CAF50', '#16B1FF'],
+  labels: ['Available', 'Occupied', 'Reserved'],
+  colors: ['#4CAF50', '#16B1FF', '#FFC107'],
   legend: {
     position: 'bottom',
   },
@@ -44,7 +44,7 @@ const chartOptions = ref({
 <template>
     <v-card class="pa-4" elevation="2">
         <v-card-title class="font-weight-bold">
-          Warehouse Utilization
+            Storage Bin Allocation
         </v-card-title>
         <v-card-text
             class="d-flex justify-center align-center"
