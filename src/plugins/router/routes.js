@@ -96,18 +96,6 @@ export const routes = [
             },
         },
         {
-            path: 'production-runs/:batch',
-            name: 'production-runs.show',
-            component: () => import('@/pages/productionRuns/show.vue'),
-            meta: {
-                pageTitle: "Batch Details",
-                breadcrumbs: (route) => [
-                    { label: "Production Runs", link: "/production-runs" },
-                    { label: `${route.params.batch}`, link: `/production-runs/${route.params.batch}` }
-                ],
-            },
-        },
-        {
             path: 'inventories',
             name: 'inventories',
             component: () => import('@/pages/inventories/index.vue'),
@@ -116,18 +104,6 @@ export const routes = [
               breadcrumbs: [
                   { label: "Inventories", link: "/inventories" },
               ],
-            },
-        },
-        {
-            path: 'inventories/:batch',
-            name: 'inventories.show',
-            component: () => import('@/pages/inventories/show.vue'),
-            meta: {
-                pageTitle: "Inventory Details",
-                breadcrumbs: (route) => [
-                    { label: "Inventories", link: "/inventories" },
-                    { label: `${route.params.batch}`, link: `/inventories/${route.params.batch}` }
-                ],
             },
         },
         {

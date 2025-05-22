@@ -5,6 +5,7 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
@@ -14,6 +15,7 @@ import { debounce } from 'lodash';
 import Moment from 'moment';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import productionRunDetails from './productionRunDetails.vue';
 
 const router = useRouter();
 const dialogVisible = ref(false)
@@ -25,6 +27,7 @@ const materialsOption = ref([]);
 const tagTypesOption = ref([]);
 const filterModalVisible = ref(false);
 const storageLocations = ref([]);
+const plantsOption = ref([]);
 const statisticsData = ref(null);
 const pageLoading = ref(false);
 const authStore = useAuthStore();
@@ -61,7 +64,7 @@ const fetchDropdownData = async () => {
             }
         });
 
-        const { materials, production_lines, tag_types, storage_locations, statistics } = response.data
+        const { materials, production_lines, tag_types, storage_locations, statistics, plants } = response.data
  
         statisticsData.value = statistics
         productionLinesOption.value = production_lines.map(item => ({
@@ -76,7 +79,14 @@ const fetchDropdownData = async () => {
             value: item.id,
             title: `${item.code} - ${item.description}`
         }));
+
         storageLocations.value = storage_locations.map(item => ({
+            value: item.id,
+            title: item.name,
+            name: item.name
+        }));
+
+        plantsOption.value = plants.map(item => ({
             value: item.id,
             title: item.name,
             name: item.name
@@ -135,6 +145,7 @@ const filters = reactive({
     start_date_time: null,
     tag_type_id: null,
     storage_location_id: null,
+    plant_id: null
 });
 
 const isFiltersEmpty = computed(() => {
@@ -162,9 +173,20 @@ const clearFilters = () => {
     filters.start_date_time = null;
     filters.tag_type_id = null;
     filters.storage_location_id = null;
+    filters.plant_id = null;
 };
 
 const headers = [
+    {
+        title: '',
+        key: 'action',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'PLANT',
+        key: 'plant_id',
+    },
     {
         title: 'MATERIAL',
         key: 'material_id',
@@ -237,7 +259,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         });
 }
 
-watch(() => filters.storage_location_id, () => {
+watch(() => filters.plant_id, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -282,9 +304,39 @@ const triggerEnd = (item) => {
     triggerEndDialog.value = true;
 }
 
+const actionList = [
+    { title: 'View Details', key: 'view_details' },
+]
 
-const handleViewBatch = (item) => {
-    router.push(`/production-runs/${item.generated_batch}`);
+const showProductionRunDetails = ref(false);
+const handleAction = (productionRun, action) => {
+    selectedProductionRun.value = productionRun;
+    if(action.key == 'view_details') {
+        showProductionRunDetails.value = true;
+    } 
+}
+
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/production-runs/',
+            params: {
+                plant_id: filters.plant_id,
+                search: searchValue.value,
+            },
+            filename: 'production-runs-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
+const showRecentProduced = () => {
+    console.log('show recent produced modal');
 }
 
 </script>
@@ -304,22 +356,49 @@ const handleViewBatch = (item) => {
             Filter
         </v-btn>
 
-        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" label="Filter by Warehouse" density="compact"
-            :items="[{ title: 'All', value: null }, ...storageLocations]" v-model="filters.storage_location_id"
+        <v-select style="max-width: 300px;"
+            class="flex-grow-1 align-center mt-1"
+            label="Filter by Plant"
+            density="compact"
+            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+            v-model="filters.plant_id"
             :rules="[value => value !== undefined || 'Please select an item from the list']"
         >
         </v-select>
 
         <v-btn
-            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin "
+            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
             class="d-flex justify-center align-center"
             @click="openDialog"
         >
             Add New Production Run
         </v-btn>
+        <v-btn 
+            :loading="exportLoading"
+            class="d-flex align-center"
+            prepend-icon="ri-download-line"
+            @click="exportData"
+        >
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Export
+        </v-btn>
+
+        <v-btn variant="outlined"
+            color="primary-light"
+            class="d-flex align-center"
+            prepend-icon="ri-play-circle-line"
+            @click="showRecentProduced"
+        >
+            <template #prepend>
+                <v-icon color="primary-light"></v-icon>
+            </template>
+            Show Recent Produced
+        </v-btn>
     </div>
 
-    <v-row class="match-height my-4">
+    <v-row class="match-height mb-2">
         <v-col cols="3">
             <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else
@@ -536,11 +615,32 @@ const handleViewBatch = (item) => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
+            <template #item.action="{ item }">
+                <div class="d-flex justify-center gap-1">
+                    <v-menu location="end"> 
+                        <template v-slot:activator="{ props }">
+                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                        </template>
+                        <v-list>
+                        <v-list-item
+                            @click="handleAction(item, action)"
+                            v-for="(action, i) in actionList"
+                                :key="i"
+                                :value="i"
+                            >
+                            <v-list-item-title>{{ action.title }}</v-list-item-title>
+                        </v-list-item>
+                        </v-list>
+                    </v-menu>
+                </div>
+            </template>
+
+            <template #item.plant_id="{ item }">
+                {{ item.material?.plant?.name }}
+            </template>
 
             <template #item.batch="{ item }">
-                <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-                    {{ item.generated_batch }}
-                </span>
+                {{ item.generated_batch }}
             </template>
 
             <template #item.material_id="{ item }">
@@ -632,7 +732,7 @@ const handleViewBatch = (item) => {
 
     <v-dialog v-model="triggerEndDialog" max-width="600px" persistent>
     
-    <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
+        <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
             <v-icon
                 class="mb-5"
                 color="primary"
@@ -649,6 +749,26 @@ const handleViewBatch = (item) => {
                 </PrimaryButton>
             </div>
         </v-sheet>
+    </v-dialog>
+
+    <!-- Batch Details Modal -->
+    <v-dialog v-if="selectedProductionRun" v-model="showProductionRunDetails" max-width="1500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Production Run Details
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="showProductionRunDetails = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <productionRunDetails :production-run="selectedProductionRun"/>
+            </v-card-text>
+        </v-card>
     </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" @update:show="toast.show = $event"/>

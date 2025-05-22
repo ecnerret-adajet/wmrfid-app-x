@@ -248,25 +248,25 @@ const exportData = async () => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
-        <template #item.action="{ item }">
-            <div class="d-flex justify-center gap-1">
-                <v-menu location="end"> 
-                    <template v-slot:activator="{ props }">
-                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                    </template>
-                    <v-list>
-                    <v-list-item
-                        @click="handleAction(item, action)"
-                        v-for="(action, i) in actionList"
-                            :key="i"
-                            :value="i"
-                        >
-                        <v-list-item-title>{{ action.title }}</v-list-item-title>
-                    </v-list-item>
-                    </v-list>
-                </v-menu>
-            </div>
-        </template>
+            <template #item.action="{ item }">
+                <div class="d-flex justify-center gap-1">
+                    <v-menu location="end"> 
+                        <template v-slot:activator="{ props }">
+                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                        </template>
+                        <v-list>
+                        <v-list-item
+                            @click="handleAction(item, action)"
+                            v-for="(action, i) in actionList"
+                                :key="i"
+                                :value="i"
+                            >
+                            <v-list-item-title>{{ action.title }}</v-list-item-title>
+                        </v-list-item>
+                        </v-list>
+                    </v-menu>
+                </div>
+            </template>
             <template #item.batch="{ item }">
                     {{ item.batch }}
             </template>

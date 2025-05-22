@@ -4,6 +4,7 @@ import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -11,8 +12,11 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VTextarea } from 'vuetify/components';
 
+const props = defineProps({
+    productionRun: Object
+})
+
 const route = useRoute();
-const batch = route.params.batch; // Get the batch from URL
 const searchValue = ref('');
 const pageLoading = ref(false);
 const tagTypesOption = ref([]);
@@ -32,7 +36,10 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
 const selectedItems = ref([])
-const filters = ref([])
+const filters = reactive({
+    tag_type_id: null,
+    plant_id: null
+})
 
 // Fumigation variables
 const fumigateModal = ref(false)
@@ -132,13 +139,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`production-runs/get-data/${batch}`,{
+    ApiService.query(`production-runs/get-data/${props.productionRun.generated_batch}`,{
         params: {
             page,
             itemsPerPage,
             sort: sortQuery.value,
             search: searchValue.value,
-            filters: filters.value
+            filters: filters
         }
         })
         .then((response) => {
@@ -172,14 +179,15 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 
 watch(selectedTagType, async (newVal) => {
     pageLoading.value = true;
+    filters.tag_type_id = newVal
     try {
-        const response = await ApiService.query(`production-runs/get-data/${batch}`, {
+        const response = await ApiService.query(`production-runs/get-data/${props.productionRun.generated_batch}`, {
             params: {
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
                 sortBy: [{key: 'created_at', order: 'desc'}],
                 search: searchValue.value,
-                [`filters[tag_type_id]`]: newVal
+                filters: filters
             }
         });
 
@@ -323,18 +331,38 @@ const toast = ref({
     show: false
 });
 
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/export/production-runs/${props.productionRun.generated_batch}`,
+            params: {
+                plant_id: filters.plant_id,
+                tag_type_id: selectedTagType.value,
+                search: searchValue.value,
+            },
+            filename: 'production-runs-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
     <div>
-        <div>
+        <div class="mx-4">
             <v-row>
                 <v-col cols="3">
                     <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
                     <v-card v-else
-                        class="pa-4"
-                        elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -366,9 +394,9 @@ const toast = ref({
                 <v-col cols="3">
                     <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
                     <v-card v-else
-                        class="pa-4"
-                        elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -401,9 +429,9 @@ const toast = ref({
                 <v-col cols="3">
                     <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
                     <v-card v-else
-                        class="pa-4"
-                        elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -435,9 +463,9 @@ const toast = ref({
                 <v-col cols="3">
                     <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
                     <v-card v-else
-                        class="pa-4"
-                        elevation="2"
-                        style="border-radius: 4px; background-color: #f9fafb;"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
+                        style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
                         <div
@@ -468,10 +496,10 @@ const toast = ref({
                 </v-col>
             </v-row>
         </div>
-        <div class="mt-4">
-            <v-card>
+        <div class="mt-4 mx-4">
+            <v-card elevation="0" class="border">
                 <VRow class="mx-4">
-                    <VCol md="10">
+                    <VCol md="8">
                         <SearchInput @update:search="handleSearch"/>
                     </VCol>
                     <VCol md="2" class="d-flex justify-center align-center">
@@ -479,6 +507,19 @@ const toast = ref({
                             :items="tagTypesOption" v-model="selectedTagType" 
                         >
                         </v-select>
+                    </VCol>
+                    <VCol md="2" class="d-flex justify-center align-center">
+                        <v-btn block
+                            :loading="exportLoading"
+                            class="d-flex align-center"
+                            prepend-icon="ri-download-line"
+                            @click="exportData"
+                        >
+                            <template #prepend>
+                                <v-icon color="white"></v-icon>
+                            </template>
+                            Export
+                        </v-btn>
                     </VCol>
                 </VRow>
                 <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
