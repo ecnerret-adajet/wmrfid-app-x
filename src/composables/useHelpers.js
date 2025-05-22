@@ -1,3 +1,4 @@
+import axios from 'axios';
 export const generateSlug = (str) => {
     return str
         .toLowerCase()           // Convert to lowercase
@@ -23,3 +24,24 @@ export const numberWithComma = (number) => {
 
     return '0';
 };
+
+
+export async function exportExcel({ url, params = {}, filename = 'export.xlsx' }) {
+    try {
+        const response = await axios.get(url, {
+            params,
+            responseType: 'blob',
+        })
+
+        const blobUrl = window.URL.createObjectURL(new Blob([response.data]))
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.setAttribute('download', filename)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+    } catch (error) {
+        console.error('Export failed:', error)
+        throw error
+    }
+}

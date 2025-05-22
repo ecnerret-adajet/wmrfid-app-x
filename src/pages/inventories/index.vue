@@ -1,6 +1,7 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
@@ -11,6 +12,7 @@ import { useRouter } from 'vue-router';
 
 const pageLoading = ref(false);
 const storageLocations = ref([]);
+const plantsOptions = ref([]);
 const statisticsData = ref(null);
 
 const toast = ref({
@@ -20,6 +22,7 @@ const toast = ref({
 });
 const filters = reactive({
     storage_location_id: null,
+    plant_id: null
 })
 
 
@@ -40,7 +43,7 @@ const loadData = async () => {
             }
         });
 
-        const { storage_locations, statistics } = response.data;
+        const { storage_locations, statistics, plants } = response.data;
         statisticsData.value = statistics;
         
         storageLocations.value = storage_locations.map(item => ({
@@ -48,6 +51,13 @@ const loadData = async () => {
             title: item.name,
             name: item.name
         }));
+
+        plantsOptions.value = plants
+            .filter(item => item.name !== null)
+            .map(item => ({
+                value: item.id,
+                title: item.name
+            }));
         
     } catch (error) {
         console.log(error);
@@ -71,8 +81,19 @@ const sortQuery = ref('-created_at'); // Default sort
 
 const headers = [
     {
+        title: '',
+        key: 'action',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'BATCH',
         key: 'batch',
+    },
+    {
+        title: 'PLANT',
+        key: 'plant_id',
+        sortable: false
     },
     {
         title: 'STORAGE LOCATION',
@@ -97,13 +118,12 @@ const headers = [
         key: 'total_count',
         align: 'center'
     },
-    {
-        title: 'STOCK STATUS',
-        key: 'stock_status',
-        align: 'center',
-        sortable: false
-    },
-    
+    // {
+    //     title: 'STOCK STATUS',
+    //     key: 'stock_status',
+    //     align: 'center',
+    //     sortable: false
+    // },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -130,6 +150,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
+            console.log(serverItems.value);
+            
             loading.value = false
         })
         .catch((error) => {
@@ -138,38 +160,87 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         });
 }
 
-watch(() => filters.storage_location_id, () => {
+watch(() => filters.plant_id, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
         sortBy: [{ key: sortQuery.value.replace('-', ''), 
         order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
     });
-
-    loadData()
+    // loadData()
 });
 
 const handleViewBatch = (inventory) => {
     router.push(`/inventories/${inventory.batch}`);
 }
 
+const actionList = [
+    { title: 'View Details', key: 'view_details' },
+]
+
+const selectedInventory = ref(null);
+const showInventoryDetails = ref(false);
+const handleAction = (inventory, action) => {
+    selectedInventory.value = inventory;
+    
+    if(action.key == 'view_details') {
+        showInventoryDetails.value = true;
+    } 
+}
+
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/inventories',
+            params: {
+                plant_id: filters.plant_id,
+                search: searchValue.value,
+            },
+            filename: 'inventories.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
     <VRow>
-        <VCol md="9">
+        <VCol md="7">
             <SearchInput @update:search="handleSearch"/>
         </VCol>
         <VCol md="3" class="d-flex justify-center align-center">
-            <v-select class="mt-1" label="Filter by Warehouse" density="compact"
-                :items="[{ title: 'All', value: null }, ...storageLocations]" v-model="filters.storage_location_id"
+            <v-select
+                class="mt-1"
+                label="Filter by Plant"
+                density="compact"
+                :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+                v-model="filters.plant_id"
                 :rules="[value => value !== undefined || 'Please select an item from the list']"
             >
             </v-select>
         </VCol>
+        <VCol md="2" class="d-flex justify-center align-center">
+            <v-btn block
+                :loading="exportLoading"
+                class="d-flex align-center"
+                prepend-icon="ri-equalizer-line"
+                @click="exportData"
+            >
+                <template #prepend>
+                <v-icon color="white"></v-icon>
+                </template>
+                Export
+            </v-btn>
+        </VCol>
     </VRow>
-        <!-- <MovementChart /> -->
-    <v-row class="match-height my-4">
+      
+    <!-- <v-row class="match-height my-4">
         <v-col cols="3">
             <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else
@@ -204,13 +275,6 @@ const handleViewBatch = (inventory) => {
                         </div>
                     </div>
 
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
                 </div>
             </v-card>
         </v-col>
@@ -248,13 +312,7 @@ const handleViewBatch = (inventory) => {
                         </div>
                     </div>
 
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
+              
                 </div>
             </v-card>
         </v-col>
@@ -292,13 +350,7 @@ const handleViewBatch = (inventory) => {
                         </div>
                     </div>
 
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
+             
                 </div>
             </v-card>
         </v-col>
@@ -336,17 +388,11 @@ const handleViewBatch = (inventory) => {
                         </div>
                     </div>
 
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
+              
                 </div>
             </v-card>
         </v-col>
-    </v-row>
+    </v-row> -->
        
     <VCard>
         <VDataTableServer
@@ -360,10 +406,33 @@ const handleViewBatch = (inventory) => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
+        <template #item.action="{ item }">
+            <div class="d-flex justify-center gap-1">
+                <v-menu location="end"> 
+                    <template v-slot:activator="{ props }">
+                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                    </template>
+                    <v-list>
+                    <v-list-item
+                        @click="handleAction(item, action)"
+                        v-for="(action, i) in actionList"
+                            :key="i"
+                            :value="i"
+                        >
+                        <v-list-item-title>{{ action.title }}</v-list-item-title>
+                    </v-list-item>
+                    </v-list>
+                </v-menu>
+            </div>
+        </template>
             <template #item.batch="{ item }">
                 <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
                     {{ item.batch }}
                 </span>
+            </template>
+
+            <template #item.plant_id="{ item }">
+                {{ item.storage_location?.plant?.name }}
             </template>
 
             <template #item.storage_location_id="{ item }">
@@ -395,7 +464,7 @@ const handleViewBatch = (inventory) => {
                 
             </template>
 
-            <template #item.stock_status="{ item }">
+            <!-- <template #item.stock_status="{ item }">
                 <v-chip v-if="item.total_count <= 200" color="error" variant="flat">
                     <span class="px-4">Low</span>
                 </v-chip>
@@ -405,7 +474,7 @@ const handleViewBatch = (inventory) => {
                 <v-chip v-else-if="item.total_count > 600" color="warning" variant="flat">
                     <span class="px-4">High</span>
                 </v-chip>
-            </template>
+            </template> -->
 
             <template #item.latest_mfg_date="{ item }">
                 {{ item.latest_mfg_date ? Moment(item.latest_mfg_date).format('MMMM D, YYYY') : '' }}
