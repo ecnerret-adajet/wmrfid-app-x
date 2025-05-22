@@ -335,9 +335,39 @@ const exportData = async () => {
     }
 }
 
+const showRecentProducedModal = ref(false);
 const showRecentProduced = () => {
-    console.log('show recent produced modal');
+    fetchRecentProduced()
+    showRecentProducedModal.value = true
 }
+
+const recentProducedLoading = ref(false);
+const recentProduced = ref([]);
+const fetchRecentProduced = async () => {
+    recentProducedLoading.value = true;
+    try {
+        const token = JwtService.getToken();
+        const response = await axios.get(`/production-runs/get-recent-produced`, {
+            params: {
+                plant_id: filters.plant_id,
+                search: searchValue.value,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        if (response.status === 200) {
+            recentProduced.value = response.data
+        } else {
+            console.error('Fail to fetch recently produced batches')
+        }
+     
+    } catch (error) {
+        console.log(error);
+    } finally {
+        recentProducedLoading.value = false;
+    }
+};
 
 </script>
 
@@ -767,6 +797,52 @@ const showRecentProduced = () => {
             </v-card-title>
             <v-card-text>
                 <productionRunDetails :production-run="selectedProductionRun"/>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <!-- Recent Produced Modal -->
+    <v-dialog v-model="showRecentProducedModal" max-width="800px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Recent Produced Batches
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="showRecentProducedModal = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <v-table density="comfortable" class="mt-4">
+                    <thead>
+                        <tr>
+                        <th class="text-left">RFID Code</th>
+                        <th class="text-left">Material</th>
+                        <th class="text-left">Batch</th>
+                        <th class="text-left">MFG Date</th>
+                        </tr>
+                    </thead>
+                    <tbody v-if="recentProducedLoading">
+                        <tr v-for="n in 5" :key="n">
+                            <td colspan="4">
+                                <v-skeleton-loader type="text" class="w-100" />
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody v-else>
+                        <tr v-for="(item, index) in recentProduced" :key="index">
+                            <td>{{ item.rfid_code }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.batch }}</td>
+                            <td>
+                                {{ Moment(`${item.mfg_date.split(' ')[0]} ${item.mfg_time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY h:mm A') }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </v-table>
             </v-card-text>
         </v-card>
     </v-dialog>
