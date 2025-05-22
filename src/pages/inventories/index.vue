@@ -9,6 +9,7 @@ import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import batchDetails from './batchDetails.vue';
 
 const pageLoading = ref(false);
 const storageLocations = ref([]);
@@ -150,8 +151,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            console.log(serverItems.value);
-            
             loading.value = false
         })
         .catch((error) => {
@@ -170,10 +169,6 @@ watch(() => filters.plant_id, () => {
     // loadData()
 });
 
-const handleViewBatch = (inventory) => {
-    router.push(`/inventories/${inventory.batch}`);
-}
-
 const actionList = [
     { title: 'View Details', key: 'view_details' },
 ]
@@ -190,10 +185,11 @@ const handleAction = (inventory, action) => {
 
 const exportLoading = ref(false);
 const exportData = async () => {
+
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: '/export/inventories',
+            url: '/export/inventories/',
             params: {
                 plant_id: filters.plant_id,
                 search: searchValue.value,
@@ -229,7 +225,7 @@ const exportData = async () => {
             <v-btn block
                 :loading="exportLoading"
                 class="d-flex align-center"
-                prepend-icon="ri-equalizer-line"
+                prepend-icon="ri-download-line"
                 @click="exportData"
             >
                 <template #prepend>
@@ -239,161 +235,7 @@ const exportData = async () => {
             </v-btn>
         </VCol>
     </VRow>
-      
-    <!-- <v-row class="match-height my-4">
-        <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
-                <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
-                                width: 48px;
-                                height: 48px;
-                                background-color: #fdecea;
-                                border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-error-warning-line"
-                                color="error"
-                                size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                Near Expiry
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                                {{ statisticsData?.near_expiry_total || 0 }}
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </v-card>
-        </v-col>
-        <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
-                <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
-                                width: 48px;
-                                height: 48px;
-                                background-color: #fdecea;
-                                border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-battery-low-line"
-                                color="error"
-                                size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                Low Stock
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                                {{ statisticsData?.low_stock_total || 0 }}
-                            </div>
-                        </div>
-                    </div>
-
-              
-                </div>
-            </v-card>
-        </v-col>
-        <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
-                <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
-                                width: 48px;
-                                height: 48px;
-                                background-color: #fff3d8;
-                                border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-weight-line"
-                                color="warning"
-                                size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                Overstocked
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                                {{ statisticsData?.overstock_total || 0 }}
-                            </div>
-                        </div>
-                    </div>
-
-             
-                </div>
-            </v-card>
-        </v-col>
-        <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
-                <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
-                                width: 48px;
-                                height: 48px;
-                                background-color: #fdecea;
-                                border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-time-line"
-                                color="error"
-                                size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                Expired Items
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                                {{ statisticsData?.expired_total || 0 }}
-                            </div>
-                        </div>
-                    </div>
-
-              
-                </div>
-            </v-card>
-        </v-col>
-    </v-row> -->
-       
+  
     <VCard>
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
@@ -426,9 +268,7 @@ const exportData = async () => {
             </div>
         </template>
             <template #item.batch="{ item }">
-                <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
                     {{ item.batch }}
-                </span>
             </template>
 
             <template #item.plant_id="{ item }">
@@ -490,6 +330,26 @@ const exportData = async () => {
 
         </VDataTableServer>
     </VCard>
+
+    <!-- Batch Details Modal -->
+    <v-dialog v-if="selectedInventory" v-model="showInventoryDetails" max-width="1500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-database-2-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Batch Details
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="showInventoryDetails = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <batchDetails :inventory="selectedInventory"/>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
  
     <Toast :show="toast.show" :message="toast.message"  @update:show="toast.show = $event"/>
 </template>

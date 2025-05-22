@@ -26,11 +26,6 @@ const headers = [
         key: 'plant_id',
         sortable: false
     },
-    // {
-    //     title: 'STORAGE LOCATION',
-    //     key: 'storage_location_id',
-    //     sortable: false
-    // },
     {
         title: 'MATERIAL',
         key: 'material_id',

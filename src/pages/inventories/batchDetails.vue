@@ -2,16 +2,20 @@
 import EditingModal from '@/components/EditingModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const props = defineProps({
+    inventory: Object
+})
+
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
-const batch = route.params.batch; // Get the batch from URL
 const searchValue = ref('');
 const pageLoading = ref(false);
 const tagTypesOption = ref([]);
@@ -29,7 +33,9 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
 const selectedItems = ref([])
-const filters = ref([])
+const filters = reactive({
+    tag_type_id: null
+})
 
 const headers = [
     {
@@ -107,13 +113,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`inventories/get-data/${batch}`,{
+    ApiService.query(`inventories/get-data/${props.inventory?.batch}`,{
         params: {
             page,
             itemsPerPage,
             sort: sortQuery.value,
             search: searchValue.value,
-            filters: filters.value
+            filters: filters
         }
         })
         .then((response) => {
@@ -142,15 +148,16 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         });
 }
 watch(selectedTagType, async (newVal) => {
+    filters.tag_type_id = newVal
     pageLoading.value = true;
     try {
-        const response = await ApiService.query(`inventories/get-data/${batch}`, {
+        const response = await ApiService.query(`inventories/get-data/${props.inventory?.batch}`, {
             params: {
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
                 sortBy: [{key: 'created_at', order: 'desc'}],
                 search: searchValue.value,
-                [`filters[tag_type_id]`]: newVal
+                filters: filters
             }
         });
 
@@ -203,7 +210,6 @@ const handleViewBatch = (inventory) => {
     router.push(`/inventories/${inventory.batch}`);
 }
 
-
 const changeBatch = () => {
     changeBatchModal.value = true;
 }
@@ -248,16 +254,79 @@ const toast = ref({
     show: false
 });
 
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/export/inventories/${props.inventory?.batch}`,
+            params: {
+                filters: {
+                    tag_type_id: selectedTagType.value
+                },
+                search: searchValue.value,
+            },
+            filename: 'inventories.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
     <div>
-        <div>
+        <VList lines="one" density="compact" class="border mx-4 mb-4">
+            <VListItem>
+                <VRow class="table-row" no-gutters>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-start">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Plant</span>
+                            </VCol>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{ inventory?.storage_location?.plant?.plant_code}}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{ inventory?.storage_location?.plant?.name}}</div>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-start">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Storage Location</span>
+                            </VCol>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{ inventory?.storage_location?.code}}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{ inventory?.storage_location?.name }}</div>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                </VRow>
+            </VListItem>
+            <VListItem>
+                <VRow class="table-row" no-gutters>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-center">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Batch</span>
+                            </VCol>
+                            <VCol class="d-inline-flex align-center">
+                                <span class="font-weight-medium text-grey-700">{{ inventory?.batch }}</span>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                </VRow>
+            </VListItem>
+        </VList>
+        <div class="mx-4">
             <v-row>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4 bg-grey-100"
-                        elevation="2"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
                         style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
@@ -289,8 +358,8 @@ const toast = ref({
                 </v-col>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4 bg-grey-100"
-                        elevation="2"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
                         style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
@@ -323,8 +392,8 @@ const toast = ref({
             
                 <v-col cols="3">
                     <v-card
-                        class="pa-4 bg-grey-100"
-                        elevation="2"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
                         style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
@@ -356,8 +425,8 @@ const toast = ref({
                 </v-col>
                 <v-col cols="3">
                     <v-card
-                        class="pa-4 bg-grey-100"
-                        elevation="2"
+                        class="px-4 py-2 bg-white border"
+                        elevation="0"
                         style="border-radius: 4px;"
                     >
                         <div class="d-flex align-center">
@@ -389,10 +458,10 @@ const toast = ref({
                 </v-col>
             </v-row>
         </div>
-        <div class="mt-4">
-            <v-card>
+        <div class="mt-4 mx-4">
+            <v-card elevation="0" class="border">
                 <VRow class="mx-4">
-                    <VCol md="8">
+                    <VCol md="6">
                         <SearchInput @update:search="handleSearch"/>
                     </VCol>
                     
@@ -408,12 +477,25 @@ const toast = ref({
                         >
                         </v-select>
                     </VCol>
+                    <VCol md="2" class="d-flex justify-center align-center">
+                        <v-btn block 
+                            :loading="exportLoading"
+                            class="d-flex align-center"
+                            prepend-icon="ri-download-line"
+                            @click="exportData"
+                        >
+                            <template #prepend>
+                                <v-icon color="white"></v-icon>
+                            </template>
+                            Export
+                        </v-btn>
+                    </VCol>
+
                 </VRow>
                 <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
 
                 <v-card-text class="mx-2">
                     <div class="mb-4 d-flex justify-between align-center">
-                        <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
                         <v-spacer></v-spacer>
                         <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
                             Change Batch
