@@ -579,6 +579,12 @@ const exportData = async () => {
                             </v-btn>
                         </div>
 
+                        <div class="mb-2" v-if="selectedItems.length > 0">
+                            <span class="text-h6 font-weight-medium text-high-emphasis">
+                                Selected items count: ({{ selectedItems.length }})
+                            </span>
+                        </div>
+
                         <VDataTableServer
                             v-model:items-per-page="itemsPerPage"
                             v-model="selectedItems"

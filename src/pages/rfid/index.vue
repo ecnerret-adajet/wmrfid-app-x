@@ -61,8 +61,14 @@ const headers = [
         key: 'rfid_code',
     },
     {
-        title: 'STORAGE LOCATION',
-        key: 'storage_location',
+        title: 'Weak Signal',
+        key: 'weak_signal',
+        align: 'center',
+        sortable: false
+    },
+    {
+        title: 'Plant',
+        key: 'plant',
     },
     {
         title: 'PHYSICAL ID',
@@ -346,6 +352,47 @@ const updateFilteredStorageLocations = () => {
     }
 };
 
+const taggingModal = ref(false);
+const taggingLoading = ref(false);
+const handleTagAsWeak = () => {
+    console.log('Tag as Weak clicked');
+    taggingModal.value = true;
+};
+
+const tagUpdateForm = reactive({
+    selectedRfid: [],
+});
+
+const handleTagging = async () => {
+    taggingLoading.value = true;
+    toast.show = false;
+    tagUpdateForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post('rfid/toggle-weak-tag', tagUpdateForm)
+        if(response.status !== 200) {
+            throw new Error('Failed to tag as weak');
+        }
+        taggingLoading.value = false;
+        toast.value.message = 'RFID tagged as weak!'
+        toast.value.color = 'success'
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{key: 'created_at', order: 'desc'}],
+            search: searchValue.value
+        });
+    } catch (error) {
+        console.error('Error submitting:', error);
+    } finally {
+        taggingLoading.value = false;
+        taggingModal.value = false;
+    }
+}
+
+
+handleTagging
+
 // Auto-update when plant_code changes
 watch(() => form.plant_code, () => {
     updateFilteredStorageLocations();
@@ -375,10 +422,19 @@ watch(() => form.plant_code, () => {
             class="px-5" type="button" color="primary-light">
             Change Batch
         </v-btn>
-    </div>
 
+        <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" 
+            class="px-5" type="button" color="warning">
+            Tag as Weak
+        </v-btn>
+    </div>
+    <div class="mb-2" v-if="selectedItems.length > 0">
+        <span class="text-h6 font-weight-medium text-high-emphasis">
+            Selected items count: ({{ selectedItems.length }})
+        </span>
+    </div>
     <VCard>
-  
+        
         <VDataTableServer
             v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}"
             v-model:items-per-page="itemsPerPage"
@@ -392,8 +448,22 @@ watch(() => form.plant_code, () => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
+
+        <template #item.plant="{ item }">
+            {{ item.plant_name }}
+        </template>
+
         <template #item.physical_id="{ item }">
             {{ item.name }}
+        </template>
+
+        <template #item.weak_signal="{ item }">
+             <v-badge v-if="item.is_weak_signal"
+                color="error"
+                content="Yes"
+                class="text-uppercase"
+                inline
+            ></v-badge>
         </template>
 
         <template #item.type="{ item }">
@@ -583,5 +653,41 @@ watch(() => form.plant_code, () => {
             </div>
         </template>
     </EditingModal>
+
+    <EditingModal @close="taggingModal = false" max-width="900px"
+        :show="taggingModal" :dialog-title="`Tag RFID as Weak`">
+        <template #default>
+            <div class="mx-4 font-">
+                <span class="text-h5 text-high-emphasis">
+                    Do you want to tag the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} as weak?
+                </span>
+            </div>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>Type</th>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.plant_name }}</td>
+                        <td class="text-uppercase">{{ item.type }}</td>
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.name }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="taggingModal = false" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleTagging" color="primary" class="px-12" type="submit" :loading="taggingLoading">
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
 </template>

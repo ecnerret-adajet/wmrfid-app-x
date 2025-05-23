@@ -494,12 +494,18 @@ const exportData = async () => {
                 </VRow>
                 <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
 
+
                 <v-card-text class="mx-2">
                     <div class="mb-4 d-flex justify-between align-center">
                         <v-spacer></v-spacer>
                         <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
                             Change Batch
                         </v-btn>
+                    </div>
+                    <div class="mb-2" v-if="selectedItems.length > 0">
+                        <span class="text-h6 font-weight-medium text-high-emphasis">
+                            Selected items count: ({{ selectedItems.length }})
+                        </span>
                     </div>
                     <div class="mt-2">
                         <VDataTableServer

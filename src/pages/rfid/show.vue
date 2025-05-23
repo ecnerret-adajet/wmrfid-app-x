@@ -108,6 +108,12 @@ const handleSearch = debounce((search) => {
                         content="UNDER FUMIGATION"
                         inline
                     ></v-badge>
+                    <v-badge v-if="rfidData?.is_weak_signal || rfidData?.is_weak_signal === 1"
+                        color="error"
+                        content="Yes"
+                        class="text-uppercase"
+                        inline
+                    ></v-badge>
                 </div>
 
                 <VList lines="one" density="compact" class="mt-4">
