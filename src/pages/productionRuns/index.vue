@@ -802,7 +802,7 @@ const fetchRecentProduced = async () => {
     </v-dialog>
 
     <!-- Recent Produced Modal -->
-    <v-dialog v-model="showRecentProducedModal" max-width="800px">
+    <v-dialog v-model="showRecentProducedModal" max-width="1200px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
@@ -819,23 +819,27 @@ const fetchRecentProduced = async () => {
                 <v-table density="comfortable" class="mt-4">
                     <thead>
                         <tr>
-                        <th class="text-left">RFID Code</th>
-                        <th class="text-left">Material</th>
-                        <th class="text-left">Batch</th>
-                        <th class="text-left">MFG Date</th>
+                            <th class="text-left">Plant</th>
+                            <th class="text-left">Storage Location</th>
+                            <th class="text-left">RFID Code</th>
+                            <th class="text-left">Material</th>
+                            <th class="text-left">Batch</th>
+                            <th class="text-left">MFG Date</th>
                         </tr>
                     </thead>
                     <tbody v-if="recentProducedLoading">
                         <tr v-for="n in 5" :key="n">
-                            <td colspan="4">
+                            <td colspan="6">
                                 <v-skeleton-loader type="text" class="w-100" />
                             </td>
                         </tr>
                     </tbody>
                     <tbody v-else>
                         <tr v-for="(item, index) in recentProduced" :key="index">
+                            <td>{{ item.material?.plant?.name }}</td>
+                            <td>{{ item.production_run?.production_line?.reader?.default_storage_location?.name }}</td>
                             <td>{{ item.rfid_code }}</td>
-                            <td>{{ item.description }}</td>
+                            <td>{{ item.material?.description }}</td>
                             <td>{{ item.batch }}</td>
                             <td>
                                 {{ Moment(`${item.mfg_date.split(' ')[0]} ${item.mfg_time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY h:mm A') }}

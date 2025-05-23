@@ -355,6 +355,48 @@ const exportData = async () => {
 
 <template>
     <div>
+        <VList lines="one" density="compact" class="border mx-4 mb-4">
+            <VListItem>
+                <VRow class="table-row" no-gutters>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-start">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Plant</span>
+                            </VCol>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{ productionRun?.material?.plant?.plant_code}}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{ productionRun?.material?.plant?.name}}</div>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-start">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Storage Location</span>
+                            </VCol>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{ productionRun?.production_line?.reader?.default_storage_location?.code}}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{ productionRun?.production_line?.reader?.default_storage_location?.name }}</div>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                </VRow>
+            </VListItem>
+            <VListItem>
+                <VRow class="table-row" no-gutters>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-center">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Batch</span>
+                            </VCol>
+                            <VCol class="d-inline-flex align-center">
+                                <span class="font-weight-medium text-grey-700">{{ productionRun?.generated_batch }}</span>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                </VRow>
+            </VListItem>
+        </VList>
         <div class="mx-4">
             <v-row>
                 <v-col cols="3">
