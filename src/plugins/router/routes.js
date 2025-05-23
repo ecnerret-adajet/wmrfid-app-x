@@ -185,22 +185,6 @@ export const routes = [
             },
         },
         {
-            path: 'warehouse/:plant/:location/overview',
-            name: 'warehouse.show',
-            component: () => import('@/pages/warehouse/show.vue'),
-            meta: {
-                pageTitle: "Storage Location",
-                breadcrumbs: (route) => {
-                    const unslugify = (slug) =>
-                        slug.replace(/-/g, ' ').toUpperCase();
-                    return [
-                      { label: "Storage Location", link: "/warehouse" },
-                      { label: unslugify(route.params.location), link: `/warehouse/${route.params.plant}/${route.params.location}/overview` }
-                    ]
-                }
-            },
-        },
-        {
             path: 'rfid',
             name: 'rfid',
             component: () => import('@/pages/rfid/index.vue'),

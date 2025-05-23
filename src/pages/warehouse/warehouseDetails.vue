@@ -7,11 +7,13 @@ import { useRoute, useRouter } from 'vue-router';
 import AgeChart from './ageChart.vue';
 import UtilizationChart from './utilizationChart.vue';
 
+const props = defineProps({
+    storageLocation: Object
+})
+
 const pageLoading = ref(true);
 const route = useRoute();
 const router = useRouter();
-const storageLocation = route.params.location;
-const plantCode = route.params.plant;
 const storageLocationModel = ref(null);
 const warehouseUtilization = ref([]);
 const inventoryAge = ref([]);
@@ -71,8 +73,8 @@ const loadData = async () => {
     pageLoading.value = true;
     try {
         const token = JwtService.getToken();
-    
-        const response = await axios.get(`/warehouse/${plantCode}/${storageLocation}/get-warehouse-information`, {
+
+        const response = await axios.get(`/warehouse/${props.storageLocation.plant_code}/${props.storageLocation.slug}/get-warehouse-information`, {
             params: {
                 
             },
@@ -108,8 +110,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 
     try {
         const token = JwtService.getToken();
-    
-        const response = await axios.get(`/warehouse/${plantCode}/${storageLocation}/get-inventories`, {
+
+        const response = await axios.get(`/warehouse/${props.storageLocation.plant_code}/${props.storageLocation.slug}/get-inventories`, {
             params: {
                 page,
                 itemsPerPage,
@@ -133,7 +135,26 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 const handleViewBatch = (inventory) => {
-    router.push(`/inventories/${inventory.batch}`);
+    // router.push(`/inventories/${inventory.batch}`);
+}
+
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/warehouse-inventories/',
+            params: {
+                plant_id: filters.plant_id,
+                search: searchValue.value,
+            },
+            filename: 'warehouse-inventories-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
 }
 
 </script>
@@ -143,8 +164,11 @@ const handleViewBatch = (inventory) => {
         <v-card v-else elevation="2">
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
-                    <h4 class="text-h4 font-weight-black text-primary">Warehouse Details</h4>
-                    <v-btn color="primary-light" @click="$router.push({ name: 'warehouse-map', params: { plant: plantCode ,location: storageLocation } })">
+                    <div class="d-inline-flex align-center">
+                        <i class="ri-home-gear-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                        <h4 class="text-h4 font-weight-black text-primary">Warehouse Details</h4>
+                    </div>
+                    <v-btn color="primary-light" @click="$router.push({ name: 'warehouse-map', params: { plant: storageLocation.plant_code, location: props.storageLocation.slug } })">
                         View Warehouse Map
                     </v-btn>
                 </div>
@@ -238,7 +262,21 @@ const handleViewBatch = (inventory) => {
             class="mt-4"
         >
             <v-card-title class="mx-4 py-4">
-                <h4 class="text-h5 font-weight-bold">Inventory</h4>
+                <div>
+                    <h4 class="text-h5 font-weight-bold">Inventory</h4>
+
+                    <v-btn 
+                        :loading="exportLoading"
+                        class="d-flex align-center"
+                        prepend-icon="ri-download-line"
+                        @click="exportData"
+                    >
+                        <template #prepend>
+                            <v-icon color="white"></v-icon>
+                        </template>
+                        Export
+                    </v-btn>
+                </div>
             </v-card-title>
             <VDataTableServer
                     v-model:items-per-page="itemsPerPage"
@@ -256,10 +294,10 @@ const handleViewBatch = (inventory) => {
                     </span>
                 </template>
                 <template #item.location="{ item }">
-                    <v-chip v-if="item.block" color="success" variant="flat">
+                    <v-chip v-if="item.block" color="success" variant="outlined">
                         <span class="px-5">{{ item.block?.lot?.label }} - {{ item.block?.label }}</span>
                     </v-chip>
-                    <v-chip v-else color="warning" variant="flat">
+                    <v-chip v-else color="warning" variant="outlined">
                         <span>Unassigned</span>
                     </v-chip>
                 </template>

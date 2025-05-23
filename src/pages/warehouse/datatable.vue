@@ -4,14 +4,14 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
+import axios from 'axios';
 import Moment from "moment";
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
-
-import JwtService from '@/services/JwtService';
-import { useAuthStore } from '@/stores/auth';
-import axios from 'axios';
+import warehouseDetails from './warehouseDetails.vue';
 
 const authStore = useAuthStore();
 
@@ -48,6 +48,7 @@ const multipleMaterialModal = reactive({
 
 const headers = computed(() => {
     const baseHeaders = [
+        { title: '', key: 'details', align: 'center', sortable: false},
         { title: 'WAREHOUSE', key: 'name',  },
         { title: 'CODE', key: 'code', align: 'center' },
         { title: 'PLANT', key: 'plant_id', align: 'center' },
@@ -233,11 +234,24 @@ const handleViewWarehouse = (item) => {
     });
 }
 
+const actionList = [
+    { title: 'View Details', key: 'view_details' },
+]
+
+const showSlocDetails = ref(false);
+const selectedSloc = ref(null);
+const handleAction = (sloc, action) => {
+    selectedSloc.value = sloc;
+    console.log(selectedSloc.value);
+    if(action.key == 'view_details') {
+        showSlocDetails.value = true;
+    } 
+}
+
 defineExpose({
     loadItems,
     applyFilters
 })
-
 
 </script>
 
@@ -253,6 +267,26 @@ defineExpose({
         @update:options="loadItems"
         class="text-no-wrap"
     >
+
+    <template #item.details="{ item }">
+        <div class="d-flex justify-center gap-1">
+            <v-menu location="end"> 
+                <template v-slot:activator="{ props }">
+                    <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                </template>
+                <v-list>
+                <v-list-item
+                    @click="handleAction(item, action)"
+                    v-for="(action, i) in actionList"
+                        :key="i"
+                        :value="i"
+                    >
+                    <v-list-item-title>{{ action.title }}</v-list-item-title>
+                </v-list-item>
+                </v-list>
+            </v-menu>
+        </div>
+    </template>
 
     <template v-slot:headers="{ columns, isSorted, getSortIcon, toggleSort }">
       <tr>
@@ -373,7 +407,6 @@ defineExpose({
     </EditingModal>
 
     <v-dialog v-model="multipleMaterialModal.show" max-width="600px" persistent>
-    
         <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
             <v-icon
                 class="mb-5"
@@ -392,6 +425,21 @@ defineExpose({
                 </PrimaryButton>
             </div>
         </v-sheet>
+    </v-dialog>
+
+    <v-dialog v-if="selectedSloc" v-model="showSlocDetails" max-width="1500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-end align-center mx-4 px-4 mt-6">
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="showSlocDetails = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <warehouseDetails :storage-location="selectedSloc"/>
+            </v-card-text>
+        </v-card>
     </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" color="success" @update:show="toast.show = $event"/>

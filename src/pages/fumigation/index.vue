@@ -1,11 +1,16 @@
 <script setup>
+import DatePicker from '@/components/DatePicker.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
+import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+const authStore = useAuthStore();
 const router = useRouter();
 const serverItems = ref([]);
 const loading = ref(true);
@@ -69,7 +74,7 @@ const headers = [
         sortable: false,
     },
     {
-        title: '',
+        title: 'ACTION',
         key: 'action',
         align: 'center',
         sortable: false,
@@ -120,6 +125,75 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 
 const handleViewBatch = (item) => {
     router.push(`/production-runs/${item.batch}`);
+}
+
+const toast = reactive({
+    message: '',
+    color: 'error',
+    show: false
+});
+
+const fumigateForm = reactive({
+    startDate: null,
+    remarks: null,
+    endDate: null,
+})
+
+const fumigateModal = ref(false);
+const selectedFumigationRequest = ref(null)
+const editItem = (item) => {
+    if (item.status === 'completed') {
+        toast.message = 'Fumigation request already completed';
+        toast.color = 'error';
+        toast.show = true;
+        return;
+    }
+    fumigateForm.startDate = item.start_date ? new Date(item.start_date) : null;
+    fumigateForm.endDate = item.end_date ? new Date(item.end_date) : null;
+    fumigateForm.remarks = item.remarks;
+    selectedFumigationRequest.value = item;
+    fumigateModal.value = true;
+}  
+
+const fumigateLoading = ref(false)
+const handleFumigate = async () => {
+    fumigateLoading.value = true;
+    toast.show = false;
+  
+    if ((!fumigateForm.startDate || fumigateForm.startDate === 'Invalid Date' ) || !fumigateForm.endDate || !fumigateForm.remarks) {
+        toast.message = 'Start Date, End Date, and Remarks are required.';
+        toast.color = 'error';
+        toast.show = true;
+        fumigateLoading.value = false;
+        return; 
+    }
+
+    if (Moment(fumigateForm.startDate).isAfter(Moment(fumigateForm.endDate))) {
+        toast.message = 'Start Date cannot be later than End Date.';
+        toast.color = 'error';
+        toast.show = true;
+        fumigateLoading.value = false;
+        return;
+    }
+    
+    try {
+        const response = await ApiService.post(`production-runs/fumigate/update/${selectedFumigationRequest.value.id}`, fumigateForm)
+        
+        fumigateLoading.value = false;
+        toast.message = 'Fumigation request updated successfully'
+        toast.color = 'success';
+        toast.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{key: 'updated_at', order: 'desc'}],
+            search: searchValue.value
+        });
+        fumigateModal.value = false;
+    } catch (error) {
+        console.error('Error submitting:', error);
+        fumigateLoading.value = false;
+    }
 }
 
 </script>
@@ -193,7 +267,7 @@ const handleViewBatch = (item) => {
                 ></v-badge>
             </template>
 
-            <template #item.action="{ item }">
+            <!-- <template #item.action="{ item }">
                 <v-btn
                     :to="`/fumigations/${item.id}`"
                     color="primary-light"
@@ -202,8 +276,193 @@ const handleViewBatch = (item) => {
                 >
                     Details
                 </v-btn>
+            </template> -->
+
+             <template #item.action="{ item }">
+                <div class="d-flex gap-1 justify-center align-center">
+                    <!-- Add role allowed for editing fumigation  -->
+                    <IconBtn v-if="authStore.user?.is_super_admin"
+                        size="small"
+                        @click="editItem(item)"
+                    >
+                        <VIcon icon="ri-pencil-line" />
+                    </IconBtn>
+                </div>
             </template>
 
         </VDataTableServer>
     </v-card>
+
+     <v-dialog v-model="fumigateModal" max-width="800px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                  <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-shield-check-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Edit Fumigation Request Details
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="fumigateModal = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <VList lines="one" density="compact" class="mt-4 mx-4 border">
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Material</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.material?.description }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Batch</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.batch }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Plant</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.material?.plant?.plant_code }}
+                                            - {{ selectedFumigationRequest?.material?.plant?.name }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Storage Location</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-medium-emphasis">
+                                            {{ selectedFumigationRequest?.production_run?.production_line?.reader?.default_storage_location?.code}} 
+                                            - {{ selectedFumigationRequest?.production_run?.production_line?.reader?.default_storage_location?.name}}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                </VList>
+
+                <v-form class="mx-4 mt-4" id="editFumigateForm" ref="editFumigateForm" @submit.prevent="handleFumigate">
+                    <v-row>
+                        <v-col cols="12" md="6">
+                            <DatePicker 
+                                v-model="fumigateForm.startDate"
+                                placeholder="Select Start Date"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6">
+                            <DatePicker 
+                                v-model="fumigateForm.endDate"
+                                :min-date="fumigateForm.startDate"
+                                placeholder="Select End Date"
+                            />
+                        </v-col>
+                    </v-row>
+                    <v-textarea class="mt-4"
+                        clear-icon="ri-close-line"
+                        label="Remarks"
+                        lines="2"
+                        v-model="fumigateForm.remarks"
+                        clearable
+                    ></v-textarea>
+                    <div class="d-flex justify-end align-center mt-4">
+                        <v-btn color="secondary" variant="outlined" @click="fumigateModal = false" class="px-12 mr-3">Cancel</v-btn>
+                        <PrimaryButton color="primary" for="editFumigateForm" class="px-12" type="submit" :loading="fumigateLoading">
+                            Update
+                        </PrimaryButton>
+                    </div>
+                </v-form>
+            </v-card-text>
+
+        </v-card>
+    </v-dialog>
+
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
+
+
+    <!-- <EditingModal @close="fumigateModal = false" max-width="900px"
+        :show="fumigateModal" :dialog-title="`Edit Fumigation Request`">
+        <template #default>
+            <v-form @submit.prevent="handleFumigate">
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <DatePicker 
+                            v-model="fumigateForm.startDate"
+                            placeholder="Select Start Date"
+                        />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker 
+                            v-model="fumigateForm.endDate"
+                            placeholder="Select End Date"
+                        />
+                    </v-col>
+                </v-row>
+                <v-textarea class="mt-4"
+                    clear-icon="ri-close-line"
+                    label="Remarks"
+                    v-model="fumigateForm.remarks"
+                    clearable
+                ></v-textarea>
+            </v-form>
+            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                {{ errorMessage }}
+            </VAlert>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                        <th>Material</th>
+                        <th>Receipt Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.material?.description ?? 'N/A' }}</td>
+                        <td>
+                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="cancelFumigate" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleFumigate" color="primary" class="px-12" type="submit" :loading="fumigateLoading">
+                    Update
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal> -->
 </template>

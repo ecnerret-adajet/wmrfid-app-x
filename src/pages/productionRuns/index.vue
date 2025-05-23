@@ -851,5 +851,5 @@ const fetchRecentProduced = async () => {
         </v-card>
     </v-dialog>
 
-    <Toast :show="toast.show" :message="toast.message" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
 </template>
