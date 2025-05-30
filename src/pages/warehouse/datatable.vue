@@ -318,9 +318,7 @@ defineExpose({
     </template>
 
     <template #item.name="{ item }">
-        <span @click="handleViewWarehouse(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-            {{ item.name }}
-        </span>
+        {{ item.name }}
     </template>
 
     <template #item.blocks_allow_multiple_materials="{ item }">

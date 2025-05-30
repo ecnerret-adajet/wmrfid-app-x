@@ -5,6 +5,7 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
@@ -132,6 +133,24 @@ const submit = async () => {
     }
 }
 
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/export/storage-locations`,
+            params: {
+                plant_id: filters.plant_id
+            },
+            filename: 'storage-locations-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -147,6 +166,18 @@ const submit = async () => {
             <v-icon color="white"></v-icon>
             </template>
             Filter
+        </v-btn>
+
+        <v-btn 
+            :loading="exportLoading"
+            class="d-flex align-center"
+            prepend-icon="ri-download-line"
+            @click="exportData"
+        >
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Export
         </v-btn>
 
         <v-btn

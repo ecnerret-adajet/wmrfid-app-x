@@ -1,4 +1,5 @@
 <script setup>
+import { exportExcel } from '@/composables/useHelpers';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import Moment from 'moment';
@@ -143,11 +144,7 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: '/export/warehouse-inventories/',
-            params: {
-                plant_id: filters.plant_id,
-                search: searchValue.value,
-            },
+            url: `/export/warehouse-inventories/${props.storageLocation.plant_code}/${props.storageLocation.slug}`,
             filename: 'warehouse-inventories-report.xlsx',
         });
     } catch (error) {
@@ -262,9 +259,8 @@ const exportData = async () => {
             class="mt-4"
         >
             <v-card-title class="mx-4 py-4">
-                <div>
+                <div class="d-flex justify-space-between align-center">
                     <h4 class="text-h5 font-weight-bold">Inventory</h4>
-
                     <v-btn 
                         :loading="exportLoading"
                         class="d-flex align-center"
@@ -289,9 +285,7 @@ const exportData = async () => {
                     class="text-no-wrap border"
                 >
                 <template #item.batch="{ item }">
-                    <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-                        {{ item.batch }}
-                    </span>
+                    {{ item.batch }}
                 </template>
                 <template #item.location="{ item }">
                     <v-chip v-if="item.block" color="success" variant="outlined">
