@@ -5,7 +5,9 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { computed, reactive, watch } from 'vue';
+import { echo } from '@/utils/echo';
+import axios from 'axios';
+import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -37,59 +39,79 @@ const form = reactive({
     to_be_added_tags: [],
 })
 
-// Dev implementation: This will mimic the process of reading tags from the RFID reader
-const getTags = async () => {
-    showLoader.value = true;
-    const url = `registration/get-dummy-tags?tag_type=${tagType}`;
-    try {
-        const response = await ApiService.get(url);
-        tags.value = response.data
-        registeredTags.value = response.data.filter(tag => tag.status !== 'unregistered' && tag.status !== 'unregistered TID');
-        unregisteredTags.value = response.data.filter(tag => tag.status === 'unregistered');
-        unregisteredIdTags.value = response.data.filter(tag => tag.status === 'unregistered TID')
-        showLoader.value = false;
-    } catch (error) {
-        showLoader.value = false;
-    }
-};
-
 const getUniqueEpc = (tags) => {
 
     if (!Array.isArray(tags) || tags.length === 0) return null;
 
     const uniqueEpcs = new Set(tags.map(tag => tag.epc));
     return uniqueEpcs.size === 1 ? [...uniqueEpcs][0] : null;
-    
+
 };
 
 const removeItem = (index) => {
-    tags.value.splice(index , 1)
+    tags.value.splice(index, 1)
     let epc = getUniqueEpc(tags.value);
     if (epc) {
         getLastItem(epc);
-    } 
+    }
 }
 
-watch(tags, (newTags) => {
-    if (newTags.length > 0) {
-        let epc = getUniqueEpc(newTags);
+async function onPalletRegistration(data) {
+    showLoader.value = true;
+    tags.value = data.palletRegistration
+    await processTags();
+    showLoader.value = false;
+
+}
+
+const checkIfExists = async (epc = null, tid = null, tagType) => {
+    try {
+        const response = await axios.get('registration/check-reference', {
+            params: { epc: epc, tid: tid, tag_type: tagType }
+        });
+        return response.data; // adjust based on your actual API response
+    } catch (error) {
+        console.error('CheckIfExists API error:', error);
+        return null;
+    }
+};
+
+const processTags = async () => {
+
+    if (tags.value.length > 0) {
+        let epc = getUniqueEpc(tags.value);
         // Show modal if mismatched EPCs
-        if (!epc && newTags.length > 1) {
+        if (!epc && tags.value.length > 1) {
             responseModal.value = true
-        } 
+        }
         getLastItem(epc);
     }
-});
+
+    for (const tag of tags.value) {
+        const result = await checkIfExists(tag.epc, tag.tid, tagType);
+
+        if (result.found) {
+            tag.status = result.name;
+        } else if (result.epc_exists) {
+            tag.status = 'Unregistered TID';
+        } else {
+            tag.status = 'Unregistered';
+        }
+    }
+
+    registeredTags.value = tags.value.filter(tag => tag.status !== 'Unregistered' && tag.status !== 'Unregistered TID');
+    unregisteredTags.value = tags.value.filter(tag => tag.status === 'Unregistered');
+    unregisteredIdTags.value = tags.value.filter(tag => tag.status === 'Unregistered TID');
+};
 
 onMounted(() => {
-    if (tagType) {
-        getTags();
-    }
+    echo.channel('pallet-registration')
+        .listen('PalletRegistrationEvent', onPalletRegistration);
 })
 
 const getLastItem = async (epc) => {
     showLoader.value = true;
-    const url = `registration/get-last-tag?tag_type=${tagType}&epc=${epc}`; 
+    const url = `registration/get-last-tag?tag_type=${tagType}&epc=${epc}`;
     try {
         const response = await ApiService.get(url);
         const { group_no, name, epc_exists } = response.data
@@ -116,11 +138,11 @@ const toast = ref({
 const submit = async () => {
     // Allow only if form is valid (without validation issue)
     if (formRef.value.isValid) {
-        if (tags.value.length === 0 ) {
+        if (tags.value.length === 0) {
             responseMessage.value = 'Tags seems to be empty. Please try again'
             responseModal.value = true
         } else {
-            form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
+            form.to_be_added_tags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
             form.storage_location = storageLocation;
             form.tag_type = tagType
             form.plant_code = plantCode;
@@ -129,10 +151,10 @@ const submit = async () => {
             try {
                 const response = await ApiService.post('register-rfid', form)
                 isLoading.value = false;
-                toast.value.message = 'RFID successfully created!'
+                toast.value.message = 'RFID successfully registered!'
                 toast.value.show = true;
                 errorMessage.value = ''
-                getTags();
+
                 clearForm();
             } catch (error) {
                 errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
@@ -140,15 +162,15 @@ const submit = async () => {
                 isLoading.value = false;
             }
         }
-       
+
     }
 }
 
 const handleAddExisting = () => {
-    const filteredTags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID');
+    const filteredTags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
     // Check for duplicate EPC values by using a Set
     const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
-    
+
     // // If the size of the Set is different from the length of the combined array, open the modal
     if (uniqueEpcs.size > 1) {
         responseModal.value = true
@@ -164,21 +186,20 @@ const cancelAdd = () => {
 }
 
 const addToExistingTag = async () => {
-    form.to_be_added_tags = tags.value.filter(tag => tag.status === 'unregistered' || tag.status === 'unregistered TID')
+    form.to_be_added_tags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
     form.storage_location = storageLocation;
     form.tag_type = tagType
     form.plant_code = plantCode
 
     addingLoading.value = true;
-    
+
     try {
         const response = await ApiService.post('/registration/add-to-existing', form)
         addingLoading.value = false;
         toast.value.message = 'Tags successfully added to existing group'
         toast.value.show = true;
         addExistingModal.value = false;
-        getTags();
-        clearForm();
+        handleClear();
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
@@ -198,13 +219,13 @@ const clearForm = () => {
 
 const handleClear = () => {
     clearForm();
-    
+
     // Clear tags and re-fetch
     tags.value = []
     unregisteredIdTags.value = []
     unregisteredTags.value = []
+    registeredTags.value = []
 
-    getTags();
 }
 
 
@@ -217,27 +238,22 @@ const handleClear = () => {
             <VRow>
                 <VCol cols="4" class="d-flex align-start">
                     <v-btn :to="{
-                            path: `/rfid`,
-                        }"
-                        class="ma-2"
-                        color="grey-700"
-                        icon="ri-arrow-left-line"
-                        variant="text"
-                    >
+                        path: `/rfid`,
+                    }" class="ma-2" color="grey-700" icon="ri-arrow-left-line" variant="text">
                     </v-btn>
                     <div class="text-h2 font-weight-black ps-2">
-                    RFID Registration
+                        RFID Registration
                     </div>
                 </VCol>
                 <VCol cols="2" offset="4" class="d-flex align-center justify-end">
-                    <v-btn color="primary" block variant="outlined" @click="handleClear" class="px-12" >
+                    <v-btn color="primary" block variant="outlined" @click="handleClear" class="px-12">
                         Clear
                     </v-btn>
                 </VCol>
                 <VCol cols="2" class="d-flex align-center">
-                    <PrimaryButton block form="registerForm" :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
-                        type="submit" :loading="isLoading"
-                    >
+                    <PrimaryButton block form="registerForm"
+                        :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
+                        type="submit" :loading="isLoading">
                         Submit
                     </PrimaryButton>
                 </VCol>
@@ -250,13 +266,14 @@ const handleClear = () => {
                         <div class="mt-4">
                             <label class="font-weight-bold">Group No.</label>
                             <!-- Always disable group no since it is generated from backend -->
-                            <v-text-field class="mt-1" label="" :disabled="true"
-                             density="compact" v-model="form.group_no"/>
+                            <v-text-field class="mt-1" label="" :disabled="true" density="compact"
+                                v-model="form.group_no" />
                         </div>
                         <div class="mt-4">
-                            <label class="font-weight-bold">Physical ID</label> 
-                            <v-text-field class="mt-1" label="" :disabled="form.epc_exists" :rules="[value => !!value || 'This field is required']" 
-                                density="compact" v-model="form.name"/>
+                            <label class="font-weight-bold">Physical ID</label>
+                            <v-text-field class="mt-1" label="" :disabled="form.epc_exists"
+                                :rules="[value => !!value || 'This field is required']" density="compact"
+                                v-model="form.name" />
                         </div>
                     </VCol>
                     <VCol md="3" class="ml-4">
@@ -265,30 +282,25 @@ const handleClear = () => {
                                 <template v-slot:label>
                                     <label class="font-weight-bold">Is Defective?</label>
                                 </template>
-                                <v-radio
-                                    label="Yes"
-                                    value="yes"
-                                ></v-radio>
-                                <v-radio
-                                    label="No"
-                                    value="no"
-                                ></v-radio>
+                                <v-radio label="Yes" value="yes"></v-radio>
+                                <v-radio label="No" value="no"></v-radio>
                             </v-radio-group>
                         </div>
                     </VCol>
-                  
+
                     <VCol md="2" offset="3" class="d-flex flex-column justify-center align-center text-center">
-                         
-                        <div class="font-weight-black text-h1 text-primary mt-auto px-4" style="border-bottom: 1px thin #00833c;">
+
+                        <div class="font-weight-black text-h1 text-primary mt-auto px-4"
+                            style="border-bottom: 1px thin #00833c;">
                             {{ tags.length }}
                         </div>
-                        
+
                         <!-- Pallet tag count label at the bottom -->
                         <div class="font-weight-black text-h4 mt-auto">
                             Pallet Tag Count
                         </div>
                     </VCol>
-                    
+
                 </VRow>
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
@@ -305,7 +317,8 @@ const handleClear = () => {
             </VCol>
             <VCol cols="2" offset="6">
                 <!-- Enable add to existing if there's atleast 1 registered tag  -->
-                <v-btn block color="primary-2" :disabled="!form.epc_exists" @click="handleAddExisting"  style="color: #fefaeb !important;">
+                <v-btn block color="primary-2" :disabled="!form.epc_exists && unregisteredTags.length === 0"
+                    @click="handleAddExisting" style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
             </VCol>
@@ -313,47 +326,55 @@ const handleClear = () => {
         <v-table>
             <thead>
                 <tr>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">epc</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">tid</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">rssi</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">reader</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">antenna</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">action</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black" style="background-color: #00833c !important; color: white !important;">status</th>
+                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important;">epc</th>
+                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                        tid</th>
+                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important;">rssi</th>
+                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                        reader</th>
+                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">
+                        antenna</th>
+                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">
+                        action</th>
+                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important;">status</th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-if="tags.length === 0">
                     <td colspan="7" class="text-center">No data available</td>
                 </tr>
-                <tr v-for="(item, index) in tags" :key="item.tid" :class="{'light-green' : item.status !== 'unregistered' && item.status !== 'unregistered TID'}">
+                <tr v-for="(item, index) in tags" :key="item.tid"
+                    :class="{ 'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID' }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
                     <td>{{ item.rssi }}</td>
                     <td>{{ item.reader }}</td>
                     <td class="text-center">{{ item.antenna }}</td>
                     <td class="text-center">
-                            <v-btn v-if="item.status == 'unregistered' || item.status == 'unregistered TID'" 
-                                class="ma-2"
-                                color="error"
-                                @click="removeItem(index)"
-                                icon="ri-delete-bin-6-line"
-                            ></v-btn>
+                        <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
+                            color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
                     </td>
                     <td class="text-center">
-                        <template v-if="item.status === 'unregistered'">
+                        <template v-if="item.status === 'Unregistered'">
                             <v-chip color="primary-2" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-5 font-weight-bold">{{item.status}}</span>
+                                <span class="px-5 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
-                        <template v-else-if="item.status === 'unregistered TID'">
+                        <template v-else-if="item.status === 'Unregistered TID'">
                             <v-chip :color="'#af922b'" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-1 font-weight-bold">{{item.status}}</span>
+                                <span class="px-1 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
                         <template v-else>
                             <v-chip color="primary" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-10 font-weight-bold">{{item.status}}</span>
+                                <span class="px-10 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
                     </td>
@@ -364,15 +385,10 @@ const handleClear = () => {
     <AddingModal @close="cancelAdd" :show="addExistingModal" max-width="700px">
         <template #default>
             <div class="text-center mx-auto">
-                <v-icon
-                    class="mb-5"
-                    color="primary"
-                    icon="ri-function-add-line"
-                    size="64"
-                ></v-icon>
+                <v-icon class="mb-5" color="primary" icon="ri-function-add-line" size="64"></v-icon>
             </div>
             <div class="text-h4 text-center mb-4 text-medium-emphasis">
-                Are you sure you want to add unregistered tags to an existing tag with physical ID of 
+                Are you sure you want to add unregistered tags to an existing tag with physical ID of
                 <strong class="text-primary font-weight-black">{{ form.name }}</strong>?
             </div>
             <div class="d-flex justify-end align-center mt-8">
@@ -387,14 +403,9 @@ const handleClear = () => {
     <ResponseModal :show="responseModal" @close="responseModal = false">
         <template #default>
             <div class="py-4 text-center">
-                <v-icon
-                    class="mb-2"
-                    color="primary"
-                    icon="ri-information-line"
-                    size="128"
-                ></v-icon>
+                <v-icon class="mb-2" color="primary" icon="ri-information-line" size="128"></v-icon>
 
-                <div class="text-h5 font-weight-bold"> 
+                <div class="text-h5 font-weight-bold">
                     {{ responseMessage }}
                 </div>
             </div>
@@ -406,16 +417,14 @@ const handleClear = () => {
         </template>
     </ResponseModal>
 
-    <Loader :show="showLoader"/>
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Loader :show="showLoader" />
+    <Toast :show="toast.show" :message="toast.message" />
 </template>
 
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
 
 <style scoped>
-
 .light-green {
     background-color: #cce6d8 !important;
 }
-
 </style>
