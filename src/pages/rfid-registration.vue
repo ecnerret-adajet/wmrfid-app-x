@@ -57,8 +57,9 @@ const removeItem = (index) => {
 }
 
 async function onPalletRegistration(data) {
+    console.log(data);
     showLoader.value = true;
-    tags.value = data.palletRegistration.tag_reads
+    tags.value = data.palletRegistration
     console.log(data.palletRegistration);
     await processTags();
     showLoader.value = false;
