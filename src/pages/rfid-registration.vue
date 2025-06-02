@@ -30,6 +30,7 @@ const storageLocation = route.params.location ?? null;
 const plantCode = route.params.plant;
 
 const form = reactive({
+    reader_name: null,
     storage_location: null,
     plant_code: plantCode,
     group_no: null,
@@ -56,15 +57,6 @@ const removeItem = (index) => {
     }
 }
 
-async function onPalletRegistration(data) {
-    console.log(data);
-    showLoader.value = true;
-    tags.value = data.palletRegistration.tag_reads
-    await processTags();
-    showLoader.value = false;
-
-}
-
 const checkIfExists = async (epc = null, tid = null, tagType) => {
     try {
         const response = await axios.get('registration/check-reference', {
@@ -77,51 +69,61 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
     }
 };
 
+const seenKeys = new Set()
+
+async function onPalletRegistration(data) {
+    showLoader.value = true
+    form.reader_name = data.palletRegistration.reader_name || null
+    // Instead of overwriting tags.value, iterate through incoming tag_reads
+    for (const tag of data.palletRegistration.tag_reads) {
+        const key = `${tag.epc}_${tag.tid}`
+        if (!seenKeys.has(key)) {
+            seenKeys.add(key)
+            uniqueTags.value.push(tag)
+        }
+    }
+
+    // Now uniqueTags.value contains only brand‐new (epc, tid) entries
+    await processTags()
+    showLoader.value = false
+}
+
 const uniqueTags = ref([]);
 const processTags = async () => {
-    if (!Array.isArray(tags.value)) return;
-
-    // Step 1: Keep exactly one tag per unique epc+tid combination
-    const seen = new Set();
-
-    for (const tag of tags.value) {
-        // Build a string key that represents the combination of epc and tid
-        const key = `${tag.epc}_${tag.tid}`;
-
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueTags.value.push(tag);
-        }
+    // uniqueTags.value already contains only distinct (epc, tid) entries
+    if (!Array.isArray(uniqueTags.value) || uniqueTags.value.length === 0) {
+        return
     }
 
-    // (Optional) If you still want to detect mismatched EPCs among the unique set:
+    // (Optional) Mismatch‐EPC check on the deduped list
     if (uniqueTags.value.length > 1 && !getUniqueEpc(uniqueTags.value)) {
-        responseModal.value = true;
+        responseModal.value = true
     }
+    getLastItem(uniqueTags.value[0]?.epc)
 
-    // Example: grab the first EPC to show somewhere
-    getLastItem(uniqueTags.value[0]?.epc);
-
-    // Step 2: For each unique tag, call your API to set its status
+    // Step 2: Call API for each unique tag to assign status
     for (const tag of uniqueTags.value) {
-        const result = await checkIfExists(tag.epc, tag.tid, tagType);
-
+        const result = await checkIfExists(tag.epc, tag.tid, tagType)
         if (result?.found) {
-            tag.status = result.name;
+            tag.status = result.name
         } else if (result?.epc_exists) {
-            tag.status = 'Unregistered TID';
+            tag.status = 'Unregistered TID'
         } else {
-            tag.status = 'Unregistered';
+            tag.status = 'Unregistered'
         }
     }
 
-    // Step 3: Split them into registered/unregistered lists
+    // Step 3: Split into registered / unregistered categories
     registeredTags.value = uniqueTags.value.filter(
-        (t) => t.status !== 'Unregistered' && t.status !== 'Unregistered TID'
-    );
-    unregisteredTags.value = uniqueTags.value.filter((t) => t.status === 'Unregistered');
-    unregisteredIdTags.value = uniqueTags.value.filter((t) => t.status === 'Unregistered TID');
-};
+        t => t.status !== 'Unregistered' && t.status !== 'Unregistered TID'
+    )
+    unregisteredTags.value = uniqueTags.value.filter(
+        t => t.status === 'Unregistered'
+    )
+    unregisteredIdTags.value = uniqueTags.value.filter(
+        t => t.status === 'Unregistered TID'
+    )
+}
 
 // const processTags = async () => {
 
@@ -185,11 +187,11 @@ const toast = ref({
 const submit = async () => {
     // Allow only if form is valid (without validation issue)
     if (formRef.value.isValid) {
-        if (tags.value.length === 0) {
+        if (uniqueTags.value.length === 0) {
             responseMessage.value = 'Tags seems to be empty. Please try again'
             responseModal.value = true
         } else {
-            form.to_be_added_tags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
+            form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
             form.storage_location = storageLocation;
             form.tag_type = tagType
             form.plant_code = plantCode;
@@ -233,7 +235,7 @@ const cancelAdd = () => {
 }
 
 const addToExistingTag = async () => {
-    form.to_be_added_tags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
+    form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
     form.storage_location = storageLocation;
     form.tag_type = tagType
     form.plant_code = plantCode
@@ -268,6 +270,7 @@ const handleClear = () => {
     clearForm();
 
     // Clear tags and re-fetch
+    tags.value = []
     uniqueTags.value = []
     unregisteredIdTags.value = []
     unregisteredTags.value = []
@@ -401,9 +404,9 @@ const handleClear = () => {
                     :class="{ 'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID' }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
-                    <td>{{ item.rssi }}</td>
-                    <td>{{ item.reader }}</td>
-                    <td class="text-center">{{ item.antenna }}</td>
+                    <td>{{ item.peakRssi }}</td>
+                    <td>{{ form.reader_name }}</td>
+                    <td class="text-center">{{ item.antennaPort }}</td>
                     <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
