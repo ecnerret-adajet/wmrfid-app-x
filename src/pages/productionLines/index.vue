@@ -5,6 +5,7 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import { ref } from 'vue';
@@ -85,7 +86,7 @@ const fetchReadersAndTagTypes = async () => {
         const { readers, tag_types } = preReqData.data
         readersOption.value = readers.map(item => ({
             value: item.id,
-            title: item.name 
+            title: `${item.plant.name} - ${item.name}`
         }));
 
         tagTypesOption.value = tag_types.map(item => ({
@@ -143,6 +144,26 @@ const submit = async () => {
     }
 }
 
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/export/production-lines`,
+            params: {
+                plant_code: filters.plant_code,
+                created_at: filters.created_at,
+                updated_at: filters.updated_at,
+            },
+            filename: 'production-lines.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -158,6 +179,13 @@ const submit = async () => {
             <v-icon color="white"></v-icon>
             </template>
             Filter
+        </v-btn>
+
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Export
         </v-btn>
 
         <v-btn

@@ -38,7 +38,25 @@ const form = reactive({
     is_defective: 'no',
     tag_type: null,
     to_be_added_tags: [],
+    epc_exists: true
 })
+
+const removeItem = (index) => {
+
+    const [removedTag] = uniqueTags.value.splice(index, 1)
+
+    if (!removedTag) {
+        return;
+    }
+
+    const removedKey = `${removedTag.epc}_${removedTag.tid}`
+    seenKeys.delete(removedKey)
+
+    const epc = getUniqueEpc(uniqueTags.value)
+    if (epc) {
+        getLastItem(epc)
+    }
+}
 
 const getUniqueEpc = (tags) => {
 
@@ -48,14 +66,6 @@ const getUniqueEpc = (tags) => {
     return uniqueEpcs.size === 1 ? [...uniqueEpcs][0] : null;
 
 };
-
-const removeItem = (index) => {
-    uniqueTags.value.splice(index, 1)
-    let epc = getUniqueEpc(uniqueTags.value);
-    if (epc) {
-        getLastItem(epc);
-    }
-}
 
 const checkIfExists = async (epc = null, tid = null, tagType) => {
     try {
@@ -72,18 +82,29 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
 const seenKeys = new Set()
 
 async function onPalletRegistration(data) {
-    showLoader.value = true
-    form.reader_name = data.palletRegistration.reader_name || null
-    // Instead of overwriting tags.value, iterate through incoming tag_reads
-    for (const tag of data.palletRegistration.tag_reads) {
+    // Extract incoming reads
+    const incomingReads = data.palletRegistration.tag_reads || []
+    const justAdded = []  // will hold any tags we actually add
+
+    // Collect new tags
+    for (const tag of incomingReads) {
         const key = `${tag.epc}_${tag.tid}`
         if (!seenKeys.has(key)) {
             seenKeys.add(key)
             uniqueTags.value.push(tag)
+            justAdded.push(tag)
         }
     }
 
-    // Now uniqueTags.value contains only brand‐new (epc, tid) entries
+    // If nothing new was added, skip showing loader & processing
+    if (justAdded.length === 0) {
+        return
+    }
+
+    // Only now do we show the loader and process the new tags
+    showLoader.value = true
+    form.reader_name = data.palletRegistration.reader_name || null
+
     await processTags()
     showLoader.value = false
 }
@@ -99,6 +120,7 @@ const processTags = async () => {
     if (uniqueTags.value.length > 1 && !getUniqueEpc(uniqueTags.value)) {
         responseModal.value = true
     }
+
     getLastItem(uniqueTags.value[0]?.epc)
 
     // Step 2: Call API for each unique tag to assign status
@@ -125,34 +147,6 @@ const processTags = async () => {
     )
 }
 
-// const processTags = async () => {
-
-//     if (tags.value.length > 0) {
-//         let epc = getUniqueEpc(tags.value);
-//         // Show modal if mismatched EPCs
-//         if (!epc && tags.value.length > 1) {
-//             responseModal.value = true
-//         }
-//         getLastItem(epc);
-//     }
-
-//     for (const tag of tags.value) {
-//         const result = await checkIfExists(tag.epc, tag.tid, tagType);
-
-//         if (result.found) {
-//             tag.status = result.name;
-//         } else if (result.epc_exists) {
-//             tag.status = 'Unregistered TID';
-//         } else {
-//             tag.status = 'Unregistered';
-//         }
-//     }
-
-//     registeredTags.value = tags.value.filter(tag => tag.status !== 'Unregistered' && tag.status !== 'Unregistered TID');
-//     unregisteredTags.value = tags.value.filter(tag => tag.status === 'Unregistered');
-//     unregisteredIdTags.value = tags.value.filter(tag => tag.status === 'Unregistered TID');
-// };
-
 onMounted(() => {
     echo.channel('pallet-registration')
         .listen('PalletRegistrationEvent', onPalletRegistration);
@@ -162,7 +156,7 @@ const getLastItem = async (epc) => {
     showLoader.value = true;
     const url = `registration/get-last-tag?tag_type=${tagType}&epc=${epc}`;
     try {
-        const response = await ApiService.get(url);
+        const response = await ApiService.query(url);
         const { group_no, name, epc_exists } = response.data
         form.group_no = group_no;
         form.name = name;
@@ -204,7 +198,7 @@ const submit = async () => {
                 toast.value.show = true;
                 errorMessage.value = ''
 
-                clearForm();
+                handleClear();
             } catch (error) {
                 errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
                 console.error('Error submitting:', error);
@@ -270,13 +264,23 @@ const handleClear = () => {
     clearForm();
 
     // Clear tags and re-fetch
-    tags.value = []
     uniqueTags.value = []
+    seenKeys.clear();
     unregisteredIdTags.value = []
     unregisteredTags.value = []
     registeredTags.value = []
 
 }
+
+// Compute “commonEpc”: if all tags share the same epc, return that string; otherwise null
+const commonEpc = computed(() => {
+    if (!Array.isArray(uniqueTags.value) || uniqueTags.value.length === 0) {
+        return null
+    }
+    const epcSet = new Set(uniqueTags.value.map((t) => t.epc))
+    return epcSet.size === 1 ? [...epcSet][0] : null
+})
+
 
 
 
@@ -367,8 +371,8 @@ const handleClear = () => {
             </VCol>
             <VCol cols="2" offset="6">
                 <!-- Enable add to existing if there's atleast 1 registered tag  -->
-                <v-btn block color="primary-2" :disabled="!form.epc_exists && unregisteredTags.length === 0"
-                    @click="handleAddExisting" style="color: #fefaeb !important;">
+                <v-btn block color="primary-2" :disabled="unregisteredIdTags.length === 0" @click="handleAddExisting"
+                    style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
             </VCol>
@@ -400,8 +404,12 @@ const handleClear = () => {
                 <tr v-if="uniqueTags.length === 0">
                     <td colspan="7" class="text-center">No data available</td>
                 </tr>
-                <tr v-for="(item, index) in uniqueTags" :key="item.tid"
-                    :class="{ 'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID' }">
+                <tr v-for="(item, index) in uniqueTags" :key="item.tid" :class="{
+                    // existing “light-green” for status:
+                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID',
+                    // new class when there are multiple EPCs and this row’s epc differs:
+                    'error-epc': commonEpc === null && item.epc !== uniqueTags[0]?.epc
+                }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
                     <td>{{ item.peakRssi }}</td>
@@ -476,5 +484,10 @@ const handleClear = () => {
 <style scoped>
 .light-green {
     background-color: #cce6d8 !important;
+}
+
+.error-epc {
+    background-color: #f3d1d1 !important;
+    /* a light red/pink background */
 }
 </style>
