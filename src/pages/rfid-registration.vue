@@ -41,16 +41,16 @@ const form = reactive({
 
 const getUniqueEpc = (tags) => {
 
-    if (!Array.isArray(tags) || tags.length === 0) return null;
+    if (!Array.isArray(tags) || uniqueTags.value.length === 0) return null;
 
-    const uniqueEpcs = new Set(tags.map(tag => tag.epc));
+    const uniqueEpcs = new Set(uniqueTags.value.map(tag => tag.epc));
     return uniqueEpcs.size === 1 ? [...uniqueEpcs][0] : null;
 
 };
 
 const removeItem = (index) => {
-    tags.value.splice(index, 1)
-    let epc = getUniqueEpc(tags.value);
+    uniqueTags.value.splice(index, 1)
+    let epc = getUniqueEpc(uniqueTags.value);
     if (epc) {
         getLastItem(epc);
     }
@@ -59,8 +59,7 @@ const removeItem = (index) => {
 async function onPalletRegistration(data) {
     console.log(data);
     showLoader.value = true;
-    tags.value = data.palletRegistration
-    console.log(data.palletRegistration);
+    tags.value = data.palletRegistration.tag_reads
     await processTags();
     showLoader.value = false;
 
@@ -78,33 +77,79 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
     }
 };
 
+const uniqueTags = ref([]);
 const processTags = async () => {
+    if (!Array.isArray(tags.value)) return;
 
-    if (tags.value.length > 0) {
-        let epc = getUniqueEpc(tags.value);
-        // Show modal if mismatched EPCs
-        if (!epc && tags.value.length > 1) {
-            responseModal.value = true
-        }
-        getLastItem(epc);
-    }
+    // Step 1: Keep exactly one tag per unique epc+tid combination
+    const seen = new Set();
 
     for (const tag of tags.value) {
+        // Build a string key that represents the combination of epc and tid
+        const key = `${tag.epc}_${tag.tid}`;
+
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueTags.value.push(tag);
+        }
+    }
+
+    // (Optional) If you still want to detect mismatched EPCs among the unique set:
+    if (uniqueTags.value.length > 1 && !getUniqueEpc(uniqueTags.value)) {
+        responseModal.value = true;
+    }
+
+    // Example: grab the first EPC to show somewhere
+    getLastItem(uniqueTags.value[0]?.epc);
+
+    // Step 2: For each unique tag, call your API to set its status
+    for (const tag of uniqueTags.value) {
         const result = await checkIfExists(tag.epc, tag.tid, tagType);
 
-        if (result.found) {
+        if (result?.found) {
             tag.status = result.name;
-        } else if (result.epc_exists) {
+        } else if (result?.epc_exists) {
             tag.status = 'Unregistered TID';
         } else {
             tag.status = 'Unregistered';
         }
     }
 
-    registeredTags.value = tags.value.filter(tag => tag.status !== 'Unregistered' && tag.status !== 'Unregistered TID');
-    unregisteredTags.value = tags.value.filter(tag => tag.status === 'Unregistered');
-    unregisteredIdTags.value = tags.value.filter(tag => tag.status === 'Unregistered TID');
+    // Step 3: Split them into registered/unregistered lists
+    registeredTags.value = uniqueTags.value.filter(
+        (t) => t.status !== 'Unregistered' && t.status !== 'Unregistered TID'
+    );
+    unregisteredTags.value = uniqueTags.value.filter((t) => t.status === 'Unregistered');
+    unregisteredIdTags.value = uniqueTags.value.filter((t) => t.status === 'Unregistered TID');
 };
+
+// const processTags = async () => {
+
+//     if (tags.value.length > 0) {
+//         let epc = getUniqueEpc(tags.value);
+//         // Show modal if mismatched EPCs
+//         if (!epc && tags.value.length > 1) {
+//             responseModal.value = true
+//         }
+//         getLastItem(epc);
+//     }
+
+//     for (const tag of tags.value) {
+//         const result = await checkIfExists(tag.epc, tag.tid, tagType);
+
+//         if (result.found) {
+//             tag.status = result.name;
+//         } else if (result.epc_exists) {
+//             tag.status = 'Unregistered TID';
+//         } else {
+//             tag.status = 'Unregistered';
+//         }
+//     }
+
+//     registeredTags.value = tags.value.filter(tag => tag.status !== 'Unregistered' && tag.status !== 'Unregistered TID');
+//     unregisteredTags.value = tags.value.filter(tag => tag.status === 'Unregistered');
+//     unregisteredIdTags.value = tags.value.filter(tag => tag.status === 'Unregistered TID');
+// };
 
 onMounted(() => {
     echo.channel('pallet-registration')
@@ -169,7 +214,7 @@ const submit = async () => {
 }
 
 const handleAddExisting = () => {
-    const filteredTags = tags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
+    const filteredTags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
     // Check for duplicate EPC values by using a Set
     const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
 
@@ -223,7 +268,7 @@ const handleClear = () => {
     clearForm();
 
     // Clear tags and re-fetch
-    tags.value = []
+    uniqueTags.value = []
     unregisteredIdTags.value = []
     unregisteredTags.value = []
     registeredTags.value = []
@@ -294,7 +339,7 @@ const handleClear = () => {
 
                         <div class="font-weight-black text-h1 text-primary mt-auto px-4"
                             style="border-bottom: 1px thin #00833c;">
-                            {{ tags.length }}
+                            {{ uniqueTags.length }}
                         </div>
 
                         <!-- Pallet tag count label at the bottom -->
@@ -349,10 +394,10 @@ const handleClear = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-if="tags.length === 0">
+                <tr v-if="uniqueTags.length === 0">
                     <td colspan="7" class="text-center">No data available</td>
                 </tr>
-                <tr v-for="(item, index) in tags" :key="item.tid"
+                <tr v-for="(item, index) in uniqueTags" :key="item.tid"
                     :class="{ 'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID' }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
