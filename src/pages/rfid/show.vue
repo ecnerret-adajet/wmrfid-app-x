@@ -1,18 +1,17 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
-import { convertSlugToUpperCase } from '@/composables/useHelpers';
+import { convertSlugToUpperCase, exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import History from './history.vue';
 
 const route = useRoute();
 const router = useRouter();
 const pageLoading = ref(false);
-const physicalId = route.params.physicalId; 
-const rfidType = route.params.type; 
+const physicalId = route.params.physicalId;
+const rfidType = route.params.type;
 const rfidData = ref(null);
 
 const searchValue = ref('');
@@ -21,12 +20,6 @@ const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
-
-const items = [
-    'test',
-    'test',
-    'test',
-]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     pageLoading.value = true
@@ -40,18 +33,18 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`rfid/get-physical-id-data/${rfidType}/${physicalId}`,{
+    ApiService.query(`rfid/get-physical-id-data/${rfidType}/${physicalId}`, {
         params: {
             page,
             itemsPerPage,
             sort: sortQuery.value,
             search: searchValue.value
         }
-        })
+    })
         .then((response) => {
             const { table, rfid_data } = response.data
             console.log(rfid_data);
-            
+
             totalItems.value = table.total;
             serverItems.value = table.data
             rfidData.value = rfid_data
@@ -62,6 +55,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             pageLoading.value = false
         });
 }
+
+
 
 const headers = [
     {
@@ -88,32 +83,108 @@ const handleSearch = debounce((search) => {
     searchValue.value = search;
 }, 500);
 
+const historyHeaders = [
+    {
+        title: 'EVENT',
+        key: 'title', // E.g., "Item Wrapped", "Loaded for Delivery", etc.
+    },
+    {
+        title: 'DETAILS',
+        key: 'event', // e.g., "Batch updated from X to Y", "Moved to FG Warehouse", etc.
+    },
+    {
+        title: 'TIMESTAMP',
+        key: 'timestamp', // Exact date and time.
+    },
+    {
+        title: 'TIME AGO',
+        key: 'time_diff', // Human-readable diff like "3 hours ago".
+    },
+];
+const historyServerItems = ref([]);
+const totalHistoryItems = ref(0);
+const historyItemsPerPage = ref(10);
+const historyPage = ref(1);
+const historyLoading = ref(false);
+const loadHistory = ({ historyPage, historyItemsPerPage }) => {
+    historyLoading.value = true
+
+    ApiService.query(`rfid/get-history/${rfidType}/${physicalId}`, {
+        params: {
+            page: historyPage,
+            itemsPerPage: historyItemsPerPage,
+            // sort: sortQuery.value,
+            // search: searchValue.value
+        }
+    })
+        .then((response) => {
+            // TODO:: Update display of history here
+            console.log(response);
+            // totalItems.value = table.total;
+            // serverItems.value = table.data
+            // rfidData.value = rfid_data
+            historyLoading.value = false
+        })
+        .catch((error) => {
+            console.log(error);
+            historyLoading.value = false
+        });
+}
+
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/rfid-history/',
+            params: {
+                rfid_type: rfidType,
+                physical_id: physicalId,
+            },
+            filename: 'rfid-history-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
+const exportBatchLoading = ref(false);
+const exportBatchData = async () => {
+    try {
+        exportBatchLoading.value = true;
+        await exportExcel({
+            url: '/export/rfid-batch-history/',
+            params: {
+                rfid_type: rfidType,
+                physical_id: physicalId,
+            },
+            filename: 'rfid-batch-history-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportBatchLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
     <div>
-        <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+        <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
         <v-card v-else elevation="2">
             <v-card-title>
                 <div class="d-flex align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">RFID Details</h4>
-                    <v-badge class="ml-3"
-                        color="primary-light"
-                        :content="convertSlugToUpperCase(rfidType)"
-                        inline
-                    ></v-badge>
+                    <v-badge class="ml-3" color="primary-light" :content="convertSlugToUpperCase(rfidType)"
+                        inline></v-badge>
 
-                    <v-badge v-if="rfidData?.inventory?.under_fumigation"
-                        color="warning"
-                        content="UNDER FUMIGATION"
-                        inline
-                    ></v-badge>
-                    <v-badge v-if="rfidData?.is_weak_signal || rfidData?.is_weak_signal === 1"
-                        color="error"
-                        content="Yes"
-                        class="text-uppercase"
-                        inline
-                    ></v-badge>
+                    <v-badge v-if="rfidData?.inventory?.under_fumigation" color="warning" content="UNDER FUMIGATION"
+                        inline></v-badge>
+                    <v-badge v-if="rfidData?.is_weak_signal || rfidData?.is_weak_signal === 1" color="error"
+                        content="Yes" class="text-uppercase" inline></v-badge>
                 </div>
 
                 <VList lines="one" density="compact" class="mt-4">
@@ -122,20 +193,24 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Storage Location</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Storage Location</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.storage_location?.name }}</span>
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            rfidData?.storage_location?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Plant</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Plant</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.storage_location?.plant?.name }}</span>
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            rfidData?.storage_location?.plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -146,7 +221,8 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">RFID Code</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">RFID Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{ rfidData?.rfid_code }}</span>
@@ -156,11 +232,18 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Wrapping Area</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Wrapping Area</span>
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
-                                        <i v-if="rfidData?.inventory?.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+                                        <i v-if="rfidData?.inventory?.is_wrapped"
+                                            style="font-size: 30px; background-color: green;"
+                                            class="ri-checkbox-circle-line"></i>
+                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                            class="ri-close-circle-line"></i>
+                                    </VCol>
+                                    <VCol v-else class="d-inline-flex align-center">
+                                        <v-badge color="warning" content="NO INVENTORY YET" inline></v-badge>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -171,7 +254,8 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Physical ID</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Physical ID</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{ rfidData?.name }}</span>
@@ -181,11 +265,18 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Loading Area</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Loading Area</span>
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
-                                        <i v-if="rfidData?.inventory?.is_loaded" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+                                        <i v-if="rfidData?.inventory?.is_loaded"
+                                            style="font-size: 30px; background-color: green;"
+                                            class="ri-checkbox-circle-line"></i>
+                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                            class="ri-close-circle-line"></i>
+                                    </VCol>
+                                    <VCol v-else class="d-inline-flex align-center">
+                                        <v-badge color="warning" content="NO INVENTORY YET" inline></v-badge>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -196,21 +287,33 @@ const handleSearch = debounce((search) => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Current Batch</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Current Batch</span>
                                     </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.inventory?.batch }}</span>
+                                    <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{ rfidData?.inventory?.batch
+                                        }}</span>
+                                    </VCol>
+                                    <VCol v-else class="d-inline-flex align-center">
+                                        <v-badge color="warning" content="NOT YET ASSIGNED" inline></v-badge>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Empty Area</span>
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Empty Area</span>
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
-                                        <i v-if="rfidData?.inventory?.is_empty" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
+                                        <i v-if="rfidData?.inventory?.is_empty"
+                                            style="font-size: 30px; background-color: green;"
+                                            class="ri-checkbox-circle-line"></i>
+                                        <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                            class="ri-close-circle-line"></i>
+                                    </VCol>
+                                    <VCol v-else class="d-inline-flex align-center">
+                                        <v-badge color="warning" content="NO INVENTORY YET" inline></v-badge>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -220,15 +323,12 @@ const handleSearch = debounce((search) => {
                 <div class="mx-5">
                     <VRow class="table-row">
                         <VCol cols="2" class="d-inline-flex justify-start align-center">
-                            <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">EPCs</span>
+                            <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                style="margin-top: 1px;">EPCs</span>
                         </VCol>
                         <VCol cols="10" class="d-flex align-center">
-                            <v-chip v-if="rfidData?.epc_data.length > 0"
-                                v-for="(epc, index) in rfidData?.epc_data"
-                                :key="index"
-                                class="mb-1"
-                                label
-                            >
+                            <v-chip v-if="rfidData?.epc_data.length > 0" v-for="(epc, index) in rfidData?.epc_data"
+                                :key="index" class="mb-1" label>
                                 {{ epc.epc }}
                             </v-chip>
                         </VCol>
@@ -241,28 +341,30 @@ const handleSearch = debounce((search) => {
                 <v-card elevation="2">
                     <VRow class="mx-4">
                         <VCol md="12">
-                            <SearchInput @update:search="handleSearch"/>
+                            <SearchInput @update:search="handleSearch" />
                         </VCol>
                     </VRow>
                     <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
 
                     <v-card-text class="mx-2">
-                        <div class="mb-4 d-flex justify-between align-center">
-                            <h4 class="text-h4 font-weight-black text-primary">Batch History</h4>
+
+                        <div class="d-flex justify-space-between align-center mt-1 py-2">
+                            <h4 class="text-h4 font-weight-black text-primary mx-4">Batch History</h4>
+                            <VCol md="2" class="d-flex justify-center align-center">
+                                <v-btn block :loading="exportBatchLoading" class="d-flex align-center"
+                                    prepend-icon="ri-download-line" @click="exportBatchData">
+                                    <template #prepend>
+                                        <v-icon color="white"></v-icon>
+                                    </template>
+                                    Export Batch History
+                                </v-btn>
+                            </VCol>
                         </div>
                         <div class="mt-2">
-                            <VDataTableServer
-                                v-model:items-per-page="itemsPerPage"
-                                :headers="headers"
-                                :items="serverItems"
-                                :items-length="totalItems"
-                                :loading="pageLoading"
-                                item-value="id"
-                                :search="searchValue"
-                                @update:options="loadItems"
-                                class="text-no-wrap"
-                            >
-                               
+                            <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers"
+                                :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
+                                :search="searchValue" @update:options="loadItems" class="text-no-wrap">
+
                                 <template #item.epc="{ item }">
                                     {{ item.rfid?.epc }}
                                 </template>
@@ -281,6 +383,28 @@ const handleSearch = debounce((search) => {
                 </v-card>
             </div>
         </div>
-        <History class="mt-4" v-if="rfidData && rfidData.rfid_history && rfidData.rfid_history.length > 0" :rfid-data="rfidData"/>
+        <div>
+            <v-card elevation="2" class="mt-4">
+                <v-card-title>
+                    <div class="d-flex justify-space-between align-center mt-1 py-2">
+                        <h4 class="text-h4 font-weight-black text-primary mx-4">RFID History</h4>
+                        <VCol md="2" class="d-flex justify-center align-center">
+                            <v-btn block :loading="exportLoading" class="d-flex align-center"
+                                prepend-icon="ri-download-line" @click="exportData">
+                                <template #prepend>
+                                    <v-icon color="white"></v-icon>
+                                </template>
+                                Export RFID History
+                            </v-btn>
+                        </VCol>
+                    </div>
+                </v-card-title>
+                <v-card-text class="mx-3">
+                    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="historyHeaders"
+                        :items="historyServerItems" :items-length="totalHistoryItems" :loading="historyLoading"
+                        item-value="id" @update:options="loadHistory" class="text-no-wrap"></VDataTableServer>
+                </v-card-text>
+            </v-card>
+        </div>
     </div>
 </template>
