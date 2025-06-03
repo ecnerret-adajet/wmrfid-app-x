@@ -65,15 +65,15 @@ const fetchDropdownData = async () => {
         });
 
         const { materials, production_lines, tag_types, storage_locations, statistics, plants } = response.data
- 
+
         statisticsData.value = statistics
         productionLinesOption.value = production_lines.map(item => ({
             value: item.id,
-            title: item.name 
+            title: item.name
         }));
         tagTypesOption.value = tag_types.map(item => ({
             value: item.id,
-            title: item.name 
+            title: item.name
         }));
         materialsOption.value = materials.map(item => ({
             value: item.id,
@@ -91,7 +91,7 @@ const fetchDropdownData = async () => {
             title: item.name,
             name: item.name
         }));
-        
+
     } catch (error) {
         console.log(error);
     } finally {
@@ -122,9 +122,9 @@ const submit = async () => {
     toast.value.show = false;
     try {
         const response = await ApiService.post('production-runs/store', form.value)
-    
-        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [{key: 'start_date_time', 'order': 'desc'}], search: searchValue.value });
-        
+
+        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [{ key: 'start_date_time', 'order': 'desc' }], search: searchValue.value });
+
         isLoading.value = false;
         dialogVisible.value = false
         toast.value.message = 'New production run successfully created!'
@@ -149,23 +149,25 @@ const filters = reactive({
 });
 
 const isFiltersEmpty = computed(() => {
-    return !filters.start_date_time && 
-           !filters.tag_type_id
+    return !filters.start_date_time &&
+        !filters.tag_type_id
 });
 
 const applyFilter = () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: sortQuery.value.replace('-', ''), 
-        order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
+        sortBy: [{
+            key: sortQuery.value.replace('-', ''),
+            order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+        }]
     });
     filterModalVisible.value = false;
 }
 
 const resetFilter = () => {
     clearFilters();
-    loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [{key: 'start_date_time', 'order': 'desc'}], search: searchValue.value });
+    loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [{ key: 'start_date_time', 'order': 'desc' }], search: searchValue.value });
     filterModalVisible.value = false;
 }
 
@@ -239,7 +241,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-start_date_time';
     }
 
-    ApiService.query('datatable/production-runs',{
+    ApiService.query('datatable/production-runs', {
         params: {
             page,
             itemsPerPage,
@@ -247,7 +249,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: searchValue.value,
             filters: filters
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
@@ -263,8 +265,10 @@ watch(() => filters.plant_id, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: sortQuery.value.replace('-', ''), 
-        order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
+        sortBy: [{
+            key: sortQuery.value.replace('-', ''),
+            order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+        }]
     });
 
     fetchDropdownData()
@@ -283,8 +287,10 @@ const handleEndProductionRun = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{ key: sortQuery.value.replace('-', ''), 
-            order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
+            sortBy: [{
+                key: sortQuery.value.replace('-', ''),
+                order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+            }]
         });
         fetchDropdownData() // Should reset the statistics data
         toast.value.message = 'Production run end trigger successfully!'
@@ -296,7 +302,7 @@ const handleEndProductionRun = async () => {
     } finally {
         triggerEndLoading.value = null;
         triggerEndDialog.value = false
-    } 
+    }
 }
 
 const triggerEnd = (item) => {
@@ -311,9 +317,9 @@ const actionList = [
 const showProductionRunDetails = ref(false);
 const handleAction = (productionRun, action) => {
     selectedProductionRun.value = productionRun;
-    if(action.key == 'view_details') {
+    if (action.key == 'view_details') {
         showProductionRunDetails.value = true;
-    } 
+    }
 }
 
 const exportLoading = ref(false);
@@ -361,7 +367,7 @@ const fetchRecentProduced = async () => {
         } else {
             console.error('Fail to fetch recently produced batches')
         }
-     
+
     } catch (error) {
         console.log(error);
     } finally {
@@ -375,52 +381,32 @@ const fetchRecentProduced = async () => {
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
         <SearchInput class="flex-grow-1" @update:search="handleSearch" />
 
-        <v-btn
-            class="d-flex align-center"
-            prepend-icon="ri-equalizer-line"
-            @click="filterModalOpen"
-        >
+        <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
             <template #prepend>
-            <v-icon color="white"></v-icon>
+                <v-icon color="white"></v-icon>
             </template>
             Filter
         </v-btn>
 
-        <v-select style="max-width: 300px;"
-            class="flex-grow-1 align-center mt-1"
-            label="Filter by Plant"
+        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
             density="compact"
             :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-            v-model="filters.plant_id"
-            :rules="[value => value !== undefined || 'Please select an item from the list']"
-        >
+            v-model="filters.plant_id" :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-        <v-btn
-            v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-            class="d-flex justify-center align-center"
-            @click="openDialog"
-        >
+        <!-- <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            class="d-flex justify-center align-center" @click="openDialog">
             Add New Production Run
-        </v-btn>
-        <v-btn 
-            :loading="exportLoading"
-            class="d-flex align-center"
-            prepend-icon="ri-download-line"
-            @click="exportData"
-        >
+        </v-btn> -->
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
             Export
         </v-btn>
 
-        <v-btn variant="outlined"
-            color="primary-light"
-            class="d-flex align-center"
-            prepend-icon="ri-play-circle-line"
-            @click="showRecentProduced"
-        >
+        <v-btn variant="outlined" color="primary-light" class="d-flex align-center" prepend-icon="ri-play-circle-line"
+            @click="showRecentProduced">
             <template #prepend>
                 <v-icon color="primary-light"></v-icon>
             </template>
@@ -430,28 +416,17 @@ const fetchRecentProduced = async () => {
 
     <v-row class="match-height mb-2">
         <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
+            <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
                 <div class="d-flex align-center justify-space-between">
                     <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                        <div class="d-flex align-center justify-center mr-4" style="
                                 width: 48px;
                                 height: 48px;
                                 background-color: #e8f5e9;
                                 border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-play-circle-line"
-                                color="success"
-                                size="24"
-                            ></v-icon>
+                            ">
+                            <v-icon icon="ri-play-circle-line" color="success" size="24"></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
@@ -462,7 +437,7 @@ const fetchRecentProduced = async () => {
                             </div>
                             <div>
                                 <span class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    Out of {{ statisticsData?.active_runs_data?.total_runs || 0 }} production 
+                                    Out of {{ statisticsData?.active_runs_data?.total_runs || 0 }} production
                                     {{ statisticsData?.active_runs_data?.total_runs > 1 ? 'runs' : 'run' }}
                                 </span>
                             </div>
@@ -480,28 +455,17 @@ const fetchRecentProduced = async () => {
             </v-card>
         </v-col>
         <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
+            <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
                 <div class="d-flex align-center justify-space-between">
                     <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                        <div class="d-flex align-center justify-center mr-4" style="
                                 width: 48px;
                                 height: 48px;
                                 background-color: #e8f5e9;
                                 border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-time-line"
-                                color="success"
-                                size="24"
-                            ></v-icon>
+                            ">
+                            <v-icon icon="ri-time-line" color="success" size="24"></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
@@ -512,8 +476,10 @@ const fetchRecentProduced = async () => {
                             </div>
                             <div>
                                 <span class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    Based on {{ statisticsData?.average_run_time_data?.runs_considered.length || 0 }} production
-                                    {{ statisticsData?.average_run_time_data?.runs_considered.length > 1 ? 'runs' : 'run' }}
+                                    Based on {{ statisticsData?.average_run_time_data?.runs_considered.length || 0 }}
+                                    production
+                                    {{ statisticsData?.average_run_time_data?.runs_considered.length > 1 ? 'runs' :
+                                        'run' }}
                                 </span>
                             </div>
                         </div>
@@ -530,28 +496,17 @@ const fetchRecentProduced = async () => {
             </v-card>
         </v-col>
         <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
+            <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
                 <div class="d-flex align-center justify-space-between">
                     <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                        <div class="d-flex align-center justify-center mr-4" style="
                                 width: 48px;
                                 height: 48px;
                                 background-color: #e8f5e9;
                                 border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-box-3-line"
-                                color="success"
-                                size="24"
-                            ></v-icon>
+                            ">
+                            <v-icon icon="ri-box-3-line" color="success" size="24"></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
@@ -580,28 +535,17 @@ const fetchRecentProduced = async () => {
             </v-card>
         </v-col>
         <v-col cols="3">
-            <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-            <v-card v-else
-                class="pa-4 bg-grey-50"
-                elevation="2"
-                style="border-radius: 4px;"
-            >
+            <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
                 <div class="d-flex align-center justify-space-between">
                     <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                        <div class="d-flex align-center justify-center mr-4" style="
                                 width: 48px;
                                 height: 48px;
                                 background-color: #e8f5e9;
                                 border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                                icon="ri-bar-chart-grouped-line"
-                                color="success"
-                                size="24"
-                            ></v-icon>
+                            ">
+                            <v-icon icon="ri-bar-chart-grouped-line" color="success" size="24"></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
@@ -611,8 +555,11 @@ const fetchRecentProduced = async () => {
                                 {{ statisticsData?.todays_most_produced?.total_count || 0 }}
                             </div>
                             <div>
-                                <span v-if="statisticsData?.todays_most_produced?.material_description || statisticsData?.todays_most_produced?.bu_material" class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    {{ statisticsData?.todays_most_produced?.material_description }} - {{ statisticsData?.todays_most_produced?.bu_material }}
+                                <span
+                                    v-if="statisticsData?.todays_most_produced?.material_description || statisticsData?.todays_most_produced?.bu_material"
+                                    class="text-subtitle-2 font-weight-thin text-grey-600">
+                                    {{ statisticsData?.todays_most_produced?.material_description }} - {{
+                                        statisticsData?.todays_most_produced?.bu_material }}
                                 </span>
                                 <span v-else class="text-subtitle-2 font-weight-thin text-grey-600">
                                     No material found
@@ -634,32 +581,20 @@ const fetchRecentProduced = async () => {
     </v-row>
 
     <VCard>
-        <VDataTableServer
-            v-model:items-per-page="itemsPerPage"
-            :headers="headers"
-            :items="serverItems"
-            :items-length="totalItems"
-            :loading="loading"
-            item-value="id"
-            :search="searchValue"
-            @update:options="loadItems"
-            class="text-no-wrap"
-        >
+        <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+            :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
+            @update:options="loadItems" class="text-no-wrap">
             <template #item.action="{ item }">
                 <div class="d-flex justify-center gap-1">
-                    <v-menu location="end"> 
+                    <v-menu location="end">
                         <template v-slot:activator="{ props }">
                             <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                         </template>
                         <v-list>
-                        <v-list-item
-                            @click="handleAction(item, action)"
-                            v-for="(action, i) in actionList"
-                                :key="i"
-                                :value="i"
-                            >
-                            <v-list-item-title>{{ action.title }}</v-list-item-title>
-                        </v-list-item>
+                            <v-list-item @click="handleAction(item, action)" v-for="(action, i) in actionList" :key="i"
+                                :value="i">
+                                <v-list-item-title>{{ action.title }}</v-list-item-title>
+                            </v-list-item>
                         </v-list>
                     </v-menu>
                 </div>
@@ -678,7 +613,8 @@ const fetchRecentProduced = async () => {
             </template>
 
             <template #item.latest_mfg_date="{ item }">
-                <span v-if="item.start_date_time">{{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY') : '' }}</span>
+                <span v-if="item.start_date_time">{{ item.start_date_time ?
+                    Moment(item.start_date_time).format('MMMM D,YYYY') : '' }}</span>
             </template>
 
             <template #item.rfid_type="{ item }">
@@ -689,7 +625,7 @@ const fetchRecentProduced = async () => {
                 {{ item.total_quantity }}
             </template>
 
-          
+
 
             <template #item.start_date_time="{ item }">
                 {{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
@@ -709,18 +645,16 @@ const fetchRecentProduced = async () => {
         </VDataTableServer>
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Production Run'" >
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Production Run'">
         <template #default>
             <v-form @submit.prevent="submit">
                 <div>
-                    <v-select label="Select Material" density="compact"
-                        :items="materialsOption" v-model="form.material_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    ></v-select>
+                    <v-select label="Select Material" density="compact" :items="materialsOption"
+                        v-model="form.material_id"
+                        :rules="[value => !!value || 'Please select an item from the list']"></v-select>
                     <v-select class="mt-4" label="Select Production Line" density="compact"
                         :items="productionLinesOption" v-model="form.production_line_id"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    ></v-select>
+                        :rules="[value => !!value || 'Please select an item from the list']"></v-select>
                     <div class="mt-4">
                         <DateTimePicker v-model="form.start_date_time" placeholder="Start Datetime" />
                     </div>
@@ -728,7 +662,8 @@ const fetchRecentProduced = async () => {
                         {{ errorMessage }}
                     </VAlert>
                     <div class="d-flex justify-end align-center mt-8">
-                        <v-btn color="secondary" variant="outlined" @click="dialogVisible = false" class="px-12 mr-3">Cancel</v-btn>
+                        <v-btn color="secondary" variant="outlined" @click="dialogVisible = false"
+                            class="px-12 mr-3">Cancel</v-btn>
                         <PrimaryButton class="px-12" type="submit" :loading="isLoading">
                             Create
                         </PrimaryButton>
@@ -738,21 +673,23 @@ const fetchRecentProduced = async () => {
         </template>
     </AddingModal>
 
-    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Production Runs'">
+    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible"
+        :dialogTitle="'Filter Production Runs'">
         <template #default>
             <v-form>
-                <v-select label="Filter by Type" density="compact"
-                    :items="tagTypesOption" v-model="filters.tag_type_id"
-                >
+                <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
+                    v-model="filters.tag_type_id">
                 </v-select>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Started</label>
-                    <DateRangePicker class="mt-1" v-model="filters.start_date_time" placeholder="Select Date Created"/>
+                    <DateRangePicker class="mt-1" v-model="filters.start_date_time" placeholder="Select Date Created" />
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
+                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                        class="px-12 mr-3">Reset Filter</v-btn>
+                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter"
+                        :loading="isLoading">
                         Apply Filter
                     </PrimaryButton>
                 </div>
@@ -761,20 +698,17 @@ const fetchRecentProduced = async () => {
     </FilteringModal>
 
     <v-dialog v-model="triggerEndDialog" max-width="600px" persistent>
-    
+
         <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
-            <v-icon
-                class="mb-5"
-                color="primary"
-                icon="ri-information-line"
-                size="112"
-            ></v-icon>
+            <v-icon class="mb-5" color="primary" icon="ri-information-line" size="112"></v-icon>
 
             <h2 class="text-h4 mb-6">Do you want to end this production run?</h2>
 
             <div class="text-end">
-                <v-btn color="secondary" variant="outlined" @click="triggerEndDialog = false" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleEndProductionRun" color="primary" class="px-12" :loading="triggerEndLoading">
+                <v-btn color="secondary" variant="outlined" @click="triggerEndDialog = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleEndProductionRun" color="primary" class="px-12"
+                    :loading="triggerEndLoading">
                     Update
                 </PrimaryButton>
             </div>
@@ -789,14 +723,10 @@ const fetchRecentProduced = async () => {
                     <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
                     Production Run Details
                 </div>
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="showProductionRunDetails = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="showProductionRunDetails = false"></v-btn>
             </v-card-title>
             <v-card-text>
-                <productionRunDetails :production-run="selectedProductionRun"/>
+                <productionRunDetails :production-run="selectedProductionRun" />
             </v-card-text>
         </v-card>
     </v-dialog>
@@ -809,11 +739,7 @@ const fetchRecentProduced = async () => {
                     <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
                     Recent Produced Batches
                 </div>
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="showRecentProducedModal = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="showRecentProducedModal = false"></v-btn>
             </v-card-title>
             <v-card-text>
                 <v-table density="comfortable" class="mt-4">
@@ -834,6 +760,13 @@ const fetchRecentProduced = async () => {
                             </td>
                         </tr>
                     </tbody>
+                    <tbody v-else-if="recentProduced.length === 0">
+                        <tr style="height: 100px;">
+                            <td colspan="6" class="text-center align-middle">
+                                No results found --
+                            </td>
+                        </tr>
+                    </tbody>
                     <tbody v-else>
                         <tr v-for="(item, index) in recentProduced" :key="index">
                             <td>{{ item.material?.plant?.name }}</td>
@@ -842,7 +775,8 @@ const fetchRecentProduced = async () => {
                             <td>{{ item.material?.description }}</td>
                             <td>{{ item.batch }}</td>
                             <td>
-                                {{ Moment(`${item.mfg_date.split(' ')[0]} ${item.mfg_time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY h:mm A') }}
+                                {{ Moment(`${item.mfg_date.split(' ')[0]} ${item.mfg_time}`,
+                                    'YYYY-MM-DDHH: mm:ss').format('MMMM D, YYYY h: mm A') }}
                             </td>
                         </tr>
                     </tbody>
@@ -851,5 +785,5 @@ const fetchRecentProduced = async () => {
         </v-card>
     </v-dialog>
 
-    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>

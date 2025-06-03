@@ -52,7 +52,7 @@ const batchUpdateForm = reactive({
     mfg_date: null,
     reason: null,
     selectedRfid: [],
-    type: 'inventory' 
+    type: 'inventory'
 });
 
 const headers = [
@@ -145,16 +145,16 @@ const form = reactive({
 });
 
 const isFiltersEmpty = computed(() => {
-    return !filters.created_at && 
-           !filters.updated_at &&
-           !filters.tag_type_id
+    return !filters.created_at &&
+        !filters.updated_at &&
+        !filters.tag_type_id
 });
 
 const applyFilter = () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'updated_at', order: 'desc'}],
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
         search: searchValue.value
     });
     filterModalVisible.value = false;
@@ -165,7 +165,7 @@ const resetFilter = () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'updated_at', order: 'desc'}],
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
         search: searchValue.value
     });
     filterModalVisible.value = false;
@@ -191,7 +191,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 
     try {
         const token = JwtService.getToken();
-    
+
         const response = await axios.get('/rfid/get-data', {
             params: {
                 page,
@@ -225,7 +225,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 
         plantsOption.value = plants.map(item => ({
             value: item.plant_code,
-            title: `${item.plant_code} - ${item.name}`, 
+            title: `${item.plant_code} - ${item.name}`,
             name: `${item.plant_code} - ${item.name}`
         }));
 
@@ -250,7 +250,7 @@ const changeBatch = () => {
 }
 
 const proceedRegister = () => {
- 
+
     if (registrationModalForm.value.isValid) {
 
         if (!form.tag_type_id || !form.plant_code) {
@@ -261,7 +261,7 @@ const proceedRegister = () => {
         let tagType = tagTypesOption.value.find(item => item.value === form.tag_type_id);
         let storageLocation = storageLocations.value.find(item => item.value === form.storage_location_id);
         let plant = plantsOption.value.find(item => item.value === form.plant_code);
-    
+
         if (!tagType || !plant) {
             console.error("Invalid Tag Type and Plant selected.");
             return;
@@ -270,7 +270,7 @@ const proceedRegister = () => {
         const slugType = generateSlug(tagType.name);
         const slugPlant = generateSlug(plant.value);
         const slugLocation = storageLocation?.name ? generateSlug(storageLocation.name) : null;
-        
+
         if (tagType.name && plant.value) {
             // Construct the path depending on whether location is set
             const path = slugLocation
@@ -279,7 +279,7 @@ const proceedRegister = () => {
             router.push({ path });
             showRegistrationModal.value = false;
         }
-    } 
+    }
 }
 
 const changeBatchLoading = ref(false);
@@ -300,14 +300,14 @@ const clearChangeBatch = () => {
 const handleChangeBatch = async () => {
     changeBatchLoading.value = true;
     toast.value.show = false;
-    
+
     // Overwrite id with inventory_id
     selectedItems.value.forEach(item => {
         item.id = item.inventory_id;
     });
 
     batchUpdateForm.selectedRfid = selectedItems.value
-    
+
     try {
         const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
         changeBatchLoading.value = false;
@@ -317,7 +317,7 @@ const handleChangeBatch = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{ key: 'created_at', order: 'desc' }],
             search: searchValue.value
         });
         changeBatchModal.value = false;
@@ -355,7 +355,7 @@ const updateFilteredStorageLocations = () => {
 const taggingModal = ref(false);
 const taggingLoading = ref(false);
 const handleTagAsWeak = () => {
-    console.log('Tag as Weak clicked');
+    console.log(selectedItems.value);
     taggingModal.value = true;
 };
 
@@ -369,7 +369,7 @@ const handleTagging = async () => {
     tagUpdateForm.selectedRfid = selectedItems.value
     try {
         const response = await ApiService.post('rfid/toggle-weak-tag', tagUpdateForm)
-        if(response.status !== 200) {
+        if (response.status !== 200) {
             throw new Error('Failed to tag as weak');
         }
         taggingLoading.value = false;
@@ -379,7 +379,7 @@ const handleTagging = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{ key: 'created_at', order: 'desc' }],
             search: searchValue.value
         });
     } catch (error) {
@@ -404,27 +404,23 @@ watch(() => form.plant_code, () => {
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
         <SearchInput class="flex-grow-1" @update:search="handleSearch" />
 
-        <v-btn
-            class="d-flex align-center"
-            prepend-icon="ri-equalizer-line"
-            @click="filterModalOpen"
-        >
+        <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
             <template #prepend>
-            <v-icon color="white"></v-icon>
+                <v-icon color="white"></v-icon>
             </template>
             Filter
         </v-btn>
-        <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-            @click="handleRegister">Register RFID
+        <v-btn @click="handleRegister">Register RFID
         </v-btn>
         <!-- Disable if no selected items or selected items has no batch yet -->
-        <v-btn @click="changeBatch" :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" 
-            class="px-5" type="button" color="primary-light">
+        <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
+            type="button" color="primary-light">
             Change Batch
         </v-btn>
 
-        <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" 
-            class="px-5" type="button" color="warning">
+        <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" class="px-5" type="button"
+            color="warning">
             Tag as Weak
         </v-btn>
     </div>
@@ -434,74 +430,65 @@ watch(() => form.plant_code, () => {
         </span>
     </div>
     <VCard>
-        
-        <VDataTableServer
-            v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}"
-            v-model:items-per-page="itemsPerPage"
-            v-model="selectedItems"
-            :headers="headers"
-            :items="serverItems"
-            :items-length="totalItems"
-            :loading="pageLoading"
-            item-value="id"
-            :search="searchValue"
-            @update:options="loadItems"
-            class="text-no-wrap"
-        >
 
-        <template #item.plant="{ item }">
-            {{ item.plant_name }}
-        </template>
+        <!-- TODO:: Update condition  -->
+        <!-- v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}" -->
+        <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
+            return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
+            :search="searchValue" @update:options="loadItems" class="text-no-wrap">
 
-        <template #item.physical_id="{ item }">
-            {{ item.name }}
-        </template>
+            <template #item.plant="{ item }">
+                {{ item.plant_name }}
+            </template>
 
-        <template #item.weak_signal="{ item }">
-             <v-badge v-if="item.is_weak_signal"
-                color="error"
-                content="Yes"
-                class="text-uppercase"
-                inline
-            ></v-badge>
-        </template>
+            <template #item.physical_id="{ item }">
+                {{ item.name }}
+            </template>
 
-        <template #item.type="{ item }">
-            <span class="text-uppercase">{{ item.type }}</span>
-        </template>
+            <template #item.weak_signal="{ item }">
+                <v-badge v-if="item.is_weak_signal" color="error" content="Yes" class="text-uppercase" inline></v-badge>
+            </template>
 
-        <template #item.rfid_code="{ item }">
-            <span @click="handleViewRfid(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-                {{ item.rfid_code }}
-            </span>
-        </template>
+            <template #item.type="{ item }">
+                <span class="text-uppercase">{{ item.type }}</span>
+            </template>
 
-        <template #item.epc="{ item }">
-            <v-btn variant="outlined" @click="viewEpc(item)" color="info">
-                View EPC
-            </v-btn>
-        </template>
+            <template #item.rfid_code="{ item }">
+                <span @click="handleViewRfid(item)"
+                    class="text-primary font-weight-bold cursor-pointer hover-underline">
+                    {{ item.rfid_code }}
+                </span>
+            </template>
 
-        <template #item.is_wrapped="{ item }">
-            <div class="d-flex justify-center align-center">
-                <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
-            </div>
-        </template>
+            <template #item.epc="{ item }">
+                <v-btn variant="outlined" @click="viewEpc(item)" color="info">
+                    View EPC
+                </v-btn>
+            </template>
 
-        <template #item.is_loaded="{ item }">
-            <div class="d-flex justify-center align-center">
-                <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
-            </div>
-        </template>
+            <template #item.is_wrapped="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
 
-        <template #item.is_empty="{ item }">
-            <div class="d-flex justify-center align-center">
-                <i v-if="item.is_empty" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
-            </div>
-        </template>
+            <template #item.is_loaded="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+            <template #item.is_empty="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
 
         </VDataTableServer>
     </VCard>
@@ -509,22 +496,22 @@ watch(() => form.plant_code, () => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter RFID'">
         <template #default>
             <v-form>
-                <v-select label="Filter by Type" density="compact"
-                    :items="tagTypesOption" v-model="filters.tag_type_id"
-                >
+                <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
+                    v-model="filters.tag_type_id">
                 </v-select>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
-                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
+                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created" />
                 </div>
-                 
+
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Updated</label>
-                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
+                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated" />
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
+                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                        class="px-12 mr-3">Reset Filter</v-btn>
                     <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter">
                         Apply Filter
                     </PrimaryButton>
@@ -535,92 +522,76 @@ watch(() => form.plant_code, () => {
 
     <DefaultModal :dialog-title="'EPCs'" :show="showEpcModal" @close="showEpcModal = false" min-height="auto">
         <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>RFID Code</th>
-                        <th>Physical ID</th>
-                        <th>EPC</th>
-                        <th>TID</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in epcData" :key="index">
-                        <td>{{ item.rfid_code }}</td>
-                        <td>{{ item.name }}</td>
-                        <td>{{ item.epc }}</td>
-                        <td>{{ item.tid }} </td>
-                    </tr>
-                </tbody>
-            </v-table>
+            <thead>
+                <tr>
+                    <th>RFID Code</th>
+                    <th>Physical ID</th>
+                    <th>EPC</th>
+                    <th>TID</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in epcData" :key="index">
+                    <td>{{ item.rfid_code }}</td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.epc }}</td>
+                    <td>{{ item.tid }} </td>
+                </tr>
+            </tbody>
+        </v-table>
     </DefaultModal>
 
     <!--  RFID Registration  -->
-    <AddingModal @close="showRegistrationModal = false" :show="showRegistrationModal" :dialogTitle="'Select Type and Location'" >
+    <AddingModal @close="showRegistrationModal = false" :show="showRegistrationModal"
+        :dialogTitle="'Select Type and Location'">
         <template #default>
             <v-form @submit.prevent="proceedRegister" ref="registrationModalForm">
                 <div>
                     <label class="font-weight-bold">RFID Type<span class="text-error">*</span></label>
-                    <v-select class="mt-1" label="Select Type" density="compact"
-                        :items="tagTypesOption" v-model="form.tag_type_id" 
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    >
+                    <v-select class="mt-1" label="Select Type" density="compact" :items="tagTypesOption"
+                        v-model="form.tag_type_id" :rules="[value => !!value || 'Please select an item from the list']">
                     </v-select>
                 </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Plant<span class="text-error">*</span></label>
-                    <v-select class="mt-1" label="Select Plant" density="compact"
-                        :items="plantsOption" v-model="form.plant_code"
-                        :rules="[value => !!value || 'Please select an item from the list']"
-                    >
+                    <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"
+                        v-model="form.plant_code" :rules="[value => !!value || 'Please select an item from the list']">
                     </v-select>
                 </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Location</label>
-                    <v-select class="mt-1" label="Select Location" density="compact"
-                        :items="storageLocations" v-model="form.storage_location_id"
-                    >
+                    <v-select class="mt-1" label="Select Location" density="compact" :items="storageLocations"
+                        v-model="form.storage_location_id">
                     </v-select>
                 </div>
                 <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="showRegistrationModal = false" class="px-12 mr-3">Cancel</v-btn>
+                    <v-btn color="secondary" variant="outlined" @click="showRegistrationModal = false"
+                        class="px-12 mr-3">Cancel</v-btn>
                     <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
                 </div>
             </v-form>
         </template>
     </AddingModal>
- 
-    <EditingModal @close="changeBatchModal = false" max-width="900px"
-        :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
+
+    <EditingModal @close="changeBatchModal = false" max-width="900px" :show="changeBatchModal"
+        :dialog-title="`Change Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-select
-                            label="Select Material"
-                            density="compact"
-                            :items="materialsOption"
+                        <v-select label="Select Material" density="compact" :items="materialsOption"
                             v-model="batchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']"
-                        />
+                            :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DatePicker
-                            v-model="batchUpdateForm.mfg_date"
-                            placeholder="Select Manufacturing Date"
-                        />
+                        <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
-                <v-text-field class="mt-4" density="compact" 
-                    label="Miller Name"
-                    v-model="batchUpdateForm.miller_name" 
-                />
-                <v-textarea class="mt-4"
-                    clear-icon="ri-close-line"
-                    label="Reason"
-                    v-model="batchUpdateForm.reason"
-                    clearable
-                ></v-textarea>
-    
+                <v-text-field class="mt-4" density="compact" label="Miller Name"
+                    v-model="batchUpdateForm.miller_name" />
+                <v-textarea class="mt-4" clear-icon="ri-close-line" label="Reason" v-model="batchUpdateForm.reason"
+                    clearable></v-textarea>
+
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -647,15 +618,16 @@ watch(() => form.plant_code, () => {
             </v-table>
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelChangeBatch" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit" :loading="changeBatchLoading">
+                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit"
+                    :loading="changeBatchLoading">
                     Update
                 </PrimaryButton>
             </div>
         </template>
     </EditingModal>
 
-    <EditingModal @close="taggingModal = false" max-width="900px"
-        :show="taggingModal" :dialog-title="`Tag RFID as Weak`">
+    <EditingModal @close="taggingModal = false" max-width="900px" :show="taggingModal"
+        :dialog-title="`Tag RFID as Weak`">
         <template #default>
             <div class="mx-4 font-">
                 <span class="text-h5 text-high-emphasis">
@@ -681,13 +653,15 @@ watch(() => form.plant_code, () => {
                 </tbody>
             </v-table>
             <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="taggingModal = false" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleTagging" color="primary" class="px-12" type="submit" :loading="taggingLoading">
+                <v-btn color="secondary" variant="outlined" @click="taggingModal = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleTagging" color="primary" class="px-12" type="submit"
+                    :loading="taggingLoading">
                     Confirm
                 </PrimaryButton>
             </div>
         </template>
     </EditingModal>
 
-    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
