@@ -67,6 +67,7 @@ const fetchDropdownData = async () => {
         const { materials, production_lines, tag_types, storage_locations, statistics, plants } = response.data
 
         statisticsData.value = statistics
+
         productionLinesOption.value = production_lines.map(item => ({
             value: item.id,
             title: item.name
@@ -87,7 +88,7 @@ const fetchDropdownData = async () => {
         }));
 
         plantsOption.value = plants.map(item => ({
-            value: item.id,
+            value: item.plant_code,
             title: item.name,
             name: item.name
         }));
@@ -145,7 +146,7 @@ const filters = reactive({
     start_date_time: null,
     tag_type_id: null,
     storage_location_id: null,
-    plant_id: null
+    plant_code: null
 });
 
 const isFiltersEmpty = computed(() => {
@@ -175,36 +176,41 @@ const clearFilters = () => {
     filters.start_date_time = null;
     filters.tag_type_id = null;
     filters.storage_location_id = null;
-    filters.plant_id = null;
+    filters.plant_code = null;
 };
 
 const headers = [
-    {
-        title: '',
-        key: 'action',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: '',
+    //     key: 'action',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'PLANT',
         key: 'plant_id',
+        sortable: false,
     },
     {
         title: 'MATERIAL',
         key: 'material_id',
+        sortable: false,
     },
     {
         title: 'BATCH',
         key: 'batch',
+        sortable: false,
     },
     {
         title: 'MFG DATE',
-        key: 'latest_mfg_date',
+        key: 'mfg_date',
+        sortable: false,
     },
     {
         title: 'QUANTITY',
         key: 'total_quantity',
         align: 'center',
+        sortable: false,
     },
     {
         title: 'RFID COUNT',
@@ -219,13 +225,21 @@ const headers = [
         sortable: false,
     },
     {
+        title: 'LINE',
+        key: 'line',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'START DATE',
         key: 'start_date_time',
+        sortable: false,
     },
     {
         title: 'END DATE',
         key: 'end_date_time',
         align: 'center',
+        sortable: false,
     },
 ]
 
@@ -257,11 +271,12 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 
         })
         .catch((error) => {
+            loading.value = false
             console.log(error);
         });
 }
 
-watch(() => filters.plant_id, () => {
+watch(() => filters.plant_code, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -329,7 +344,7 @@ const exportData = async () => {
         await exportExcel({
             url: '/export/production-runs/',
             params: {
-                plant_id: filters.plant_id,
+                plant_code: filters.plant_code,
                 search: searchValue.value,
             },
             filename: 'production-runs-report.xlsx',
@@ -355,7 +370,7 @@ const fetchRecentProduced = async () => {
         const token = JwtService.getToken();
         const response = await axios.get(`/production-runs/get-recent-produced`, {
             params: {
-                plant_id: filters.plant_id,
+                plant_code: filters.plant_code,
                 search: searchValue.value,
             },
             headers: {
@@ -391,7 +406,8 @@ const fetchRecentProduced = async () => {
         <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
             density="compact"
             :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-            v-model="filters.plant_id" :rules="[value => value !== undefined || 'Please select an item from the list']">
+            v-model="filters.plant_code"
+            :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
         <!-- <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
@@ -584,7 +600,7 @@ const fetchRecentProduced = async () => {
         <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
             @update:options="loadItems" class="text-no-wrap">
-            <template #item.action="{ item }">
+            <!-- <template #item.action="{ item }">
                 <div class="d-flex justify-center gap-1">
                     <v-menu location="end">
                         <template v-slot:activator="{ props }">
@@ -598,47 +614,51 @@ const fetchRecentProduced = async () => {
                         </v-list>
                     </v-menu>
                 </div>
-            </template>
+            </template> -->
 
             <template #item.plant_id="{ item }">
-                {{ item.material?.plant?.name }}
+                {{ item.plant?.name }}
             </template>
 
             <template #item.batch="{ item }">
-                {{ item.generated_batch }}
+                {{ item.COMMODITY }}
+            </template>
+
+            <template #item.line="{ item }">
+                {{ item.SILO.trim() }}
             </template>
 
             <template #item.material_id="{ item }">
                 {{ item.material?.description }}
             </template>
 
-            <template #item.latest_mfg_date="{ item }">
-                <span v-if="item.start_date_time">{{ item.start_date_time ?
-                    Moment(item.start_date_time).format('MMMM D,YYYY') : '' }}</span>
+            <template #item.mfg_date="{ item }">
+                <span>{{ item.manufacturing_date ?
+                    Moment(item.manufacturing_date).format('MMMM D,YYYY') : '' }}</span>
             </template>
 
             <template #item.rfid_type="{ item }">
-                <span>{{ item.tag_type_name }}</span>
+                <!-- <span>{{ item.tag_type_name }}</span> -->
+                <!-- Default pallet, TODO update condition -->
+                Pallet
             </template>
 
             <template #item.total_quantity="{ item }">
                 {{ item.total_quantity }}
             </template>
 
-
-
             <template #item.start_date_time="{ item }">
-                {{ item.start_date_time ? Moment(item.start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+                {{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY h:mm A') : '' }}
             </template>
 
             <template #item.end_date_time="{ item }">
-                <div v-if="item.end_date_time">
-                    {{ item.end_date_time ? Moment(item.end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
-                </div>
-                <div v-else>
-                    <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
-                        Trigger End
-                    </v-btn>
+                <div>
+                    <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930">
+                        {{ Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') }}
+                    </div>
+                    <div v-else>
+                        <v-badge color="success" content="Ongoing.." class="text-uppercase" inline></v-badge>
+                    </div>
                 </div>
             </template>
 
