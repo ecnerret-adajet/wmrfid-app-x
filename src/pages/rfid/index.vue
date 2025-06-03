@@ -5,7 +5,7 @@ import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
-import { generateSlug } from '@/composables/useHelpers';
+import { exportExcel, generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
@@ -136,6 +136,7 @@ const filters = reactive({
     created_at: null,
     updated_at: null,
     tag_type_id: null,
+    plant_code: null,
 });
 
 const form = reactive({
@@ -147,7 +148,8 @@ const form = reactive({
 const isFiltersEmpty = computed(() => {
     return !filters.created_at &&
         !filters.updated_at &&
-        !filters.tag_type_id
+        !filters.tag_type_id &&
+        !filters.plant_code
 });
 
 const applyFilter = () => {
@@ -175,6 +177,7 @@ const clearFilters = () => {
     filters.created_at = null;
     filters.updated_at = null;
     filters.tag_type_id = null;
+    filters.plant_code = null;
 };
 
 const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
@@ -355,7 +358,6 @@ const updateFilteredStorageLocations = () => {
 const taggingModal = ref(false);
 const taggingLoading = ref(false);
 const handleTagAsWeak = () => {
-    console.log(selectedItems.value);
     taggingModal.value = true;
 };
 
@@ -390,8 +392,24 @@ const handleTagging = async () => {
     }
 }
 
-
-handleTagging
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/rfid/',
+            params: {
+                plant_code: filters.plant_code,
+                search: searchValue.value,
+            },
+            filename: 'rfid-master-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
 
 // Auto-update when plant_code changes
 watch(() => form.plant_code, () => {
@@ -412,6 +430,14 @@ watch(() => form.plant_code, () => {
         </v-btn>
         <v-btn @click="handleRegister">Register RFID
         </v-btn>
+
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Export
+        </v-btn>
+
         <!-- Disable if no selected items or selected items has no batch yet -->
         <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
             :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
@@ -496,9 +522,19 @@ watch(() => form.plant_code, () => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter RFID'">
         <template #default>
             <v-form>
-                <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
-                    v-model="filters.tag_type_id">
-                </v-select>
+                <div>
+                    <label class="font-weight-bold">Tag Type</label>
+                    <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
+                        v-model="filters.tag_type_id">
+                    </v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Plant</label>
+                    <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"
+                        v-model="filters.plant_code"
+                        :rules="[value => !!value || 'Please select an item from the list']">
+                    </v-select>
+                </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
                     <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created" />
