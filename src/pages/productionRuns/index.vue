@@ -621,8 +621,12 @@ const actionList = [
                 Pallet
             </template>
 
+            <template #item.inventory_log_count="{ item }">
+                {{ item.inventory_logs.length }}
+            </template>
+
             <template #item.total_quantity="{ item }">
-                {{ item.total_quantity }}
+                {{ (item.inventory_logs?.length || 0) * (item.material?.default_pallet_quantity || 0) }}
             </template>
 
             <template #item.start_date_time="{ item }">

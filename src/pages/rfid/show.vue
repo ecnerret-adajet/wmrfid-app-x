@@ -118,11 +118,9 @@ const loadHistory = ({ historyPage, historyItemsPerPage }) => {
         }
     })
         .then((response) => {
-            // TODO:: Update display of history here
-            console.log(response);
-            // totalItems.value = table.total;
-            // serverItems.value = table.data
-            // rfidData.value = rfid_data
+            totalHistoryItems.value = response.data.total;
+            historyServerItems.value = response.data.data
+
             historyLoading.value = false
         })
         .catch((error) => {
@@ -136,10 +134,7 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: `/export/rfid-history/${physicalId}`,
-            params: {
-                rfid_type: rfidType,
-            },
+            url: `/export/rfid-history/${rfidType}/${physicalId}`,
             filename: 'rfid-history-report.xlsx',
         });
     } catch (error) {
@@ -290,7 +285,7 @@ const exportBatchData = async () => {
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{ rfidData?.inventory?.batch
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                     <VCol v-else class="d-inline-flex align-center">
                                         <v-badge color="warning" content="NOT YET ASSIGNED" inline></v-badge>
@@ -398,9 +393,19 @@ const exportBatchData = async () => {
                     </div>
                 </v-card-title>
                 <v-card-text class="mx-3">
-                    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="historyHeaders"
+                    <VDataTableServer v-model:items-per-page="historyItemsPerPage" :headers="historyHeaders"
                         :items="historyServerItems" :items-length="totalHistoryItems" :loading="historyLoading"
-                        item-value="id" @update:options="loadHistory" class="text-no-wrap"></VDataTableServer>
+                        @update:options="loadHistory" class="text-no-wrap">
+                        <template #item.event="{ item }">
+                            <span v-html="item.event"></span>
+                        </template>
+                        <template #item.timestamp="{ item }">
+                            <span v-if="item.timestamp">
+                                {{ item.timestamp ? Moment(item.timestamp).format('MMMM D, YYYY h:mm A') : '' }}
+                            </span>
+                        </template>
+                    </VDataTableServer>
+
                 </v-card-text>
             </v-card>
         </div>
