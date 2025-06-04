@@ -4,6 +4,7 @@ import EditingModal from '@/components/EditingModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
@@ -11,6 +12,8 @@ import Moment from 'moment';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VTextarea } from 'vuetify/components';
+
+const { authUserCan } = useAuthorization();
 
 const props = defineProps({
     productionRun: Object
@@ -101,7 +104,7 @@ const headers = [
         key: 'age',
         align: 'center'
     },
-    
+
 ]
 
 const batchUpdateForm = reactive({
@@ -139,7 +142,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`production-runs/get-data/${props.productionRun.generated_batch}`,{
+    ApiService.query(`production-runs/get-data/${props.productionRun.COMMODITY}`, {
         params: {
             page,
             itemsPerPage,
@@ -147,23 +150,22 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: searchValue.value,
             filters: filters
         }
-        })
+    })
         .then((response) => {
             const { table, statistics, tag_types, materials } = response.data
-            
             totalItems.value = table.total;
             serverItems.value = table.data
-            
+
             statisticsData.value = statistics
             palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
             labelStats.value = statisticsData.value.find(item => item.type === 'Label')
             tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
-            
+
             tagTypesOption.value = [
-                { value: null, title: 'All' }, 
+                { value: null, title: 'All' },
                 ...tag_types.map(item => ({
                     value: item.id,
-                    title: item.title 
+                    title: item.title
                 }))
             ];
 
@@ -181,27 +183,27 @@ watch(selectedTagType, async (newVal) => {
     pageLoading.value = true;
     filters.tag_type_id = newVal
     try {
-        const response = await ApiService.query(`production-runs/get-data/${props.productionRun.generated_batch}`, {
+        const response = await ApiService.query(`production-runs/get-data/${props.productionRun.COMMODITY}`, {
             params: {
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
-                sortBy: [{key: 'created_at', order: 'desc'}],
+                sortBy: [{ key: 'created_at', order: 'desc' }],
                 search: searchValue.value,
                 filters: filters
             }
         });
 
         const { table, statistics } = response.data
-            
-            totalItems.value = table.total;
-            serverItems.value = table.data
-            
-            statisticsData.value = statistics
-            palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
-            labelStats.value = statisticsData.value.find(item => item.type === 'Label')
-            tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
 
-            pageLoading.value = false
+        totalItems.value = table.total;
+        serverItems.value = table.data
+
+        statisticsData.value = statistics
+        palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
+        labelStats.value = statisticsData.value.find(item => item.type === 'Label')
+        tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
+
+        pageLoading.value = false
     } catch (error) {
         console.error("Error fetching filtered data:", error);
         pageLoading.value = false;
@@ -254,7 +256,7 @@ const handleChangeBatch = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{ key: 'created_at', order: 'desc' }],
             search: searchValue.value
         });
         changeBatchModal.value = false;
@@ -283,14 +285,14 @@ const handleFumigate = async () => {
     fumigateLoading.value = true;
     toast.value.show = false;
     fumigateForm.items = selectedItems.value
-    fumigateForm.batch = batch
+    fumigateForm.batch = props.productionRun?.COMMODITY
 
     if (!fumigateForm.startDate || !fumigateForm.endDate || !fumigateForm.remarks) {
         errorMessage.value = 'Start Date, End Date, and Remarks are required.';
         fumigateLoading.value = false;
-        return; 
+        return;
     }
-    
+
     try {
         const response = await ApiService.post('production-runs/fumigate', fumigateForm)
         fumigateLoading.value = false;
@@ -300,7 +302,7 @@ const handleFumigate = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'updated_at', order: 'desc'}],
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
             search: searchValue.value
         });
         fumigateModal.value = false;
@@ -336,13 +338,13 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: `/export/production-runs/${props.productionRun.generated_batch}`,
+            url: `/export/production-runs/${props.productionRun.COMMODITY}`,
             params: {
                 plant_id: filters.plant_id,
                 tag_type_id: selectedTagType.value,
                 search: searchValue.value,
             },
-            filename: 'production-runs-report.xlsx',
+            filename: 'batch-run-report.xlsx',
         });
     } catch (error) {
         console.error('Export error:', error);
@@ -361,22 +363,27 @@ const exportData = async () => {
                     <VCol md="6" class="table-cell d-inline-flex">
                         <VRow class="table-row">
                             <VCol cols="4" class="d-inline-flex align-start">
-                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Plant</span>
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                    style="margin-top: 1px;">Plant</span>
                             </VCol>
                             <VCol class="d-flex flex-column">
-                                <span class="text-medium-emphasis font-weight-medium">{{ productionRun?.material?.plant?.plant_code}}</span>
-                                <div class="text-subtitle-1 font-weight-thin">{{ productionRun?.material?.plant?.name}}</div>
+                                <span class="text-medium-emphasis font-weight-medium">{{
+                                    productionRun?.plant?.plant_code }}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{ productionRun?.plant?.name }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
                     <VCol md="6" class="table-cell d-inline-flex">
                         <VRow class="table-row">
                             <VCol cols="4" class="d-inline-flex align-start">
-                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Storage Location</span>
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                    style="margin-top: 1px;">Storage Location</span>
                             </VCol>
                             <VCol class="d-flex flex-column">
-                                <span class="text-medium-emphasis font-weight-medium">{{ productionRun?.production_line?.reader?.default_storage_location?.code}}</span>
-                                <div class="text-subtitle-1 font-weight-thin">{{ productionRun?.production_line?.reader?.default_storage_location?.name }}</div>
+                                <span class="text-medium-emphasis font-weight-medium">{{
+                                    productionRun?.reader?.default_storage_location?.code }}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{
+                                    productionRun?.reader?.default_storage_location?.name }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -387,10 +394,12 @@ const exportData = async () => {
                     <VCol md="6" class="table-cell d-inline-flex">
                         <VRow class="table-row">
                             <VCol cols="4" class="d-inline-flex align-center">
-                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Batch</span>
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                    style="margin-top: 1px;">Batch</span>
                             </VCol>
                             <VCol class="d-inline-flex align-center">
-                                <span class="font-weight-medium text-grey-700">{{ productionRun?.generated_batch }}</span>
+                                <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
+                                    }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -400,139 +409,95 @@ const exportData = async () => {
         <div class="mx-4">
             <v-row>
                 <v-col cols="3">
-                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-                    <v-card v-else
-                        class="px-4 py-2 bg-white border"
-                        elevation="0"
-                        style="border-radius: 4px;"
-                    >
+                    <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else class="px-4 py-2 bg-white border" elevation="0" style="border-radius: 4px;">
                         <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                            <div class="d-flex align-center justify-center mr-4" style="
                             width: 48px;
                             height: 48px;
                             background-color: #cae2fa;
                             border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                            icon="ri-box-3-line"
-                            color="primary-light"
-                            size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Total Count
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ getTotalQuantity || 0 }}
+                            ">
+                                <v-icon icon="ri-box-3-line" color="primary-light" size="24"></v-icon>
                             </div>
-                        </div>
+                            <div>
+                                <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                    Total Count
+                                </span>
+                                <div class="text-h4 font-weight-bold text-primary mt-1">
+                                    {{ getTotalQuantity || 0 }}
+                                </div>
+                            </div>
                         </div>
                     </v-card>
                 </v-col>
                 <v-col cols="3">
-                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-                    <v-card v-else
-                        class="px-4 py-2 bg-white border"
-                        elevation="0"
-                        style="border-radius: 4px;"
-                    >
+                    <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else class="px-4 py-2 bg-white border" elevation="0" style="border-radius: 4px;">
                         <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                            <div class="d-flex align-center justify-center mr-4" style="
                             width: 48px;
                             height: 48px;
                             background-color: #cae2fa;
                             border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                            icon="ri-box-3-line"
-                            color="primary"
-                            size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Pallet Count
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ palletStats?.pallet_count || 0 }}
+                            ">
+                                <v-icon icon="ri-box-3-line" color="primary" size="24"></v-icon>
                             </div>
-                        </div>
+                            <div>
+                                <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                    Pallet Count
+                                </span>
+                                <div class="text-h4 font-weight-bold text-primary mt-1">
+                                    {{ palletStats?.pallet_count || 0 }}
+                                </div>
+                            </div>
                         </div>
                     </v-card>
                 </v-col>
-            
+
                 <v-col cols="3">
-                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-                    <v-card v-else
-                        class="px-4 py-2 bg-white border"
-                        elevation="0"
-                        style="border-radius: 4px;"
-                    >
+                    <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else class="px-4 py-2 bg-white border" elevation="0" style="border-radius: 4px;">
                         <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                            <div class="d-flex align-center justify-center mr-4" style="
                             width: 48px;
                             height: 48px;
                             background-color: #cae2fa;
                             border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                            icon="ri-box-3-line"
-                            color="primary"
-                            size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Label Count
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ labelStats?.label_count || 0 }}
+                            ">
+                                <v-icon icon="ri-box-3-line" color="primary" size="24"></v-icon>
                             </div>
-                        </div>
+                            <div>
+                                <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                    Label Count
+                                </span>
+                                <div class="text-h4 font-weight-bold text-primary mt-1">
+                                    {{ labelStats?.label_count || 0 }}
+                                </div>
+                            </div>
                         </div>
                     </v-card>
                 </v-col>
                 <v-col cols="3">
-                    <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
-                    <v-card v-else
-                        class="px-4 py-2 bg-white border"
-                        elevation="0"
-                        style="border-radius: 4px;"
-                    >
+                    <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                    <v-card v-else class="px-4 py-2 bg-white border" elevation="0" style="border-radius: 4px;">
                         <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
+                            <div class="d-flex align-center justify-center mr-4" style="
                             width: 48px;
                             height: 48px;
                             background-color: #cae2fa;
                             border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                            icon="ri-box-3-line"
-                            color="primary"
-                            size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Toner Bag
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ tonerBagStats?.toner_bag_count || 0 }}
+                            ">
+                                <v-icon icon="ri-box-3-line" color="primary" size="24"></v-icon>
                             </div>
-                        </div>
+                            <div>
+                                <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                    Toner Bag
+                                </span>
+                                <div class="text-h4 font-weight-bold text-primary mt-1">
+                                    {{ tonerBagStats?.toner_bag_count || 0 }}
+                                </div>
+                            </div>
                         </div>
                     </v-card>
                 </v-col>
@@ -542,21 +507,16 @@ const exportData = async () => {
             <v-card elevation="0" class="border">
                 <VRow class="mx-4">
                     <VCol md="8">
-                        <SearchInput @update:search="handleSearch"/>
+                        <SearchInput @update:search="handleSearch" />
                     </VCol>
                     <VCol md="2" class="d-flex justify-center align-center">
-                        <v-select class="mt-1" label="Filter by Type" density="compact"
-                            :items="tagTypesOption" v-model="selectedTagType" 
-                        >
+                        <v-select class="mt-1" label="Filter by Type" density="compact" :items="tagTypesOption"
+                            v-model="selectedTagType">
                         </v-select>
                     </VCol>
                     <VCol md="2" class="d-flex justify-center align-center">
-                        <v-btn block
-                            :loading="exportLoading"
-                            class="d-flex align-center"
-                            prepend-icon="ri-download-line"
-                            @click="exportData"
-                        >
+                        <v-btn block :loading="exportLoading" class="d-flex align-center"
+                            prepend-icon="ri-download-line" @click="exportData">
                             <template #prepend>
                                 <v-icon color="white"></v-icon>
                             </template>
@@ -570,11 +530,14 @@ const exportData = async () => {
                         <div class="mb-4 d-flex justify-between align-center">
                             <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
                             <v-spacer></v-spacer>
-                            <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
+                            <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5"
+                                type="button" color="primary-light">
                                 Change Batch
                             </v-btn>
 
-                            <v-btn @click="fumigate" :disabled="selectedItems.length === 0" class="px-5 ml-2" type="button" color="primary-light">
+                            <v-btn v-if="authUserCan('create.fumigation.requests')" @click="fumigate"
+                                :disabled="selectedItems.length === 0" class="px-5 ml-2" type="button"
+                                color="primary-light">
                                 Fumigate
                             </v-btn>
                         </div>
@@ -585,80 +548,73 @@ const exportData = async () => {
                             </span>
                         </div>
 
-                        <VDataTableServer
-                            v-model:items-per-page="itemsPerPage"
-                            v-model="selectedItems"
-                            :headers="headers"
-                            :items="serverItems"
-                            :items-length="totalItems"
-                            :loading="pageLoading"
-                            item-value="id"
-                            :search="searchValue"
-                            @update:options="loadItems"
-                            show-select
-                            return-object
-                            class="text-no-wrap"
-                        >
+                        <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems"
+                            :headers="headers" :items="serverItems" :items-length="totalItems" :loading="pageLoading"
+                            item-value="id" :search="searchValue" @update:options="loadItems" show-select return-object
+                            class="text-no-wrap">
 
-                        <template #item.rfid_code="{ item }">
-                            <span @click="handleViewRfid(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-                                {{ item.rfid_code }}
-                            </span>
-                        </template>
+                            <template #item.rfid_code="{ item }">
+                                <span @click="handleViewRfid(item)"
+                                    class="text-primary font-weight-bold cursor-pointer hover-underline">
+                                    {{ item.rfid_code }}
+                                </span>
+                            </template>
 
-                        <template #item.material_id="{ item }">
-                            {{ item.material?.description }}
-                        </template>
+                            <template #item.material_id="{ item }">
+                                {{ item.material?.description }}
+                            </template>
 
-                        <template #item.physical_id="{ item }">
-                            {{ item.rfid?.name }}
-                        </template>
+                            <template #item.physical_id="{ item }">
+                                {{ item.rfid?.name }}
+                            </template>
 
-                        <template #item.type="{ item }">
-                            {{ item.type }}
-                        </template>
+                            <template #item.type="{ item }">
+                                {{ item.type }}
+                            </template>
 
-                        <template #item.mfg_date="{ item }">
-                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
-                        </template>
+                            <template #item.mfg_date="{ item }">
+                                {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                            </template>
 
-                        <template #item.is_loaded="{ item }">
-                            <div class="d-flex justify-center align-center">
-                                <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                                <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
-                            </div>
-                        </template>
+                            <template #item.is_loaded="{ item }">
+                                <div class="d-flex justify-center align-center">
+                                    <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
+                                        class="ri-checkbox-circle-line"></i>
+                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                        class="ri-close-circle-line"></i>
+                                </div>
+                            </template>
 
-                        <template #item.is_empty="{ item }">
-                            <div class="d-flex justify-center align-center">
-                                <i v-if="item.is_empty" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
-                                <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
-                            </div>
-                        </template>
+                            <template #item.is_empty="{ item }">
+                                <div class="d-flex justify-center align-center">
+                                    <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
+                                        class="ri-checkbox-circle-line"></i>
+                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                        class="ri-close-circle-line"></i>
+                                </div>
+                            </template>
 
-                        <template #item.under_fumigation="{ item }">
-                            <v-btn
-                                v-if="item.under_fumigation"
-                                :to="`/fumigations/${item.fumigation_request_id}`"
-                                color="warning"
-                                variant="outlined"
-                                size="small"
-                            >
-                             Fumigated
-                            </v-btn>
-                        </template>
+                            <template #item.under_fumigation="{ item }">
+                                <v-btn v-if="item.under_fumigation" :to="`/fumigations/${item.fumigation_request_id}`"
+                                    color="warning" variant="outlined" size="small">
+                                    Fumigated
+                                </v-btn>
+                                <i v-else style="font-size: 30px; background-color: #FF4C51;"
+                                    class="ri-close-circle-line"></i>
+                            </template>
 
-                        <template #item.age="{ item }">
-                            {{  item.current_age }}
-                        </template>
+                            <template #item.age="{ item }">
+                                {{ item.current_age }}
+                            </template>
 
-                        <template #item.latest_created_at="{ item }">
-                            {{ item.latest_created_at ? Moment(item.latest_created_at).format('MMMM D, YYYY') : '' }}
-                        </template>
+                            <template #item.latest_created_at="{ item }">
+                                {{ item.latest_created_at ? Moment(item.latest_created_at).format('MMMM D, YYYY') : ''
+                                }}
+                            </template>
 
-                        <template #item.updated_at="{ item }">
-                            {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-                        </template>
+                            <template #item.updated_at="{ item }">
+                                {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+                            </template>
 
                         </VDataTableServer>
                     </div>
@@ -667,37 +623,24 @@ const exportData = async () => {
         </div>
     </div>
 
-    <EditingModal @close="changeBatchModal = false" max-width="900px"
-        :show="changeBatchModal" :dialog-title="`Change Batch Assignment`">
+    <EditingModal @close="changeBatchModal = false" max-width="900px" :show="changeBatchModal"
+        :dialog-title="`Change Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-select
-                            label="Select Material"
-                            density="compact"
-                            :items="materialsOption"
+                        <v-select label="Select Material" density="compact" :items="materialsOption"
                             v-model="batchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']"
-                        />
+                            :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DatePicker
-                            v-model="batchUpdateForm.mfg_date"
-                            placeholder="Select Manufacturing Date"
-                        />
+                        <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
-                <v-text-field class="mt-4" density="compact" 
-                    label="Miller Name"
-                    v-model="batchUpdateForm.miller_name" 
-                />
-                <v-textarea class="mt-4"
-                    clear-icon="ri-close-line"
-                    label="Reason"
-                    v-model="batchUpdateForm.reason"
-                    clearable
-                ></v-textarea>
+                <v-text-field class="mt-4" density="compact" label="Miller Name"
+                    v-model="batchUpdateForm.miller_name" />
+                <v-textarea class="mt-4" clear-icon="ri-close-line" label="Reason" v-model="batchUpdateForm.reason"
+                    clearable></v-textarea>
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -724,37 +667,28 @@ const exportData = async () => {
             </v-table>
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelChangeBatch" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit" :loading="changeBatchLoading">
+                <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit"
+                    :loading="changeBatchLoading">
                     Update
                 </PrimaryButton>
             </div>
         </template>
     </EditingModal>
 
-    <EditingModal @close="fumigateModal = false" max-width="900px"
-        :show="fumigateModal" :dialog-title="`Fumigation Request`">
+    <EditingModal @close="fumigateModal = false" max-width="900px" :show="fumigateModal"
+        :dialog-title="`Fumigation Request`">
         <template #default>
             <v-form @submit.prevent="handleFumigate">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <DatePicker 
-                            v-model="fumigateForm.startDate"
-                            placeholder="Select Start Date"
-                        />
+                        <DatePicker v-model="fumigateForm.startDate" placeholder="Select Start Date" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DatePicker 
-                            v-model="fumigateForm.endDate"
-                            placeholder="Select End Date"
-                        />
+                        <DatePicker v-model="fumigateForm.endDate" placeholder="Select End Date" />
                     </v-col>
                 </v-row>
-                <v-textarea class="mt-4"
-                    clear-icon="ri-close-line"
-                    label="Remarks"
-                    v-model="fumigateForm.remarks"
-                    clearable
-                ></v-textarea>
+                <v-textarea class="mt-4" clear-icon="ri-close-line" label="Remarks" v-model="fumigateForm.remarks"
+                    clearable></v-textarea>
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -781,11 +715,12 @@ const exportData = async () => {
             </v-table>
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelFumigate" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleFumigate" color="primary" class="px-12" type="submit" :loading="fumigateLoading">
+                <PrimaryButton @click="handleFumigate" color="primary" class="px-12" type="submit"
+                    :loading="fumigateLoading">
                     Update
                 </PrimaryButton>
             </div>
         </template>
     </EditingModal>
-    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>

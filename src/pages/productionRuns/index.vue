@@ -185,12 +185,12 @@ const clearFilters = () => {
 };
 
 const headers = [
-    // {
-    //     title: '',
-    //     key: 'action',
-    //     align: 'center',
-    //     sortable: false,
-    // },
+    {
+        title: '',
+        key: 'action',
+        align: 'center',
+        sortable: false,
+    },
     {
         title: 'PLANT',
         key: 'plant_id',
@@ -301,7 +301,13 @@ const toast = ref({
 });
 
 const showProductionRunDetails = ref(false);
-
+const handleAction = (productionRun, action) => {
+    selectedProductionRun.value = productionRun;
+    console.log(selectedProductionRun.value);
+    if (action.key == 'view_details') {
+        showProductionRunDetails.value = true;
+    }
+}
 
 const exportLoading = ref(false);
 const exportData = async () => {
@@ -362,6 +368,10 @@ const statusOption = [
     { title: 'Ongoing', value: 'Ongoing' }
 ]
 
+const actionList = [
+    { title: 'View Production Run Details', key: 'view_details' },
+]
+
 </script>
 
 <template>
@@ -382,10 +392,6 @@ const statusOption = [
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-        <!-- <v-btn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-            class="d-flex justify-center align-center" @click="openDialog">
-            Add New Production Run
-        </v-btn> -->
         <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
@@ -464,9 +470,9 @@ const statusOption = [
                             </div>
                             <div>
                                 <span class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    Based on {{ statisticsData?.average_run_time_data?.runs_considered.length || 0 }}
+                                    Based on {{ statisticsData?.average_run_time_data?.runs_considered?.length || 0 }}
                                     production
-                                    {{ statisticsData?.average_run_time_data?.runs_considered.length > 1 ? 'runs' :
+                                    {{ statisticsData?.average_run_time_data?.runs_considered?.length > 1 ? 'runs' :
                                         'run' }}
                                 </span>
                             </div>
@@ -572,7 +578,7 @@ const statusOption = [
         <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
             @update:options="loadItems" class="text-no-wrap">
-            <!-- <template #item.action="{ item }">
+            <template #item.action="{ item }">
                 <div class="d-flex justify-center gap-1">
                     <v-menu location="end">
                         <template v-slot:activator="{ props }">
@@ -586,7 +592,7 @@ const statusOption = [
                         </v-list>
                     </v-menu>
                 </div>
-            </template> -->
+            </template>
 
             <template #item.plant_id="{ item }">
                 {{ item.plant?.name }}

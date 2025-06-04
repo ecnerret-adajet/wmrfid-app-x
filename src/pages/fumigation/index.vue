@@ -3,6 +3,7 @@ import DatePicker from '@/components/DatePicker.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
@@ -24,6 +25,8 @@ const filters = reactive({
     start_date: null,
     end_date: null
 });
+
+const { authUserCan } = useAuthorization();
 
 const headers = [
     {
@@ -200,7 +203,6 @@ const handleFumigate = async () => {
 <template>
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
         <SearchInput class="flex-grow-1" @update:search="handleSearch" />
-
         <v-btn
             class="d-flex align-center"
             prepend-icon="ri-equalizer-line"
@@ -229,9 +231,7 @@ const handleFumigate = async () => {
             </template>
 
             <template #item.batch="{ item }">
-                <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-                    {{ item.batch }}
-                </span>
+                {{ item.batch }}
             </template>
 
             <template #item.inventory_log_count="{ item }">
@@ -281,7 +281,7 @@ const handleFumigate = async () => {
              <template #item.action="{ item }">
                 <div class="d-flex gap-1 justify-center align-center">
                     <!-- Add role allowed for editing fumigation  -->
-                    <IconBtn v-if="authStore.user?.is_super_admin"
+                    <IconBtn v-if="authUserCan('update.fumigation.requests')"
                         size="small"
                         @click="editItem(item)"
                     >

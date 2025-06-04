@@ -154,7 +154,7 @@ onMounted(() => {
 
 const getLastItem = async (epc) => {
     showLoader.value = true;
-    const url = `registration/get-last-tag?tag_type=${tagType}&epc=${epc}`;
+    const url = `registration/get-last-tag?plant_code=${plantCode}&tag_type=${tagType}&epc=${epc}`;
     try {
         const response = await ApiService.query(url);
         const { group_no, name, epc_exists } = response.data
