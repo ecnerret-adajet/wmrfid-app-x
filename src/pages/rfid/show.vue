@@ -136,10 +136,9 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: '/export/rfid-history/',
+            url: `/export/rfid-history/${physicalId}`,
             params: {
                 rfid_type: rfidType,
-                physical_id: physicalId,
             },
             filename: 'rfid-history-report.xlsx',
         });
@@ -155,10 +154,9 @@ const exportBatchData = async () => {
     try {
         exportBatchLoading.value = true;
         await exportExcel({
-            url: '/export/rfid-batch-history/',
+            url: `/export/rfid-batch-history/${physicalId}`,
             params: {
                 rfid_type: rfidType,
-                physical_id: physicalId,
             },
             filename: 'rfid-batch-history-report.xlsx',
         });
