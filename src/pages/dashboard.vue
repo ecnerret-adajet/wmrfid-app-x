@@ -239,7 +239,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 
     <v-card class="mx-4 mt-4" elevation="2">
         <v-card-title class="text-h5 font-weight-bold mt-4 mx-4">
-            Recent Production Runs
+            Today's Production Runs
         </v-card-title>
         <v-card-text>
             <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :loading="pageLoading"

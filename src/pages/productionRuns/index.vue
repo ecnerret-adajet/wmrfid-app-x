@@ -146,12 +146,16 @@ const filters = reactive({
     start_date_time: null,
     tag_type_id: null,
     storage_location_id: null,
-    plant_code: null
+    plant_code: null,
+    status: null
 });
 
 const isFiltersEmpty = computed(() => {
     return !filters.start_date_time &&
-        !filters.tag_type_id
+        !filters.tag_type_id &&
+        !filters.storage_location_id &&
+        !filters.plant_code &&
+        !filters.status
 });
 
 const applyFilter = () => {
@@ -177,6 +181,7 @@ const clearFilters = () => {
     filters.tag_type_id = null;
     filters.storage_location_id = null;
     filters.plant_code = null;
+    filters.status = null;
 };
 
 const headers = [
@@ -295,47 +300,8 @@ const toast = ref({
     show: false
 });
 
-const handleEndProductionRun = async () => {
-    triggerEndLoading.value = true
-    try {
-        const response = await axios.put(`production-runs/${selectedProductionRun.value.id}/trigger-end`);
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{
-                key: sortQuery.value.replace('-', ''),
-                order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
-            }]
-        });
-        fetchDropdownData() // Should reset the statistics data
-        toast.value.message = 'Production run end trigger successfully!'
-        toast.value.color = 'success';
-        toast.value.show = true;
-    } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        console.error('Error updating:', error);
-    } finally {
-        triggerEndLoading.value = null;
-        triggerEndDialog.value = false
-    }
-}
-
-const triggerEnd = (item) => {
-    selectedProductionRun.value = item;
-    triggerEndDialog.value = true;
-}
-
-const actionList = [
-    { title: 'View Details', key: 'view_details' },
-]
-
 const showProductionRunDetails = ref(false);
-const handleAction = (productionRun, action) => {
-    selectedProductionRun.value = productionRun;
-    if (action.key == 'view_details') {
-        showProductionRunDetails.value = true;
-    }
-}
+
 
 const exportLoading = ref(false);
 const exportData = async () => {
@@ -346,6 +312,7 @@ const exportData = async () => {
             params: {
                 plant_code: filters.plant_code,
                 search: searchValue.value,
+                status: filters.status
             },
             filename: 'production-runs-report.xlsx',
         });
@@ -389,6 +356,11 @@ const fetchRecentProduced = async () => {
         recentProducedLoading.value = false;
     }
 };
+
+const statusOption = [
+    { title: 'Completed', value: 'Completed' },
+    { title: 'Ongoing', value: 'Ongoing' }
+]
 
 </script>
 
@@ -657,7 +629,7 @@ const fetchRecentProduced = async () => {
                         {{ Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') }}
                     </div>
                     <div v-else>
-                        <v-badge color="success" content="Ongoing.." class="text-uppercase" inline></v-badge>
+                        <v-badge color="warning" content="Ongoing.." class="text-uppercase" inline></v-badge>
                     </div>
                 </div>
             </template>
@@ -697,9 +669,17 @@ const fetchRecentProduced = async () => {
         :dialogTitle="'Filter Production Runs'">
         <template #default>
             <v-form>
-                <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
-                    v-model="filters.tag_type_id">
-                </v-select>
+                <div>
+                    <label class="font-weight-bold">RFID Type</label>
+                    <v-select class="mt-1" label="Filter by Type" density="compact" :items="tagTypesOption"
+                        v-model="filters.tag_type_id"></v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Status</label>
+                    <v-select class="mt-1" label="Filter by Status" density="compact" :items="statusOption"
+                        v-model="filters.status">
+                    </v-select>
+                </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Started</label>
                     <DateRangePicker class="mt-1" v-model="filters.start_date_time" placeholder="Select Date Created" />
@@ -716,24 +696,6 @@ const fetchRecentProduced = async () => {
             </v-form>
         </template>
     </FilteringModal>
-
-    <v-dialog v-model="triggerEndDialog" max-width="600px" persistent>
-
-        <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
-            <v-icon class="mb-5" color="primary" icon="ri-information-line" size="112"></v-icon>
-
-            <h2 class="text-h4 mb-6">Do you want to end this production run?</h2>
-
-            <div class="text-end">
-                <v-btn color="secondary" variant="outlined" @click="triggerEndDialog = false"
-                    class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleEndProductionRun" color="primary" class="px-12"
-                    :loading="triggerEndLoading">
-                    Update
-                </PrimaryButton>
-            </div>
-        </v-sheet>
-    </v-dialog>
 
     <!-- Batch Details Modal -->
     <v-dialog v-if="selectedProductionRun" v-model="showProductionRunDetails" max-width="1500px">
