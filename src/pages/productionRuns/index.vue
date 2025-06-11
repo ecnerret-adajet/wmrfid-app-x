@@ -301,11 +301,23 @@ const toast = ref({
 });
 
 const showProductionRunDetails = ref(false);
+const showConfirm = ref(false);
 const handleAction = (productionRun, action) => {
     selectedProductionRun.value = productionRun;
     console.log(selectedProductionRun.value);
     if (action.key == 'view_details') {
         showProductionRunDetails.value = true;
+    }
+
+    if (action.key == 'confirm_production_run') {
+        console.log('here');
+        if (selectedProductionRun.value.STOP_T && Moment(selectedProductionRun.value.STOP_T).year() <= 1930) {
+            toast.value.color = 'error';
+            toast.value.message = 'Selected production run not yet completed';
+            toast.value.show = true;
+            return;
+        }
+        showConfirm.value = true;
     }
 }
 
@@ -370,7 +382,28 @@ const statusOption = [
 
 const actionList = [
     { title: 'View Production Run Details', key: 'view_details' },
+    { title: 'Confirm Production Run', key: 'confirm_production_run' },
 ]
+
+const confirmLoading = ref(false)
+const confirmProductionRun = async () => {
+    confirmLoading.value = true;
+    toast.value.show = false;
+    try {
+        const response = await ApiService.post('production-runs/confirm', selectedProductionRun.value)
+
+        toast.value.color = 'success'
+        toast.value.message = 'Successfully confirmed production run'
+        toast.value.show = true;
+
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+    } finally {
+        confirmLoading.value = false;
+    }
+}
+
 
 </script>
 
@@ -773,6 +806,135 @@ const actionList = [
                         </tr>
                     </tbody>
                 </v-table>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <!-- Confirm Details Modal -->
+    <v-dialog v-if="selectedProductionRun" v-model="showConfirm" max-width="700px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Confirm Production Run
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="showConfirm = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <VList lines="one" density="compact" class="mb-4">
+                    <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Batch</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            selectedProductionRun.COMMODITY
+                                        }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Material</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            selectedProductionRun.material?.description }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Manufacturing Date</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">
+                                            {{ selectedProductionRun.manufacturing_date ?
+                                                Moment(selectedProductionRun.manufacturing_date).format('MMMM D, YYYY') : ''
+                                            }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Line</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            selectedProductionRun.SILO.trim()
+                                            }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">PLC Count</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">0</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">SAP Count</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">0</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="12" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="6" class="d-inline-flex align-center">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">WMRFID Count</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            selectedProductionRun.inventory_logs.length || 0 }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                </VList>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn :loading="confirmLoading" class="d-flex align-center" prepend-icon="ri-download-line"
+                        @click="confirmProductionRun">
+                        <template #prepend>
+                            <v-icon color="white"></v-icon>
+                        </template>
+                        Confirm
+                    </v-btn>
+                </div>
             </v-card-text>
         </v-card>
     </v-dialog>
