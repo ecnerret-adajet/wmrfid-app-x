@@ -59,13 +59,13 @@ const filters = reactive({
 });
 
 const isFiltersEmpty = computed(() => {
-    return !filters.created_at && 
-           !filters.updated_at &&
-           !filters.plant_id
+    return !filters.created_at &&
+        !filters.updated_at &&
+        !filters.plant_id
 });
 
 const applyFilter = () => {
-    if(datatableRef.value) {
+    if (datatableRef.value) {
         datatableRef.value.applyFilters(filters);
     }
     filterModalVisible.value = false;
@@ -73,7 +73,7 @@ const applyFilter = () => {
 
 const resetFilter = () => {
     clearFilters();
-    if(datatableRef.value) {
+    if (datatableRef.value) {
         datatableRef.value.applyFilters([]);
     }
     filterModalVisible.value = false;
@@ -115,7 +115,7 @@ const submit = async () => {
     try {
         const response = await ApiService.post('warehouse/store', form.value)
         if (datatableRef.value) {
-            datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{key: 'name', 'order': 'asc'}], search: searchValue.value });
+            datatableRef.value.loadItems({ page: tablePage.value, itemsPerPage: tablePerPage.value, sortBy: [{ key: 'name', 'order': 'asc' }], search: searchValue.value });
         }
         isLoading.value = false;
         dialogVisible.value = false
@@ -157,53 +157,37 @@ const exportData = async () => {
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
         <SearchInput class="flex-grow-1" @update:search="handleSearch" />
 
-        <v-btn
-            class="d-flex align-center"
-            prepend-icon="ri-equalizer-line"
-            @click="filterModalOpen"
-        >
+        <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
             <template #prepend>
-            <v-icon color="white"></v-icon>
+                <v-icon color="white"></v-icon>
             </template>
             Filter
         </v-btn>
 
-        <v-btn 
-            :loading="exportLoading"
-            class="d-flex align-center"
-            prepend-icon="ri-download-line"
-            @click="exportData"
-        >
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
             Export
         </v-btn>
 
-        <v-btn
-            v-if="authStore.user?.is_super_admin"
-            class="d-flex justify-center align-center"
-            @click="openDialog"
-        >
+        <v-btn v-if="authStore.user?.is_super_admin" class="d-flex justify-center align-center" @click="openDialog">
             Add New Storage Location
         </v-btn>
     </div>
 
     <VCard>
-        <datatable ref="datatableRef" :plants-option="plantsOption" @pagination-changed="onPaginationChanged" 
-            :search="searchValue"
-        />
+        <datatable ref="datatableRef" :plants-option="plantsOption" @pagination-changed="onPaginationChanged"
+            :search="searchValue" />
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New User'" >
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New User'">
         <template #default>
             <v-form @submit.prevent="submit">
-                <v-select class="mt-4" label="Select Plant" density="compact"
-                    :items="plantsOption" v-model="form.plant_id"
-                    :rules="[value => !!value || 'Plant is required']"
-                >
+                <v-select class="mt-4" label="Select Plant" density="compact" :items="plantsOption"
+                    v-model="form.plant_id" :rules="[value => !!value || 'Plant is required']">
                 </v-select>
-                <div class="mt-4">
+                <!-- <div class="mt-4">
                     <v-text-field class="mt-6" density="compact" 
                         label="Layer Count"
                         v-model="form.layer_count" 
@@ -213,23 +197,18 @@ const exportData = async () => {
                         hint="This sets the level of layer in the warehouse"
                         :rules="[value => !!value || 'Storage layer count is required']"
                     />
-                </div>
-                <v-text-field class="mt-6" density="compact" 
-                    label="Name"
-                    v-model="form.name" 
-                    :rules="[value => !!value || 'Name is required']"
-                />
-                <v-text-field class="mt-6" density="compact" 
-                    label="Code"
-                    v-model="form.code" 
-                    :rules="[value => !!value || 'Code is required']"
-                />
-                
+                </div> -->
+                <v-text-field class="mt-6" density="compact" label="Name" v-model="form.name"
+                    :rules="[value => !!value || 'Name is required']" />
+                <v-text-field class="mt-6" density="compact" label="Code" v-model="form.code"
+                    :rules="[value => !!value || 'Code is required']" />
+
                 <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                     {{ errorMessage }}
                 </VAlert>
                 <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="dialogVisible = false" class="px-12 mr-3">Cancel</v-btn>
+                    <v-btn color="secondary" variant="outlined" @click="dialogVisible = false"
+                        class="px-12 mr-3">Cancel</v-btn>
                     <PrimaryButton class="px-12" type="submit" :loading="isLoading">
                         Create
                     </PrimaryButton>
@@ -241,23 +220,24 @@ const exportData = async () => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Warehouse'">
         <template #default>
             <v-form>
-                <v-select class="mt-4" label="Filter by Plant" density="compact"
-                    :items="plantsOption" v-model="filters.plant_id"
-                >
+                <v-select class="mt-4" label="Filter by Plant" density="compact" :items="plantsOption"
+                    v-model="filters.plant_id">
                 </v-select>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
-                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
+                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created" />
                 </div>
-                 
+
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Updated</label>
-                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
+                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated" />
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
+                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                        class="px-12 mr-3">Reset Filter</v-btn>
+                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter"
+                        :loading="isLoading">
                         Apply Filter
                     </PrimaryButton>
                 </div>
@@ -265,5 +245,5 @@ const exportData = async () => {
         </template>
     </FilteringModal>
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" />
 </template>

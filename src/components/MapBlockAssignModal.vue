@@ -95,7 +95,7 @@ onMounted(() => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'updated_at', order: 'desc'}],
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
         search: searchValue.value
     });
 })
@@ -111,18 +111,17 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     } else {
         sortQuery.value = '-updated_at';
     }
-    
-    ApiService.query(`warehouse/get-grouped-inventories/${props.plant}/${props.storageLocation}`,{
+
+    ApiService.query(`warehouse/get-grouped-inventories/${props.plant}/${props.storageLocation}`, {
         params: {
             page,
             itemsPerPage,
             sort: sortQuery.value,
             search: searchValue.value
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
-        
             serverItems.value = response.data.data.map(item => ({
                 id: item.id,
                 label: item.label,
@@ -164,15 +163,15 @@ const loadAvailableBlocks = ({ page, itemsPerPage, sortBy, layerSearch }) => {
     } else {
         sortQuery.value = '-blocks.updated_at';
     }
-    
-    ApiService.query(`warehouse/get-available-blocks/${props.plant}/${props.storageLocation}`,{
+
+    ApiService.query(`warehouse/get-available-blocks/${props.plant}/${props.storageLocation}`, {
         params: {
             page,
             itemsPerPage,
             sort: layerSortQuery.value,
             search: layerSearchValue.value
         }
-        })
+    })
         .then((response) => {
             totalLayerItems.value = response.data.total;
             layerItems.value = response.data.data.map(item => ({
@@ -224,7 +223,7 @@ const assign = (item) => {
 const proceedAssign = async () => {
     let allow_multiple_materials = props.block.data?.allowMultipleMaterials;
     let selectedMaterialId = selectedInventory.value?.material_id;
-    
+
     const hasDifferentMaterial = props.block.data?.inventories?.some(inv => inv.material_id !== selectedMaterialId);
 
     if (!allow_multiple_materials && hasDifferentMaterial) {
@@ -234,7 +233,7 @@ const proceedAssign = async () => {
         confirmModalOpen.value = false;
         return;
     }
-    
+
     // TODO:: Check if we should add flag for initial assigning of fumigated items
     // if (selectedInventory.value && selectedInventory.value.under_fumigation == true) {
     //     toast.value.color = 'error';
@@ -248,20 +247,20 @@ const proceedAssign = async () => {
             block: props.block.data,
             position: selectedLayer.value,
             inventory: selectedInventory.value
-        }); 
+        });
 
         if (response.status == 200) {
             loadItems({
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
-                sortBy: [{key: 'updated_at', order: 'desc'}],
+                sortBy: [{ key: 'updated_at', order: 'desc' }],
                 search: searchValue.value
             });
             selectedLayerIndex.value = -1;
             selectedLayer.value = null;
             selectedInventory.value = null;
             emits('assign-success');
-        } 
+        }
     } catch (error) {
         console.error("Error assigning inventory:", error);
     } finally {
@@ -311,7 +310,7 @@ const proceedAction = async () => {
                 loadItems({
                     page: page.value,
                     itemsPerPage: itemsPerPage.value,
-                    sortBy: [{key: 'updated_at', order: 'desc'}],
+                    sortBy: [{ key: 'updated_at', order: 'desc' }],
                     search: searchValue.value
                 });
                 selectedLayerIndex.value = -1;
@@ -322,7 +321,7 @@ const proceedAction = async () => {
         } else {
             let allow_multiple_materials = selectedNewBlock.value?.allowMultipleMaterials
             let selectedMaterialId = selectedInventory.value?.material_id;
-            
+
             const hasDifferentMaterial = selectedNewBlock.value?.inventories?.some(inv => inv.material_id !== selectedMaterialId);
 
             if (!allow_multiple_materials && hasDifferentMaterial) {
@@ -344,7 +343,7 @@ const proceedAction = async () => {
                 loadAvailableBlocks({
                     page: layerPage.value,
                     itemsPerPage: layersItemsPerPage.value,
-                    sortBy: [{key: '-blocks.updated_at', order: 'desc'}],
+                    sortBy: [{ key: '-blocks.updated_at', order: 'desc' }],
                     search: layerSearchValue.value
                 });
                 selectedLayerIndex.value = -1;
@@ -358,14 +357,14 @@ const proceedAction = async () => {
     } catch (error) {
         console.error("Error proceeding with action:", error);
     } finally {
-        closeModal();  
+        closeModal();
     }
 
-    actionModalOpen.value = false;  
+    actionModalOpen.value = false;
 };
 
 const binTransfer = (item) => {
-    
+
     selectedNewBlock.value = item;
     selectedAction.title = 'Bin Transfer';
     selectedAction.message = `Transfer selected RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong> to bin location <strong>${selectedNewBlock.value.lot?.label} - ${selectedNewBlock.value.label}</strong>?`;
@@ -387,85 +386,74 @@ const handleSearch = debounce((search) => {
 </script>
 <template>
     <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal">
-        <p class="text-h3 font-weight-black text-grey-700">{{block.data.lot?.label }} - {{ block.data.label }}</p>
+        <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
-                <template 
-                    v-for="(layer, index) of block.layers"
-                    :key="layer.layer_name"
-                >
-                    <VListItem class="py-0 px-0" :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
-                        <template v-if="layer.assigned_inventory">
-                            <VListItem :class="[layer.layer_class, 
-                                (selectedLayerIndex === index && enableBinTransfer) ? 'highlighted-item' : '']">
-                                <VListItemTitle>
-                                    <span class="text-h5 font-weight-bold text-white" >{{ layer.layer_name }}</span>
-                                </VListItemTitle>
-                                <template #append>
-                                    <div class="flex-column text-h5 text-white">
-                                        Batch: <span class="font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
-                                        <div>
-                                            Group Name:
-                                            <span class="font-weight-bold">{{ layer.assigned_inventory.rfid?.name }}</span>
-                                        </div>
+            <template v-for="(layer, index) of block.layers" :key="layer.layer_name">
+                <VListItem class="py-0 px-0"
+                    :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
+                    <template v-if="layer.assigned_inventory">
+                        <VListItem :class="[layer.layer_class,
+                        (selectedLayerIndex === index && enableBinTransfer) ? 'highlighted-item' : '']">
+                            <VListItemTitle>
+                                <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
+                            </VListItemTitle>
+                            <template #append>
+                                <div class="flex-column text-h5 text-white">
+                                    Batch: <span class="font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
+                                    <div>
+                                        Group Name:
+                                        <span class="font-weight-bold">{{ layer.assigned_inventory.rfid?.name }}</span>
                                     </div>
-                                    <div class="d-flex gap-1">
-                                        <v-menu location="start"> 
-                                            <template v-slot:activator="{ props }">
-                                                <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                                            </template>
-                                            <v-list>
-                                            <v-list-item
-                                                v-for="(item, i) in items"
-                                                    :key="i"
-                                                    :value="i"
-                                                    @click="handleActionClick(item.title, layer, index)"
-                                                >
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <v-menu location="start">
+                                        <template v-slot:activator="{ props }">
+                                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props"
+                                                color="grey"></v-btn>
+                                        </template>
+                                        <v-list>
+                                            <v-list-item v-for="(item, i) in items" :key="i" :value="i"
+                                                @click="handleActionClick(item.title, layer, index)">
                                                 <v-list-item-title>{{ item.title }}</v-list-item-title>
                                             </v-list-item>
-                                            </v-list>
-                                        </v-menu>
-                                    </div>
-                                </template>
-                            </VListItem>
-                        </template>
-                      
-                  
-                        <template v-if="!layer.assigned_inventory">
-                            <VListItem>
-                                <VListItemTitle>
-                                    <span :class="selectedLayerIndex === index ? 'text-grey-100' :'text-grey-700'" class="text-h5 font-weight-bold">{{ layer.layer_name }}</span>
-                                </VListItemTitle>
+                                        </v-list>
+                                    </v-menu>
+                                </div>
+                            </template>
+                        </VListItem>
+                    </template>
 
-                                <template #append>
-                                    <VBtn 
-                                        v-if="selectedLayerIndex === index" 
-                                        size="large" 
-                                        :variant="selectedLayerIndex === index ? 'outlined' : 'flat'"
-                                        :class="selectedLayerIndex === index ? 'text-grey-100' : ''"
-                                        class="fixed-width-btn"
-                                        @click="cancelLayerSelection(layer)"
-                                    >
-                                        Cancel
-                                    </VBtn>
 
-                                    <VBtn v-else
-                                        :disabled="!layer.layer_status || enableBinTransfer" 
-                                        size="large" 
-                                        class="fixed-width-btn"
-                                        @click="layer.layer_status && selectLayer(index, layer)"
-                                    >
-                                        {{ layer.layer_status ? "Open" : "Disabled" }}
-                                    </VBtn>
-                                </template>
+                    <template v-if="!layer.assigned_inventory">
+                        <VListItem>
+                            <VListItemTitle>
+                                <span :class="selectedLayerIndex === index ? 'text-grey-100' : 'text-grey-700'"
+                                    class="text-h5 font-weight-bold">{{ layer.layer_name }}</span>
+                            </VListItemTitle>
 
-                            </VListItem>
-                        </template>
+                            <template #append>
+                                <VBtn v-if="selectedLayerIndex === index" size="large"
+                                    :variant="selectedLayerIndex === index ? 'outlined' : 'flat'"
+                                    :class="selectedLayerIndex === index ? 'text-grey-100' : ''" class="fixed-width-btn"
+                                    @click="cancelLayerSelection(layer)">
+                                    Cancel
+                                </VBtn>
 
-                    </VListItem>
-                    <VDivider v-if="index !== block.layers - 1" />
-                </template>
+                                <VBtn v-else :disabled="!layer.layer_status || enableBinTransfer" size="large"
+                                    class="fixed-width-btn" @click="layer.layer_status && selectLayer(index, layer)">
+                                    {{ layer.layer_status ? "Open" : "Disabled" }}
+                                </VBtn>
+                            </template>
+
+                        </VListItem>
+                        <VDivider v-if="index !== block.layers - 1" />
+                    </template>
+
+                </VListItem>
+
+            </template>
         </VList>
-        <SearchInput @update:search="handleSearch" placeholder="Search inventory"/>
+        <SearchInput @update:search="handleSearch" placeholder="Search inventory" />
         <div v-if="enableBinTransfer" class="d-flex justify-between align-center mb-4">
             <div class="text-h5 font-weight-medium text-grey-700">
                 {{ binTransferDetails }}
@@ -476,17 +464,9 @@ const handleSearch = debounce((search) => {
             </v-btn>
         </div>
 
-        <VDataTableServer v-if="enableBinTransfer"
-            v-model:items-per-page="layersItemsPerPage"
-            :headers="layerHeaders"
-            :items="layerItems"
-            :items-length="totalLayerItems"
-            :loading="layersLoading"
-            item-value="id"
-            :search="layerSearchValue"
-            @update:options="loadAvailableBlocks"
-            class="text-no-wrap"
-        >
+        <VDataTableServer v-if="enableBinTransfer" v-model:items-per-page="layersItemsPerPage" :headers="layerHeaders"
+            :items="layerItems" :items-length="totalLayerItems" :loading="layersLoading" item-value="id"
+            :search="layerSearchValue" @update:options="loadAvailableBlocks" class="text-no-wrap">
 
             <template v-slot:item="{ item }">
                 <tr class="text-no-wrap">
@@ -497,31 +477,25 @@ const handleSearch = debounce((search) => {
                             <v-btn @click="binTransfer(item)" class="px-5" type="button" color="info">
                                 Bin Transfer
                             </v-btn>
-                        </div> 
-                         <div v-else class="d-flex justify-end align-center">
-                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button" style="background-color: #eece70 !important;">
+                        </div>
+                        <div v-else class="d-flex justify-end align-center">
+                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button"
+                                style="background-color: #eece70 !important;">
                                 Assigned
                             </v-btn>
-                            <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5" type="button" color="primary-light">
+                            <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5"
+                                type="button" color="primary-light">
                                 Assign
                             </v-btn>
-                        </div> 
+                        </div>
                     </td>
                 </tr>
-            </template> 
+            </template>
         </VDataTableServer>
 
-        <VDataTableServer v-else
-            v-model:items-per-page="itemsPerPage"
-            :headers="headers"
-            :items="serverItems"
-            :items-length="totalItems"
-            :loading="loading"
-            item-value="id"
-            :search="searchValue"
-            @update:options="loadItems"
-            class="text-no-wrap"
-        >
+        <VDataTableServer v-else v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+            :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
+            @update:options="loadItems" class="text-no-wrap">
 
             <template v-slot:item="{ item }">
                 <tr class="text-no-wrap">
@@ -538,10 +512,12 @@ const handleSearch = debounce((search) => {
                             </v-btn>
                         </div>
                         <div v-else class="d-flex justify-end align-center">
-                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button" style="background-color: #eece70 !important;">
+                            <v-btn :disabled="true" v-if="item.isAssigned" class="px-5" type="button"
+                                style="background-color: #eece70 !important;">
                                 Assigned
                             </v-btn>
-                            <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5" type="button" color="primary-light">
+                            <v-btn v-else :disabled="selectedLayer == null" @click="assign(item)" class="px-5"
+                                type="button" color="primary-light">
                                 Assign
                             </v-btn>
                         </div>
@@ -554,48 +530,56 @@ const handleSearch = debounce((search) => {
             <v-btn color="secondary" variant="outlined" @click="closeModal" class="px-12 mr-3">Close</v-btn>
         </div>
     </DefaultModal>
-    
+
     <!-- Assign Confirmation  -->
     <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="700">
         <v-card class="py-8 px-6">
             <div class="mx-auto">
                 <i class="ri-add-box-line" style="font-size: 54px;"></i>
             </div>
-            <p class="mt-4 text-h4 text-center text-high-emphasis">Assign RFID with physical ID of <span class="font-weight-bold">{{ selectedInventory.rfid?.name }}</span> 
-                to <span class="font-weight-black">{{selectedLayer.layer_name}}</span> of <span class="font-weight-black">{{block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
-          
+            <p class="mt-4 text-h4 text-center text-high-emphasis">Assign RFID with physical ID of <span
+                    class="font-weight-bold">{{ selectedInventory.rfid?.name }}</span>
+                to <span class="font-weight-black">{{ selectedLayer.layer_name }}</span> of <span
+                    class="font-weight-black">{{ block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
+
             <v-card-actions class="mt-5">
-                    <v-spacer></v-spacer>
-                    <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
-                    <v-btn color="primary" variant="flat" class="px-6" @click="proceedAssign" type="button">Confirm</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
+                <v-btn color="primary" variant="flat" class="px-6" @click="proceedAssign" type="button">Confirm</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 
     <!-- Action item confirmation -->
-    <v-dialog v-model="actionModalOpen"  max-width="600">
+    <v-dialog v-model="actionModalOpen" max-width="600">
         <v-card class="py-8 px-6">
             <div class="mx-auto">
-                <i v-if="selectedAction.type == 'Bin Transfer'" class="ri-folder-transfer-line" style="font-size: 54px;"></i>
+                <i v-if="selectedAction.type == 'Bin Transfer'" class="ri-folder-transfer-line"
+                    style="font-size: 54px;"></i>
                 <i v-else class="ri-arrow-go-back-line" style="font-size: 54px;"></i>
             </div>
             <p class="mt-4 text-h4 text-center">{{ selectedAction.title }}</p>
             <p class="text-h5 text-center" v-html="selectedAction.message"></p>
             <v-card-actions class="mt-5">
-                    <v-spacer></v-spacer>
-                    <v-btn color="secondary" variant="flat" class="px-6" @click="actionModalOpen = false">Cancel</v-btn>
-                    <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn color="secondary" variant="flat" class="px-6" @click="actionModalOpen = false">Cancel</v-btn>
+                <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 
-    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 <style scoped>
 .layer-1 {
     background-color: #eece70;
     color: white;
 }
+
+.transition-all {
+    transition: all 0.3s ease-in-out;
+}
+
 .layer-2 {
     background-color: #4877f7;
     color: white;
@@ -613,13 +597,13 @@ const handleSearch = debounce((search) => {
     color: white;
 
 }
-.empty-layer, .layer-0 {
+
+.empty-layer,
+.layer-0 {
     background-color: #f0edf2;
 }
 
 .under-fumigation {
     background-color: #f7897e;
 }
-
-
 </style>
