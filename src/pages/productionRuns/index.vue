@@ -386,9 +386,11 @@ const actionList = [
 ]
 
 const confirmLoading = ref(false)
+const confirmRemarks = ref(null)
 const confirmProductionRun = async () => {
     confirmLoading.value = true;
     toast.value.show = false;
+    selectedProductionRun.value.remarks = confirmRemarks.value
     try {
         const response = await ApiService.post('production-runs/confirm', selectedProductionRun.value)
 
@@ -926,12 +928,14 @@ const confirmProductionRun = async () => {
                         </VRow>
                     </VListItem>
                 </VList>
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn :loading="confirmLoading" class="d-flex align-center" prepend-icon="ri-download-line"
-                        @click="confirmProductionRun">
-                        <template #prepend>
-                            <v-icon color="white"></v-icon>
-                        </template>
+                <div class="mx-4">
+                    <v-textarea v-model="confirmRemarks" class="mt-4" clear-icon="ri-close-line" label="Remarks"
+                        lines="1" clearable></v-textarea>
+                </div>
+                <div class="d-flex justify-end align-center mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="showConfirm = false"
+                        class="px-12 mr-3">Close</v-btn>
+                    <v-btn :loading="confirmLoading" class="d-flex align-center px-12" @click="confirmProductionRun">
                         Confirm
                     </v-btn>
                 </div>
