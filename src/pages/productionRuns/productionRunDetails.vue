@@ -399,7 +399,19 @@ const exportData = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
-                                    }}</span>
+                                }}</span>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-center">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                    style="margin-top: 1px;">Material</span>
+                            </VCol>
+                            <VCol class="d-inline-flex align-center">
+                                <span class="font-weight-medium text-grey-700">{{ productionRun?.material?.description
+                                }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
