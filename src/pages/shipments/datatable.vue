@@ -1,10 +1,12 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
+import UnauthorizedPage from '@/components/UnauthorizedPage.vue';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
+
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -54,8 +56,9 @@ const headers = [
     },
 ]
 
+const unauthorizedFlag = ref(false);
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
+
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -67,7 +70,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query('datatable/shipments',{
+    ApiService.query('datatable/shipments', {
         params: {
             page,
             itemsPerPage,
@@ -75,7 +78,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: props.search,
             filters: filters.value
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
@@ -84,7 +87,15 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
         })
         .catch((error) => {
-            console.log(error);
+            if (error.response && error.response.status === 403) {
+                unauthorizedFlag.value = true;
+            } else {
+                toast.value.message = 'An error occurred while loading data.';
+                toast.value.color = 'error';
+                toast.value.show = true;
+            }
+
+            loading.value = false
         });
 }
 
@@ -99,7 +110,7 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'created_at', order: 'desc'}],
+        sortBy: [{ key: 'created_at', order: 'desc' }],
         search: props.search
     });
 }
@@ -121,61 +132,42 @@ defineExpose({
 
 <template>
 
-    <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        :headers="headers"
-        :items="serverItems"
-        :items-length="totalItems"
-        :loading="loading"
-        item-value="id"
-        :search="search"
-        @update:options="loadItems"
-        class="text-no-wrap"
-    >
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
+        class="text-no-wrap">
 
-    <template #item.shipment_number="{ item }">
-        <span @click="handleViewShipment(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-            {{ item.shipment_number }}
-        </span>
-    </template>
+        <template #item.shipment_number="{ item }">
+            <span @click="handleViewShipment(item)"
+                class="text-primary font-weight-bold cursor-pointer hover-underline">
+                {{ item.shipment_number }}
+            </span>
+        </template>
 
 
-    <template #item.load_start_date="{ item }">
-        {{ item.load_start_date_time ? Moment(item.load_start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
-    </template>
+        <template #item.load_start_date="{ item }">
+            {{ item.load_start_date_time ? Moment(item.load_start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+        </template>
 
-    <template #item.load_end_date="{ item }">
-        {{ item.load_end_date_time ? Moment(item.load_end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
-    </template>
+        <template #item.load_end_date="{ item }">
+            {{ item.load_end_date_time ? Moment(item.load_end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+        </template>
 
-    <template #item.updated_at="{ item }">
-        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-    </template>
-    <template #item.status="{ item }">
-        <v-chip 
-            v-if="!item.load_end_date || item.load_end_time"
-            class="ma-2"
-            color="success"
-            outlined
-            label
-        >
-        Success
-        </v-chip>
-        <v-chip
-            v-else
-            class="ma-2"
-            color="primary-2-light"
-            outlined
-            label
-        >
-        Pending
-        </v-chip>
-    </template>
-    
+        <template #item.updated_at="{ item }">
+            {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+        </template>
+        <template #item.status="{ item }">
+            <v-chip v-if="!item.load_end_date || item.load_end_time" class="ma-2" color="success" outlined label>
+                Success
+            </v-chip>
+            <v-chip v-else class="ma-2" color="primary-2-light" outlined label>
+                Pending
+            </v-chip>
+        </template>
 
 
-    <!-- Actions -->
-    <!-- <template #item.actions="{ item }">
+
+        <!-- Actions -->
+        <!-- <template #item.actions="{ item }">
         <div class="d-flex gap-1">
             <v-menu location="start"> 
                 <template v-slot:activator="{ props }">
@@ -195,12 +187,11 @@ defineExpose({
     </template> -->
     </VDataTableServer>
 
-    <Toast :show="toast.show" :message="toast.message"/>
-
+    <Toast :show="toast.show" :message="toast.message" />
+    <UnauthorizedPage :show="unauthorizedFlag" @close="unauthorizedFlag = false" />
 </template>
 
 <style scoped>
-
 .hover-underline {
     position: relative;
     text-decoration: none;
@@ -210,9 +201,9 @@ defineExpose({
     content: "";
     position: absolute;
     left: 0;
-    bottom: 1px; 
+    bottom: 1px;
     width: 100%;
-    height: 1px; 
-    background-color: #00833c; 
+    height: 1px;
+    background-color: #00833c;
 }
 </style>
