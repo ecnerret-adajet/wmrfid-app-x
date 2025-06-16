@@ -64,7 +64,7 @@ const headers = [
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
+
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -76,7 +76,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query('datatable/roles',{
+    ApiService.query('datatable/roles', {
         params: {
             page,
             itemsPerPage,
@@ -84,7 +84,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: props.search,
             filters: filters.value
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
@@ -110,7 +110,7 @@ const editItem = (item) => {
     form.value.permissions = item.permissions.map(permission => permission.id);
     errorMessage.value = '';
     editDialog.value = true;
-}  
+}
 
 const deleteItem = (item) => {
     selectedRole.value = item;
@@ -127,7 +127,7 @@ const handleDelete = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{ key: 'created_at', order: 'desc' }],
             search: props.search
         });
         toast.value.message = 'Role deleted successfully!'
@@ -147,7 +147,7 @@ const handleUpdate = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'created_at', order: 'desc'}],
+            sortBy: [{ key: 'created_at', order: 'desc' }],
             search: props.search
         });
         toast.value.message = 'Role updated successfully!'
@@ -164,7 +164,7 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'created_at', order: 'desc'}],
+        sortBy: [{ key: 'created_at', order: 'desc' }],
         search: props.search
     });
 }
@@ -183,58 +183,46 @@ defineExpose({
 </script>
 
 <template>
-    <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        :headers="headers"
-        :items="serverItems"
-        :items-length="totalItems"
-        :loading="loading"
-        item-value="id"
-        :search="search"
-        @update:options="loadItems"
-        class="text-no-wrap"
-    >
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
+        class="text-no-wrap">
 
-    <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
-    </template>
+        <template #item.created_at="{ item }">
+            {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
+        </template>
 
-    <template #item.no_of_permissions="{ item }">
-        
-        <span class="ml-4">{{ item.permissions.length }}</span>
-    </template>
+        <template #item.no_of_permissions="{ item }">
 
-    <template #item.updated_at="{ item }">
-        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-    </template>
+            <span class="ml-4">{{ item.permissions.length }}</span>
+        </template>
 
-    <!-- Actions -->
-    <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
-        <IconBtn
-          size="small"
-          @click="editItem(item)"
-        >
-          <VIcon icon="ri-pencil-line" />
-        </IconBtn>
-        <IconBtn
-          size="small"
-          @click="deleteItem(item)"
-        >
-          <VIcon icon="ri-delete-bin-line" />
-        </IconBtn>
-      </div>
-    </template>
+        <template #item.updated_at="{ item }">
+            {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+        </template>
+
+        <!-- Actions -->
+        <template #item.actions="{ item }">
+            <div class="d-flex gap-1">
+                <IconBtn size="small" @click="editItem(item)">
+                    <VIcon icon="ri-pencil-line" />
+                </IconBtn>
+                <IconBtn size="small" @click="deleteItem(item)">
+                    <VIcon icon="ri-delete-bin-line" />
+                </IconBtn>
+            </div>
+        </template>
     </VDataTableServer>
 
     <DeleteModal @close="deleteDialog = false" :show="deleteDialog" dialog-title="Delete Role">
         <template #default>
             <VCardText>
-                <p class="text-h5 text-bold-emphasis ps-2">Are you sure you want to delete this role? This action is irreversible</p>
+                <p class="text-h5 text-bold-emphasis ps-2">Are you sure you want to delete this role? This action is
+                    irreversible</p>
             </VCardText>
 
             <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="deleteDialog = false" class="px-12 mr-3">Cancel</v-btn>
+                <v-btn color="secondary" variant="outlined" @click="deleteDialog = false"
+                    class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleDelete" color="error" class="px-12" type="submit" :loading="isLoading">
                     Delete
                 </PrimaryButton>
@@ -242,35 +230,23 @@ defineExpose({
         </template>
     </DeleteModal>
 
-    <EditingModal v-if="form.name && form.description" @close="editDialog = false" 
-        :show="editDialog" :dialog-title="`Update ${selectedRole.name}`">
+    <EditingModal v-if="form.name && form.description" @close="editDialog = false" :show="editDialog"
+        :dialog-title="`Update ${selectedRole.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
-                <v-text-field class="mt-6" density="compact" 
-                    label="Role Name"
-                    v-model="form.name" 
-                    :rules="[value => !!value || 'Role name is required']"
-                />
-                <v-text-field class="mt-6" density="compact" 
-                    label="Description"
-                    v-model="form.description" 
-                />
-                <v-select class="mt-6"
-                    v-model="form.permissions"
-                    :items="permissions"
-                    item-title="name"
-                    item-value="id"
-                    placeholder="Select Permissions"
-                    label="Select Permissions"
-                    chips
-                    multiple
-                />
+                <v-text-field class="mt-6" density="compact" label="Role Name" v-model="form.name"
+                    :rules="[value => !!value || 'Role name is required']" />
+                <v-text-field class="mt-6" density="compact" label="Description" v-model="form.description" />
+                <v-select class="mt-6" v-model="form.permissions" :items="permissions" item-title="name" item-value="id"
+                    placeholder="Select Permissions" label="Select Permissions" chips multiple persistent-hint clearable
+                    autocomplete />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
             </VAlert>
             <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="editDialog = false" class="px-12 mr-3">Cancel</v-btn>
+                <v-btn color="secondary" variant="outlined" @click="editDialog = false"
+                    class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleUpdate" color="primary" class="px-12" type="submit" :loading="isLoading">
                     Update
                 </PrimaryButton>
@@ -279,6 +255,6 @@ defineExpose({
     </EditingModal>
 
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" />
 
 </template>

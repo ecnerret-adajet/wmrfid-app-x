@@ -145,6 +145,13 @@ const wrapAction = async (inventory) => {
 
 const pickInventory = async (inventory) => {
     pickLoading.value = inventory.id;
+
+    if (inventory.is_confirmed == false) {
+        toast.value.message = 'Production run for this inventory must be confirmed first!'
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
     try {
         const response = await axios.get(`inventory/pick-inventory/${inventory.id}`);
         loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });

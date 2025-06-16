@@ -5,6 +5,7 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import UnauthorizedPage from '@/components/UnauthorizedPage.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
@@ -414,6 +415,8 @@ const statusOption = [
 
 const confirmLoading = ref(false)
 const confirmRemarks = ref(null)
+const unauthorizedFlag = ref(false);
+
 const confirmProductionRun = async () => {
     confirmLoading.value = true;
     toast.value.show = false;
@@ -434,7 +437,13 @@ const confirmProductionRun = async () => {
         toast.value.show = true;
 
     } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        if (error.response && error.response.status === 403) {
+            unauthorizedFlag.value = true;
+        } else {
+            toast.value.message = 'An error occurred while loading data.';
+            toast.value.color = 'error';
+            toast.value.show = true;
+        }
         console.error('Error submitting:', error);
     } finally {
         confirmLoading.value = false;
@@ -959,7 +968,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.COMMODITY
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1005,7 +1014,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.SILO.trim()
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1033,7 +1042,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.sap_count
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1084,6 +1093,7 @@ const triggerEnd = (item) => {
             </v-card-text>
         </v-card>
     </v-dialog>
+    <UnauthorizedPage :show="unauthorizedFlag" @close="unauthorizedFlag = false" />
 
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
