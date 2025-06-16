@@ -5,6 +5,7 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
@@ -15,7 +16,10 @@ import { debounce } from 'lodash';
 import Moment from 'moment';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import assignPallets from './assignPallets.vue';
 import productionRunDetails from './productionRunDetails.vue';
+
+const { authUserCan } = useAuthorization();
 
 const router = useRouter();
 const dialogVisible = ref(false)
@@ -78,7 +82,7 @@ const fetchDropdownData = async () => {
         }));
         materialsOption.value = materials.map(item => ({
             value: item.id,
-            title: `${item.code} - ${item.description}`
+            title: `${item.plant_code} - ${item.code} - ${item.description}`
         }));
 
         storageLocations.value = storage_locations.map(item => ({
@@ -128,7 +132,7 @@ const submit = async () => {
 
         isLoading.value = false;
         dialogVisible.value = false
-        toast.value.message = 'New production run successfully created!'
+        toast.value.message = 'Manual production run successfully created!'
         toast.value.show = true;
         form.value.material_id = null;
         form.value.production_line_id = null;
@@ -191,16 +195,16 @@ const headers = [
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'PLANT',
-        key: 'plant_id',
-        sortable: false,
-    },
-    {
-        title: 'MATERIAL',
-        key: 'material_id',
-        sortable: false,
-    },
+    // {
+    //     title: 'PLANT',
+    //     key: 'plant_id',
+    //     sortable: false,
+    // },
+    // {
+    //     title: 'MATERIAL',
+    //     key: 'material_id',
+    //     sortable: false,
+    // },
     {
         title: 'BATCH',
         key: 'batch',
@@ -214,6 +218,12 @@ const headers = [
     {
         title: 'QUANTITY',
         key: 'total_quantity',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'SAP COUNT',
+        key: 'sap_count',
         align: 'center',
         sortable: false,
     },
@@ -236,6 +246,12 @@ const headers = [
         sortable: false,
     },
     {
+        title: 'RUN TYPE',
+        key: 'run_type',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'START DATE',
         key: 'start_date_time',
         sortable: false,
@@ -243,6 +259,12 @@ const headers = [
     {
         title: 'END DATE',
         key: 'end_date_time',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'STATUS',
+        key: 'status',
         align: 'center',
         sortable: false,
     },
@@ -302,22 +324,32 @@ const toast = ref({
 
 const showProductionRunDetails = ref(false);
 const showConfirm = ref(false);
+const showAssign = ref(false);
 const handleAction = (productionRun, action) => {
     selectedProductionRun.value = productionRun;
-    console.log(selectedProductionRun.value);
     if (action.key == 'view_details') {
         showProductionRunDetails.value = true;
     }
 
     if (action.key == 'confirm_production_run') {
-        console.log('here');
-        if (selectedProductionRun.value.STOP_T && Moment(selectedProductionRun.value.STOP_T).year() <= 1930) {
+        if (selectedProductionRun.value.STOP_T == null || Moment(selectedProductionRun.value.STOP_T).year() <= 1930) {
             toast.value.color = 'error';
             toast.value.message = 'Selected production run not yet completed';
             toast.value.show = true;
             return;
         }
+
+        if (selectedProductionRun.value.production_run_confirmation) {
+            toast.value.color = 'error';
+            toast.value.message = 'Selected production run already confirmed';
+            toast.value.show = true;
+            return;
+        }
         showConfirm.value = true;
+    }
+
+    if (action.key == 'assign_pallets') {
+        showAssign.value = true;
     }
 }
 
@@ -380,18 +412,23 @@ const statusOption = [
     { title: 'Ongoing', value: 'Ongoing' }
 ]
 
-const actionList = [
-    { title: 'View Production Run Details', key: 'view_details' },
-    { title: 'Confirm Production Run', key: 'confirm_production_run' },
-]
-
 const confirmLoading = ref(false)
+const confirmRemarks = ref(null)
 const confirmProductionRun = async () => {
     confirmLoading.value = true;
     toast.value.show = false;
+    selectedProductionRun.value.remarks = confirmRemarks.value
     try {
         const response = await ApiService.post('production-runs/confirm', selectedProductionRun.value)
 
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{
+                key: sortQuery.value.replace('-', ''),
+                order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+            }]
+        });
         toast.value.color = 'success'
         toast.value.message = 'Successfully confirmed production run'
         toast.value.show = true;
@@ -401,9 +438,40 @@ const confirmProductionRun = async () => {
         console.error('Error submitting:', error);
     } finally {
         confirmLoading.value = false;
+        showConfirm.value = false
+        confirmRemarks.value = null;
     }
 }
 
+const handleEndProductionRun = async () => {
+    triggerEndLoading.value = true
+    try {
+        const response = await axios.put(`production-runs/${selectedProductionRun.value.id}/trigger-end`);
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{
+                key: sortQuery.value.replace('-', ''),
+                order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+            }]
+        });
+        fetchDropdownData() // Should reset the statistics data
+        toast.value.message = 'Production run end trigger successfully!'
+        toast.value.color = 'success';
+        toast.value.show = true;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error updating:', error);
+    } finally {
+        triggerEndLoading.value = null;
+        triggerEndDialog.value = false
+    }
+}
+
+const triggerEnd = (item) => {
+    selectedProductionRun.value = item;
+    triggerEndDialog.value = true;
+}
 
 </script>
 
@@ -430,6 +498,14 @@ const confirmProductionRun = async () => {
                 <v-icon color="white"></v-icon>
             </template>
             Export
+        </v-btn>
+
+        <v-btn v-if="authUserCan('create.production.runs')" class="d-flex align-center" prepend-icon="ri-add-line"
+            @click="dialogVisible = true">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Add Manual Run
         </v-btn>
 
         <v-btn variant="outlined" color="primary-light" class="d-flex align-center" prepend-icon="ri-play-circle-line"
@@ -618,10 +694,19 @@ const confirmProductionRun = async () => {
                             <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                         </template>
                         <v-list>
-                            <v-list-item @click="handleAction(item, action)" v-for="(action, i) in actionList" :key="i"
-                                :value="i">
-                                <v-list-item-title>{{ action.title }}</v-list-item-title>
+                            <v-list-item v-if="!item.production_run_confirmation && item.run_type == 2"
+                                @click="handleAction(item, { key: 'assign_pallets', title: 'Assign Pallets' })">
+                                <v-list-item-title>Assign Pallets</v-list-item-title>
                             </v-list-item>
+                            <v-list-item
+                                @click="handleAction(item, { key: 'view_details', title: 'View Production Run Details' })">
+                                <v-list-item-title>View Production Run Details</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item v-if="!item.production_run_confirmation"
+                                @click="handleAction(item, { key: 'confirm_production_run', title: 'Confirm Production Run' })">
+                                <v-list-item-title>Confirm Production Run</v-list-item-title>
+                            </v-list-item>
+
                         </v-list>
                     </v-menu>
                 </div>
@@ -639,8 +724,10 @@ const confirmProductionRun = async () => {
                 {{ item.SILO.trim() }}
             </template>
 
-            <template #item.material_id="{ item }">
-                {{ item.material?.description }}
+            <template #item.run_type="{ item }">
+                <v-badge v-if="item.run_type === 1" color="primary-light" content="PLC RUN" class="text-uppercase"
+                    inline></v-badge>
+                <v-badge v-else color="warning" content="MANUAL RUN" class="text-uppercase" inline></v-badge>
             </template>
 
             <template #item.mfg_date="{ item }">
@@ -658,6 +745,10 @@ const confirmProductionRun = async () => {
                 {{ item.inventory_logs.length }}
             </template>
 
+            <template #item.sap_count="{ item }">
+                {{ (item.sap_count) }}
+            </template>
+
             <template #item.total_quantity="{ item }">
                 {{ (item.inventory_logs?.length || 0) * (item.material?.default_pallet_quantity || 0) }}
             </template>
@@ -667,7 +758,8 @@ const confirmProductionRun = async () => {
             </template>
 
             <template #item.end_date_time="{ item }">
-                <div>
+                <!-- FOR PLC Production run -->
+                <div v-if="item.run_type === 1">
                     <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930">
                         {{ Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') }}
                     </div>
@@ -675,17 +767,34 @@ const confirmProductionRun = async () => {
                         <v-badge color="warning" content="Ongoing.." class="text-uppercase" inline></v-badge>
                     </div>
                 </div>
+                <!-- FOR Manual Production run -->
+                <div v-else>
+                    <div v-if="item.STOP_T">
+                        {{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') : '' }}
+                    </div>
+                    <div v-else>
+                        <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
+                            Trigger End
+                        </v-btn>
+                    </div>
+                </div>
+            </template>
+
+            <template #item.status="{ item }">
+                <v-badge v-if="item.production_run_confirmation" color="success" content="Confirmed"
+                    class="text-uppercase" inline></v-badge>
+                <v-badge v-else color="warning" content="Not Yet Confirmed" class="text-uppercase" inline></v-badge>
             </template>
 
         </VDataTableServer>
     </VCard>
 
-    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add New Production Run'">
+    <AddingModal @close="dialogVisible = false" :show="dialogVisible" :dialogTitle="'Add Manual Production Run'">
         <template #default>
             <v-form @submit.prevent="submit">
                 <div>
                     <v-select label="Select Material" density="compact" :items="materialsOption"
-                        v-model="form.material_id"
+                        v-model="form.material_id" persistent-hint clearable
                         :rules="[value => !!value || 'Please select an item from the list']"></v-select>
                     <v-select class="mt-4" label="Select Production Line" density="compact"
                         :items="productionLinesOption" v-model="form.production_line_id"
@@ -707,6 +816,23 @@ const confirmProductionRun = async () => {
             </v-form>
         </template>
     </AddingModal>
+
+    <v-dialog v-model="triggerEndDialog" max-width="600px" persistent>
+        <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
+            <v-icon class="mb-5" color="primary" icon="ri-information-line" size="112"></v-icon>
+
+            <h2 class="text-h4 mb-6">Do you want to end this production run?</h2>
+
+            <div class="text-end">
+                <v-btn color="secondary" variant="outlined" @click="triggerEndDialog = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleEndProductionRun" color="primary" class="px-12"
+                    :loading="triggerEndLoading">
+                    Update
+                </PrimaryButton>
+            </div>
+        </v-sheet>
+    </v-dialog>
 
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible"
         :dialogTitle="'Filter Production Runs'">
@@ -905,7 +1031,9 @@ const confirmProductionRun = async () => {
                                             style="margin-top: 1px;">SAP Count</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">0</span>
+                                        <span class="font-weight-medium text-grey-700">{{
+                                            selectedProductionRun.sap_count
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -926,15 +1054,33 @@ const confirmProductionRun = async () => {
                         </VRow>
                     </VListItem>
                 </VList>
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn :loading="confirmLoading" class="d-flex align-center" prepend-icon="ri-download-line"
-                        @click="confirmProductionRun">
-                        <template #prepend>
-                            <v-icon color="white"></v-icon>
-                        </template>
+                <div class="mx-4">
+                    <v-textarea v-model="confirmRemarks" class="mt-4" clear-icon="ri-close-line" label="Remarks"
+                        lines="1" clearable></v-textarea>
+                </div>
+                <div class="d-flex justify-end align-center mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="showConfirm = false"
+                        class="px-12 mr-3">Close</v-btn>
+                    <v-btn :loading="confirmLoading" class="d-flex align-center px-12" @click="confirmProductionRun">
                         Confirm
                     </v-btn>
                 </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <!-- Assign Pallets Modal -->
+    <v-dialog v-if="selectedProductionRun" v-model="showAssign" max-width="1500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-black ps-2 text-primary d-flex align-center">
+                    <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Production Run - Assign Pallets
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="showAssign = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <assign-pallets :production-run="selectedProductionRun" />
             </v-card-text>
         </v-card>
     </v-dialog>

@@ -48,11 +48,11 @@ const multipleMaterialModal = reactive({
 
 const headers = computed(() => {
     const baseHeaders = [
-        { title: '', key: 'details', align: 'center', sortable: false},
-        { title: 'WAREHOUSE', key: 'name',  },
+        { title: '', key: 'details', align: 'center', sortable: false },
+        { title: 'WAREHOUSE', key: 'name', },
         { title: 'CODE', key: 'code', align: 'center' },
         { title: 'PLANT', key: 'plant_id', align: 'center' },
-        { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
+        // { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
         { title: 'LAST UPDATED AT', key: 'updated_at', align: 'center' },
     ];
     if (authStore.user?.is_super_admin) {
@@ -60,7 +60,7 @@ const headers = computed(() => {
             title: 'Allow Multiple Materials',
             key: 'blocks_allow_multiple_materials',
             sortable: false,
-        align: 'center',
+            align: 'center',
         });
     }
 
@@ -75,7 +75,7 @@ const headers = computed(() => {
 });
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
+
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -87,7 +87,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = 'name';
     }
 
-    ApiService.query('datatable/warehouse',{
+    ApiService.query('datatable/warehouse', {
         params: {
             page,
             itemsPerPage,
@@ -95,7 +95,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: props.search,
             filters: filters.value
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data.map(item => ({
@@ -125,7 +125,7 @@ const editItem = (item) => {
     form.value.layer_count = item.layer_count;
     errorMessage.value = '';
     editDialog.value = true;
-}  
+}
 
 
 const handleUpdate = async () => {
@@ -138,7 +138,7 @@ const handleUpdate = async () => {
         loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
-            sortBy: [{key: 'name', order: 'asc'}],
+            sortBy: [{ key: 'name', order: 'asc' }],
             search: props.search
         });
         toast.value.message = 'Warehouse updated successfully!'
@@ -155,7 +155,7 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'name', order: 'asc'}],
+        sortBy: [{ key: 'name', order: 'asc' }],
         search: props.search
     });
 }
@@ -177,7 +177,7 @@ const viewMap = (item) => {
             path: `/warehouse-map/${item.plant_code}/${generateSlug(item.name)}`,
         });
     }
-    
+
 }
 
 const handleAllowMultiple = async () => {
@@ -204,7 +204,7 @@ const handleAllowMultiple = async () => {
             loadItems({
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
-                sortBy: [{key: 'name', order: 'asc'}],
+                sortBy: [{ key: 'name', order: 'asc' }],
                 search: props.search
             });
         }
@@ -222,7 +222,7 @@ const onToggleSwitch = (warehouse) => {
         multipleMaterialModal.title = warehouse.blocks_allow_multiple_materials == false ?
             `Allow Multiple Materials` : `Disallow Multiple Materials`;
         multipleMaterialModal.message = warehouse.blocks_allow_multiple_materials == false ?
-            `Enabling this will allow multiple materials in <strong>${warehouse.name}</strong> to be placed in a warehouse block.` : 
+            `Enabling this will allow multiple materials in <strong>${warehouse.name}</strong> to be placed in a warehouse block.` :
             `Disabling this will prevent multiple materials from being placed in the warehouse block at <strong>${warehouse.name}</strong>`;
         multipleMaterialModal.show = true;
     }
@@ -243,9 +243,9 @@ const selectedSloc = ref(null);
 const handleAction = (sloc, action) => {
     selectedSloc.value = sloc;
     console.log(selectedSloc.value);
-    if(action.key == 'view_details') {
+    if (action.key == 'view_details') {
         showSlocDetails.value = true;
-    } 
+    }
 }
 
 defineExpose({
@@ -256,121 +256,92 @@ defineExpose({
 </script>
 
 <template>
-    <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        :headers="headers"
-        :items="serverItems"
-        :items-length="totalItems"
-        :loading="loading"
-        item-value="id"
-        :search="search"
-        @update:options="loadItems"
-        class="text-no-wrap"
-    >
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
+        class="text-no-wrap">
 
-    <template #item.details="{ item }">
-        <div class="d-flex justify-center gap-1">
-            <v-menu location="end"> 
-                <template v-slot:activator="{ props }">
-                    <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                </template>
-                <v-list>
-                <v-list-item
-                    @click="handleAction(item, action)"
-                    v-for="(action, i) in actionList"
-                        :key="i"
-                        :value="i"
-                    >
-                    <v-list-item-title>{{ action.title }}</v-list-item-title>
-                </v-list-item>
-                </v-list>
-            </v-menu>
-        </div>
-    </template>
-
-    <template v-slot:headers="{ columns, isSorted, getSortIcon, toggleSort }">
-      <tr>
-        <template v-for="column in columns" :key="column.key">
-          <th>
-            <div class="d-flex justify-center align-center">
-              <span
-                class="me-2 cursor-pointer"
-                @click="column.sortable && toggleSort(column)"
-                v-text="column.title"
-              ></span>
-
-              <v-icon
-                v-if="isSorted(column)"
-                :icon="getSortIcon(column)"
-                color="medium-emphasis"
-              ></v-icon>
-
-                <v-tooltip v-if="column.key == 'blocks_allow_multiple_materials'" 
-                    text="Enabling this allows multiple materials to be placed in warehouse block.">
+        <template #item.details="{ item }">
+            <div class="d-flex justify-center gap-1">
+                <v-menu location="end">
                     <template v-slot:activator="{ props }">
-                        <i v-bind="props" class="ri-question-line text-xl"></i>
+                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
-                </v-tooltip>
+                    <v-list>
+                        <v-list-item @click="handleAction(item, action)" v-for="(action, i) in actionList" :key="i"
+                            :value="i">
+                            <v-list-item-title>{{ action.title }}</v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
             </div>
-          </th>
         </template>
-      </tr>
-    </template>
 
-    <template #item.name="{ item }">
-        {{ item.name }}
-    </template>
+        <template v-slot:headers="{ columns, isSorted, getSortIcon, toggleSort }">
+            <tr>
+                <template v-for="column in columns" :key="column.key">
+                    <th>
+                        <div class="d-flex justify-center align-center">
+                            <span class="me-2 cursor-pointer" @click="column.sortable && toggleSort(column)"
+                                v-text="column.title"></span>
 
-    <template #item.blocks_allow_multiple_materials="{ item }">
-        <v-switch
-            class="d-flex justify-center" readonly
-            :model-value="item.blocks_allow_multiple_materials_bool"
-            @change="onToggleSwitch(item)" 
-            color="primary"
-        ></v-switch>
-    </template>
+                            <v-icon v-if="isSorted(column)" :icon="getSortIcon(column)"
+                                color="medium-emphasis"></v-icon>
 
-    <template #item.plant_id="{ item }">
-        {{ item.plant?.name }}
-    </template>
+                            <v-tooltip v-if="column.key == 'blocks_allow_multiple_materials'"
+                                text="Enabling this allows multiple materials to be placed in warehouse block.">
+                                <template v-slot:activator="{ props }">
+                                    <i v-bind="props" class="ri-question-line text-xl"></i>
+                                </template>
+                            </v-tooltip>
+                        </div>
+                    </th>
+                </template>
+            </tr>
+        </template>
 
-    <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
-    </template>
+        <template #item.name="{ item }">
+            {{ item.name }}
+        </template>
 
-    <template #item.updated_at="{ item }">
-        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-    </template>
+        <template #item.blocks_allow_multiple_materials="{ item }">
+            <v-switch class="d-flex justify-center" readonly :model-value="item.blocks_allow_multiple_materials_bool"
+                @change="onToggleSwitch(item)" color="primary"></v-switch>
+        </template>
 
-    <!-- Actions -->
-    <template #item.actions="{ item }">
-      <div class="d-flex gap-1 justify-center align-center">
+        <template #item.plant_id="{ item }">
+            {{ item.plant?.name }}
+        </template>
 
-        <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"
-          size="small"
-          @click="editItem(item)"
-        >
-          <VIcon icon="ri-pencil-line" />
-        </IconBtn>
-        <IconBtn
-          size="small"
-          @click="viewMap(item)"
-        >
-          <VIcon icon="ri-map-2-line" />
-        </IconBtn>
-      </div>
-    </template>
+        <template #item.created_at="{ item }">
+            {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
+        </template>
+
+        <template #item.updated_at="{ item }">
+            {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+        </template>
+
+        <!-- Actions -->
+        <template #item.actions="{ item }">
+            <div class="d-flex gap-1 justify-center align-center">
+
+                <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin" size="small"
+                    @click="editItem(item)">
+                    <VIcon icon="ri-pencil-line" />
+                </IconBtn>
+                <IconBtn size="small" @click="viewMap(item)">
+                    <VIcon icon="ri-map-2-line" />
+                </IconBtn>
+            </div>
+        </template>
     </VDataTableServer>
-    <EditingModal v-if="form.name && form.code" @close="editDialog = false" 
-        :show="editDialog" :dialog-title="`Update ${selectedWarehouse.name}`">
+    <EditingModal v-if="form.name && form.code" @close="editDialog = false" :show="editDialog"
+        :dialog-title="`Update ${selectedWarehouse.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
-                <v-select class="mt-4" label="Select Plant" density="compact"
-                    :items="plantsOption" v-model="form.plant_id"
-                    :rules="[value => !!value || 'Plant is required']"
-                >
+                <v-select class="mt-4" label="Select Plant" density="compact" :items="plantsOption"
+                    v-model="form.plant_id" :rules="[value => !!value || 'Plant is required']">
                 </v-select>
-                <div class="mt-4">
+                <!-- <div class="mt-4">
                     <v-text-field class="mt-6" density="compact" 
                         label="Layer Count"
                         v-model="form.layer_count" 
@@ -380,23 +351,18 @@ defineExpose({
                         hint="This sets the level of layer in the warehouse"
                         :rules="[value => !!value || 'Storage layer count is required']"
                     />
-                </div>
-                <v-text-field class="mt-6" density="compact" 
-                    label="Name"
-                    v-model="form.name" 
-                    :rules="[value => !!value || 'Name is required']"
-                />
-                <v-text-field class="mt-6" density="compact" 
-                    label="Code"
-                    v-model="form.code" 
-                    :rules="[value => !!value || 'Code is required']"
-                />
+                </div> -->
+                <v-text-field class="mt-6" density="compact" label="Name" v-model="form.name"
+                    :rules="[value => !!value || 'Name is required']" />
+                <v-text-field class="mt-6" density="compact" label="Code" v-model="form.code"
+                    :rules="[value => !!value || 'Code is required']" />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
             </VAlert>
             <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="editDialog = false" class="px-12 mr-3">Cancel</v-btn>
+                <v-btn color="secondary" variant="outlined" @click="editDialog = false"
+                    class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleUpdate" color="primary" class="px-12" type="submit" :loading="isLoading">
                     Update
                 </PrimaryButton>
@@ -406,19 +372,16 @@ defineExpose({
 
     <v-dialog v-model="multipleMaterialModal.show" max-width="600px" persistent>
         <v-sheet class="px-4 pt-8 pb-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
-            <v-icon
-                class="mb-5"
-                color="primary"
-                icon="ri-information-line"
-                size="112"
-            ></v-icon>
+            <v-icon class="mb-5" color="primary" icon="ri-information-line" size="112"></v-icon>
 
             <h2 class="text-h4">{{ multipleMaterialModal.title }}</h2>
             <p class="text-subtitle text-grey-700 font-weight-medium mb-6 mt-4" v-html="multipleMaterialModal.message">
             </p>
             <div class="text-end">
-                <v-btn color="secondary" variant="outlined" @click="multipleMaterialModal.show = false" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleAllowMultiple" color="primary" class="px-12" :loading="multipleMaterialModal.loading">
+                <v-btn color="secondary" variant="outlined" @click="multipleMaterialModal.show = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleAllowMultiple" color="primary" class="px-12"
+                    :loading="multipleMaterialModal.loading">
                     Confirm
                 </PrimaryButton>
             </div>
@@ -428,18 +391,14 @@ defineExpose({
     <v-dialog v-if="selectedSloc" v-model="showSlocDetails" max-width="1500px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-end align-center mx-4 px-4 mt-6">
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="showSlocDetails = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="showSlocDetails = false"></v-btn>
             </v-card-title>
             <v-card-text>
-                <warehouseDetails :storage-location="selectedSloc"/>
+                <warehouseDetails :storage-location="selectedSloc" />
             </v-card-text>
         </v-card>
     </v-dialog>
 
-    <Toast :show="toast.show" :message="toast.message" color="success" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :message="toast.message" color="success" @update:show="toast.show = $event" />
 
 </template>

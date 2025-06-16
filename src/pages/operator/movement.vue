@@ -30,7 +30,7 @@ const toggleButton = () => {
 
 
 onMounted(() => {
-    fetchReaders();  
+    fetchReaders();
 })
 
 const fetchReaders = async () => {
@@ -38,10 +38,10 @@ const fetchReaders = async () => {
     try {
         const response = await ApiService.get(`data/get-readers-by-location/${plantCode}/${storageLocation}`);
         readers.value = response.data
-        
+
         if (readers.value.length > 0) {
             selectedReader.value = readers.value[0].id; // Set default selected tab
-            selectedReaderName.value = readers.value[0].name; 
+            selectedReaderName.value = readers.value[0].name;
         } else {
             errorMessage.value = 'No readers found for this location.';
         }
@@ -54,7 +54,7 @@ const fetchReaders = async () => {
 
 // Watch for changes in `selectedReader`
 watch(selectedReader, (newReaderId) => {
-    
+
     const reader = readers.value.find(r => r.id === newReaderId);
     selectedReaderName.value = reader ? reader.name : null;
     tablePage.value = 1; // Reset page if switched reader
@@ -83,16 +83,13 @@ const handleBack = () => {
     <div class="mx-8 my-6">
         <v-card elevation="1">
             <div>
-                <v-btn @click="handleBack()"
-                    class="ma-2"
-                    color="grey-700"
-                    icon="ri-arrow-left-line"
-                    variant="text"
-                ></v-btn>
+                <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line"
+                    variant="text"></v-btn>
             </div>
             <div class="d-flex justify-between align-center px-6 pb-4">
                 <h4 class="text-h3 font-weight-black text-primary">
-                    {{ isWarehouseMap ? convertSlugToUpperCase(storageLocation) + ' Map' : convertSlugToUpperCase(storageLocation) + ' Operator Screen' }}
+                    {{ isWarehouseMap ? convertSlugToUpperCase(storageLocation) + ' Map' :
+                        convertSlugToUpperCase(storageLocation) + ' Operator Screen' }}
                 </h4>
                 <v-btn class="bg-primary-light ml-auto" @click="toggleButton">
                     {{ isWarehouseMap ? `Operator's Screen` : 'Warehouse Map' }}
@@ -108,30 +105,24 @@ const handleBack = () => {
                 <p class="text-h5 font-weight-black text-grey">No readers found for this location.</p>
             </div>
             <v-tabs v-if="readers.length > 0" v-model="selectedReader" bg-color="transparent" class="mb-4 mt-4">
-              
-                <v-tab class="text-h4 font-weight-black d-flex align-center" v-for="reader in readers" :key="reader.id" :value="reader.id">
+
+                <v-tab class="text-h4 font-weight-black d-flex align-center" v-for="reader in readers" :key="reader.id"
+                    :value="reader.id">
                     {{ reader.name }}
                     <template v-slot:append>
-                        <v-badge style="margin-top: -7px; margin-left: 10px;"
-                                color="error"
-                                :content="reader.pending_count"
-                                inline>
+                        <v-badge style="margin-top: -7px; margin-left: 10px;" color="error"
+                            :content="reader.pending_count" inline>
                         </v-badge>
                     </template>
                 </v-tab>
             </v-tabs>
-            <SearchInput v-if="readers.length > 0" @update:search="handleSearch" class="mt-4"/>
+            <SearchInput v-if="readers.length > 0" @update:search="handleSearch" class="mt-4" />
 
             <div v-if="!loading && readers.length > 0" class="mt-4">
-                <logsDataTable :storage-location="storageLocation"
-                    :key="selectedReader.id"
-                    :plant-code="plantCode"
-                    :search="searchValue" :page="tablePage"
-                    :items-per-page="tablePerPage"
-                    @pagination-changed="onPaginationChanged"
-                    @refreshReader="fetchReaders"
-                    :reader-name="selectedReaderName"
-                />
+                <logsDataTable :storage-location="storageLocation" :key="selectedReader.id" :plant-code="plantCode"
+                    :search="searchValue" :page="tablePage" :items-per-page="tablePerPage"
+                    @pagination-changed="onPaginationChanged" @refreshReader="fetchReaders"
+                    :reader-name="selectedReaderName" />
             </div>
         </v-card>
     </div>
