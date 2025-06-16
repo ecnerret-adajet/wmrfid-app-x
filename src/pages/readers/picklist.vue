@@ -119,6 +119,19 @@ const sapLoadEnd = async (shipmentNumber) => {
     })
 };
 
+// const sapLoadStart = async (shipmentNumber) => {
+//     ApiService.get(`picklist/load-start/${shipmentNumber}`)
+//     .then(response => {
+//         if (response.data.status == 'S') {
+//             // display success message here
+
+//         } else {
+//             dialogVisible.value = true;
+//             errorMessage.value = 'Loadend failed!'
+//         }
+//     })
+// };
+
 
 // checkLoadTime in the old version
 const fetchLoadStatus = async (shipmentNumber) => {
@@ -130,7 +143,7 @@ const fetchLoadStatus = async (shipmentNumber) => {
             // verify if the total read pallets is equal to the actual read pallets
             if(totalRead.value === actualRead.value) {
                 // call the sap load end
-                // sapLoadEnd(shipmentNumber);
+                sapLoadEnd(shipmentNumber);
             }
         } 
         shipmentData.deliveries.forEach(item => {
