@@ -70,7 +70,7 @@ watch(
         if (val) {
             setTimeout(() => {
                 hasError.value = false
-            }, 10000)
+            }, 30000)
         }
     }
 )
@@ -131,7 +131,7 @@ watch(
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span v-if="lastRead?.inventory" class="font-weight-black">{{ lastRead?.inventory?.batch
-                        }}</span>
+                            }}</span>
                         <span v-else class="font-weight-black text-error">NO BATCH</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
