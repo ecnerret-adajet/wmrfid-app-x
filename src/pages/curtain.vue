@@ -23,15 +23,20 @@ onMounted(() => {
 })
 
 const onPicklistLogsEvent = (data) => {
+    console.log(data);
     if (data.picklistLog.error == true) {
         errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
         hasError.value = true;
     } else if (data.picklistLog.inventory) {
-        logs.value.unshift(data.picklistLog); // Add to top
-        if (logs.value.length > 5) {
-            logs.value.pop(); // Remove last if over 5
+        const epc = data.picklistLog.epc;
+        // Only add if epc does not exist
+        if (!logs.value.some(log => log.epc === epc)) {
+            logs.value.unshift(data.picklistLog);
+            if (logs.value.length > 5) {
+                logs.value.pop();
+            }
+            lastRead.value = logs.value[0] || null;
         }
-        lastRead.value = logs.value[0] || null;
     } else {
         errorMessage.value = 'An unexpected error occurred.';
         hasError.value = true;
@@ -133,13 +138,13 @@ watch(
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                    {{ lastRead?.antenna_log?.first_seen_timestamp ?
-                                        Moment(lastRead.antenna_log?.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
+                                    {{ lastRead?.antenna_log?.created_at ?
+                                        Moment(lastRead.antenna_log?.created_at).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ lastRead?.antenna_log?.first_seen_timestamp ?
-                                        Moment(lastRead?.antenna_log?.first_seen_timestamp).format('h:mm A') : '' }}
+                                    {{ lastRead?.antenna_log?.created_at ?
+                                        Moment(lastRead?.antenna_log?.created_at).format('h:mm A') : '' }}
                                 </p>
                             </div>
                         </div>
@@ -207,15 +212,15 @@ watch(
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
                                     {{
-                                        log.antenna_log?.first_seen_timestamp ?
-                                            Moment(log.antenna_log?.first_seen_timestamp).format('MMMM D, YYYY') :
+                                        log.antenna_log?.created_at ?
+                                            Moment(log.antenna_log?.created_at).format('MMMM D, YYYY') :
                                             ''
                                     }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ log.antenna_log?.first_seen_timestamp ?
-                                        Moment(log.antenna_log?.first_seen_timestamp).format('h:mm A') : ''
+                                    {{ log.antenna_log?.created_at ?
+                                        Moment(log.antenna_log?.created_at).format('h:mm A') : ''
                                     }}
                                 </p>
                             </div>
