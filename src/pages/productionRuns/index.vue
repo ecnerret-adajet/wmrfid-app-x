@@ -502,7 +502,8 @@ const triggerEnd = (item) => {
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+        <v-btn v-if="authUserCan('export.production.runs')" :loading="exportLoading" class="d-flex align-center"
+            prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
@@ -968,7 +969,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.COMMODITY
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1014,7 +1015,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.SILO.trim()
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1042,7 +1043,7 @@ const triggerEnd = (item) => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.sap_count
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>

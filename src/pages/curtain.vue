@@ -1,6 +1,6 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
-import ApiService from '@/services/ApiService';
+import { echo } from '@/utils/echo';
 import palletsImage from '@images/curtains/pallets.png';
 import Moment from 'moment';
 import { onMounted } from 'vue';
@@ -17,25 +17,34 @@ const logs = ref([])
 const lastRead = ref(null);
 
 onMounted(() => {
-    fetchLoadingCurtain();
+    // fetchLoadingCurtain();
+    echo.channel('picklist-logs')
+        .listen('PicklistLogsEvent', onPicklistLogsEvent);
 })
 
-const fetchLoadingCurtain = async () => {
-    isLoading.value = true
-    const url = `loading-curtain/${reader}/${bay}`;
-    try {
-        const response = await ApiService.get(url);
-        const { last_read, loading_curtain } = response.data;
+const onPicklistLogsEvent = (data) => {
+    console.log('PicklistLogsEvent received:', data);
+    // Handle the event data as needed
+};
 
-        logs.value = loading_curtain;
-        lastRead.value = last_read;
-        isLoading.value = false
-    } catch (error) {
-        isLoading.value = false
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        hasError.value = true
-        console.error('Error fetching data:', error);
-    }
+const fetchLoadingCurtain = async () => {
+    // isLoading.value = true
+    // const url = `loading-curtain/${reader}/${bay}`;
+    // try {
+    //     const response = await ApiService.get(url);
+    //     const { last_read, loading_curtain } = response.data;
+    //     console.log(last_read)
+    //     console.log(loading_curtain)
+
+    //     logs.value = loading_curtain;
+    //     lastRead.value = last_read;
+    //     isLoading.value = false
+    // } catch (error) {
+    //     isLoading.value = false
+    //     errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+    //     hasError.value = true
+    //     console.error('Error fetching data:', error);
+    // }
 };
 
 
@@ -50,36 +59,31 @@ const fetchLoadingCurtain = async () => {
             </div>
 
             <!-- Image -->
-            <img
-                style="position: absolute; z-index: 1; margin-right: 150px; top: -30px"
-                :src="palletsImage"
-                :width="230"
-                :height="230"
-            />
+            <img style="position: absolute; z-index: 1; margin-right: 150px; top: -30px" :src="palletsImage"
+                :width="230" :height="230" />
 
             <!-- v-sheet background -->
-            <v-sheet
-                style="position: absolute !important;"
-                :height="150"
-                color="primary-2"
-                :width="230"
-            ></v-sheet>
+            <v-sheet style="position: absolute !important;" :height="150" color="primary-2" :width="230"></v-sheet>
         </div>
 
 
 
         <div style="padding-top: 175px;" class="px-12">
-            <VRow no-gutters >
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
+            <VRow no-gutters>
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                    class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     Physical ID
                 </VCol>
-                <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
+                    style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
+                <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
+                    style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62"
+                    class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     date and time
                 </VCol>
             </VRow>
@@ -87,26 +91,30 @@ const fetchLoadingCurtain = async () => {
                 <VRow v-if="lastRead" no-gutters style="border: 1px solid #00833c;">
                     <VCol md="3" class="px-3 py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
-                            <span  class="text-uppercase text-h5 text-primary font-weight-black">
+                            <span class="text-uppercase text-h5 text-primary font-weight-black">
                                 {{ lastRead?.rfid?.name }}
                             </span>
                         </div>
                     </VCol>
-                    <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                    <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black">{{ lastRead?.rfid?.epc }}</span>
                     </VCol>
-                    <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center" style="border-right: 1px solid #fff;">
+                    <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
                         <span class="font-weight-black">{{ lastRead?.rfid?.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                     {{ lastRead?.first_seen_timestamp ? Moment(lastRead.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
+                                    {{ lastRead?.first_seen_timestamp ?
+                                        Moment(lastRead.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ lastRead?.first_seen_timestamp ? Moment(lastRead.first_seen_timestamp).format('h:mm A') : '' }}
+                                    {{ lastRead?.first_seen_timestamp ?
+                                        Moment(lastRead.first_seen_timestamp).format('h:mm A') : '' }}
                                 </p>
                             </div>
                         </div>
@@ -121,7 +129,7 @@ const fetchLoadingCurtain = async () => {
                         </div>
                     </VCol>
                 </VRow>
-                
+
             </div>
         </div>
 
@@ -131,17 +139,21 @@ const fetchLoadingCurtain = async () => {
         </div>
 
         <div class="px-12">
-            <VRow no-gutters >
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
+            <VRow no-gutters>
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                    class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     Physical ID
                 </VCol>
-                <VCol md="3"  class="text-uppercase text-grey-100 py-2 text-center font-weight-black" style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
+                    style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3"  class="text-uppercase text-grey-100 py-2 text-center font-weight-black" style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
+                <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
+                    style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;" class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
+                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                    class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     date and time
                 </VCol>
             </VRow>
@@ -156,21 +168,27 @@ const fetchLoadingCurtain = async () => {
                             </span>
                         </div>
                     </VCol>
-                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black">{{ log.rfid?.epc || '' }}</span>
                     </VCol>
-                    <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center" style="border-right: 1px solid #fff;">
+                    <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
                         <span class="font-weight-black">{{ log.rfid?.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
+                                    {{
+                                        log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('MMMM D, YYYY') :
+                                            ''
+                                    }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('h:mm A') : '' }}
+                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('h:mm A') : ''
+                                    }}
                                 </p>
                             </div>
                         </div>
@@ -178,8 +196,8 @@ const fetchLoadingCurtain = async () => {
                 </VRow>
             </div>
         </div>
-  </div>
-  <v-dialog v-model="hasError" max-width="550">
+    </div>
+    <v-dialog v-model="hasError" max-width="550">
         <v-card class="px-4 py-4">
             <v-card-title>Loading Curtain Error</v-card-title>
             <v-card-text class="mt-4">
@@ -190,7 +208,7 @@ const fetchLoadingCurtain = async () => {
             </v-card-actions>
         </v-card>
     </v-dialog>
-  <Loader :show="isLoading"/>
+    <Loader :show="isLoading" />
 </template>
 
 <style scoped>
@@ -203,16 +221,18 @@ const fetchLoadingCurtain = async () => {
 }
 
 .table-wrapper {
-    overflow-x: hidden; /* Enable horizontal scroll */
-    overflow-y: auto; 
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS devices */
+    overflow-x: hidden;
+    /* Enable horizontal scroll */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling for iOS devices */
 }
 
-.rightBorderedGreen{
+.rightBorderedGreen {
     border-right: 1px solid rgba(0, 131, 60, 0.5) !important;
 }
-.whiteBackground{
+
+.whiteBackground {
     background-color: white !important;
 }
-
 </style>

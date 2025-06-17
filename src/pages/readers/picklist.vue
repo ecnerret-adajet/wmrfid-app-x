@@ -268,8 +268,32 @@ const toast = ref({
     <div v-else class="mt-2 px-8 whiteBackground">
 
         <div>
-
-            <v-card class="mb-4 pa-4 d-flex align-center" color="primary" variant="tonal" elevation="3"
+            <v-card
+                v-if="shipmentData.shipment.loadstart_date && (shipmentData.shipment.loadend_date === '0000-00-00' || shipmentData.shipment.loadend_date === null)"
+                class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
+                style="border-left: 6px solid #ff9800;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #e65100;">
+                            <v-icon color="warning" class="mr-2" size="32" spin icon="ri-progress-1-line"></v-icon>
+                            Loading In Progress
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            Please wait while the current loading operation completes.<br>
+                            <span class="font-italic" style="color: #ff9800;">Do not proceed until loading is
+                                finished.</span>
+                        </div>
+                        <v-progress-linear indeterminate color="warning" height="8" rounded class="mt-2" />
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-caption mb-1" style="color: #e65100;">Status</div>
+                        <div class="text-h4 font-weight-black" style="color: #ff9800;">
+                            Loading...
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+            <v-card v-else class="mb-4 pa-4 d-flex align-center" color="primary" variant="tonal" elevation="3"
                 style="border-left: 6px solid #43a047;">
                 <VRow class="w-100" align="center">
                     <VCol cols="12" md="8" class="d-flex flex-column justify-center">
@@ -378,7 +402,7 @@ const toast = ref({
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                                }}</span>
+                                            }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
