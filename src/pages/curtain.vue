@@ -27,7 +27,7 @@ const onPicklistLogsEvent = (data) => {
     if (data.picklistLog.error == true) {
         errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
         hasError.value = true;
-    } else if (data.picklistLog.inventory) {
+    } else if (data.picklistLog) {
         const epc = data.picklistLog.epc;
         // Only add if epc does not exist
         if (!logs.value.some(log => log.epc === epc)) {
@@ -131,7 +131,7 @@ watch(
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span v-if="lastRead?.inventory" class="font-weight-black">{{ lastRead?.inventory?.batch
-                            }}</span>
+                        }}</span>
                         <span v-else class="font-weight-black text-error">NO BATCH</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
