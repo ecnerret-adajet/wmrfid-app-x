@@ -3,7 +3,7 @@ import Loader from '@/components/Loader.vue';
 import { echo } from '@/utils/echo';
 import palletsImage from '@images/curtains/pallets.png';
 import Moment from 'moment';
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -23,8 +23,20 @@ onMounted(() => {
 })
 
 const onPicklistLogsEvent = (data) => {
-    console.log('PicklistLogsEvent received:', data);
-    // Handle the event data as needed
+    if (data.picklistLog.error == true) {
+        errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
+        hasError.value = true;
+    } else if (data.picklistLog.inventory) {
+        logs.value.unshift(data.picklistLog); // Add to top
+        if (logs.value.length > 5) {
+            logs.value.pop(); // Remove last if over 5
+        }
+        lastRead.value = logs.value[0] || null;
+    } else {
+        errorMessage.value = 'An unexpected error occurred.';
+        hasError.value = true;
+    }
+
 };
 
 const fetchLoadingCurtain = async () => {
@@ -46,6 +58,17 @@ const fetchLoadingCurtain = async () => {
     //     console.error('Error fetching data:', error);
     // }
 };
+
+watch(
+    () => hasError.value,
+    (val) => {
+        if (val) {
+            setTimeout(() => {
+                hasError.value = false
+            }, 10000)
+        }
+    }
+)
 
 
 </script>
@@ -92,29 +115,29 @@ const fetchLoadingCurtain = async () => {
                     <VCol md="3" class="px-3 py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span class="text-uppercase text-h5 text-primary font-weight-black">
-                                {{ lastRead?.rfid?.name }}
+                                {{ lastRead?.name }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ lastRead?.rfid?.epc }}</span>
+                        <span class="font-weight-black">{{ lastRead?.epc }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ lastRead?.rfid?.inventory?.batch }}</span>
+                        <span class="font-weight-black">{{ lastRead?.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
-                                    {{ lastRead?.first_seen_timestamp ?
-                                        Moment(lastRead.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
+                                    {{ lastRead?.antenna_log?.first_seen_timestamp ?
+                                        Moment(lastRead.antenna_log?.first_seen_timestamp).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ lastRead?.first_seen_timestamp ?
-                                        Moment(lastRead.first_seen_timestamp).format('h:mm A') : '' }}
+                                    {{ lastRead?.antenna_log?.first_seen_timestamp ?
+                                        Moment(lastRead?.antenna_log?.first_seen_timestamp).format('h:mm A') : '' }}
                                 </p>
                             </div>
                         </div>
@@ -164,30 +187,32 @@ const fetchLoadingCurtain = async () => {
                     <VCol md="3" class="py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span class="text-uppercase text-h5 text-primary font-weight-black">
-                                {{ log.rfid?.name || '' }}
+                                {{ log?.name || '' }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ log.rfid?.epc || '' }}</span>
+                        <span class="font-weight-black">{{ log?.epc || '' }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ log.rfid?.inventory?.batch }}</span>
+                        <span class="font-weight-black">{{ log.inventory?.batch }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div>
                                 <span class="text-uppercase text-h5 font-weight-bold">
                                     {{
-                                        log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('MMMM D, YYYY') :
+                                        log.antenna_log?.first_seen_timestamp ?
+                                            Moment(log.antenna_log?.first_seen_timestamp).format('MMMM D, YYYY') :
                                             ''
                                     }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-bold">
-                                    {{ log.first_seen_timestamp ? Moment(log.first_seen_timestamp).format('h:mm A') : ''
+                                    {{ log.antenna_log?.first_seen_timestamp ?
+                                        Moment(log.antenna_log?.first_seen_timestamp).format('h:mm A') : ''
                                     }}
                                 </p>
                             </div>
@@ -197,14 +222,19 @@ const fetchLoadingCurtain = async () => {
             </div>
         </div>
     </div>
-    <v-dialog v-model="hasError" max-width="550">
-        <v-card class="px-4 py-4">
-            <v-card-title>Loading Curtain Error</v-card-title>
-            <v-card-text class="mt-4">
-                <p class="text-h4 font-weight-bold">{{ errorMessage }}</p>
+    <v-dialog v-model="hasError" max-width="800" transition="dialog-bottom-transition">
+        <v-card class="pa-4 rounded-lg">
+            <v-card-title class="d-flex justify-center align-center pb-0">
+                <v-icon color="error" size="40" class="mr-2" icon="ri-error-warning-line"></v-icon>
+                <span class="text-h3 font-weight-bold text-error">Loading Curtain Error</span>
+            </v-card-title>
+            <v-card-text class="mt-4 text-center">
+                <p class="text-h4 font-weight-medium" style="word-break: break-word;">{{ errorMessage }}</p>
             </v-card-text>
-            <v-card-actions>
-                <v-btn color="primary" class="px-8" text variant="outlined" @click="hasError = false">Okay</v-btn>
+            <v-card-actions class="justify-center mt-2">
+                <v-btn color="error" variant="flat" class="px-8" rounded @click="hasError = false">
+                    Okay
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
