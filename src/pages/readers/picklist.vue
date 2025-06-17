@@ -402,7 +402,7 @@ const toast = ref({
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>

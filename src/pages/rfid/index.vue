@@ -3,8 +3,10 @@ import AddingModal from '@/components/AddingModal.vue';
 import DefaultModal from '@/components/DefaultModal.vue';
 import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel, generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
@@ -12,12 +14,13 @@ import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const { authUserCan } = useAuthorization();
 
 const searchValue = ref('');
 const serverItems = ref([]);
@@ -55,16 +58,15 @@ const batchUpdateForm = reactive({
     type: 'inventory'
 });
 
+const updateForm = reactive({
+    quantity: null,
+    rfid: null
+})
+
 const headers = [
     {
         title: 'RFID CODE',
         key: 'rfid_code',
-    },
-    {
-        title: 'Weak Signal',
-        key: 'weak_signal',
-        align: 'center',
-        sortable: false
     },
     {
         title: 'Plant',
@@ -111,6 +113,12 @@ const headers = [
     {
         title: 'EMPTY AREA',
         key: 'is_empty',
+        align: 'center',
+        sortable: false
+    },
+    {
+        title: 'ACTIONS',
+        key: 'actions',
         align: 'center',
         sortable: false
     },
@@ -416,6 +424,50 @@ watch(() => form.plant_code, () => {
     updateFilteredStorageLocations();
 });
 
+const selectedItem = ref(null);
+const updateLoading = ref(false);
+const editDialog = ref(false);
+const editItem = (item) => {
+    if (item.batch == null) {
+        toast.value.message = 'Cannot edit pallet without assigned inventory';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+    selectedItem.value = item;
+    updateForm.rfid = item;
+    updateForm.quantity = item.quantity;
+    editDialog.value = true;
+    console.log(item);
+}
+
+const handleUpdate = async () => {
+    updateLoading.value = true;
+    toast.value.show = false;
+
+    try {
+        const response = await ApiService.post(`rfid/${selectedItem.value.id}/update`, updateForm);
+        if (response.status !== 200) {
+            throw new Error('Failed to update RFID');
+        }
+        updateLoading.value = false;
+        toast.value.message = 'Current quantity updated successfully!';
+        toast.value.color = 'success';
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+    } catch (error) {
+        console.error('Error updating:', error);
+    } finally {
+        updateLoading.value = false;
+        editDialog.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -471,16 +523,26 @@ watch(() => form.plant_code, () => {
                 {{ item.name }}
             </template>
 
-            <template #item.weak_signal="{ item }">
+            <!-- <template #item.weak_signal="{ item }">
                 <v-badge v-if="item.is_weak_signal" color="error" content="Yes" class="text-uppercase" inline></v-badge>
-            </template>
+            </template> -->
 
             <template #item.type="{ item }">
                 <span class="text-uppercase">{{ item.type }}</span>
             </template>
 
+
             <template #item.rfid_code="{ item }">
-                <span @click="handleViewRfid(item)"
+                <span v-if="item.is_weak_signal">
+                    <VTooltip location="top">
+                        <template #activator="{ props }">
+                            <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.rfid_code
+                            }}</span>
+                        </template>
+                        <span>Weak Signal</span>
+                    </VTooltip>
+                </span>
+                <span v-else @click="handleViewRfid(item)"
                     class="text-primary font-weight-bold cursor-pointer hover-underline">
                     {{ item.rfid_code }}
                 </span>
@@ -513,6 +575,14 @@ watch(() => form.plant_code, () => {
                     <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
                         class="ri-checkbox-circle-line"></i>
                     <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+            <template #item.actions="{ item }">
+                <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
+                    <IconBtn size="small" @click="editItem(item)">
+                        <VIcon icon="ri-pencil-line" />
+                    </IconBtn>
                 </div>
             </template>
 
@@ -696,6 +766,26 @@ watch(() => form.plant_code, () => {
                     Confirm
                 </PrimaryButton>
             </div>
+        </template>
+    </EditingModal>
+
+    <EditingModal v-if="selectedItem" @close="editDialog = false" :show="editDialog"
+        :dialog-title="`Update ${selectedItem.name}`">
+        <template #default>
+            <v-form @submit.prevent="handleUpdate">
+                <v-text-field class="mt-6" density="compact" :rules="[value => !!value || 'Quantity is required']"
+                    label="Current Quantity" v-model="updateForm.quantity" />
+                <!-- <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                    {{ errorMessage }}
+                </VAlert> -->
+                <div class="d-flex justify-end align-center mt-4">
+                    <v-btn color="secondary" variant="outlined" @click="editDialog = false"
+                        class="px-12 mr-3">Cancel</v-btn>
+                    <PrimaryButton color="primary" class="px-12" type="submit" :loading="updateLoading">
+                        Update
+                    </PrimaryButton>
+                </div>
+            </v-form>
         </template>
     </EditingModal>
 
