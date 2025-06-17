@@ -269,7 +269,7 @@ const toast = ref({
 
         <div>
             <v-card
-                v-if="shipmentData.shipment.loadstart_date && (shipmentData.shipment.loadend_date === '0000-00-00' || shipmentData.shipment.loadend_date === null)"
+                v-if="shipmentData.shipment.loadstart_date && (shipmentData.shipment.loadend_date === '00000000' || shipmentData.shipment.loadend_date === null)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
