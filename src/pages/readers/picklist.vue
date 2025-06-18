@@ -10,9 +10,11 @@ import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
+import axios from 'axios';
 import Moment from 'moment';
 import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
 
 const route = useRoute();
 
