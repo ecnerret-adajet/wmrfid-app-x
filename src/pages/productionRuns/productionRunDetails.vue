@@ -169,7 +169,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 }))
             ];
 
-            materialsOption.value = materials
+            materialsOption.value = materials.map(item => ({
+                value: item.id,
+                title: `${item.plant_code} - ${item.code} - ${item.description}`
+            }));
 
             pageLoading.value = false
         })
@@ -641,8 +644,8 @@ const exportData = async () => {
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-select label="Select Material" density="compact" :items="materialsOption"
-                            v-model="batchUpdateForm.material_id"
+                        <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
+                            :items="materialsOption" v-model="batchUpdateForm.material_id"
                             :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
