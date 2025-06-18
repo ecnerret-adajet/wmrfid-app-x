@@ -15,7 +15,6 @@ import Moment from 'moment';
 import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
-
 const route = useRoute();
 
 const readerId = route.params.reader;
@@ -26,7 +25,6 @@ const noAccessLog = ref(false);
 const dialogVisible = ref(false);
 const syncingLoading = ref(false);
 const errorMessage = ref(null);
-const loadedCounter = ref(0);
 const setTimeInSeconds = ref(120);
 const refreshTimer = ref(null);
 const totalRead = ref(0);
@@ -40,6 +38,7 @@ const shipmentData = reactive({
 
 onMounted(() => {
     fetchData();
+    // fetchTestData();
     reloadPageChecker();
 });
 
@@ -153,19 +152,11 @@ const fetchLoadStatus = async (shipmentNumber) => {
             checkLoadedPallets(item.batch)
                 .then(result => {
                     item.expected = result;
-                    if (determineSapQuantity(item.quantity, item.default_pallet_capacity) === result) {
-                        // console.log('check if result count is correct: ', result)
-                        loadedCounter.value++;
-                    }
                 })
         });
-
-        // here to check the mismatches
-
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     }
-
 };
 
 const fetchShipmentDetails = async (shipmentNumber) => {
@@ -207,6 +198,63 @@ const fetchShipmentDetails = async (shipmentNumber) => {
     }
 
 };
+
+// const fetchTestData = async (shipmentNumber) => {
+//     const data = {
+//         deliveries: [
+//             {
+//                 batch: "PLHXJF17",
+//                 default_pallet_capacity: 50,
+//                 expected: 1,
+//                 delivery: "1200047237",
+//                 ITEM: "000010",
+//                 material: "000000001100000133",
+//                 material_desc: "FL MTN Spring Flour C",
+//                 quantity: 100,
+//                 quantity_all: 100,
+//                 quantity_pallet: 2,
+//                 sales_unit: "BAG",
+//                 inventory: [
+//                     {
+//                         batch: "PLHXJF17",
+//                         quantity: 60,
+//                     },
+//                     {
+//                         batch: "PLHXJF17",
+//                         quantity: 60,
+//                     },
+//                 ],
+//                 plant: "2120",
+//                 sloc: "W107",
+//             },
+//         ],
+//         shipment: {
+//             shipment: "0000127426",
+//             hauler: "0014000009",
+//             hauler_name: "PHILIPPINE FOREMOST MILLING",
+//             plate_number_1: "ACA 8307",
+//             plate_number_2: "",
+//             plate_number_3: "",
+//             driver_name: "E. SARION",
+//             checkin_date: "20250520",
+//             checkin_time: "085400",
+//             loadstart_date: "20240620",
+//             loadstart_time: "142303",
+//             loadend_date: "00000000",
+//             loadend_time: "000000",
+//             total_pallet_to_load: 2
+//         }
+//     };
+
+//     shipmentData.deliveries = data.deliveries;
+//     shipmentData.shipment = data.shipment;
+
+//     totalRead.value = shipmentData.shipment?.total_pallet_to_load;
+
+//     console.log(shipmentData.shipment);
+//     console.log(shipmentData.deliveries);
+
+// }
 
 const showSyncConfirmModal = ref(false);
 
@@ -279,6 +327,10 @@ const chunkArray = (arr, size) => {
 const deliveryChunks = computed(() => chunkArray(shipmentData.deliveries || [], 5))
 
 const carouselIndex = ref(0)
+
+const loadedCounter = computed(() =>
+    shipmentData.deliveries?.reduce((sum, item) => sum + (item.expected || 0), 0)
+)
 
 </script>
 <template>
@@ -434,7 +486,7 @@ const carouselIndex = ref(0)
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
