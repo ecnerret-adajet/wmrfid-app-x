@@ -1,6 +1,7 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
+import JwtService from '@/services/JwtService';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
