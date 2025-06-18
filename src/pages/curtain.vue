@@ -98,19 +98,19 @@ watch(
 
         <div style="padding-top: 175px;" class="px-12">
             <VRow no-gutters>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     Physical ID
                 </VCol>
                 <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
-                    style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
                 <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
-                    style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62"
+                <VCol md="3" style="font-size: 22px; background-color: #329b62"
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     date and time
                 </VCol>
@@ -119,30 +119,45 @@ watch(
                 <VRow v-if="lastRead" no-gutters style="border: 1px solid #00833c;">
                     <VCol md="3" class="px-3 py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
-                            <span class="text-uppercase text-h5 text-primary font-weight-black">
+                            <span v-if="lastRead?.name === 'unregistered'"
+                                class="text-uppercase text-h4 text-error font-weight-black">
                                 {{ lastRead?.name }}
+                            </span>
+                            <span v-else class="text-uppercase text-h4 text-primary font-weight-black">
+                                {{ lastRead?.name || '' }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ lastRead?.epc }}</span>
+                        <span class="font-weight-black text-h4">{{ lastRead?.epc }}</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span v-if="lastRead?.inventory" class="font-weight-black">{{ lastRead?.inventory?.batch
-                            }}</span>
-                        <span v-else class="font-weight-black text-error">NO BATCH</span>
+                        <span v-if="lastRead?.inventory" class="font-weight-black text-h4">{{ lastRead?.inventory?.batch
+                        }}</span>
+                        <span v-else class="font-weight-black text-error text-h4">NO BATCH</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
-                            <div>
-                                <span class="text-uppercase text-h5 font-weight-bold">
+                            <div v-if="lastRead?.name === 'unregistered'">
+                                <span class="text-uppercase text-h4 font-weight-black">
+                                    {{ lastRead?.created_at ?
+                                        Moment(lastRead?.created_at).format('MMMM D, YYYY') : '' }}
+                                </span>
+                                <br>
+                                <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
+                                    {{ lastRead?.created_at ?
+                                        Moment(lastRead?.created_at).format('h:mm A') : '' }}
+                                </p>
+                            </div>
+                            <div v-else>
+                                <span class="text-uppercase text-h4 font-weight-black">
                                     {{ lastRead?.antenna_log?.created_at ?
                                         Moment(lastRead.antenna_log?.created_at).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
-                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">
+                                <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
                                     {{ lastRead?.antenna_log?.created_at ?
                                         Moment(lastRead?.antenna_log?.created_at).format('h:mm A') : '' }}
                                 </p>
@@ -170,47 +185,62 @@ watch(
 
         <div class="px-12">
             <VRow no-gutters>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     Physical ID
                 </VCol>
                 <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
-                    style="background-color: #329b62; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
                 <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
-                    style="background-color: #329b62; font-size: 18px; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
-                <VCol md="3" style="font-size: 18px; background-color: #329b62;"
+                <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     date and time
                 </VCol>
             </VRow>
-            <div class="table-wrapper" style="height: 350px;">
+            <div class="table-wrapper">
 
                 <!-- Loop Row  -->
                 <VRow v-for="(log, index) in logs" :key="index" no-gutters style="border: 1px solid #00833c;">
                     <VCol md="3" class="py-2 text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
-                            <span class="text-uppercase text-h5 text-primary font-weight-black">
+                            <span v-if="log?.name === 'unregistered'"
+                                class="text-uppercase text-h4 text-error font-weight-black">
+                                {{ log?.name }}
+                            </span>
+                            <span v-else class="text-uppercase text-h4 text-primary font-weight-black">
                                 {{ log?.name || '' }}
                             </span>
                         </div>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black">{{ log?.epc || '' }}</span>
+                        <span class="font-weight-black text-h4">{{ log?.epc || '' }}</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span v-if="log.inventory" class="font-weight-black">{{ log.inventory?.batch }}</span>
-                        <span v-else class="font-weight-black text-error">NO BATCH</span>
+                        <span v-if="log.inventory" class="font-weight-black text-h4">{{ log.inventory?.batch }}</span>
+                        <span v-else class="font-weight-black text-error text-h4">NO BATCH</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
-                            <div>
-                                <span class="text-uppercase text-h5 font-weight-bold">
+                            <div v-if="log?.name === 'unregistered'">
+                                <span class="text-uppercase text-h4 font-weight-black">
+                                    {{ log?.created_at ?
+                                        Moment(log?.created_at).format('MMMM D, YYYY') : '' }}
+                                </span>
+                                <br>
+                                <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
+                                    {{ log?.created_at ?
+                                        Moment(log?.created_at).format('h:mm A') : '' }}
+                                </p>
+                            </div>
+                            <div v-else>
+                                <span class="text-uppercase text-h4 font-weight-black">
                                     {{
                                         log.antenna_log?.created_at ?
                                             Moment(log.antenna_log?.created_at).format('MMMM D, YYYY') :
@@ -218,7 +248,7 @@ watch(
                                     }}
                                 </span>
                                 <br>
-                                <p style="margin-bottom: 0px !important;" class="font-weight-bold">
+                                <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
                                     {{ log.antenna_log?.created_at ?
                                         Moment(log.antenna_log?.created_at).format('h:mm A') : ''
                                     }}

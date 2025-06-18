@@ -1,7 +1,6 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
-import JwtService from '@/services/JwtService';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
@@ -10,7 +9,6 @@ import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
-import axios from 'axios';
 import Moment from 'moment';
 import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -261,11 +259,23 @@ const toast = ref({
     show: false
 });
 
+const chunkArray = (arr, size) => {
+    const result = []
+    for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size))
+    }
+    return result
+}
+
+const deliveryChunks = computed(() => chunkArray(shipmentData.deliveries || [], 5))
+
+const carouselIndex = ref(0)
+
 </script>
 <template>
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2"></v-progress-linear>
+    <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
 
-    <div v-else class="mt-2 px-8 whiteBackground">
+    <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
             <v-card
@@ -283,7 +293,20 @@ const toast = ref({
                             <span class="font-italic" style="color: #ff9800;">Do not proceed until loading is
                                 finished.</span>
                         </div>
-                        <v-progress-linear indeterminate color="warning" height="8" rounded class="mt-2" />
+                        <v-progress-linear
+                            :model-value="(loadedCounter / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
+                            color="warning" height="14" rounded
+                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                            <template #default>
+                                <span class="text-caption font-weight-bold">
+                                    {{ loadedCounter }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
+                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                        ({{ Math.round((loadedCounter / shipmentData.shipment.total_pallet_to_load) *
+                                            100) }}%)
+                                    </span>
+                                </span>
+                            </template>
+                        </v-progress-linear>
                     </VCol>
                     <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
                         <div class="text-caption mb-1" style="color: #e65100;">Status</div>
@@ -496,67 +519,81 @@ const toast = ref({
                             Read (RFID PALLETS)
                         </VCol>
                     </VRow>
-                    <div class="table-wrapper" style="height: 550px;">
+                    <div>
+                        <div>
+                            <v-carousel height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                                :cycle="deliveryChunks.length > 1" :interval="10000">
+                                <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
+                                    <v-sheet height="100%">
+                                        <div v-for="(delivery, index) in chunk" :key="index">
+                                            <VRow no-gutters style="border: 1px solid #329b62;">
+                                                <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
+                                                    <div class="text-center">
+                                                        <div class="text-overline mb-1 font-weight-bold"
+                                                            style="font-size: 14px !important;">
+                                                            {{ delivery.material_desc }}
+                                                        </div>
+                                                        <div>
+                                                            <span style="color: #00A36C;"
+                                                                class="text-uppercase text-h5 font-weight-black">
+                                                                {{ delivery.material }} - {{ delivery.batch }}
+                                                            </span>
+                                                            <br>
+                                                            <p style="margin-bottom: 0px !important;"
+                                                                class="font-weight-bold">
+                                                                {{ delivery.quantity }} {{ delivery.sales_unit }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </VCol>
+                                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
+                                                    style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
+                                                    <span class="font-weight-black"
+                                                        style="font-size: 3rem; color: #3e3b3b !important;">
+                                                        {{ delivery.quantity_all ?
+                                                            determineSapQuantity(delivery.quantity_all,
+                                                                delivery.default_pallet_capacity) :
+                                                            determineSapQuantity(delivery.quantity,
+                                                                delivery.default_pallet_capacity) }}
+                                                    </span>
+                                                </VCol>
+                                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
+                                                    style="border-right: 1px solid #fff;">
+                                                    <div class="font-weight-black"
+                                                        style="font-size: 3rem; color: #3e3b3b !important;">
+                                                        <span
+                                                            v-if="delivery.quantity_all !== null || !delivery.quantity_all">
+                                                            <span
+                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
+                                                                {{ delivery.inventory.length }}
+                                                            </span>
+                                                            <span v-else class="text-error text-h4 font-weight-black">
+                                                                NO STOCK
+                                                            </span>
+                                                        </span>
+                                                        <span v-else class="display-3">
+                                                            {{ determineSapQuantity(delivery.quantity_all,
+                                                                delivery.default_pallet_capacity) }}
+                                                        </span>
+                                                    </div>
+                                                </VCol>
+                                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen">
+                                                    <span class="font-weight-black"
+                                                        style="font-size: 3rem; color: #3e3b3b !important;">
+                                                        {{ delivery.expected }}
+                                                    </span>
+                                                </VCol>
+                                            </VRow>
+                                        </div>
+                                    </v-sheet>
+                                </v-carousel-item>
+                            </v-carousel>
 
-                        <!-- Loop Row  -->
-                        <template v-for="(delivery, index) in shipmentData.deliveries"
-                            v-if="shipmentData.deliveries.length > 0">
-                            <VRow no-gutters style="border: 1px solid #329b62;">
-                                <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
-                                    <div class="text-center">
-                                        <div class="text-overline mb-1 font-weight-bold"
-                                            style="font-size: 14px !important;">
-                                            {{ delivery.material_desc }}
-                                        </div>
-                                        <div>
-                                            <span style="color: #00A36C;"
-                                                class="text-uppercase text-h5 font-weight-black">
-                                                {{ delivery.material }} - {{ delivery.batch }}
-                                            </span>
-                                            <br>
-                                            <p style="margin-bottom: 0px !important;" class="font-weight-bold">{{
-                                                delivery.quantity }} {{ delivery.sales_unit }}</p>
-                                        </div>
-                                    </div>
-                                </VCol>
-                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
-                                    style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
-                                        {{ delivery.quantity_all ? determineSapQuantity(delivery.quantity_all,
-                                            delivery.default_pallet_capacity) : determineSapQuantity(delivery.quantity,
-                                                delivery.default_pallet_capacity) }}
-                                    </span>
-                                </VCol>
-                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
-                                    style="border-right: 1px solid #fff;">
-                                    <div class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
-                                        <span v-if="delivery.quantity_all !== null || !delivery.quantity_all">
-                                            <span v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
-                                                {{ delivery.inventory.length }}
-                                            </span>
-                                            <span v-else class="text-error text-h4 font-weight-black">
-                                                NO STOCK
-                                            </span>
-                                        </span>
-                                        <span v-else class="display-3">
-                                            {{ determineSapQuantity(delivery.quantity_all,
-                                                delivery.default_pallet_capacity) }}
-                                        </span>
-                                    </div>
-                                </VCol>
-                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen">
-                                    <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">
-                                        {{ delivery.expected }}
-                                    </span>
-                                </VCol>
-                            </VRow>
-                        </template>
-                        <template v-else>
-                            <div style="min-height: 100px;" class="d-flex justify-center align-center border">
+                            <div v-if="shipmentData.deliveries.length === 0" style="min-height: 100px;"
+                                class="d-flex justify-center align-center border">
                                 <span class="text-h4 text-error">No delivery found</span>
                             </div>
-                        </template>
-
+                        </div>
                     </div>
                 </div>
             </div>
@@ -615,14 +652,6 @@ const toast = ref({
     position: relative;
     height: 10px;
     /* Progress bar height */
-}
-
-.table-wrapper {
-    overflow-x: hidden;
-    /* Enable horizontal scroll */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    /* Smooth scrolling for iOS devices */
 }
 
 .rightBorderedGreen {
