@@ -171,7 +171,12 @@ const fetchLoadStatus = async (shipmentNumber) => {
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
         const token = JwtService.getToken();
-        const response = await axios.get(`picklist/shipment-picklist/${shipmentNumber}/${bay}`, {
+        let bay_no = 1; // Default bay number
+        // If bay is provided, use it; otherwise, default to 1
+        if (bay) {
+            bay_no = bay;
+        }
+        const response = await axios.get(`picklist/shipment-picklist/${shipmentNumber}/${bay_no}`, {
             params: {
                 reader_id: readerId
             },
@@ -428,7 +433,7 @@ const carouselIndex = ref(0)
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
