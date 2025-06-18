@@ -524,7 +524,11 @@ const carouselIndex = ref(0)
                     </VRow>
                     <div>
                         <div>
-                            <v-carousel height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                            <div v-if="shipmentData.deliveries.length === 0" style="min-height: 100px;"
+                                class="d-flex justify-center align-center border">
+                                <span class="text-h4 text-error">No delivery found</span>
+                            </div>
+                            <v-carousel v-else height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
                                 :cycle="deliveryChunks.length > 1" :interval="10000">
                                 <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
                                     <v-sheet height="100%">
@@ -592,10 +596,7 @@ const carouselIndex = ref(0)
                                 </v-carousel-item>
                             </v-carousel>
 
-                            <div v-if="shipmentData.deliveries.length === 0" style="min-height: 100px;"
-                                class="d-flex justify-center align-center border">
-                                <span class="text-h4 text-error">No delivery found</span>
-                            </div>
+
                         </div>
                     </div>
                 </div>
