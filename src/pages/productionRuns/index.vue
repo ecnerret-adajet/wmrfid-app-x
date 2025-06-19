@@ -333,6 +333,7 @@ const handleAction = (productionRun, action) => {
     }
 
     if (action.key == 'confirm_production_run') {
+        confirmRemarks.value = null;
         if (selectedProductionRun.value.STOP_T == null || Moment(selectedProductionRun.value.STOP_T).year() <= 1930) {
             toast.value.color = 'error';
             toast.value.message = 'Selected production run not yet completed';
@@ -351,6 +352,11 @@ const handleAction = (productionRun, action) => {
 
     if (action.key == 'assign_pallets') {
         showAssign.value = true;
+    }
+
+    if (action.key == 'cancel_confirmation') {
+        cancelRemarks.value = null;
+        showCancel.value = true;
     }
 }
 
@@ -481,6 +487,47 @@ const triggerEnd = (item) => {
     selectedProductionRun.value = item;
     triggerEndDialog.value = true;
 }
+
+const cancelRemarks = ref(null)
+const showCancel = ref(false);
+const cancelLoading = ref(false)
+const selectedReason = ref(null)
+const cancelProductionRunConfirmation = async () => {
+    cancelLoading.value = true
+    selectedProductionRun.value.cancel_remarks = cancelRemarks.value
+    selectedProductionRun.value.cancel_reason = selectedReason.value
+    try {
+        const response = await axios.post(`production-runs/cancel-confirmation`, selectedProductionRun.value);
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{
+                key: sortQuery.value.replace('-', ''),
+                order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+            }]
+        });
+        toast.value.message = 'Production run end confirmation successfully cancelled!'
+        toast.value.color = 'success';
+        toast.value.show = true;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error updating:', error);
+    } finally {
+        cancelLoading.value = null;
+        showCancel.value = false;
+        selectedReason.value = null;
+    }
+}
+
+const reasonList = [
+    { title: 'INCORRECT DATA ENTRY', value: 'INCORRECT DATA ENTRY' },
+    { title: 'CONFIRMED BY MISTAKE', value: 'CONFIRMED BY MISTAKE' },
+    { title: 'QUALITY CONTROL ISSUES DISCOVERED AFTER CONFIRMATION', value: 'QUALITY CONTROL ISSUES DISCOVERED AFTER CONFIRMATION' },
+    { title: 'PRODUCTION RUN INTERRUPTED', value: 'PRODUCTION RUN INTERRUPTED' },
+    { title: 'CHANGE IN PRODUCTION SCHEDULE OR PRIORITIES', value: 'CHANGE IN PRODUCTION SCHEDULE OR PRIORITIES' },
+    { title: 'MANUAL OVERRIDE DUE TO SYSTEM OR HARDWARE ERROR', value: 'MANUAL OVERRIDE DUE TO SYSTEM OR HARDWARE ERROR' },
+    { title: 'OTHER REASON', value: 'OTHER REASON' }
+]
 
 </script>
 
@@ -715,6 +762,11 @@ const triggerEnd = (item) => {
                             <v-list-item v-if="!item.production_run_confirmation"
                                 @click="handleAction(item, { key: 'confirm_production_run', title: 'Confirm Production Run' })">
                                 <v-list-item-title>Confirm Production Run</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item class="text-error"
+                                v-if="item.production_run_confirmation && Moment().diff(Moment(item.production_run_confirmation?.created_at), 'hours') < 200"
+                                @click="handleAction(item, { key: 'cancel_confirmation', title: 'Reverse Confirmation' })">
+                                <v-list-item-title>Reverse Confirmation</v-list-item-title>
                             </v-list-item>
 
                         </v-list>
@@ -1095,6 +1147,38 @@ const triggerEnd = (item) => {
         </v-card>
     </v-dialog>
     <UnauthorizedPage :show="unauthorizedFlag" @close="unauthorizedFlag = false" />
+
+    <!-- Confirm Details Modal -->
+    <v-dialog v-if="selectedProductionRun" v-model="showCancel" max-width="700px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">
+                    <i class="ri-computer-line text-primary text-h4 mr-2" style="margin-top: -1px;"></i>
+                    Cancel Production Run Confirmation
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="showCancel = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <div class="mx-4 mt-4">
+                    <v-autocomplete label="Reason for Cancellation" density="compact" item-title="title"
+                        item-value="value" :items="reasonList" v-model="selectedReason"
+                        :rules="[value => !!value || 'Please select an item from the list']" />
+                </div>
+                <div class="mx-4">
+                    <v-textarea v-model="cancelRemarks" class="mt-4" clear-icon="ri-close-line" label="Remarks"
+                        lines="1" clearable></v-textarea>
+                </div>
+                <div class="d-flex justify-end align-center mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="showConfirm = false"
+                        class="px-12 mr-3">Close</v-btn>
+                    <v-btn :loading="cancelLoading" color="error" class="d-flex align-center px-12"
+                        @click="cancelProductionRunConfirmation">
+                        Cancel confirmation
+                    </v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
 
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
