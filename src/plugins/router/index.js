@@ -21,9 +21,14 @@ router.beforeEach((to, from, next) => {
 
     authStore.verifyAuth();
 
+    const isSuperAdmin = authStore.user?.is_super_admin === true;
+    const isWarehouseAdmin = authStore.user?.is_warehouse_admin === true;
+
     if (
         authStore.isAuthenticated &&
-        authStore.user?.is_warehouse_operator === true &&
+        authStore.user?.is_warehouse_operator === true && 
+        !isSuperAdmin &&
+        !isWarehouseAdmin &&
         to.name !== 'operator-screen' &&
         to.name !== 'login'
     ) {

@@ -9,7 +9,7 @@ import warehouseOperator from './warehouseOperator.vue';
 const store = useAuthStore();
 const router = useRouter();
 
-const navigation = ref(1)
+const navigation = ref(0)
 
 const handleNavChange = (val) => {
     if (val === 2) {
