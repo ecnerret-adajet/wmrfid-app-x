@@ -1,6 +1,6 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth';
-import { computed, ref } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import bottomNavigation from './bottomNavigation.vue';
 import movementOperator from './movementOperator.vue';
@@ -9,7 +9,7 @@ import warehouseOperator from './warehouseOperator.vue';
 const store = useAuthStore();
 const router = useRouter();
 
-const navigation = ref(1)
+const navigation = ref(0)
 
 const handleNavChange = (val) => {
     if (val === 2) {
@@ -33,6 +33,13 @@ const confirmLogout = () => {
     router.push({ name: 'login' });
 }
 
+watchEffect(() => {
+    if (!store.user || !store.user.id) {
+        store.logout();
+        router.push({ name: 'login' });
+    }
+});
+
 // Get assigned plant_code and default_storage_location.slug
 const plant = computed(() => store.user?.assigned_plant || null);
 const storageLocation = computed(() => store.user?.assigned_plant?.default_storage_location || null);
@@ -40,7 +47,7 @@ const storageLocation = computed(() => store.user?.assigned_plant?.default_stora
 </script>
 
 <template>
-    <div class=" mx-4">
+    <div v-if="plant && storageLocation" class="mx-4">
         <movementOperator :plant="plant" :storage-location="storageLocation" v-if="navigation === 0" />
         <warehouseOperator :plant="plant" :storage-location="storageLocation" v-if="navigation === 1" />
     </div>
