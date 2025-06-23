@@ -96,6 +96,17 @@ export const routes = [
             },
         },
         {
+            path: 'repacking',
+            name: 'repacking',
+            component: () => import('@/pages/manualRepacking/index.vue'),
+            meta: {
+              pageTitle: "Repacking",
+              breadcrumbs: [
+                  { label: "Repacking", link: "/repacking" },
+              ],
+            },
+        },
+        {
             path: 'inventories',
             name: 'inventories',
             component: () => import('@/pages/inventories/index.vue'),

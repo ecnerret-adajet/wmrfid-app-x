@@ -83,6 +83,8 @@ const proceedMapping = () => {
         :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs' }" />
     <VerticalNavLink v-if="authUserCan('view.warehouses')"
         :item="{ title: 'Warehouse', icon: 'ri-home-gear-line', to: '/warehouse' }" />
+    <VerticalNavLink v-if="authUserCan('view.manual.repack')"
+        :item="{ title: 'Repacking', icon: 'ri-user-settings-line', to: '/repacking' }" />
 
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 

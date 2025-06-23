@@ -235,7 +235,7 @@ const pan = {
             </VueZoomable>
         </v-card>
 
-        <MapBlockAssignModal :storage-location="storageLocation.slug" :block="selectedBlock" :plant="plant.plant_code"
+        <MapBlockAssignModal :storage-location="storageLocation?.slug" :block="selectedBlock" :plant="plant?.plant_code"
             @assign-success="onAssignSuccess" @action-success="actionSuccess" :show="openAssignModal"
             @close="openAssignModal = false" />
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />

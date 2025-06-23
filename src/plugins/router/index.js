@@ -27,7 +27,11 @@ router.beforeEach((to, from, next) => {
         to.name !== 'operator-screen' &&
         to.name !== 'login'
     ) {
-        next({ name: 'operator-screen', replace: true });
+        if (from.name === 'operator-screen') {
+            next(false); // Prevent infinite loop
+            return;
+        }
+        next({ name: 'operator-screen' });
         return;
     }
 
