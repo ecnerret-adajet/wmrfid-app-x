@@ -292,6 +292,14 @@ export const routes = [
         },
     },
     {
+        path: '/operator-screen',
+        name: 'operator-screen',
+        component: () => import('@/pages/operator/operatorScreen.vue'),
+        meta: {
+            pageTitle: "Operator Screen"
+        }
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [

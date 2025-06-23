@@ -95,7 +95,6 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 
         totalItems.value = table.total;
         serverItems.value = table.data;
-        console.log(serverItems.value);
 
         statisticsData.value = statistics;
 

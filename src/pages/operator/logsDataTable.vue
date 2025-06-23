@@ -214,50 +214,50 @@ defineExpose({
     <!-- :key props ensure to reset values on footer if tabs switched -->
     <VDataTableServer v-model:items-per-page="pageLimit" :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" :key="readerName"
-        @update:options="loadItems" class="text-no-wrap">
+        style=" overflow-x: auto;" @update:options="loadItems" class="text-no-wrap">
 
         <template class="font-weight-black" v-slot:header.physical_id="{ header }">
-            <span class="font-weight-black text-h4">PHYSICAL ID</span>
+            <span class="font-weight-black text-h5">PHYSICAL ID</span>
         </template>
 
         <template class="font-weight-black" v-slot:header.batch="{ header }">
-            <span class="font-weight-black text-h4">BATCH</span>
+            <span class="font-weight-black text-h5">BATCH</span>
         </template>
 
         <template class="font-weight-black" v-slot:header.manufacturing_date="{ header }">
-            <span class="font-weight-black text-h4">MFG DATE</span>
+            <span class="font-weight-black text-h5">MFG DATE</span>
         </template>
 
         <template class="font-weight-black" v-slot:header.wrap_status="{ header }">
-            <span class="font-weight-black text-h4">WRAP STATUS</span>
+            <span class="font-weight-black text-h5">WRAP STATUS</span>
         </template>
 
         <template #item.physical_id="{ item }">
-            <td class="py-5 font-weight-medium text-h4">
+            <td class="py-1 font-weight-medium text-h5">
                 {{ item.rfid?.name }}
             </td>
         </template>
 
         <template #item.batch="{ item }">
-            <td class="py-5 font-weight-medium text-h4">
+            <td class="py-1 font-weight-medium text-h5">
                 {{ item.rfid?.inventory?.batch ?? '--' }}
             </td>
         </template>
 
         <template #item.manufacturing_date="{ item }">
-            <td class="py-5 font-weight-medium text-h4">
-                <span class="font-weight-medium text-h4">{{ item.rfid?.inventory?.mfg_date ?
+            <td class="py-1 font-weight-medium text-h4">
+                <span class="font-weight-medium text-h5">{{ item.rfid?.inventory?.mfg_date ?
                     Moment(item.rfid?.inventory?.mfg_date).format('MMMM D, YYYY') : '--' }}</span>
-                <span class="font-weight-medium text-h4">&nbsp;{{ item.rfid?.inventory?.mfg_time ?? '' }}</span>
+                <span class="font-weight-medium text-h5">&nbsp;{{ item.rfid?.inventory?.mfg_time ?? '' }}</span>
             </td>
         </template>
 
         <template #item.wrap_status="{ item }">
             <div class="d-flex justify-center align-center">
-                <i v-if="item.rfid?.inventory?.is_wrapped" style="font-size: 44px; background-color: green;"
+                <i v-if="item.rfid?.inventory?.is_wrapped" style="font-size: 40px; background-color: green;"
                     class="ri-checkbox-circle-line"></i>
-                <i @click="handleShowConfirm('wrap', item.rfid)" v-else style="font-size: 44px;"
-                    class="ri-close-circle-line clickable-icon"></i>
+                <i @click="handleShowConfirm('wrap', item.rfid)" v-else style="font-size: 40px;"
+                    class="ri-close-circle-line clickable-icon-operator"></i>
             </div>
         </template>
 
@@ -269,24 +269,23 @@ defineExpose({
                     :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'"
                     :loading="pickLoading === item.rfid?.inventory?.id" :disabled="item.rfid?.inventory?.block_id"
                     @click="selectInventory(item.rfid)" type="button" size="large"
-                    :class="item.rfid?.inventory?.block_id === null ? 'px-6 cursor-pointer' : 'px-11 cursor-not-allowed'">
+                    :class="item.rfid?.inventory?.block_id === null ? 'px-6 cursor-pointer' : 'px-6 cursor-not-allowed'">
                     {{ item.rfid?.inventory?.block_id ? 'Assigned to Bin' : 'Assign to Bin' }}
                 </v-btn>
             </template>
 
             <template v-else>
-                <v-btn size="large"
-                    :color="item.rfid?.inventory?.picked_datetime === null ? 'primary-light' : 'primary-light'"
+                <v-btn :color="item.rfid?.inventory?.picked_datetime === null ? 'primary-light' : 'primary-light'"
                     :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'"
                     :loading="pickLoading === item.rfid?.inventory?.id"
                     :disabled="item.rfid?.inventory?.picked_datetime !== null"
                     @click="handleShowConfirm('pick', item.rfid)" type="button"
-                    :class="item.rfid?.inventory?.picked_datetime === null ? 'px-16 cursor-pointer' : 'px-13 cursor-not-allowed'">
+                    :class="item.rfid?.inventory?.picked_datetime === null ? 'px-8 cursor-pointer' : 'px-4 cursor-not-allowed'">
                     {{ item.rfid?.inventory?.picked_datetime === null ? 'Pick' : 'Picked' }}
                 </v-btn>
-
             </template>
         </template>
+
 
     </VDataTableServer>
     <BlockAssignModal v-if="selectedInventory" :show="assignModalOpen" :selected-inventory="selectedInventory"
@@ -295,30 +294,36 @@ defineExpose({
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 
     <v-dialog v-model="confirmModalOpen" max-width="500">
-        <v-card class="py-8 px-6">
-            <div class="mx-auto">
-                <!-- <i class="ri-add-box-line" style="font-size: 54px;"></i> -->
+        <v-card class="py-6 px-4 rounded-lg elevation-10">
+            <div class="d-flex flex-column align-center">
+                <v-avatar color="primary" size="64" class="mb-4">
+                    <v-icon size="36" icon="ri-question-line" color="white"></v-icon>
+                </v-avatar>
+                <div class="text-h4 font-weight-bold mb-2 text-center">
+                    {{ selectedAction.title }}
+                </div>
+                <div class="text-body-1 text-center mb-4 text-h5" v-html="selectedAction.message"></div>
             </div>
-            <p class="mt-4 text-h4 text-center">{{ selectedAction.title }}</p>
-            <p class="text-h5 text-center" v-html="selectedAction.message"></p>
-
-            <v-card-actions class="mt-5">
-                <v-spacer></v-spacer>
-                <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
+            <v-card-actions class="justify-end mt-4">
+                <v-btn color="secondary" variant="text" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
                 <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 </template>
 
-<style scoped>
-.clickable-icon {
+<style>
+.clickable-icon-operator {
     cursor: pointer;
     transition: background-color 0.2s ease-in-out;
     background-color: #FF474D;
 }
 
-.clickable-icon:hover {
+.clickable-icon-operator:hover {
     background-color: #E23F44;
+}
+
+.v-data-table-footer__items-per-page {
+    display: none !important;
 }
 </style>
