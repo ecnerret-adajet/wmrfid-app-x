@@ -302,12 +302,30 @@ const formatDateTime = (date, time) => {
     return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-const determineSapQuantity = (quantity, default_pallet_capacity) => {
-    if (default_pallet_capacity != 0) {
-        return Math.ceil(quantity / default_pallet_capacity);
-    } else {
-        return Math.ceil(quantity / 40);
+// const determineSapQuantity = (quantity, default_pallet_capacity) => {
+//     if (default_pallet_capacity != 0) {
+//         return Math.ceil(quantity / default_pallet_capacity);
+//     } else {
+//         return Math.ceil(quantity / 40);
+//     }
+// }
+
+const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
+    uom = String(uom).toLowerCase();
+
+    if (uom === 'kg') {
+        // Convert kg qty to bags, then calculate pallets
+        return Math.ceil((quantity / (numerator / denominator)) / defaultPalletCapacity);
     }
+
+    if (uom === 'bag') {
+        // If bag based, convert quantity
+        const convertedQuantity = quantity * (numerator / denominator);
+        return Math.ceil((convertedQuantity / (numerator / denominator)) / defaultPalletCapacity);
+    }
+
+    // Default fallback: treat as bags and divide by default pallet capacity
+    return Math.ceil(quantity / defaultPalletCapacity);
 }
 
 const toast = ref({
@@ -363,7 +381,7 @@ const loadedCounter = computed(() =>
                                     {{ loadedCounter }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
                                     <span v-if="shipmentData.shipment?.total_pallet_to_load">
                                         ({{ Math.round((loadedCounter / shipmentData.shipment.total_pallet_to_load) *
-                                            100) }}%)
+                                        100) }}%)
                                     </span>
                                 </span>
                             </template>
@@ -467,7 +485,7 @@ const loadedCounter = computed(() =>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
                                                 formatDateTime(shipmentData.shipment.loadstart_date,
-                                                    shipmentData.shipment.loadstart_time) }}</span>
+                                                shipmentData.shipment.loadstart_time) }}</span>
                                         </VCol>
                                     </VRow>
 
@@ -500,7 +518,7 @@ const loadedCounter = computed(() =>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
                                                 formatDateTime(shipmentData.shipment.loadend_date,
-                                                    shipmentData.shipment.loadend_time) }}</span>
+                                                shipmentData.shipment.loadend_time) }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -542,7 +560,7 @@ const loadedCounter = computed(() =>
                         <div>
                             <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">
                                 {{
-                                    shipmentData.shipment?.total_pallet_to_load }}</h2>
+                                shipmentData.shipment?.total_pallet_to_load }}</h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
                             <div class="text-h4 text-white font-weight-bold">
@@ -616,10 +634,12 @@ const loadedCounter = computed(() =>
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         {{ delivery.quantity_all ?
-                                                            determineSapQuantity(delivery.quantity_all,
-                                                                delivery.default_pallet_capacity) :
-                                                            determineSapQuantity(delivery.quantity,
-                                                                delivery.default_pallet_capacity) }}
+                                                        palletCalculation(delivery.sales_unit, delivery.quantity_all,
+                                                        delivery.numerator, delivery.denominator,
+                                                        delivery.default_pallet_capacity) :
+                                                        palletCalculation(delivery.sales_unit, delivery.quantity,
+                                                        delivery.numerator, delivery.denominator,
+                                                        delivery.default_pallet_capacity) }}
                                                     </span>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
@@ -637,8 +657,10 @@ const loadedCounter = computed(() =>
                                                             </span>
                                                         </span>
                                                         <span v-else class="display-3">
-                                                            {{ determineSapQuantity(delivery.quantity_all,
-                                                                delivery.default_pallet_capacity) }}
+                                                            {{ palletCalculation(delivery.sales_unit,
+                                                            delivery.quantity_all,
+                                                            delivery.numerator, delivery.denominator,
+                                                            delivery.default_pallet_capacity)}}
                                                         </span>
                                                     </div>
                                                 </VCol>
