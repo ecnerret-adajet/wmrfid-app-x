@@ -1,5 +1,6 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
+import DatePicker from '@/components/DatePicker.vue';
 import DefaultModal from '@/components/DefaultModal.vue';
 import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
@@ -63,6 +64,7 @@ const batchUpdateForm = reactive({
 const manualBatchUpdateForm = reactive({
     material_id: null,
     mfg_date: null,
+    quantity: null,
     selectedRfid: [],
     type: 'inventory'
 });
@@ -232,7 +234,8 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         // statisticsData.value = statistics;
         materialsOption.value = materials.map(item => ({
             value: item.id,
-            title: `${item.plant_code} - ${item.code} - ${item.description}`
+            title: `${item.plant_code} - ${item.code} - ${item.description}`,
+            default_pallet_quantity: item.default_pallet_quantity
         }));
 
         tagTypesOption.value = tag_types.map(item => ({
@@ -343,12 +346,17 @@ const clearChangeBatch = () => {
     batchUpdateForm.batch = null;
     batchUpdateForm.reason = null;
     batchUpdateForm.miller_name = null;
+    batchUpdateForm.selectedRfid = []
+    selectedItems.value = []
 }
 
 const clearManualBatch = () => {
     manualBatchUpdateForm.material_id = null;
     manualBatchUpdateForm.mfg_date = null;
     manualBatchUpdateForm.batch = null;
+    manualBatchUpdateForm.selectedRfid = []
+
+    selectedItems.value = []
 }
 
 const handleChangeBatch = async () => {
@@ -539,6 +547,24 @@ const handleUpdate = async () => {
         editDialog.value = false;
     }
 }
+
+watch(
+    () => manualBatchUpdateForm.material_id,
+    (newMaterialId) => {
+        if (!newMaterialId) return;
+        // Find the selected material
+        const selectedMaterial = materialsOption.value.find(m => m.value === newMaterialId);
+
+        if (selectedMaterial && selectedMaterial.default_pallet_quantity !== undefined) {
+            selectedItems.value.forEach(item => {
+                // Only set if not already set
+                if (!item.manual_quantity) {
+                    item.manual_quantity = selectedMaterial.default_pallet_quantity;
+                }
+            });
+        }
+    }
+);
 
 </script>
 
@@ -837,14 +863,19 @@ const handleUpdate = async () => {
                         <th>Physical ID</th>
                         <th>Group</th>
                         <th>Type</th>
+                        <th>Quantity</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(item, index) in selectedItems" :key="index">
+                    <tr v-for="(item, index) in selectedItems" :key="item.rfid_code">
                         <td>{{ item.rfid_code }}</td>
                         <td>{{ item.name }}</td>
                         <td>{{ item.group_no ?? 'N/A' }}</td>
                         <td class="text-uppercase">{{ item.type }}</td>
+                        <td>
+                            <v-text-field v-model="item.manual_quantity" density="compact" hide-details
+                                placeholder="Quantity" type="number" :rules="[v => !!v || 'Quantity is required']" />
+                        </td>
                     </tr>
                 </tbody>
             </v-table>
