@@ -393,6 +393,7 @@ const handleManualBatch = async () => {
     try {
         const response = await ApiService.post('inventories/manual-batch-update', manualBatchUpdateForm)
         manualBatchLoading.value = false;
+        toast.value.color = 'success';
         toast.value.message = 'Manual Batch updated successfully!'
         toast.value.show = true;
         clearManualBatch();
