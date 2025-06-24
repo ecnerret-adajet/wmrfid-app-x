@@ -41,6 +41,8 @@ const pageLoading = ref(false);
 const showEpcModal = ref(false);
 const epcData = ref([])
 const changeBatchModal = ref(false);
+const manualBatchModal = ref(false);
+
 
 const showRegistrationModal = ref(false);
 
@@ -54,6 +56,13 @@ const batchUpdateForm = reactive({
     material_id: null,
     mfg_date: null,
     reason: null,
+    selectedRfid: [],
+    type: 'inventory'
+});
+
+const manualBatchUpdateForm = reactive({
+    material_id: null,
+    mfg_date: null,
     selectedRfid: [],
     type: 'inventory'
 });
@@ -260,7 +269,27 @@ const viewEpc = (item) => {
 }
 
 const changeBatch = () => {
+    const hasNoBatch = selectedItems.value.some(item => !item.batch);
+
+    if (hasNoBatch) {
+        toast.value.message = 'All selected items must have a batch assigned to update batch.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
     changeBatchModal.value = true;
+}
+
+const manualBatch = () => {
+    const hasBatch = selectedItems.value.some(item => item.batch);
+
+    if (hasBatch) {
+        toast.value.message = 'All selected items must NOT have a batch assigned to perform this action.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+    manualBatchModal.value = true;
 }
 
 const proceedRegister = () => {
@@ -303,12 +332,23 @@ const cancelChangeBatch = () => {
     changeBatchModal.value = false;
 }
 
+const cancelManualBatch = () => {
+    clearManualBatch()
+    manualBatchModal.value = false;
+}
+
 const clearChangeBatch = () => {
     batchUpdateForm.material_id = null;
     batchUpdateForm.mfg_date = null;
     batchUpdateForm.batch = null;
     batchUpdateForm.reason = null;
     batchUpdateForm.miller_name = null;
+}
+
+const clearManualBatch = () => {
+    manualBatchUpdateForm.material_id = null;
+    manualBatchUpdateForm.mfg_date = null;
+    manualBatchUpdateForm.batch = null;
 }
 
 const handleChangeBatch = async () => {
@@ -340,6 +380,34 @@ const handleChangeBatch = async () => {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
         changeBatchLoading.value = false;
+    }
+}
+
+const manualBatchLoading = ref(false);
+const handleManualBatch = async () => {
+    manualBatchLoading.value = true;
+    toast.value.show = false;
+
+    manualBatchUpdateForm.selectedRfid = selectedItems.value
+
+    try {
+        const response = await ApiService.post('inventories/manual-batch-update', manualBatchUpdateForm)
+        manualBatchLoading.value = false;
+        toast.value.message = 'Manual Batch updated successfully!'
+        toast.value.show = true;
+        clearManualBatch();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        manualBatchModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        manualBatchLoading.value = false;
     }
 }
 
@@ -493,11 +561,17 @@ const handleUpdate = async () => {
             Export
         </v-btn>
 
+        <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch !== null)" class="px-5"
+            type="button" color="primary-light">
+            Manual Batch
+        </v-btn>
+
         <!-- Disable if no selected items or selected items has no batch yet -->
         <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
             :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
             type="button" color="primary-light">
-            Change Batch
+            Update Batch
         </v-btn>
 
         <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" class="px-5" type="button"
@@ -730,6 +804,54 @@ const handleUpdate = async () => {
                 <PrimaryButton @click="handleChangeBatch" color="primary" class="px-12" type="submit"
                     :loading="changeBatchLoading">
                     Update
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
+    <!-- manual batching  -->
+    <EditingModal @close="manualBatchModal = false" max-width="900px" :show="manualBatchModal"
+        :dialog-title="`Manual Batch Assignment`">
+        <template #default>
+            <v-form @submit.prevent="handleManualBatch">
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
+                            :items="materialsOption" v-model="manualBatchUpdateForm.material_id"
+                            :rules="[value => !!value || 'Please select an item from the list']" />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <DatePicker v-model="manualBatchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
+                    </v-col>
+                </v-row>
+
+            </v-form>
+            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
+                {{ errorMessage }}
+            </VAlert>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>RFID Code</th>
+                        <th>Physical ID</th>
+                        <th>Group</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.rfid_code }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.group_no ?? 'N/A' }}</td>
+                        <td class="text-uppercase">{{ item.type }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="cancelManualBatch" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleManualBatch" color="primary" class="px-12" type="submit"
+                    :loading="manualBatchLoading">
+                    Manual Batch Assign
                 </PrimaryButton>
             </div>
         </template>
