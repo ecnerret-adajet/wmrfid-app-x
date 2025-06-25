@@ -3,7 +3,7 @@ import Loader from '@/components/Loader.vue';
 import { echo } from '@/utils/echo';
 import palletsImage from '@images/curtains/pallets.png';
 import Moment from 'moment';
-import { onMounted, watch } from 'vue';
+import { onMounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -15,11 +15,18 @@ const hasError = ref(false);
 const errorMessage = ref(null);
 const logs = ref([])
 const lastRead = ref(null);
+const snackbarVisible = ref(false);
 
 onMounted(() => {
     // fetchLoadingCurtain();
     echo.channel('picklist-logs')
         .listen('PicklistLogsEvent', onPicklistLogsEvent);
+})
+
+const response = reactive({
+    message: "RFID Pallet detected",
+    type: 'success',
+    color: 'primary'
 })
 
 const onPicklistLogsEvent = (data) => {
@@ -32,6 +39,16 @@ const onPicklistLogsEvent = (data) => {
             hasError.value = true;
         } else if (data.picklistLog) {
             const epc = data.picklistLog.epc;
+
+            // If pallet is already tagged as loaded
+            if (data.picklistLog.inventory?.is_loaded === true || data.picklistLog.inventory?.is_loaded === 1) {
+                response.message = 'This pallet has already been loaded';
+                response.type = 'error';
+                response.color = 'error';
+                snackbarVisible.value = true
+                return;
+            }
+
             // Only add if epc does not exist
             if (!logs.value.some(log => log.epc === epc)) {
                 logs.value.unshift(data.picklistLog);
@@ -40,6 +57,21 @@ const onPicklistLogsEvent = (data) => {
                 }
                 lastRead.value = logs.value[0] || null;
             }
+
+            // If pallet is unregistered
+            if (data.picklistLog.name === 'unregistered') {
+                response.message = 'This pallet is not yet registered';
+                response.type = 'error';
+                response.color = 'error';
+                snackbarVisible.value = true
+                return;
+            }
+
+            response.message = 'New pallet detected and ready to load';
+            response.type = 'success';
+            response.color = 'success';
+            snackbarVisible.value = true
+
         } else {
             errorMessage.value = 'An unexpected error occurred.';
             hasError.value = true;
@@ -80,9 +112,27 @@ watch(
     }
 )
 
+watch(
+    () => snackbarVisible.value,
+    (val) => {
+        if (val) {
+            setTimeout(() => {
+                snackbarVisible.value = false
+            }, 5000)
+        }
+    }
+)
 
 </script>
 <template>
+    <transition name="fade-transition">
+        <v-alert v-if="snackbarVisible" style="position: absolute; z-index: 99; width: 94vw; right: 40px;"
+            :color="response.color" :type="response.type">
+            <template #title>
+                <span style="font-size: 2rem;">{{ response.message }}</span>
+            </template>
+        </v-alert>
+    </transition>
     <div class="background-container">
         <div class="d-flex justify-end" style="position: relative;">
             <!-- Latest Pallet Label -->
@@ -111,9 +161,13 @@ watch(
                     style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
+                <VCol md="2" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
                     style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     Batch
+                </VCol>
+                <VCol md="1" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    QTY
                 </VCol>
                 <VCol md="3" style="font-size: 22px; background-color: #329b62"
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
@@ -122,28 +176,35 @@ watch(
             </VRow>
             <div>
                 <VRow v-if="lastRead" no-gutters style="border: 1px solid #00833c;">
-                    <VCol md="3" class="px-3 py-2 text-center d-flex justify-center align-center rightBorderedGreen">
+                    <VCol md="3" class="text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span v-if="lastRead?.name === 'unregistered'"
-                                class="text-uppercase text-h4 text-error font-weight-black">
+                                class="text-uppercase text-h3 text-error font-weight-black">
                                 {{ lastRead?.name }}
                             </span>
-                            <span v-else class="text-uppercase text-h4 text-primary font-weight-black">
+                            <span v-else class="text-uppercase text-h3 text-primary font-weight-black">
                                 {{ lastRead?.name || '' }}
                             </span>
                         </div>
                     </VCol>
-                    <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex justify-center align-center"
+                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4">{{ lastRead?.epc }}</span>
                     </VCol>
-                    <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                    <VCol md="2" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span v-if="lastRead?.inventory" class="font-weight-black text-h4">{{ lastRead?.inventory?.batch
+                        <span v-if="lastRead?.inventory" class="font-weight-black text-h3">{{ lastRead?.inventory?.batch
                             }}</span>
-                        <span v-else class="font-weight-black text-error text-h4">NO BATCH</span>
+                        <span v-else class="font-weight-black text-error text-h3">NO BATCH</span>
                     </VCol>
-                    <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
+                    <VCol md="1" class="text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
+                        <span v-if="lastRead?.inventory" class="font-weight-black text-h3">{{
+                            lastRead?.inventory?.quantity
+                        }}</span>
+                        <span v-else class="font-weight-black text-error text-h3">N/A</span>
+                    </VCol>
+                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div v-if="lastRead?.name === 'unregistered'">
                                 <span class="text-uppercase text-h4 font-weight-black">
@@ -198,9 +259,13 @@ watch(
                     style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     epc
                 </VCol>
-                <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
+                <VCol md="2" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
                     style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     Batch
+                </VCol>
+                <VCol md="1" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    QTY
                 </VCol>
                 <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
@@ -211,13 +276,13 @@ watch(
 
                 <!-- Loop Row  -->
                 <VRow v-for="(log, index) in logs" :key="index" no-gutters style="border: 1px solid #00833c;">
-                    <VCol md="3" class="py-2 text-center d-flex justify-center align-center rightBorderedGreen">
+                    <VCol md="3" class="text-center d-flex justify-center align-center rightBorderedGreen">
                         <div class="text-center">
                             <span v-if="log?.name === 'unregistered'"
-                                class="text-uppercase text-h4 text-error font-weight-black">
+                                class="text-uppercase text-h3 text-error font-weight-black">
                                 {{ log?.name }}
                             </span>
-                            <span v-else class="text-uppercase text-h4 text-primary font-weight-black">
+                            <span v-else class="text-uppercase text-h3 text-primary font-weight-black">
                                 {{ log?.name || '' }}
                             </span>
                         </div>
@@ -226,10 +291,16 @@ watch(
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4">{{ log?.epc || '' }}</span>
                     </VCol>
-                    <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                    <VCol md="2" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
-                        <span v-if="log.inventory" class="font-weight-black text-h4">{{ log.inventory?.batch }}</span>
-                        <span v-else class="font-weight-black text-error text-h4">NO BATCH</span>
+                        <span v-if="log.inventory" class="font-weight-black text-h3">{{ log.inventory?.batch }}</span>
+                        <span v-else class="font-weight-black text-error text-h3">NO BATCH</span>
+                    </VCol>
+                    <VCol md="1" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
+                        <span v-if="log.inventory" class="font-weight-black text-h3">{{ log.inventory?.quantity
+                            }}</span>
+                        <span v-else class="font-weight-black text-error text-h3">N/A</span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
@@ -282,6 +353,8 @@ watch(
         </v-card>
     </v-dialog>
     <Loader :show="isLoading" />
+
+
 </template>
 
 <style scoped>
