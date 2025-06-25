@@ -24,22 +24,27 @@ onMounted(() => {
 
 const onPicklistLogsEvent = (data) => {
     console.log(data);
-    if (data.picklistLog.error == true) {
-        errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
-        hasError.value = true;
-    } else if (data.picklistLog) {
-        const epc = data.picklistLog.epc;
-        // Only add if epc does not exist
-        if (!logs.value.some(log => log.epc === epc)) {
-            logs.value.unshift(data.picklistLog);
-            if (logs.value.length > 5) {
-                logs.value.pop();
+    // Only process if the event is for the current bay
+    if (data.picklistLog?.antenna_log?.bay_no == bay) {
+
+        if (data.picklistLog.error == true) {
+            errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
+            hasError.value = true;
+        } else if (data.picklistLog) {
+            const epc = data.picklistLog.epc;
+            // Only add if epc does not exist
+            if (!logs.value.some(log => log.epc === epc)) {
+                logs.value.unshift(data.picklistLog);
+                if (logs.value.length > 5) {
+                    logs.value.pop();
+                }
+                lastRead.value = logs.value[0] || null;
             }
-            lastRead.value = logs.value[0] || null;
+        } else {
+            errorMessage.value = 'An unexpected error occurred.';
+            hasError.value = true;
         }
-    } else {
-        errorMessage.value = 'An unexpected error occurred.';
-        hasError.value = true;
+
     }
 
 };
@@ -135,7 +140,7 @@ watch(
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span v-if="lastRead?.inventory" class="font-weight-black text-h4">{{ lastRead?.inventory?.batch
-                        }}</span>
+                            }}</span>
                         <span v-else class="font-weight-black text-error text-h4">NO BATCH</span>
                     </VCol>
                     <VCol md="3" class="px-3 py-1 text-center rightBorderedGreen d-flex justify-center align-center">
