@@ -12,7 +12,7 @@ import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import axios from 'axios';
 import Moment from 'moment';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -28,7 +28,6 @@ const errorMessage = ref(null);
 const setTimeInSeconds = ref(120);
 const refreshTimer = ref(null);
 const totalRead = ref(0);
-const actualRead = ref(0);
 
 // initialize null shipment data
 const shipmentData = reactive({
@@ -143,7 +142,7 @@ const fetchLoadStatus = async (shipmentNumber) => {
         // If success
         if (response.data.load_status == 'B') {
             // verify if the total read pallets is equal to the actual read pallets
-            if (totalRead.value === actualRead.value) {
+            if (totalRead.value === loadedCounter.value) {
                 // call the sap load end
                 sapLoadEnd(shipmentNumber);
             }
@@ -350,6 +349,17 @@ const loadedCounter = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.expected || 0), 0)
 )
 
+watch(
+    () => dialogVisible.value,
+    (val) => {
+        if (val) {
+            setTimeout(() => {
+                dialogVisible.value = false
+            }, 6000)
+        }
+    }
+)
+
 </script>
 <template>
     <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -381,7 +391,7 @@ const loadedCounter = computed(() =>
                                     {{ loadedCounter }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
                                     <span v-if="shipmentData.shipment?.total_pallet_to_load">
                                         ({{ Math.round((loadedCounter / shipmentData.shipment.total_pallet_to_load) *
-                                        100) }}%)
+                                            100) }}%)
                                     </span>
                                 </span>
                             </template>
@@ -485,7 +495,7 @@ const loadedCounter = computed(() =>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
                                                 formatDateTime(shipmentData.shipment.loadstart_date,
-                                                shipmentData.shipment.loadstart_time) }}</span>
+                                                    shipmentData.shipment.loadstart_time) }}</span>
                                         </VCol>
                                     </VRow>
 
@@ -504,7 +514,7 @@ const loadedCounter = computed(() =>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                                }}</span>
+                                            }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -518,7 +528,7 @@ const loadedCounter = computed(() =>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
                                                 formatDateTime(shipmentData.shipment.loadend_date,
-                                                shipmentData.shipment.loadend_time) }}</span>
+                                                    shipmentData.shipment.loadend_time) }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -560,7 +570,7 @@ const loadedCounter = computed(() =>
                         <div>
                             <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">
                                 {{
-                                shipmentData.shipment?.total_pallet_to_load }}</h2>
+                                    shipmentData.shipment?.total_pallet_to_load }}</h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
                             <div class="text-h4 text-white font-weight-bold">
@@ -634,12 +644,12 @@ const loadedCounter = computed(() =>
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         {{ delivery.quantity_all ?
-                                                        palletCalculation(delivery.sales_unit, delivery.quantity_all,
-                                                        delivery.numerator, delivery.denominator,
-                                                        delivery.default_pallet_capacity) :
-                                                        palletCalculation(delivery.sales_unit, delivery.quantity,
-                                                        delivery.numerator, delivery.denominator,
-                                                        delivery.default_pallet_capacity) }}
+                                                            palletCalculation(delivery.sales_unit, delivery.quantity_all,
+                                                                delivery.numerator, delivery.denominator,
+                                                                delivery.default_pallet_capacity) :
+                                                            palletCalculation(delivery.sales_unit, delivery.quantity,
+                                                                delivery.numerator, delivery.denominator,
+                                                                delivery.default_pallet_capacity) }}
                                                     </span>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
@@ -658,9 +668,9 @@ const loadedCounter = computed(() =>
                                                         </span>
                                                         <span v-else class="display-3">
                                                             {{ palletCalculation(delivery.sales_unit,
-                                                            delivery.quantity_all,
-                                                            delivery.numerator, delivery.denominator,
-                                                            delivery.default_pallet_capacity)}}
+                                                                delivery.quantity_all,
+                                                                delivery.numerator, delivery.denominator,
+                                                                delivery.default_pallet_capacity) }}
                                                         </span>
                                                     </div>
                                                 </VCol>
