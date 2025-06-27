@@ -271,7 +271,8 @@ const getHandheldReaders = async () => {
                 value: reader.name,
                 name: reader.name,
                 reader_name: reader.name,
-                event_name: reader.event_name
+                event_name: reader.event_name,
+                id: reader.id
             })) : [];
             showLoader.value = false;
         })
