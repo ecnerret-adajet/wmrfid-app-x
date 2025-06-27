@@ -9,12 +9,37 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();  // Get auth store
+
+    // Always allow logout navigation
+    if (to.name === 'logout') {
+        next();
+        return;
+    }
     
     // Set page title dynamically based on route meta
     document.title = `${to.meta.pageTitle || 'Default'} - ${import.meta.env.VITE_APP_NAME}`;
 
     authStore.verifyAuth();
-    
+
+    const isSuperAdmin = authStore.user?.is_super_admin === true;
+    const isWarehouseAdmin = authStore.user?.is_warehouse_admin === true;
+
+    if (
+        authStore.isAuthenticated &&
+        authStore.user?.is_warehouse_operator === true && 
+        !isSuperAdmin &&
+        !isWarehouseAdmin &&
+        to.name !== 'operator-screen' &&
+        to.name !== 'login'
+    ) {
+        if (from.name === 'operator-screen') {
+            next(false); // Prevent infinite loop
+            return;
+        }
+        next({ name: 'operator-screen' });
+        return;
+    }
+
     // If route requires authentication
     if (authStore.isAuthenticated) {
         if (to.name === "login") {

@@ -12,7 +12,7 @@ import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import axios from 'axios';
 import Moment from 'moment';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -28,7 +28,6 @@ const errorMessage = ref(null);
 const setTimeInSeconds = ref(120);
 const refreshTimer = ref(null);
 const totalRead = ref(0);
-const actualRead = ref(0);
 
 // initialize null shipment data
 const shipmentData = reactive({
@@ -143,7 +142,7 @@ const fetchLoadStatus = async (shipmentNumber) => {
         // If success
         if (response.data.load_status == 'B') {
             // verify if the total read pallets is equal to the actual read pallets
-            if (totalRead.value === actualRead.value) {
+            if (totalRead.value === loadedCounter.value) {
                 // call the sap load end
                 sapLoadEnd(shipmentNumber);
             }
@@ -302,12 +301,30 @@ const formatDateTime = (date, time) => {
     return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-const determineSapQuantity = (quantity, default_pallet_capacity) => {
-    if (default_pallet_capacity != 0) {
-        return Math.ceil(quantity / default_pallet_capacity);
-    } else {
-        return Math.ceil(quantity / 40);
+// const determineSapQuantity = (quantity, default_pallet_capacity) => {
+//     if (default_pallet_capacity != 0) {
+//         return Math.ceil(quantity / default_pallet_capacity);
+//     } else {
+//         return Math.ceil(quantity / 40);
+//     }
+// }
+
+const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
+    uom = String(uom).toLowerCase();
+
+    if (uom === 'kg') {
+        // Convert kg qty to bags, then calculate pallets
+        return Math.ceil((quantity / (numerator / denominator)) / defaultPalletCapacity);
     }
+
+    if (uom === 'bag') {
+        // If bag based, convert quantity
+        const convertedQuantity = quantity * (numerator / denominator);
+        return Math.ceil((convertedQuantity / (numerator / denominator)) / defaultPalletCapacity);
+    }
+
+    // Default fallback: treat as bags and divide by default pallet capacity
+    return Math.ceil(quantity / defaultPalletCapacity);
 }
 
 const toast = ref({
@@ -330,6 +347,17 @@ const carouselIndex = ref(0)
 
 const loadedCounter = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.expected || 0), 0)
+)
+
+watch(
+    () => dialogVisible.value,
+    (val) => {
+        if (val) {
+            setTimeout(() => {
+                dialogVisible.value = false
+            }, 6000)
+        }
+    }
 )
 
 </script>
@@ -486,7 +514,7 @@ const loadedCounter = computed(() =>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                                }}</span>
+                                            }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -616,9 +644,11 @@ const loadedCounter = computed(() =>
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         {{ delivery.quantity_all ?
-                                                            determineSapQuantity(delivery.quantity_all,
+                                                            palletCalculation(delivery.sales_unit, delivery.quantity_all,
+                                                                delivery.numerator, delivery.denominator,
                                                                 delivery.default_pallet_capacity) :
-                                                            determineSapQuantity(delivery.quantity,
+                                                            palletCalculation(delivery.sales_unit, delivery.quantity,
+                                                                delivery.numerator, delivery.denominator,
                                                                 delivery.default_pallet_capacity) }}
                                                     </span>
                                                 </VCol>
@@ -637,7 +667,9 @@ const loadedCounter = computed(() =>
                                                             </span>
                                                         </span>
                                                         <span v-else class="display-3">
-                                                            {{ determineSapQuantity(delivery.quantity_all,
+                                                            {{ palletCalculation(delivery.sales_unit,
+                                                                delivery.quantity_all,
+                                                                delivery.numerator, delivery.denominator,
                                                                 delivery.default_pallet_capacity) }}
                                                         </span>
                                                     </div>
