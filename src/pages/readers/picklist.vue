@@ -110,28 +110,9 @@ const checkLoadedPallets = (batch) => {
 const sapLoadEnd = async (shipmentNumber) => {
     ApiService.get(`picklist/load-end/${shipmentNumber}`)
         .then(response => {
-            if (response.data.status == 'S') {
-                // display success message here
-
-            } else {
-                dialogVisible.value = true;
-                errorMessage.value = 'Loadend failed!'
-            }
+            console.log(response);
         })
 };
-
-// const sapLoadStart = async (shipmentNumber) => {
-//     ApiService.get(`picklist/load-start/${shipmentNumber}`)
-//     .then(response => {
-//         if (response.data.status == 'S') {
-//             // display success message here
-
-//         } else {
-//             dialogVisible.value = true;
-//             errorMessage.value = 'Loadend failed!'
-//         }
-//     })
-// };
 
 
 // checkLoadTime in the old version
@@ -140,13 +121,12 @@ const fetchLoadStatus = async (shipmentNumber) => {
         const response = await ApiService.get(`check-loading-status/${shipmentNumber}`);
 
         // If success
-        if (response.data.load_status == 'B') {
-            // verify if the total read pallets is equal to the actual read pallets
-            if (totalRead.value === loadedCounter.value) {
-                // call the sap load end
-                sapLoadEnd(shipmentNumber);
-            }
-        }
+        // if (response.data.load_status == 'B') {
+        //     // verify if the total read pallets is equal to the actual read pallets
+        //     if (totalRead.value === loadedCounter.value) {
+        //         sapLoadEnd(shipmentNumber);
+        //     }
+        // }
         shipmentData.deliveries.forEach(item => {
             checkLoadedPallets(item.batch)
                 .then(result => {
@@ -157,6 +137,21 @@ const fetchLoadStatus = async (shipmentNumber) => {
         console.error('Error fetching shipment details:', error);
     }
 };
+
+watch(
+    [totalRead.value, loadedCounter.value],
+    ([newTotalRead, newLoadedCounter]) => {
+        if (
+            newTotalRead > 0 &&
+            newLoadedCounter > 0 &&
+            newTotalRead === newLoadedCounter &&
+            shipmentData.shipment?.shipment &&
+            shipmentData.shipment?.loadend_date === '00000000'
+        ) {
+            sapLoadEnd(shipmentData.shipment.shipment);
+        }
+    }
+);
 
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
@@ -514,7 +509,7 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                                }}</span>
+                                            }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
