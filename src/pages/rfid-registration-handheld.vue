@@ -173,7 +173,7 @@ const addHandheldTag = async () => {
     const newTag = {
         epc: readTag.value,
         tid: null, // Handheld readers might not provide TID
-        status: 'Processing...'
+        status: null,
     };
 
     // Add the new tag to the handheldTags array
@@ -183,14 +183,14 @@ const addHandheldTag = async () => {
     readTag.value = null;
     
     // Process the tag to check its status
-    const result = await checkIfExists(newTag.epc, newTag.tid, tagType);
-    if (result?.found) {
-        newTag.status = result.name;
-    } else if (result?.epc_exists) {
-        newTag.status = 'Unregistered TID';
-    } else {
-        newTag.status = 'Unregistered';
-    }
+    // const result = await checkIfExists(newTag.epc, newTag.tid, tagType);
+    // if (result?.found) {
+    //     newTag.status = result.name;
+    // } else if (result?.epc_exists) {
+    //     newTag.status = 'Unregistered TID';
+    // } else {
+    //     newTag.status = 'Unregistered';
+    // }
 
     // Update the registered/unregistered tag arrays
     updateTagArrays();
@@ -520,10 +520,7 @@ const commonEpc = computed(() => {
                 <tr v-if="handheldTags.length === 0">
                     <td colspan="3" class="text-center">No data available</td>
                 </tr>
-                <tr v-for="(item, index) in handheldTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID',
-                    'error-epc': commonEpc === null && item.epc !== handheldTags.value[0]?.epc
-                }">
+                <tr v-for="(item, index) in handheldTags" :key="item.epc" >
                     <td>{{ item.epc }}</td>
                     <!-- <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
