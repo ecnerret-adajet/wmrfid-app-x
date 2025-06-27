@@ -368,7 +368,7 @@ watch(
 
         <div>
             <v-card
-                v-if="shipmentData.shipment.loadstart_date && (shipmentData.shipment.loadend_date === '00000000' || shipmentData.shipment.loadend_date === null)"
+                v-if="shipmentData.shipment.wm_load_start_date && (shipmentData.shipment.wm_load_end_date === '00000000' || shipmentData.shipment.wm_load_end_date === null)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -494,8 +494,8 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
-                                                formatDateTime(shipmentData.shipment.loadstart_date,
-                                                    shipmentData.shipment.loadstart_time) }}</span>
+                                                formatDateTime(shipmentData.shipment.wm_load_start_date,
+                                                    shipmentData.shipment.wm_load_start_time) }}</span>
                                         </VCol>
                                     </VRow>
 
@@ -514,7 +514,7 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -527,8 +527,8 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{
-                                                formatDateTime(shipmentData.shipment.loadend_date,
-                                                    shipmentData.shipment.loadend_time) }}</span>
+                                                formatDateTime(shipmentData.shipment.wm_load_end_date,
+                                                    shipmentData.shipment.wm_load_end_time) }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
