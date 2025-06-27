@@ -142,24 +142,24 @@ watch(
                         <div class="text-center">
                             <div v-if="lastRead?.name === 'unregistered'">
                                 <span class="text-uppercase text-h4 font-weight-black">
-                                    {{ lastRead?.created_at ?
-                                        Moment(lastRead?.created_at).format('MMMM D, YYYY') : '' }}
+                                    {{ lastRead?.updated_at ?
+                                        Moment(lastRead?.updated_at).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ lastRead?.created_at ?
-                                        Moment(lastRead?.created_at).format('h:mm A') : '' }}
+                                    {{ lastRead?.updated_at ?
+                                        Moment(lastRead?.updated_at).format('h:mm A') : '' }}
                                 </p>
                             </div>
                             <div v-else>
                                 <span class="text-uppercase text-h4 font-weight-black">
-                                    {{ lastRead?.antenna_log?.created_at ?
-                                        Moment(lastRead.antenna_log?.created_at).format('MMMM D, YYYY') : '' }}
+                                    {{ lastRead?.antenna_log?.updated_at ?
+                                        Moment(lastRead.antenna_log?.updated_at).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ lastRead?.antenna_log?.created_at ?
-                                        Moment(lastRead?.antenna_log?.created_at).format('h:mm A') : '' }}
+                                    {{ lastRead?.antenna_log?.updated_at ?
+                                        Moment(lastRead?.antenna_log?.updated_at).format('h:mm A') : '' }}
                                 </p>
                             </div>
                         </div>
@@ -230,27 +230,27 @@ watch(
                         <div class="text-center">
                             <div v-if="log?.name === 'unregistered'">
                                 <span class="text-uppercase text-h4 font-weight-black">
-                                    {{ log?.created_at ?
-                                        Moment(log?.created_at).format('MMMM D, YYYY') : '' }}
+                                    {{ log?.updated_at ?
+                                        Moment(log?.updated_at).format('MMMM D, YYYY') : '' }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ log?.created_at ?
-                                        Moment(log?.created_at).format('h:mm A') : '' }}
+                                    {{ log?.updated_at ?
+                                        Moment(log?.updated_at).format('h:mm A') : '' }}
                                 </p>
                             </div>
                             <div v-else>
                                 <span class="text-uppercase text-h4 font-weight-black">
                                     {{
-                                        log.antenna_log?.created_at ?
-                                            Moment(log.antenna_log?.created_at).format('MMMM D, YYYY') :
+                                        log.antenna_log?.updated_at ?
+                                            Moment(log.antenna_log?.updated_at).format('MMMM D, YYYY') :
                                             ''
                                     }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ log.antenna_log?.created_at ?
-                                        Moment(log.antenna_log?.created_at).format('h:mm A') : ''
+                                    {{ log.antenna_log?.updated_at ?
+                                        Moment(log.antenna_log?.updated_at).format('h:mm A') : ''
                                     }}
                                 </p>
                             </div>
