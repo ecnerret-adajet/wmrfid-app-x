@@ -7,7 +7,7 @@ import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { echo } from '@/utils/echo';
 import axios from 'axios';
-import { computed, reactive, nextTick, watch, ref } from 'vue';
+import { onMounted, computed, reactive, nextTick, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -40,7 +40,7 @@ const form = reactive({
     group_no: null,
     name: null,
     is_defective: 'no',
-    reader_type: 'antenna',
+    reader_type: 'handheld',
     tag_type: null,
     to_be_added_tags: [],
     epc_exists: true
@@ -234,15 +234,27 @@ const processHandheldTags = async () => {
 
 const getHandheldReaders = async () => {
     showLoader.value = true;
-    const url = `/get-handheld-readers?plant_code=${plantCode}`;
     try {
-        const response = await ApiService.get(url);
-        const { data } = response.data;
-        handheldReaders.value = data;
-        showLoader.value = false;
+        const response = await ApiService.post('handheld-readers', { plant_code: plantCode })
+        .then((response) => {
+            let data = response.data;
+             // Transform the data to match the expected format for the dropdown
+            handheldReaders.value = Array.isArray(data) ? data.map(reader => ({
+                value: reader.name,
+                name: reader.name,
+                reader_name: reader.name,
+                event_name: reader.event_name
+            })) : [];
+            showLoader.value = false;
+        })
+        .catch((error) => {
+            console.error('Error fetching data from handheld-readers:', error);
+            showLoader.value = false;
+        });
+        
     } catch (error) {
         showLoader.value = false;
-        console.error('Error fetching data from get-handheld-readers:', error);
+        console.error('Error fetching data from handheld-readers:', error);
     }
 }
 
@@ -263,9 +275,8 @@ watch(readerType, (newValue) => {
     }
 });
 
-onMounted(() => {
-    echo.channel('pallet-registration').listen('PalletRegistrationEvent', onPalletRegistration);
-    
+onMounted(async () => {
+    await getHandheldReaders();
     // Focus the input field if reader type is handheld
     if (form.reader_type === 'handheld') {
         nextTick(() => {
@@ -275,6 +286,7 @@ onMounted(() => {
             }
         });
     }
+    // echo.channel('pallet-registration').listen('PalletRegistrationEvent', onPalletRegistration);
 })
 
 const getLastItem = async (epc) => {
@@ -415,96 +427,60 @@ const commonEpc = computed(() => {
     <v-card class="ma-8">
         <v-card-title class="d-flex justify-space-between align-center">
             <VRow>
-                <VCol cols="4" class="d-flex align-start">
+                <VCol cols="6" class="d-flex align-start">
                     <v-btn :to="{
                         path: `/rfid`,
                     }" class="ma-2" color="grey-700" icon="ri-arrow-left-line" variant="text">
                     </v-btn>
-                    <div class="text-h2 font-weight-black ps-2">
-                        RFID Registration
-                    </div>
+                    <!-- <div class="text-h6 font-weight-black ps-2">
+                        RFID Handheld Registration
+                    </div> -->
                 </VCol>
                 <VCol cols="2" offset="4" class="d-flex align-center justify-end">
                     <v-btn color="primary" block variant="outlined" @click="handleClear" class="px-12">
                         Clear
                     </v-btn>
                 </VCol>
-                <VCol cols="2" class="d-flex align-center">
-                    <PrimaryButton block form="registerForm"
-                        :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
-                        type="submit" :loading="isLoading">
-                        Submit
-                    </PrimaryButton>
-                </VCol>
             </VRow>
         </v-card-title>
-        <v-card-text class="mt-4">
+        <v-card-text>
             <v-form @submit.prevent="submit" id="registerForm" ref="formRef">
                 <VRow>
-                    <VCol md="3">
+                    <VCol md="4">
                         <div class="mt-4">
-                            <label class="font-weight-bold">Group No.</label>
-                            <!-- Always disable group no since it is generated from backend -->
-                            <v-text-field class="mt-1" label="" :disabled="true" density="compact"
-                                v-model="form.group_no" />
+                            <label class="font-weight-bold">Read Tag</label>
+                            <v-text-field 
+                                id="rfidTagInput"
+                                class="mt-1" 
+                                label="Read tag" 
+                                density="compact"
+                                v-model="readTag" 
+                                ref="rfidTagInput"
+                                @input="addHandheldTag"
+                            />
                         </div>
-                        <div class="mt-4">
-                            <label class="font-weight-bold">Physical ID</label>
-                            <v-text-field class="mt-1" label="" :disabled="form.epc_exists"
-                                :rules="[value => !!value || 'This field is required']" density="compact"
-                                v-model="form.name" />
-                        </div>
-                    </VCol>
-                    <VCol md="4" class="ml-4">
-                        <div class="mt-4">
-                            <v-radio-group inline v-model="form.is_defective">
-                                <template v-slot:label>
-                                    <label class="font-weight-bold">Is Defective?</label>
+                    </VCol>                    
+
+                </VRow>
+                <VRow>
+                    <VCol md="4">
+                        <div>
+                            <label class="font-weight-bold">Handheld Readers</label>
+                            <v-select
+                                v-model="form.reader_name"
+                                :items="handheldReaders"
+                                item-title="name"
+                                item-value="name"
+                                density="compact"
+                                variant="outlined"
+                            >
+                                <template v-slot:item="{ props, item }">
+                                    <v-list-item v-bind="props" :title="item.raw.name" :subtitle="item.raw.event_name"></v-list-item>
                                 </template>
-                                <v-radio label="Yes" value="yes"></v-radio>
-                                <v-radio label="No" value="no"></v-radio>
-                            </v-radio-group>
+                            </v-select>
                         </div>
-                        <div class="mt-4">
-                            <div class="d-flex flex-row align-center">
-                                <div>
-                                    <v-radio-group inline v-model="form.reader_type">
-                                        <template v-slot:label>
-                                            <label class="font-weight-bold">Reader Type</label>
-                                        </template>
-                                        <v-radio label="Antenna" value="antenna"></v-radio>
-                                        <v-radio label="Handheld" value="handheld"></v-radio>
-                                    </v-radio-group>
-                                </div>
-                                <div v-if="form.reader_type === 'handheld'" class="ml-4" style="flex-grow: 1;">
-                                    <label class="font-weight-bold">Read Tag</label>
-                                    <v-text-field 
-                                        id="rfidTagInput"
-                                        class="mt-1" 
-                                        label="Read tag" 
-                                        density="compact"
-                                        v-model="readTag" 
-                                        ref="rfidTagInput"
-                                        @keyup.enter="addHandheldTag"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                       
                     </VCol>
-
-                    <VCol md="2" offset="2" class="d-flex flex-column justify-center align-center text-center">
-
-                        <div class="font-weight-black text-h1 text-primary mt-auto px-4"
-                            style="border-bottom: 1px thin #00833c;">
-                            {{ uniqueTags.length }}
-                        </div>
-
-                        <!-- Pallet tag count label at the bottom -->
-                        <div class="font-weight-black text-h4 mt-auto">
-                            Pallet Tag Count
-                        </div>
-                    </VCol>
-
                 </VRow>
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
@@ -515,91 +491,29 @@ const commonEpc = computed(() => {
     <v-card class="mx-8">
         <VRow class="pa-4">
             <VCol cols="4" class="d-flex align-start">
-                <div class="text-h4 font-weight-black ps-2">
+                <div class="text-h5 font-weight-black ps-2">
                     {{ getTableLabel }}
                 </div>
             </VCol>
-            <VCol cols="2" offset="6">
-                <!-- Enable add to existing if there's atleast 1 registered tag  -->
+            <!-- <VCol cols="2" offset="6">
                 <v-btn block color="primary-2" :disabled="unregisteredIdTags.length === 0" @click="handleAddExisting"
                     style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
-            </VCol>
+            </VCol> -->
         </VRow>
-        <!-- Antenna Reader Table -->
-        <v-table v-if="form.reader_type === 'antenna'">
-            <thead>
-                <tr>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">epc</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        tid</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">rssi</th>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        reader</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">
-                        antenna</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-right: 1px solid #fff">
-                        action</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-if="uniqueTags.length === 0">
-                    <td colspan="7" class="text-center">No data available</td>
-                </tr>
-                <tr v-for="(item, index) in uniqueTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID',
-                    'error-epc': commonEpc === null && item.epc !== uniqueTags.value[0]?.epc
-                }">
-                    <td>{{ item.epc }}</td>
-                    <td>{{ item.tid }}</td>
-                    <td>{{ item.peakRssi }}</td>
-                    <td>{{ form.reader_name }}</td>
-                    <td class="text-center">{{ item.antennaPort }}</td>
-                    <td class="text-center">
-                        <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
-                            color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
-                    </td>
-                    <td class="text-center">
-                        <template v-if="item.status === 'Unregistered'">
-                            <v-chip color="primary-2" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-5 font-weight-bold">{{ item.status }}</span>
-                            </v-chip>
-                        </template>
-                        <template v-else-if="item.status === 'Unregistered TID'">
-                            <v-chip :color="'#af922b'" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-1 font-weight-bold">{{ item.status }}</span>
-                            </v-chip>
-                        </template>
-                        <template v-else>
-                            <v-chip color="primary" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-10 font-weight-bold">{{ item.status }}</span>
-                            </v-chip>
-                        </template>
-                    </td>
-                </tr>
-            </tbody>
-        </v-table>
         
         <!-- Handheld Reader Table -->
-        <v-table v-else>
+        <v-table>
             <thead>
                 <tr>
                     <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
                         style="background-color: #00833c !important; color: white !important;">epc tags</th>
-                    <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
                         style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff">
                         action</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">status</th>
+                        style="background-color: #00833c !important; color: white !important;">status</th> -->
                 </tr>
             </thead>
             <tbody>
@@ -611,7 +525,7 @@ const commonEpc = computed(() => {
                     'error-epc': commonEpc === null && item.epc !== handheldTags.value[0]?.epc
                 }">
                     <td>{{ item.epc }}</td>
-                    <td class="text-center">
+                    <!-- <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
                     </td>
@@ -631,7 +545,7 @@ const commonEpc = computed(() => {
                                 <span class="px-10 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
-                    </td>
+                    </td> -->
                 </tr>
             </tbody>
         </v-table>

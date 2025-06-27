@@ -278,6 +278,13 @@ export const routes = [
             middleware: "auth",
             pageTitle: "RFID Registration"
         },
+    }, {
+        path: '/rfid-registration-handheld/:type/:plant/:location?',
+        component: () => import('@/pages/rfid-registration-handheld.vue'), 
+        meta: {
+            middleware: "auth",
+            pageTitle: "RFID Registration Handheld"
+        },
     },
     {
         path: '/warehouse-map/:plant/:location',
