@@ -13,4 +13,12 @@ export const echo = new Echo({
   disableStats: true,
   enabledTransports: ['ws', 'wss'],
   cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
+  // Add authentication endpoint for presence channels
+  authEndpoint: '/broadcasting/auth',
+  auth: {
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+      'Accept': 'application/json'
+    }
+  }
 })

@@ -314,21 +314,12 @@ watch(() => form.reader_name, (newReaderName) => {
             // Unsubscribe from any existing channels first
             echo.leaveAllChannels();
             
-            // Subscribe to the presence channel for the selected handheld reader
-            // Using a presence channel ensures all connected clients receive the same events
-            echo.join(`handheld-reader.${selectedReader.id}`)
-                .listen(selectedReader.event_name, onHandheldReaderTrigger)
-                .here((users) => {
-                    console.log(`${users.length} users are connected to this channel`);
-                })
-                .joining((user) => {
-                    console.log(`${user.name} joined the channel`);
-                })
-                .leaving((user) => {
-                    console.log(`${user.name} left the channel`);
-                });
+            // Subscribe to the public channel for the selected handheld reader
+            // Using a public channel that doesn't require authentication
+            echo.channel(`handheld-reader.${selectedReader.id}`)
+                .listen(selectedReader.event_name, onHandheldReaderTrigger);
             
-            console.log(`Subscribed to presence channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
         }
     }
 }, { immediate: true });
@@ -349,12 +340,9 @@ onMounted(async () => {
     if (form.reader_name) {
         const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
         if (selectedReader && selectedReader.event_name) {
-            echo.join(`handheld-reader.${selectedReader.id}`)
-                .listen(selectedReader.event_name, onHandheldReaderTrigger)
-                .here((users) => {
-                    console.log(`${users.length} users are connected to this channel`);
-                });
-            console.log(`Subscribed to presence channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+            echo.channel(`handheld-reader.${selectedReader.id}`)
+                .listen(selectedReader.event_name, onHandheldReaderTrigger);
+            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
         }
     }
 })
