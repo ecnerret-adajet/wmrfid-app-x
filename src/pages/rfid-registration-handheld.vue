@@ -86,6 +86,34 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
 
 const seenKeys = new Set()
 
+const onHandheldReaderTrigger = async (data) => {
+    // Extract incoming reads
+    const incomingReads = data.tag_reads || []
+    const justAdded = []  // will hold any tags we actually add
+
+    // Collect new tags
+    for (const tag of incomingReads) {
+        const key = `${tag.epc}_${tag.tid}`
+        if (!seenKeys.has(key)) {
+            seenKeys.add(key)
+            uniqueTags.value.push(tag)
+            justAdded.push(tag)
+        }
+    }
+
+    // If nothing new was added, skip showing loader & processing
+    if (justAdded.length === 0) {
+        return
+    }
+
+    // Only now do we show the loader and process the new tags
+    showLoader.value = true
+
+    await processTags()
+    showLoader.value = false
+}
+
+
 async function onPalletRegistration(data) {
     // Extract incoming reads
     const incomingReads = data.palletRegistration.tag_reads || []
@@ -275,6 +303,25 @@ watch(readerType, (newValue) => {
     }
 });
 
+// Watch for changes in selected handheld reader and subscribe to the appropriate channel
+watch(() => form.reader_name, (newReaderName) => {
+    if (newReaderName) {
+        // Find the selected reader to get its event_name
+        const selectedReader = handheldReaders.value.find(reader => reader.name === newReaderName);
+        
+        if (selectedReader && selectedReader.event_name) {
+            // Unsubscribe from any existing channels first
+            echo.leaveAllChannels();
+            
+            // Subscribe to the channel for the selected handheld reader
+            echo.channel(`handheld-reader.${selectedReader.id}`)
+                .listen(selectedReader.event_name, onHandheldReaderTrigger);
+            
+            console.log(`Subscribed to channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+        }
+    }
+}, { immediate: true });
+
 onMounted(async () => {
     await getHandheldReaders();
     // Focus the input field if reader type is handheld
@@ -286,7 +333,16 @@ onMounted(async () => {
             }
         });
     }
-    // echo.channel('pallet-registration').listen('PalletRegistrationEvent', onPalletRegistration);
+    
+    // If a reader is already selected, subscribe to its channel
+    if (form.reader_name) {
+        const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
+        if (selectedReader && selectedReader.event_name) {
+            echo.channel(`handheld-reader.${selectedReader.id}`)
+                .listen(selectedReader.event_name, onHandheldReaderTrigger);
+            console.log(`Subscribed to channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+        }
+    }
 })
 
 const getLastItem = async (epc) => {
@@ -446,7 +502,7 @@ const commonEpc = computed(() => {
         <v-card-text>
             <v-form @submit.prevent="submit" id="registerForm" ref="formRef">
                 <VRow>
-                    <VCol md="4">
+                    <VCol md="12">
                         <div class="mt-4">
                             <label class="font-weight-bold">Read Tag</label>
                             <v-text-field 
@@ -463,7 +519,7 @@ const commonEpc = computed(() => {
 
                 </VRow>
                 <VRow>
-                    <VCol md="4">
+                    <VCol md="12">
                         <div>
                             <label class="font-weight-bold">Handheld Readers</label>
                             <v-select
