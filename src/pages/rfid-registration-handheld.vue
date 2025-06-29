@@ -97,6 +97,17 @@ const onHandheldReaderTrigger = async (data) => {
     }
 }
 
+// Handle client-side whisper events (manually entered tags from other clients)
+const onClientTagWhisper = async (data) => {
+    console.log('Client whisper received:', data);
+    if (data && data.tag) {
+        // Set the readTag value from the whispered data
+        readTag.value = data.tag;
+        // Process the tag automatically
+        await addHandheldTag();
+    }
+}
+
 
 async function onPalletRegistration(data) {
     // Extract incoming reads
@@ -191,6 +202,23 @@ const addHandheldTag = async () => {
 
     // Add the new tag to the handheldTags array
     handheldTags.value.push(newTag);
+    
+    // Broadcast the tag to all clients if we have a selected reader
+    // This will ensure all clients viewing this page with the same reader get the tag
+    if (form.reader_name) {
+        try {
+            const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
+            if (selectedReader) {
+                // Use Echo to directly trigger an event on the public channel
+                // This simulates the same event that would come from the backend
+                echo.channel(`handheld-reader.${selectedReader.id}`)
+                    .emit('client-handheld-tag', newTag);
+                console.log(`Broadcasting tag ${newTag.epc} to all clients using reader ${selectedReader.name}`);
+            }
+        } catch (error) {
+            console.error('Error broadcasting tag:', error);
+        }
+    }
     
     // Clear the input field
     readTag.value = null;
@@ -309,10 +337,15 @@ watch(() => form.reader_name, (newReaderName) => {
             
             // Subscribe to the public channel for the selected handheld reader
             // Using a public channel that doesn't require authentication
-            echo.channel(`handheld-reader.${selectedReader.id}`)
-                .listen('HandheldReaderEvent', onHandheldReaderTrigger);
+            const channel = echo.channel(`handheld-reader.${selectedReader.id}`);
             
-            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: HandheldReaderEvent`);
+            // Listen for server-side events
+            channel.listen('HandheldReaderEvent', onHandheldReaderTrigger);
+            
+            // Listen for client-side events
+            channel.listen('client-handheld-tag', onClientTagWhisper);
+            
+            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for events: HandheldReaderEvent and client-handheld-tag`);
         }
     }
 }, { immediate: true });
@@ -333,9 +366,15 @@ onMounted(async () => {
     if (form.reader_name) {
         const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
         if (selectedReader && selectedReader.event_name) {
-            echo.channel(`handheld-reader.${selectedReader.id}`)
-                .listen('HandheldReaderEvent', onHandheldReaderTrigger);
-            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+            const channel = echo.channel(`handheld-reader.${selectedReader.id}`);
+            
+            // Listen for server-side events
+            channel.listen('HandheldReaderEvent', onHandheldReaderTrigger);
+            
+            // Listen for client-side events
+            channel.listen('client-handheld-tag', onClientTagWhisper);
+            
+            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for events: HandheldReaderEvent and client-handheld-tag`);
         }
     }
 })
