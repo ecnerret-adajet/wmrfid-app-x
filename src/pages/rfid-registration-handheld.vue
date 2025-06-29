@@ -89,11 +89,21 @@ const seenKeys = new Set()
 const onHandheldReaderTrigger = async (data) => {
     console.log('Handheld reader event triggered:', data);
     // Extract incoming reads
+    // Check different possible data structures
     if (data && data.tag) {
-        // Set the readTag value from the handheld reader data
+        // Direct tag property
         readTag.value = data.tag;
-        // Process the tag automatically
         await addHandheldTag();
+    } else if (data && data.data && data.data.tag) {
+        // Nested tag in data property
+        readTag.value = data.data.tag;
+        await addHandheldTag();
+    } else if (data && typeof data === 'string') {
+        // Direct string value
+        readTag.value = data;
+        await addHandheldTag();
+    } else {
+        console.log('Unknown data format received:', data);
     }
 }
 
@@ -216,7 +226,12 @@ const addHandheldTag = async () => {
                     // Use the backend API endpoint that you've created
                     await axios.post('handheld-readers/boardcast', {
                         reader_id: selectedReader.id,
-                        tag: newTag.epc
+                        tag: newTag.epc,
+                        // Include additional data that might be needed by the HandheldReaderEvent
+                        data: {
+                            tag: newTag.epc,
+                            reader_name: selectedReader.name
+                        }
                     });
                 } catch (broadcastError) {
                     console.error('Error sending broadcast request:', broadcastError);
