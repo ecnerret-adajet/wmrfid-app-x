@@ -1,7 +1,7 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
 import Loader from '@/components/Loader.vue';
-import { useRfidPalletStore } from '@/stores/rfidPalletStore';
+import { useRfidPalletStore } from '@/stores/RfidPalletStore';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
