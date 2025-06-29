@@ -317,9 +317,9 @@ watch(() => form.reader_name, (newReaderName) => {
             // Subscribe to the public channel for the selected handheld reader
             // Using a public channel that doesn't require authentication
             echo.channel(`handheld-reader.${selectedReader.id}`)
-                .listen(selectedReader.event_name, onHandheldReaderTrigger);
+                .listen('HandheldReaderEvent', onHandheldReaderTrigger);
             
-            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
+            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: HandheldReaderEvent`);
         }
     }
 }, { immediate: true });
@@ -341,7 +341,7 @@ onMounted(async () => {
         const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
         if (selectedReader && selectedReader.event_name) {
             echo.channel(`handheld-reader.${selectedReader.id}`)
-                .listen(selectedReader.event_name, onHandheldReaderTrigger);
+                .listen('HandheldReaderEvent', onHandheldReaderTrigger);
             console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for event: ${selectedReader.event_name}`);
         }
     }
