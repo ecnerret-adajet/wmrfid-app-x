@@ -87,6 +87,7 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
 const seenKeys = new Set()
 
 const onHandheldReaderTrigger = async (data) => {
+    console.log(data);
     // Extract incoming reads
     const incomingReads = data.tag_reads || []
     const justAdded = []  // will hold any tags we actually add
