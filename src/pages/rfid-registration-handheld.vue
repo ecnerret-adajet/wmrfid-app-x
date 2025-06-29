@@ -1,6 +1,7 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
 import Loader from '@/components/Loader.vue';
+import { useRfidPalletStore } from '@/stores/rfidPalletStore';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
@@ -9,6 +10,9 @@ import { echo } from '@/utils/echo';
 import axios from 'axios';
 import { onMounted, computed, reactive, nextTick, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
+
+let palletStore = useRfidPalletStore();
 
 const route = useRoute();
 const isLoading = ref(false);
@@ -143,7 +147,8 @@ const addBroadcastTag = async (tagValue) => {
     const newTag = {
         epc: tagValue,
         tid: null,
-        status: null,
+        status: 'Unregistered',
+        isRegistered: false
     };
     
     // Add the tag
@@ -151,6 +156,32 @@ const addBroadcastTag = async (tagValue) => {
     
     // Update tag arrays and UI
     updateTagArrays();
+    
+    // Check if this tag is registered in the pallet store
+    checkTagRegistration(tagValue);
+}
+
+// Check if a tag is registered in the pallet store
+const checkTagRegistration = async (tagValue) => {
+    try {
+        // Find the tag in the handheldTags array
+        const tagIndex = handheldTags.value.findIndex(tag => tag.epc === tagValue);
+        if (tagIndex === -1) return;
+        
+        // Check if the tag is registered using the pallet store
+        const isRegistered = await palletStore.checkTagRegistration(tagValue, plantCode);
+        
+        // Update the tag status
+        if (isRegistered) {
+            handheldTags.value[tagIndex].status = 'Registered';
+            handheldTags.value[tagIndex].isRegistered = true;
+        } else {
+            handheldTags.value[tagIndex].status = 'Unregistered';
+            handheldTags.value[tagIndex].isRegistered = false;
+        }
+    } catch (error) {
+        // Handle error silently
+    }
 }
 
 
@@ -242,7 +273,8 @@ const addHandheldTag = async () => {
     const newTag = {
         epc: readTag.value,
         tid: null, // Handheld readers might not provide TID
-        status: null,
+        status: 'Unregistered',
+        isRegistered: false
     };
 
     // Add the new tag to the handheldTags array
@@ -284,23 +316,19 @@ const addHandheldTag = async () => {
         }
     }
     
+    // Store the tag value before clearing the input field
+    const addedTagValue = newTag.epc;
+    
     // Clear the input field
     readTag.value = null;
     
-    // Process the tag to check its status
-    // const result = await checkIfExists(newTag.epc, newTag.tid, tagType);
-    // if (result?.found) {
-    //     newTag.status = result.name;
-    // } else if (result?.epc_exists) {
-    //     newTag.status = 'Unregistered TID';
-    // } else {
-    //     newTag.status = 'Unregistered';
-    // }
-
-    // Update the registered/unregistered tag arrays
+    // Update tag arrays and UI
     updateTagArrays();
     
-    // Focus back on the input field for the next scan
+    // Check if this tag is registered in the pallet store
+    await checkTagRegistration(addedTagValue);
+    
+    // Focus the input field again
     nextTick(() => {
         const inputElement = document.getElementById('rfidTagInput');
         if (inputElement) {
@@ -415,6 +443,9 @@ watch(() => form.reader_name, (newReaderName) => {
 }, { immediate: true });
 
 onMounted(async () => {
+    // fetch pallets
+    await palletStore.fetchPallets();
+
     await getHandheldReaders();
     // Focus the input field if reader type is handheld
     if (form.reader_type === 'handheld') {
@@ -642,7 +673,7 @@ const commonEpc = computed(() => {
             </VAlert>
         </v-card-text>
     </v-card>
-    <v-card class="mx-8">
+    <v-card class="mx-8 mb-8">
         <VRow class="pa-4">
             <VCol cols="4" class="d-flex align-start">
                 <div class="text-h5 font-weight-black ps-2">
@@ -662,11 +693,11 @@ const commonEpc = computed(() => {
             <thead>
                 <tr>
                     <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">epc tags</th>
-                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff">
-                        action</th>
+                        style="background-color: #00833c !important; color: white !important; width: 90%;">epc tags</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff; width: 10%;">
+                        Status</th>
+                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
                         style="background-color: #00833c !important; color: white !important;">status</th> -->
                 </tr>
             </thead>
@@ -676,6 +707,14 @@ const commonEpc = computed(() => {
                 </tr>
                 <tr v-for="(item, index) in handheldTags" :key="item.epc" >
                     <td>{{ item.epc }}</td>
+                    <td>
+                        <v-badge
+                            :color="item.isRegistered ? 'success' : 'info'"
+                            :content="item.status"
+                            class="text-uppercase"
+                            inline
+                            ></v-badge>
+                    </td>
                     <!-- <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
