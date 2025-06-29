@@ -122,9 +122,26 @@ const onClientTagWhisper = async (data) => {
     }
 }
 
+// Track recently added tags to prevent duplicates from broadcasts
+const recentlyAddedTags = new Set();
+
 // Function to add tags received from broadcasts without duplicate checking
 const addBroadcastTag = async (tagValue) => {
     if (!tagValue || tagValue.trim() === '') {
+        return;
+    }
+    
+    // Check if this tag was recently added locally
+    // This prevents double-adding on the originating page
+    if (recentlyAddedTags.has(tagValue)) {
+        console.log(`Skipping broadcast tag that was just added locally: ${tagValue}`);
+        return;
+    }
+    
+    // Check if the tag already exists in the handheldTags array
+    const tagExists = handheldTags.value.some(tag => tag.epc === tagValue);
+    if (tagExists) {
+        console.log(`Skipping duplicate broadcast tag: ${tagValue}`);
         return;
     }
     
@@ -135,7 +152,7 @@ const addBroadcastTag = async (tagValue) => {
         status: null,
     };
     
-    // Add the tag directly without duplicate checking
+    // Add the tag
     handheldTags.value.push(newTag);
     
     // Update tag arrays and UI
@@ -238,6 +255,14 @@ const addHandheldTag = async () => {
 
     // Add the new tag to the handheldTags array
     handheldTags.value.push(newTag);
+    
+    // Add this tag to the recently added set to prevent double-adding when broadcast comes back
+    recentlyAddedTags.add(newTag.epc);
+    
+    // Remove from the set after a short delay (after broadcast should have been received)
+    setTimeout(() => {
+        recentlyAddedTags.delete(newTag.epc);
+    }, 2000);
     
     // Broadcast the tag to all clients if we have a selected reader
     // This will ensure all clients viewing this page with the same reader get the tag
