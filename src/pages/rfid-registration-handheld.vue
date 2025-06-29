@@ -87,31 +87,14 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
 const seenKeys = new Set()
 
 const onHandheldReaderTrigger = async (data) => {
-    console.log(data);
+    console.log('Handheld reader event triggered:', data);
     // Extract incoming reads
-    const incomingReads = data.tag_reads || []
-    const justAdded = []  // will hold any tags we actually add
-
-    // Collect new tags
-    for (const tag of incomingReads) {
-        const key = `${tag.epc}_${tag.tid}`
-        if (!seenKeys.has(key)) {
-            seenKeys.add(key)
-            uniqueTags.value.push(tag)
-            justAdded.push(tag)
-        }
+    if (data && data.tag) {
+        // Set the readTag value from the handheld reader data
+        readTag.value = data.tag;
+        // Process the tag automatically
+        await addHandheldTag();
     }
-
-    // If nothing new was added, skip showing loader & processing
-    if (justAdded.length === 0) {
-        return
-    }
-
-    // Only now do we show the loader and process the new tags
-    showLoader.value = true
-
-    await processTags()
-    showLoader.value = false
 }
 
 
@@ -182,6 +165,7 @@ const processTags = async () => {
 }
 
 const addHandheldTag = async () => {
+    // This function can be triggered both by manual input and by the handheld reader event
     if (!readTag.value || readTag.value.trim() === '') {
         return;
     }
@@ -223,6 +207,14 @@ const addHandheldTag = async () => {
 
     // Update the registered/unregistered tag arrays
     updateTagArrays();
+    
+    // Focus back on the input field for the next scan
+    nextTick(() => {
+        const inputElement = document.getElementById('rfidTagInput');
+        if (inputElement) {
+            inputElement.focus();
+        }
+    });
 }
 
 const updateTagArrays = () => {
