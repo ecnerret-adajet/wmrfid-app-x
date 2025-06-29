@@ -77,9 +77,8 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
         const response = await axios.get('registration/check-reference', {
             params: { epc: epc, tid: tid, tag_type: tagType }
         });
-        return response.data; // adjust based on your actual API response
+        return response.data;
     } catch (error) {
-        console.error('CheckIfExists API error:', error);
         return null;
     }
 };
@@ -87,7 +86,6 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
 const seenKeys = new Set()
 
 const onHandheldReaderTrigger = async (data) => {
-    console.log('Handheld reader event triggered:', data);
     // Extract incoming reads
     // Check different possible data structures
     let tagValue = null;
@@ -102,7 +100,6 @@ const onHandheldReaderTrigger = async (data) => {
         // Direct string value
         tagValue = data;
     } else {
-        console.log('Unknown data format received:', data);
         return;
     }
     
@@ -115,7 +112,6 @@ const onHandheldReaderTrigger = async (data) => {
 // Handle client-side events (manually entered tags from other clients)
 // This handles the same format as the HandheldReaderEvent
 const onClientTagWhisper = async (data) => {
-    console.log('Client tag event received:', data);
     if (data && data.tag) {
         // Process broadcast tags without duplicate checking
         await addBroadcastTag(data.tag);
@@ -134,14 +130,12 @@ const addBroadcastTag = async (tagValue) => {
     // Check if this tag was recently added locally
     // This prevents double-adding on the originating page
     if (recentlyAddedTags.has(tagValue)) {
-        console.log(`Skipping broadcast tag that was just added locally: ${tagValue}`);
         return;
     }
     
     // Check if the tag already exists in the handheldTags array
     const tagExists = handheldTags.value.some(tag => tag.epc === tagValue);
     if (tagExists) {
-        console.log(`Skipping duplicate broadcast tag: ${tagValue}`);
         return;
     }
     
@@ -157,8 +151,6 @@ const addBroadcastTag = async (tagValue) => {
     
     // Update tag arrays and UI
     updateTagArrays();
-    
-    console.log(`Added broadcast tag: ${tagValue}`);
 }
 
 
@@ -284,12 +276,11 @@ const addHandheldTag = async () => {
                         }
                     });
                 } catch (broadcastError) {
-                    console.error('Error sending broadcast request:', broadcastError);
+                    // Handle broadcast error silently
                 }
-                console.log(`Broadcasting tag ${newTag.epc} to all clients using reader ${selectedReader.name}`);
             }
         } catch (error) {
-            console.error('Error broadcasting tag:', error);
+            // Handle error silently
         }
     }
     
@@ -418,7 +409,7 @@ watch(() => form.reader_name, (newReaderName) => {
             // Listen for client-side events
             channel.listen('client-handheld-tag', onClientTagWhisper);
             
-            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for events: HandheldReaderEvent and client-handheld-tag`);
+            // Channel subscription complete
         }
     }
 }, { immediate: true });
@@ -447,7 +438,7 @@ onMounted(async () => {
             // Listen for client-side events
             channel.listen('client-handheld-tag', onClientTagWhisper);
             
-            console.log(`Subscribed to public channel: handheld-reader.${selectedReader.id} for events: HandheldReaderEvent and client-handheld-tag`);
+            // Channel subscription complete
         }
     }
 })
