@@ -97,11 +97,12 @@ const onHandheldReaderTrigger = async (data) => {
     }
 }
 
-// Handle client-side whisper events (manually entered tags from other clients)
+// Handle client-side events (manually entered tags from other clients)
+// This handles the same format as the HandheldReaderEvent
 const onClientTagWhisper = async (data) => {
-    console.log('Client whisper received:', data);
+    console.log('Client tag event received:', data);
     if (data && data.tag) {
-        // Set the readTag value from the whispered data
+        // Set the readTag value from the received data
         readTag.value = data.tag;
         // Process the tag automatically
         await addHandheldTag();
@@ -209,10 +210,17 @@ const addHandheldTag = async () => {
         try {
             const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
             if (selectedReader) {
-                // Use Echo to directly trigger an event on the public channel
-                // This simulates the same event that would come from the backend
-                echo.channel(`handheld-reader.${selectedReader.id}`)
-                    .emit('client-handheld-tag', newTag);
+                // Since public channels don't support client events directly,
+                // we'll use a backend endpoint to broadcast the event
+                try {
+                    // Use the backend API endpoint that you've created
+                    await axios.post('handheld-readers/boardcast', {
+                        reader_id: selectedReader.id,
+                        tag: newTag.epc
+                    });
+                } catch (broadcastError) {
+                    console.error('Error sending broadcast request:', broadcastError);
+                }
                 console.log(`Broadcasting tag ${newTag.epc} to all clients using reader ${selectedReader.name}`);
             }
         } catch (error) {
