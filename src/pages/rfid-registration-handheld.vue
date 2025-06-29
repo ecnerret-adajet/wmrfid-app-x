@@ -90,20 +90,25 @@ const onHandheldReaderTrigger = async (data) => {
     console.log('Handheld reader event triggered:', data);
     // Extract incoming reads
     // Check different possible data structures
+    let tagValue = null;
+    
     if (data && data.tag) {
         // Direct tag property
-        readTag.value = data.tag;
-        await addHandheldTag();
+        tagValue = data.tag;
     } else if (data && data.data && data.data.tag) {
         // Nested tag in data property
-        readTag.value = data.data.tag;
-        await addHandheldTag();
+        tagValue = data.data.tag;
     } else if (data && typeof data === 'string') {
         // Direct string value
-        readTag.value = data;
-        await addHandheldTag();
+        tagValue = data;
     } else {
         console.log('Unknown data format received:', data);
+        return;
+    }
+    
+    if (tagValue) {
+        // For broadcast events, directly add the tag without duplicate checking
+        await addBroadcastTag(tagValue);
     }
 }
 
@@ -112,11 +117,31 @@ const onHandheldReaderTrigger = async (data) => {
 const onClientTagWhisper = async (data) => {
     console.log('Client tag event received:', data);
     if (data && data.tag) {
-        // Set the readTag value from the received data
-        readTag.value = data.tag;
-        // Process the tag automatically
-        await addHandheldTag();
+        // Process broadcast tags without duplicate checking
+        await addBroadcastTag(data.tag);
     }
+}
+
+// Function to add tags received from broadcasts without duplicate checking
+const addBroadcastTag = async (tagValue) => {
+    if (!tagValue || tagValue.trim() === '') {
+        return;
+    }
+    
+    // Create a new tag object
+    const newTag = {
+        epc: tagValue,
+        tid: null,
+        status: null,
+    };
+    
+    // Add the tag directly without duplicate checking
+    handheldTags.value.push(newTag);
+    
+    // Update tag arrays and UI
+    updateTagArrays();
+    
+    console.log(`Added broadcast tag: ${tagValue}`);
 }
 
 
