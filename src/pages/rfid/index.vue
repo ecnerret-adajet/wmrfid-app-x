@@ -58,6 +58,7 @@ const batchUpdateForm = reactive({
     mfg_date: null,
     reason: null,
     selectedRfid: [],
+    bay_no: null,
     type: 'inventory'
 });
 
@@ -66,6 +67,7 @@ const manualBatchUpdateForm = reactive({
     mfg_date: null,
     quantity: null,
     selectedRfid: [],
+    bay_no: null,
     type: 'inventory'
 });
 
@@ -346,7 +348,8 @@ const clearChangeBatch = () => {
     batchUpdateForm.batch = null;
     batchUpdateForm.reason = null;
     batchUpdateForm.miller_name = null;
-    batchUpdateForm.selectedRfid = []
+    batchUpdateForm.selectedRfid = [];
+    batchUpdateForm.bay_no = null;
     selectedItems.value = []
 }
 
@@ -355,7 +358,7 @@ const clearManualBatch = () => {
     manualBatchUpdateForm.mfg_date = null;
     manualBatchUpdateForm.batch = null;
     manualBatchUpdateForm.selectedRfid = []
-
+    manualBatchUpdateForm.bay_no = null;
     selectedItems.value = []
 }
 
@@ -565,6 +568,12 @@ watch(
         }
     }
 );
+
+const bayOptions = [
+    { title: 'Not Loaded', value: null },
+    { title: 'Bay 1', value: 1 },
+    { title: 'Bay 2', value: 2 },
+];
 
 </script>
 
@@ -797,8 +806,17 @@ watch(
                         <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
-                <v-text-field class="mt-4" density="compact" label="Miller Name"
-                    v-model="batchUpdateForm.miller_name" />
+
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-text-field density="compact" label="Miller Name" v-model="batchUpdateForm.miller_name" />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <v-autocomplete density="compact" item-title="title" item-value="value" :items="bayOptions"
+                            v-model="batchUpdateForm.bay_no" />
+                    </v-col>
+                </v-row>
+
                 <v-textarea class="mt-4" clear-icon="ri-close-line" label="Reason" v-model="batchUpdateForm.reason"
                     clearable></v-textarea>
 
@@ -849,6 +867,13 @@ watch(
                     </v-col>
                     <v-col cols="12" md="6">
                         <DatePicker v-model="manualBatchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
+                    </v-col>
+                </v-row>
+
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-autocomplete density="compact" item-title="title" item-value="value" :items="bayOptions"
+                            v-model="manualBatchUpdateForm.bay_no" />
                     </v-col>
                 </v-row>
 
