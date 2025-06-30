@@ -1,6 +1,7 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
 import Loader from '@/components/Loader.vue';
+import { useRfidPalletStore } from '@/stores/RfidPalletStore';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
@@ -9,6 +10,9 @@ import { echo } from '@/utils/echo';
 import axios from 'axios';
 import { onMounted, computed, reactive, nextTick, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
+
+let palletStore = useRfidPalletStore();
 
 const route = useRoute();
 const isLoading = ref(false);
@@ -77,14 +81,109 @@ const checkIfExists = async (epc = null, tid = null, tagType) => {
         const response = await axios.get('registration/check-reference', {
             params: { epc: epc, tid: tid, tag_type: tagType }
         });
-        return response.data; // adjust based on your actual API response
+        return response.data;
     } catch (error) {
-        console.error('CheckIfExists API error:', error);
         return null;
     }
 };
 
 const seenKeys = new Set()
+
+const onHandheldReaderTrigger = async (data) => {
+    // Extract incoming reads
+    // Check different possible data structures
+    let tagValue = null;
+    
+    if (data && data.tag) {
+        // Direct tag property
+        tagValue = data.tag;
+    } else if (data && data.data && data.data.tag) {
+        // Nested tag in data property
+        tagValue = data.data.tag;
+    } else if (data && typeof data === 'string') {
+        // Direct string value
+        tagValue = data;
+    } else {
+        return;
+    }
+    
+    if (tagValue) {
+        // For broadcast events, directly add the tag without duplicate checking
+        await addBroadcastTag(tagValue);
+    }
+}
+
+// Handle client-side events (manually entered tags from other clients)
+// This handles the same format as the HandheldReaderEvent
+const onClientTagWhisper = async (data) => {
+    if (data && data.tag) {
+        // Process broadcast tags without duplicate checking
+        await addBroadcastTag(data.tag);
+    }
+}
+
+// Track recently added tags to prevent duplicates from broadcasts
+const recentlyAddedTags = new Set();
+
+// Function to add tags received from broadcasts without duplicate checking
+const addBroadcastTag = async (tagValue) => {
+    if (!tagValue || tagValue.trim() === '') {
+        return;
+    }
+    
+    // Check if this tag was recently added locally
+    // This prevents double-adding on the originating page
+    if (recentlyAddedTags.has(tagValue)) {
+        return;
+    }
+    
+    // Check if the tag already exists in the handheldTags array
+    const tagExists = handheldTags.value.some(tag => tag.epc === tagValue);
+    if (tagExists) {
+        return;
+    }
+    
+    // Create a new tag object
+    const newTag = {
+        epc: tagValue,
+        tid: null,
+        status: 'Unregistered',
+        isRegistered: false
+    };
+    
+    // Add the tag
+    handheldTags.value.push(newTag);
+    
+    // Update tag arrays and UI
+    updateTagArrays();
+    
+    // Check if this tag is registered in the pallet store
+    checkTagRegistration(tagValue);
+}
+
+// Check if a tag is registered in the pallet store
+const checkTagRegistration = async (tagValue) => {
+    try {
+        // Find the tag in the handheldTags array
+        const tagIndex = handheldTags.value.findIndex(tag => tag.epc === tagValue);
+        if (tagIndex === -1) return;
+        
+        // Check if the tag is registered using the pallet store
+        const isRegistered = await palletStore.checkTagRegistration(tagValue, plantCode);
+        
+        // Update the tag status
+        if (isRegistered) {
+            handheldTags.value[tagIndex].status = 'Registered';
+            handheldTags.value[tagIndex].isRegistered = true;
+        } else {
+            handheldTags.value[tagIndex].status = 'Unregistered';
+            handheldTags.value[tagIndex].isRegistered = false;
+        }
+    } catch (error) {
+        // Handle error silently
+    }
+}
+
 
 async function onPalletRegistration(data) {
     // Extract incoming reads
@@ -153,6 +252,7 @@ const processTags = async () => {
 }
 
 const addHandheldTag = async () => {
+    // This function can be triggered both by manual input and by the handheld reader event
     if (!readTag.value || readTag.value.trim() === '') {
         return;
     }
@@ -173,27 +273,68 @@ const addHandheldTag = async () => {
     const newTag = {
         epc: readTag.value,
         tid: null, // Handheld readers might not provide TID
-        status: null,
+        status: 'Unregistered',
+        isRegistered: false
     };
 
     // Add the new tag to the handheldTags array
     handheldTags.value.push(newTag);
     
+    // Add this tag to the recently added set to prevent double-adding when broadcast comes back
+    recentlyAddedTags.add(newTag.epc);
+    
+    // Remove from the set after a short delay (after broadcast should have been received)
+    setTimeout(() => {
+        recentlyAddedTags.delete(newTag.epc);
+    }, 2000);
+    
+    // Broadcast the tag to all clients if we have a selected reader
+    // This will ensure all clients viewing this page with the same reader get the tag
+    if (form.reader_name) {
+        try {
+            const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
+            if (selectedReader) {
+                // Since public channels don't support client events directly,
+                // we'll use a backend endpoint to broadcast the event
+                try {
+                    // Use the backend API endpoint that you've created
+                    await axios.post('handheld-readers/boardcast', {
+                        reader_id: selectedReader.id,
+                        tag: newTag.epc,
+                        // Include additional data that might be needed by the HandheldReaderEvent
+                        data: {
+                            tag: newTag.epc,
+                            reader_name: selectedReader.name
+                        }
+                    });
+                } catch (broadcastError) {
+                    // Handle broadcast error silently
+                }
+            }
+        } catch (error) {
+            // Handle error silently
+        }
+    }
+    
+    // Store the tag value before clearing the input field
+    const addedTagValue = newTag.epc;
+    
     // Clear the input field
     readTag.value = null;
     
-    // Process the tag to check its status
-    // const result = await checkIfExists(newTag.epc, newTag.tid, tagType);
-    // if (result?.found) {
-    //     newTag.status = result.name;
-    // } else if (result?.epc_exists) {
-    //     newTag.status = 'Unregistered TID';
-    // } else {
-    //     newTag.status = 'Unregistered';
-    // }
-
-    // Update the registered/unregistered tag arrays
+    // Update tag arrays and UI
     updateTagArrays();
+    
+    // Check if this tag is registered in the pallet store
+    await checkTagRegistration(addedTagValue);
+    
+    // Focus the input field again
+    nextTick(() => {
+        const inputElement = document.getElementById('rfidTagInput');
+        if (inputElement) {
+            inputElement.focus();
+        }
+    });
 }
 
 const updateTagArrays = () => {
@@ -243,7 +384,8 @@ const getHandheldReaders = async () => {
                 value: reader.name,
                 name: reader.name,
                 reader_name: reader.name,
-                event_name: reader.event_name
+                event_name: reader.event_name,
+                id: reader.id
             })) : [];
             showLoader.value = false;
         })
@@ -275,7 +417,35 @@ watch(readerType, (newValue) => {
     }
 });
 
+// Watch for changes in selected handheld reader and subscribe to the appropriate channel
+watch(() => form.reader_name, (newReaderName) => {
+    if (newReaderName) {
+        // Find the selected reader to get its event_name
+        const selectedReader = handheldReaders.value.find(reader => reader.name === newReaderName);
+        
+        if (selectedReader && selectedReader.event_name) {
+            // Unsubscribe from any existing channels first
+            echo.leaveAllChannels();
+            
+            // Subscribe to the public channel for the selected handheld reader
+            // Using a public channel that doesn't require authentication
+            const channel = echo.channel(`handheld-reader.${selectedReader.id}`);
+            
+            // Listen for server-side events
+            channel.listen('HandheldReaderEvent', onHandheldReaderTrigger);
+            
+            // Listen for client-side events
+            channel.listen('client-handheld-tag', onClientTagWhisper);
+            
+            // Channel subscription complete
+        }
+    }
+}, { immediate: true });
+
 onMounted(async () => {
+    // fetch pallets
+    await palletStore.fetchPallets();
+
     await getHandheldReaders();
     // Focus the input field if reader type is handheld
     if (form.reader_type === 'handheld') {
@@ -286,7 +456,22 @@ onMounted(async () => {
             }
         });
     }
-    // echo.channel('pallet-registration').listen('PalletRegistrationEvent', onPalletRegistration);
+    
+    // If a reader is already selected, subscribe to its channel
+    if (form.reader_name) {
+        const selectedReader = handheldReaders.value.find(reader => reader.name === form.reader_name);
+        if (selectedReader && selectedReader.event_name) {
+            const channel = echo.channel(`handheld-reader.${selectedReader.id}`);
+            
+            // Listen for server-side events
+            channel.listen('HandheldReaderEvent', onHandheldReaderTrigger);
+            
+            // Listen for client-side events
+            channel.listen('client-handheld-tag', onClientTagWhisper);
+            
+            // Channel subscription complete
+        }
+    }
 })
 
 const getLastItem = async (epc) => {
@@ -446,7 +631,7 @@ const commonEpc = computed(() => {
         <v-card-text>
             <v-form @submit.prevent="submit" id="registerForm" ref="formRef">
                 <VRow>
-                    <VCol md="4">
+                    <VCol md="12">
                         <div class="mt-4">
                             <label class="font-weight-bold">Read Tag</label>
                             <v-text-field 
@@ -463,7 +648,7 @@ const commonEpc = computed(() => {
 
                 </VRow>
                 <VRow>
-                    <VCol md="4">
+                    <VCol md="12">
                         <div>
                             <label class="font-weight-bold">Handheld Readers</label>
                             <v-select
@@ -488,7 +673,7 @@ const commonEpc = computed(() => {
             </VAlert>
         </v-card-text>
     </v-card>
-    <v-card class="mx-8">
+    <v-card class="mx-8 mb-8">
         <VRow class="pa-4">
             <VCol cols="4" class="d-flex align-start">
                 <div class="text-h5 font-weight-black ps-2">
@@ -508,11 +693,11 @@ const commonEpc = computed(() => {
             <thead>
                 <tr>
                     <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">epc tags</th>
-                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff">
-                        action</th>
+                        style="background-color: #00833c !important; color: white !important; width: 90%;">epc tags</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff; width: 10%;">
+                        Status</th>
+                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
                         style="background-color: #00833c !important; color: white !important;">status</th> -->
                 </tr>
             </thead>
@@ -522,6 +707,14 @@ const commonEpc = computed(() => {
                 </tr>
                 <tr v-for="(item, index) in handheldTags" :key="item.epc" >
                     <td>{{ item.epc }}</td>
+                    <td>
+                        <v-badge
+                            :color="item.isRegistered ? 'success' : 'info'"
+                            :content="item.status"
+                            class="text-uppercase"
+                            inline
+                            ></v-badge>
+                    </td>
                     <!-- <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
