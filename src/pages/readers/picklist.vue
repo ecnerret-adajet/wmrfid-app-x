@@ -138,20 +138,7 @@ const fetchLoadStatus = async (shipmentNumber) => {
     }
 };
 
-watch(
-    [totalRead.value, loadedCounter.value],
-    ([newTotalRead, newLoadedCounter]) => {
-        if (
-            newTotalRead > 0 &&
-            newLoadedCounter > 0 &&
-            newTotalRead === newLoadedCounter &&
-            shipmentData.shipment?.shipment &&
-            shipmentData.shipment?.loadend_date === '00000000'
-        ) {
-            sapLoadEnd(shipmentData.shipment.shipment);
-        }
-    }
-);
+
 
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
@@ -355,6 +342,21 @@ watch(
     }
 )
 
+watch(
+    [totalRead.value, loadedCounter.value],
+    ([newTotalRead, newLoadedCounter]) => {
+        if (
+            newTotalRead > 0 &&
+            newLoadedCounter > 0 &&
+            newTotalRead === newLoadedCounter &&
+            shipmentData.shipment?.shipment &&
+            shipmentData.shipment?.loadend_date === '00000000'
+        ) {
+            sapLoadEnd(shipmentData.shipment.shipment);
+        }
+    }
+);
+
 </script>
 <template>
     <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -509,7 +511,7 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
