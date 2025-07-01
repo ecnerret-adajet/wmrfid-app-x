@@ -452,7 +452,7 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -572,7 +572,7 @@ watch(
                                                             <br>
                                                             <p style="margin-bottom: 0px !important;"
                                                                 class="font-weight-bold">
-                                                                {{ delivery.quantity }} {{ delivery.sales_unit }}
+                                                                {{ delivery.quantity_all }} {{ delivery.sales_unit }}
                                                             </p>
                                                         </div>
                                                     </div>
