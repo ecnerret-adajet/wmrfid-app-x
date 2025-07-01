@@ -452,7 +452,7 @@ watch(
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                                }}</span>
+                                            }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -561,7 +561,7 @@ watch(
                                                 <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
                                                     <div class="text-center">
                                                         <div class="text-overline mb-1 font-weight-bold"
-                                                            style="font-size: 14px !important;">
+                                                            style="font-size: 15px !important;">
                                                             {{ delivery.material_desc }}
                                                         </div>
                                                         <div>
