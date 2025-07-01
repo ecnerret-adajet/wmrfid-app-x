@@ -646,7 +646,8 @@ const commonEpc = computed(() => {
 </script>
 
 <template>
-    <v-card class="ma-8">
+    <!-- This card is only visible on mobile and smaller screens -->
+    <v-card class="ma-8 d-block d-sm-block d-md-none d-lg-none d-xl-none">
         <v-card-title class="d-flex justify-space-between align-center">
             <VRow>
                 <VCol cols="6" class="d-flex align-start">
