@@ -6,6 +6,8 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+
+
 import { echo } from '@/utils/echo';
 import axios from 'axios';
 import { onMounted, computed, reactive, nextTick, watch, ref } from 'vue';
@@ -21,6 +23,7 @@ const formRef = ref(null);
 const errorMessage = ref(null);
 const showLoader = ref(false);
 const addExistingModal = ref(false);
+const addToExisitingModal = ref(false);
 const tags = ref([]);
 const handheldTags = ref([]);
 const handheldReaders = ref([]);
@@ -30,12 +33,16 @@ const unregisteredTags = ref([]);
 const unregisteredIdTags = ref([]);
 const registeredTags = ref([]);
 const responseModal = ref(false);
+const tagTypesOption = ref([]);
 const responseMessage = ref('Not all unregistered EPC values are the same. Please ensure that all tags you are processing share the same EPC.');
 
 // Get values from the URL
 const tagType = route.params.type;
 const storageLocation = route.params.location ?? null;
 const plantCode = route.params.plant;
+
+palletStore.filter.plant_code = plantCode;
+palletStore.filter.storage_location = storageLocation;
 
 const form = reactive({
     reader_name: null,
@@ -47,7 +54,8 @@ const form = reactive({
     reader_type: 'handheld',
     tag_type: null,
     to_be_added_tags: [],
-    epc_exists: true
+    epc_exists: true,
+    tag_value: null
 })
 
 const removeItem = (index) => {
@@ -148,7 +156,9 @@ const addBroadcastTag = async (tagValue) => {
         epc: tagValue,
         tid: null,
         status: 'Unregistered',
-        isRegistered: false
+        isRegistered: false,
+        pallet_name: null,
+        pallet_id: null,
     };
     
     // Add the tag
@@ -168,19 +178,31 @@ const checkTagRegistration = async (tagValue) => {
         const tagIndex = handheldTags.value.findIndex(tag => tag.epc === tagValue);
         if (tagIndex === -1) return;
         
+        // Set status to checking while API call is in progress
+        handheldTags.value[tagIndex].status = 'Checking...';
+        
         // Check if the tag is registered using the pallet store
         const isRegistered = await palletStore.checkTagRegistration(tagValue, plantCode);
         
-        // Update the tag status
-        if (isRegistered) {
+        // Update the tag status based on the API response
+        if (isRegistered && (isRegistered.status === true || isRegistered.status === 'true')) {
             handheldTags.value[tagIndex].status = 'Registered';
             handheldTags.value[tagIndex].isRegistered = true;
+            handheldTags.value[tagIndex].pallet_name = isRegistered.data?.name || 'Unknown';
+            handheldTags.value[tagIndex].pallet_id = isRegistered.data?.id;
         } else {
             handheldTags.value[tagIndex].status = 'Unregistered';
             handheldTags.value[tagIndex].isRegistered = false;
+            handheldTags.value[tagIndex].pallet_name = null;
+            handheldTags.value[tagIndex].pallet_id = null;
         }
     } catch (error) {
-        // Handle error silently
+        console.error('Error checking tag registration:', error);
+        // Find the tag again in case the array has changed
+        const tagIndex = handheldTags.value.findIndex(tag => tag.epc === tagValue);
+        if (tagIndex !== -1) {
+            handheldTags.value[tagIndex].status = 'Error checking';
+        }
     }
 }
 
@@ -274,7 +296,9 @@ const addHandheldTag = async () => {
         epc: readTag.value,
         tid: null, // Handheld readers might not provide TID
         status: 'Unregistered',
-        isRegistered: false
+        isRegistered: false,
+        pallet_name: null,
+        pallet_id: null,
     };
 
     // Add the new tag to the handheldTags array
@@ -419,6 +443,9 @@ watch(readerType, (newValue) => {
 
 // Watch for changes in selected handheld reader and subscribe to the appropriate channel
 watch(() => form.reader_name, (newReaderName) => {
+    // Clear the readTag field when reader selection changes
+    readTag.value = null;
+    
     if (newReaderName) {
         // Find the selected reader to get its event_name
         const selectedReader = handheldReaders.value.find(reader => reader.name === newReaderName);
@@ -438,13 +465,22 @@ watch(() => form.reader_name, (newReaderName) => {
             channel.listen('client-handheld-tag', onClientTagWhisper);
             
             // Channel subscription complete
+            
+            // Focus the input field now that a reader is selected
+            nextTick(() => {
+                const inputElement = document.getElementById('rfidTagInput');
+                if (inputElement) {
+                    inputElement.focus();
+                }
+            });
         }
     }
 }, { immediate: true });
 
+
 onMounted(async () => {
     // fetch pallets
-    await palletStore.fetchPallets();
+    await palletStore.fetchExistingPallets();
 
     await getHandheldReaders();
     // Focus the input field if reader type is handheld
@@ -552,7 +588,6 @@ const cancelAdd = () => {
 
 const addToExistingTag = async () => {
     form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
-    form.storage_location = storageLocation;
     form.tag_type = tagType
     form.plant_code = plantCode
 
@@ -591,6 +626,8 @@ const handleClear = () => {
     unregisteredIdTags.value = []
     unregisteredTags.value = []
     registeredTags.value = []
+    palletStore.pallets = []
+    handheldTags.value = []
 
 }
 
@@ -642,6 +679,7 @@ const commonEpc = computed(() => {
                                 v-model="readTag" 
                                 ref="rfidTagInput"
                                 @input="addHandheldTag"
+                                :disabled="!form.reader_name"
                             />
                         </div>
                     </VCol>                    
@@ -673,32 +711,46 @@ const commonEpc = computed(() => {
             </VAlert>
         </v-card-text>
     </v-card>
+
     <v-card class="mx-8 mb-8">
         <VRow class="pa-4">
             <VCol cols="4" class="d-flex align-start">
                 <div class="text-h5 font-weight-black ps-2">
-                    {{ getTableLabel }}
+                    {{ getTableLabel }} ({{ handheldTags.length }})
                 </div>
             </VCol>
-            <!-- <VCol cols="2" offset="6">
-                <v-btn block color="primary-2" :disabled="unregisteredIdTags.length === 0" @click="handleAddExisting"
-                    style="color: #fefaeb !important;">
-                    Add To Existing
-                </v-btn>
-            </VCol> -->
+            <VCol cols="2" offset="5">
+                <div>
+                    <v-select
+                        v-model="form.reader_name"
+                        :items="handheldReaders"
+                        item-title="name"
+                        item-value="name"
+                        density="compact"
+                        variant="outlined"
+                    >
+                        <template v-slot:item="{ props, item }">
+                            <v-list-item v-bind="props" :title="item.raw.name" :subtitle="item.raw.event_name"></v-list-item>
+                        </template>
+                    </v-select>
+                </div>
+            </VCol>
+            <VCol cols="1">
+                <v-btn color="secondary" block  @click="handleClear" class="px-12">
+                        Clear
+                    </v-btn>
+            </VCol>
         </VRow>
         
         <!-- Handheld Reader Table -->
         <v-table>
             <thead>
-                <tr>
-                    <th class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important; width: 90%;">epc tags</th>
+                <tr> 
+                    <th colspan="2" class="text-left text-uppercase bg-primary px-6 py-2 font-weight-black"
+                        style="background-color: #00833c !important; color: white !important; width: 90%;">TID tags</th>
                     <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
                         style="background-color: #00833c !important; color: white !important; border-left: 1px solid #fff; border-right: 1px solid #fff; width: 10%;">
                         Status</th>
-                    <!-- <th class="text-center text-uppercase bg-primary px-6 py-2 font-weight-black"
-                        style="background-color: #00833c !important; color: white !important;">status</th> -->
                 </tr>
             </thead>
             <tbody>
@@ -706,14 +758,28 @@ const commonEpc = computed(() => {
                     <td colspan="3" class="text-center">No data available</td>
                 </tr>
                 <tr v-for="(item, index) in handheldTags" :key="item.epc" >
+                    <td width="5%">
+                        <v-menu> 
+                            <template v-slot:activator="{ props }">
+                                <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="gray"></v-btn>
+                            </template>
+                            <v-list>
+                                <v-list-item @click="addExistingModal = true">
+                                    <v-list-item-title>Add to existing</v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
+                    </td>
                     <td>{{ item.epc }}</td>
                     <td>
-                        <v-badge
-                            :color="item.isRegistered ? 'success' : 'info'"
+                        <v-badge v-if="!item.isRegistered"
+                            :color="item.isRegistered ? 'success' : 'danger'"
                             :content="item.status"
                             class="text-uppercase"
                             inline
                             ></v-badge>
+                        <v-badge v-if="item.isRegistered" color="primary" inline  :content="item.pallet_name" class="text-uppercase">
+                        </v-badge>
                     </td>
                     <!-- <td class="text-center">
                         <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
@@ -740,24 +806,32 @@ const commonEpc = computed(() => {
             </tbody>
         </v-table>
     </v-card>
-    <AddingModal @close="cancelAdd" :show="addExistingModal" max-width="700px">
+
+    <AddingModal @close="cancelAdd" :show="addExistingModal" max-width="700px" :dialogTitle="'Add to Existing'">
         <template #default>
-            <div class="text-center mx-auto">
-                <v-icon class="mb-5" color="primary" icon="ri-function-add-line" size="64"></v-icon>
-            </div>
-            <div class="text-h4 text-center mb-4 text-medium-emphasis">
-                Are you sure you want to add unregistered tags to an existing tag with physical ID of
-                <strong class="text-primary font-weight-black">{{ form.name }}</strong>?
-            </div>
-            <div class="d-flex justify-end align-center mt-8">
-                <v-btn color="secondary" variant="outlined" @click="cancelAdd" class="px-12 mr-3">Cancel</v-btn>
-                <v-btn @click="addToExistingTag" color="primary" class="px-12" type="submit" :loading="addingLoading">
-                    Update
-                </v-btn>
-            </div>
+            <v-form @submit.prevent="addToExistingTag" ref="registrationModalForm">
+                <div>
+                    <v-autocomplete 
+                        label="Select Pallet" 
+                        density="compact" 
+                        item-title="title" 
+                        item-value="value"
+                        :items="palletStore.palletOption" 
+                        v-model="palletStore.form.selected_pallet_id"
+                        :rules="[value => !!value || 'Please select a pallet from the list']"
+                        :loading="palletStore.loading"
+                    />
+                </div>
+                
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="addExisitingModal = false"
+                        class="px-12 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
+                </div>
+            </v-form>
         </template>
     </AddingModal>
-
+    
     <ResponseModal :show="responseModal" @close="responseModal = false">
         <template #default>
             <div class="py-4 text-center">
