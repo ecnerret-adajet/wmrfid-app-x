@@ -2,6 +2,7 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
 import JwtService from '@/services/JwtService';
+import { echo } from '@/utils/echo';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
@@ -37,13 +38,49 @@ const shipmentData = reactive({
 
 onMounted(() => {
     fetchData();
-    // fetchTestData();
+
     reloadPageChecker();
+
+    echo.channel('picklist-logs')
+        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+
+    echo.channel('picklist-refresh')
+        .listen('PicklistRefreshEvent', onPicklistRefreshEvent);
 });
+
+const onPicklistRefreshEvent = (data) => {
+    if (data.picklistRefresh === true) {
+        fetchShipmentDetails(shipment.value?.shipment_number);
+    }
+}
+
+const onPicklistLogsEvent = (data) => {
+    // Only process if the event is for the current bay
+    if (data.picklistLog?.antenna_log?.bay_no == bay) {
+        if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
+            // Find the delivery with matching batch and increment loaded_qty
+            const batch = data.picklistLog.inventory?.batch;
+            const is_loaded = data.picklistLog.inventory?.is_loaded;
+
+            if (batch && (is_loaded == false || is_loaded == 0)) {
+                const delivery = shipmentData.deliveries.find(d => d.batch === batch);
+                if (delivery) {
+                    delivery.loaded_qty += 1;
+                }
+            }
+        }
+    }
+};
 
 
 const reloadPageChecker = () => {
     setInterval(function () {
+        const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
+        if (isLoadingInProgress) {
+            // Do not decrement timer or reload
+            return;
+        }
+
         setTimeInSeconds.value -= 1;
         refreshTimer.value = setTimeInSeconds.value;
         if (setTimeInSeconds.value == 1) {
@@ -60,6 +97,8 @@ const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
+        // const response = await ApiService.get(`test-loading-entry/0000140073`);
+
         shipment.value = response.data
 
         if (response.data.original?.error) {
@@ -85,73 +124,21 @@ const fetchData = async () => {
     }
 };
 
-const determinePalletConversion = (quantity, default_pallet_capacity) => {
-    let checkPallet = Math.ceil(quantity / default_pallet_capacity);
-    return checkPallet;
-};
-
-const checkLoadedPallets = (batch) => {
-    return new Promise((resolve, reject) => {
-        ApiService.post(`check-loaded-pallets`, {
-            batches: batch,
-            shipment: shipment.value,
-            bay_no: bay,
-            reader_id: readerId
-        })
-            .then(response => {
-                resolve(response.data);
-            })
-            .catch(error => {
-                reject(error);
-            });
-    });
-};
-
 const sapLoadEnd = async (shipmentNumber) => {
+    // ApiService.get(`test-load-end/${shipmentNumber}`)
+    //     .then(response => {
+    //         console.log(response);
+    //     })
     ApiService.get(`picklist/load-end/${shipmentNumber}`)
         .then(response => {
-            console.log(response);
+            window.location.reload();
         })
-};
-
-
-// checkLoadTime in the old version
-const fetchLoadStatus = async (shipmentNumber) => {
-    try {
-        const response = await ApiService.get(`check-loading-status/${shipmentNumber}`);
-
-        // If success
-        // if (response.data.load_status == 'B') {
-        //     // verify if the total read pallets is equal to the actual read pallets
-        //     if (totalRead.value === loadedCounter.value) {
-        //         sapLoadEnd(shipmentNumber);
-        //     }
-        // }
-        shipmentData.deliveries.forEach(item => {
-            checkLoadedPallets(item.batch)
-                .then(result => {
-                    item.expected = result;
-                })
+        .catch(error => {
+            console.error(error);
+            window.location.reload();
         });
-    } catch (error) {
-        console.error('Error fetching shipment details:', error);
-    }
-};
 
-watch(
-    [totalRead.value, loadedCounter.value],
-    ([newTotalRead, newLoadedCounter]) => {
-        if (
-            newTotalRead > 0 &&
-            newLoadedCounter > 0 &&
-            newTotalRead === newLoadedCounter &&
-            shipmentData.shipment?.shipment &&
-            shipmentData.shipment?.loadend_date === '00000000'
-        ) {
-            sapLoadEnd(shipmentData.shipment.shipment);
-        }
-    }
-);
+};
 
 const fetchShipmentDetails = async (shipmentNumber) => {
     try {
@@ -161,7 +148,10 @@ const fetchShipmentDetails = async (shipmentNumber) => {
         if (bay) {
             bay_no = bay;
         }
-        const response = await axios.get(`picklist/shipment-picklist/${shipmentNumber}`, {
+        let url = `picklist/shipment-picklist/${shipmentNumber}`;
+        // let url = `test-picklist-data/${shipmentNumber}`;
+
+        const response = await axios.get(url, {
             params: {
                 reader_id: readerId,
                 bay_no: bay_no
@@ -177,78 +167,17 @@ const fetchShipmentDetails = async (shipmentNumber) => {
             shipmentData.shipment = response.data;
 
             totalRead.value = shipmentData.shipment?.total_pallet_to_load;
-
-            fetchLoadStatus(shipmentNumber);
-
         } else {
             if (response.data.result == 'F') {
                 errorMessage.value = response.data.message !== '' ? response.data.message : 'Error encountered. Please contact admin.'
                 dialogVisible.value = true;
             }
-
         }
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     }
 
 };
-
-// const fetchTestData = async (shipmentNumber) => {
-//     const data = {
-//         deliveries: [
-//             {
-//                 batch: "PLHXJF17",
-//                 default_pallet_capacity: 50,
-//                 expected: 1,
-//                 delivery: "1200047237",
-//                 ITEM: "000010",
-//                 material: "000000001100000133",
-//                 material_desc: "FL MTN Spring Flour C",
-//                 quantity: 100,
-//                 quantity_all: 100,
-//                 quantity_pallet: 2,
-//                 sales_unit: "BAG",
-//                 inventory: [
-//                     {
-//                         batch: "PLHXJF17",
-//                         quantity: 60,
-//                     },
-//                     {
-//                         batch: "PLHXJF17",
-//                         quantity: 60,
-//                     },
-//                 ],
-//                 plant: "2120",
-//                 sloc: "W107",
-//             },
-//         ],
-//         shipment: {
-//             shipment: "0000127426",
-//             hauler: "0014000009",
-//             hauler_name: "PHILIPPINE FOREMOST MILLING",
-//             plate_number_1: "ACA 8307",
-//             plate_number_2: "",
-//             plate_number_3: "",
-//             driver_name: "E. SARION",
-//             checkin_date: "20250520",
-//             checkin_time: "085400",
-//             loadstart_date: "20240620",
-//             loadstart_time: "142303",
-//             loadend_date: "00000000",
-//             loadend_time: "000000",
-//             total_pallet_to_load: 2
-//         }
-//     };
-
-//     shipmentData.deliveries = data.deliveries;
-//     shipmentData.shipment = data.shipment;
-
-//     totalRead.value = shipmentData.shipment?.total_pallet_to_load;
-
-//     console.log(shipmentData.shipment);
-//     console.log(shipmentData.deliveries);
-
-// }
 
 const showSyncConfirmModal = ref(false);
 
@@ -292,17 +221,14 @@ const displayPlateNumber = computed(() => {
 });
 
 const formatDateTime = (date, time) => {
-    if (!date || !time || date === '00000000' || time === '000000') return '';
-    return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
-};
+    // Remove time if it's '000000'
+    if (time === '00:00:00' || time === '000000' || !time) return '';
+    if (!date || date === '00000000') return '';
 
-// const determineSapQuantity = (quantity, default_pallet_capacity) => {
-//     if (default_pallet_capacity != 0) {
-//         return Math.ceil(quantity / default_pallet_capacity);
-//     } else {
-//         return Math.ceil(quantity / 40);
-//     }
-// }
+    // Pad time to 6 digits if needed (for 'HHmmss' format)
+    const paddedTime = time.toString().padStart(6, '0');
+    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
+};
 
 const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
     uom = String(uom).toLowerCase();
@@ -340,10 +266,6 @@ const deliveryChunks = computed(() => chunkArray(shipmentData.deliveries || [], 
 
 const carouselIndex = ref(0)
 
-const loadedCounter = computed(() =>
-    shipmentData.deliveries?.reduce((sum, item) => sum + (item.expected || 0), 0)
-)
-
 watch(
     () => dialogVisible.value,
     (val) => {
@@ -355,6 +277,28 @@ watch(
     }
 )
 
+// Add this computed to get the total loaded quantity
+const totalLoadedQty = computed(() =>
+    shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
+);
+
+// Update the watcher to use totalLoadedQty and total_pallet_to_load
+watch(
+    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load],
+    ([newLoadedQty, totalPallets]) => {
+        if (
+            totalPallets > 0 &&
+            newLoadedQty > 0 &&
+            newLoadedQty === totalPallets &&
+            shipmentData.shipment?.shipment &&
+            !shipmentData.shipment?.wm_load_end_date
+        ) {
+            sapLoadEnd(shipmentData.shipment.shipment);
+        }
+    },
+    { immediate: true }
+);
+
 </script>
 <template>
     <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -362,8 +306,7 @@ watch(
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-            <v-card
-                v-if="shipmentData.shipment.wm_load_start_date && (shipmentData.shipment.wm_load_end_date === '00000000' || shipmentData.shipment.wm_load_end_date === null)"
+            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -378,14 +321,14 @@ watch(
                                 finished.</span>
                         </div>
                         <v-progress-linear
-                            :model-value="(loadedCounter / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
+                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
                             color="warning" height="14" rounded
                             :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ loadedCounter }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
+                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
                                     <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        ({{ Math.round((loadedCounter / shipmentData.shipment.total_pallet_to_load) *
+                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment.total_pallet_to_load) *
                                             100) }}%)
                                     </span>
                                 </span>
@@ -618,7 +561,7 @@ watch(
                                                 <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
                                                     <div class="text-center">
                                                         <div class="text-overline mb-1 font-weight-bold"
-                                                            style="font-size: 14px !important;">
+                                                            style="font-size: 15px !important;">
                                                             {{ delivery.material_desc }}
                                                         </div>
                                                         <div>
@@ -629,7 +572,7 @@ watch(
                                                             <br>
                                                             <p style="margin-bottom: 0px !important;"
                                                                 class="font-weight-bold">
-                                                                {{ delivery.quantity }} {{ delivery.sales_unit }}
+                                                                {{ delivery.quantity_all }} {{ delivery.sales_unit }}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -638,24 +581,26 @@ watch(
                                                     style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        {{ delivery.quantity_all ?
-                                                            palletCalculation(delivery.sales_unit, delivery.quantity_all,
-                                                                delivery.numerator, delivery.denominator,
-                                                                delivery.default_pallet_capacity) :
-                                                            palletCalculation(delivery.sales_unit, delivery.quantity,
-                                                                delivery.numerator, delivery.denominator,
-                                                                delivery.default_pallet_capacity) }}
+                                                        {{ delivery.required_qty }}
                                                     </span>
                                                 </VCol>
-                                                <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen"
+                                                <VCol md="3" class="px-3 text-center rightBorderedGreen"
                                                     style="border-right: 1px solid #fff;">
                                                     <div class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         <span
                                                             v-if="delivery.quantity_all !== null || !delivery.quantity_all">
                                                             <span
-                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0">
+                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0 && shipmentData.shipment?.wm_load_end_date === null"
+                                                                :class="{
+                                                                    'text-error': delivery.required_qty > delivery.inventory.length,
+                                                                    'font-weight-black': true
+                                                                }">
                                                                 {{ delivery.inventory.length }}
+                                                            </span>
+                                                            <span class="font-weight-black"
+                                                                v-else-if="shipmentData.shipment.wm_load_end_date">
+                                                                {{ delivery.required_qty }}
                                                             </span>
                                                             <span v-else class="text-error text-h4 font-weight-black">
                                                                 NO STOCK
@@ -672,7 +617,7 @@ watch(
                                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen">
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        {{ delivery.expected }}
+                                                        {{ delivery.loaded_qty }}
                                                     </span>
                                                 </VCol>
                                             </VRow>

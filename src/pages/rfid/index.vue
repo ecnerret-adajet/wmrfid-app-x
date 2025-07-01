@@ -5,7 +5,6 @@ import DefaultModal from '@/components/DefaultModal.vue';
 import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
-import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel, generateSlug } from '@/composables/useHelpers';
@@ -13,7 +12,6 @@ import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
-import { debounce } from 'lodash';
 import Moment from 'moment';
 import { reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -56,8 +54,10 @@ const toast = ref({
 const batchUpdateForm = reactive({
     material_id: null,
     mfg_date: null,
+    quantity: null,
     reason: null,
     selectedRfid: [],
+    bay_no: null,
     type: 'inventory'
 });
 
@@ -66,6 +66,7 @@ const manualBatchUpdateForm = reactive({
     mfg_date: null,
     quantity: null,
     selectedRfid: [],
+    bay_no: null,
     type: 'inventory'
 });
 
@@ -137,9 +138,14 @@ const headers = [
 
 const filterModalVisible = ref(false);
 
-const handleSearch = debounce((search) => {
-    searchValue.value = search;
-}, 500);
+const handleSearch = () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: searchValue.value
+    });
+};
 
 const handleRegister = () => {
     showRegistrationModal.value = true;
@@ -346,7 +352,8 @@ const clearChangeBatch = () => {
     batchUpdateForm.batch = null;
     batchUpdateForm.reason = null;
     batchUpdateForm.miller_name = null;
-    batchUpdateForm.selectedRfid = []
+    batchUpdateForm.selectedRfid = [];
+    batchUpdateForm.bay_no = null;
     selectedItems.value = []
 }
 
@@ -355,6 +362,7 @@ const clearManualBatch = () => {
     manualBatchUpdateForm.mfg_date = null;
     manualBatchUpdateForm.batch = null;
     manualBatchUpdateForm.selectedRfid = []
+    manualBatchUpdateForm.bay_no = null;
 
     selectedItems.value = []
 }
@@ -449,6 +457,44 @@ const handleTagAsWeak = () => {
     taggingModal.value = true;
 };
 
+const looseTaggingModal = ref(false);
+const looseTaggingLoading = ref(false);
+const handleTagAsLoose = () => {
+    looseTaggingModal.value = true;
+};
+
+const looseUpdateForm = reactive({
+    selectedRfid: [],
+});
+
+const handleLooseTagging = async () => {
+    looseTaggingLoading.value = true;
+    toast.show = false;
+    looseUpdateForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post('rfid/loose-tagging', looseUpdateForm)
+        if (response.status !== 200) {
+            throw new Error('Failed to tag as loose');
+        }
+        looseTaggingLoading.value = false;
+        toast.value.message = 'RFID tagged as loose!'
+        toast.value.color = 'success'
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        selectedItems.value = [];
+    } catch (error) {
+        console.error('Error submitting:', error);
+    } finally {
+        looseTaggingLoading.value = false;
+        looseTaggingModal.value = false;
+    }
+}
+
 const tagUpdateForm = reactive({
     selectedRfid: [],
 });
@@ -472,6 +518,7 @@ const handleTagging = async () => {
             sortBy: [{ key: 'created_at', order: 'desc' }],
             search: searchValue.value
         });
+        selectedItems.value = [];
     } catch (error) {
         console.error('Error submitting:', error);
     } finally {
@@ -479,6 +526,8 @@ const handleTagging = async () => {
         taggingModal.value = false;
     }
 }
+
+
 
 const exportLoading = ref(false);
 const exportData = async () => {
@@ -566,58 +615,104 @@ watch(
     }
 );
 
+watch(
+    () => batchUpdateForm.material_id,
+    (newMaterialId) => {
+        if (!newMaterialId) return;
+        // Find the selected material
+        const selectedMaterial = materialsOption.value.find(m => m.value === newMaterialId);
+
+        if (selectedMaterial && selectedMaterial.default_pallet_quantity !== undefined) {
+            selectedItems.value.forEach(item => {
+                // Only set if not already set
+                if (!item.manual_quantity) {
+                    item.manual_quantity = selectedMaterial.default_pallet_quantity;
+                }
+            });
+        }
+    }
+);
+
+const bayOptions = [
+    { title: 'Not Loaded', value: null },
+    { title: 'Bay 1', value: 1 },
+    { title: 'Bay 2', value: 2 },
+];
+
 </script>
 
 <template>
-    <div class="d-flex flex-wrap gap-4 align-center justify-center">
-        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
-
-        <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
+    <div class="d-flex gap-4 align-center justify-center mb-2">
+        <VTextField v-model="searchValue" label="Search" placeholder="placeholder" append-inner-icon="ri-search-line"
+            single-line hide-details density="compact" class="flex-grow-1" />
+        <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
-            Filter
-        </v-btn>
-        <v-btn @click="handleRegister">Register RFID
-        </v-btn>
-
-        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
-            <template #prepend>
-                <v-icon color="white"></v-icon>
-            </template>
-            Export
-        </v-btn>
-
-        <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-            :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch !== null)" class="px-5"
-            type="button" color="primary-light">
-            Manual Batch
-        </v-btn>
-
-        <!-- Disable if no selected items or selected items has no batch yet -->
-        <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
-            :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
-            type="button" color="primary-light">
-            Update Batch
-        </v-btn>
-
-        <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" class="px-5" type="button"
-            color="warning">
-            Tag as Weak
+            Search
         </v-btn>
     </div>
-    <div class="mb-2" v-if="selectedItems.length > 0">
-        <span class="text-h6 font-weight-medium text-high-emphasis">
-            Selected items count: ({{ selectedItems.length }})
-        </span>
+
+    <div class="mb-2 d-flex flex-wrap align-center gap-2">
+
+        <div v-if="selectedItems.length > 0" class="px-3 py-1 border">
+            <span class="d-flex align-center text-h6 font-weight-medium text-high-emphasis">
+                Selected items count: ({{ selectedItems.length }})
+
+                <v-btn class="ml-2" @click="selectedItems = []" color="red-lighten-2" icon="ri-close-line"
+                    variant="text"></v-btn>
+            </span>
+        </div>
+
+        <div class="d-flex flex-wrap align-center gap-2 justify-end ml-auto">
+            <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Filter
+            </v-btn>
+            <v-btn @click="handleRegister">Register RFID</v-btn>
+
+            <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line"
+                @click="exportData">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Export
+            </v-btn>
+
+            <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+                :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch !== null)" class="px-5"
+                type="button" color="primary-light">
+                Manual Batch
+            </v-btn>
+
+            <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+                :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
+                type="button" color="primary-light">
+                Update Batch
+            </v-btn>
+
+            <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" class="px-5" type="button"
+                color="warning">
+                Tag as Weak
+            </v-btn>
+
+            <v-btn @click="handleTagAsLoose"
+                :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
+                type="button" color="warning">
+                Tag as Loose
+            </v-btn>
+        </div>
     </div>
+
     <VCard>
 
         <!-- TODO:: Update condition  -->
         <!-- v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}" -->
         <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
             return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
-            :search="searchValue" @update:options="loadItems" class="text-no-wrap">
+            @update:options="loadItems" class="text-no-wrap">
 
             <template #item.plant="{ item }">
                 {{ item.plant_name }}
@@ -783,7 +878,7 @@ watch(
         </template>
     </AddingModal>
 
-    <EditingModal @close="changeBatchModal = false" max-width="900px" :show="changeBatchModal"
+    <EditingModal @close="changeBatchModal = false" max-width="970px" :show="changeBatchModal"
         :dialog-title="`Change Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleChangeBatch">
@@ -797,8 +892,17 @@ watch(
                         <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
-                <v-text-field class="mt-4" density="compact" label="Miller Name"
-                    v-model="batchUpdateForm.miller_name" />
+
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-text-field density="compact" label="Miller Name" v-model="batchUpdateForm.miller_name" />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                        <v-autocomplete density="compact" item-title="title" item-value="value" :items="bayOptions"
+                            v-model="batchUpdateForm.bay_no" />
+                    </v-col>
+                </v-row>
+
                 <v-textarea class="mt-4" clear-icon="ri-close-line" label="Reason" v-model="batchUpdateForm.reason"
                     clearable></v-textarea>
 
@@ -809,19 +913,22 @@ watch(
             <v-table class="mt-4">
                 <thead>
                     <tr>
-                        <th>RFID Code</th>
                         <th>Physical ID</th>
                         <th>Material</th>
                         <th>Receipt Date</th>
+                        <th>Quantity</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in selectedItems" :key="index">
-                        <td>{{ item.rfid_code }}</td>
                         <td>{{ item.name }}</td>
                         <td>{{ item.material_name ?? 'N/A' }}</td>
                         <td>
                             {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                        </td>
+                        <td>
+                            <v-text-field v-model="item.manual_quantity" density="compact" hide-details
+                                placeholder="Quantity" type="number" :rules="[v => !!v || 'Quantity is required']" />
                         </td>
                     </tr>
                 </tbody>
@@ -837,7 +944,7 @@ watch(
     </EditingModal>
 
     <!-- manual batching  -->
-    <EditingModal @close="manualBatchModal = false" max-width="900px" :show="manualBatchModal"
+    <EditingModal @close="manualBatchModal = false" max-width="970px" :show="manualBatchModal"
         :dialog-title="`Manual Batch Assignment`">
         <template #default>
             <v-form @submit.prevent="handleManualBatch">
@@ -852,6 +959,13 @@ watch(
                     </v-col>
                 </v-row>
 
+                <v-row>
+                    <v-col cols="12" md="6">
+                        <v-autocomplete density="compact" item-title="title" item-value="value" :items="bayOptions"
+                            v-model="manualBatchUpdateForm.bay_no" />
+                    </v-col>
+                </v-row>
+
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -859,7 +973,6 @@ watch(
             <v-table class="mt-4">
                 <thead>
                     <tr>
-                        <th>RFID Code</th>
                         <th>Physical ID</th>
                         <th>Group</th>
                         <th>Type</th>
@@ -868,7 +981,6 @@ watch(
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in selectedItems" :key="item.rfid_code">
-                        <td>{{ item.rfid_code }}</td>
                         <td>{{ item.name }}</td>
                         <td>{{ item.group_no ?? 'N/A' }}</td>
                         <td class="text-uppercase">{{ item.type }}</td>
@@ -920,6 +1032,48 @@ watch(
                     class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleTagging" color="primary" class="px-12" type="submit"
                     :loading="taggingLoading">
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
+    <EditingModal @close="looseTaggingModal = false" max-width="1000px" :show="looseTaggingModal"
+        :dialog-title="`Tag RFID as Loose`">
+        <template #default>
+            <div class="mx-4 font-">
+                <span class="text-h5 text-high-emphasis">
+                    Do you want to tag the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} as loose?
+                </span>
+            </div>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>Type</th>
+                        <th>Batch</th>
+                        <th>Physical ID</th>
+                        <th>Remaining Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.plant_name }}</td>
+                        <td class="text-uppercase">{{ item.type }}</td>
+                        <td>{{ item.batch }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>
+                            <v-text-field v-model="item.quantity" density="compact" hide-details placeholder="Quantity"
+                                type="number" :rules="[v => !!v || 'Quantity is required']" />
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="looseTaggingModal = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleLooseTagging" color="primary" class="px-12" type="submit"
+                    :loading="looseTaggingLoading">
                     Confirm
                 </PrimaryButton>
             </div>
