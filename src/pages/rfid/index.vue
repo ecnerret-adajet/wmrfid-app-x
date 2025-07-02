@@ -681,13 +681,13 @@ const bayOptions = [
                 Export
             </v-btn>
 
-            <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
                 :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch !== null)" class="px-5"
                 type="button" color="primary-light">
                 Manual Batch
             </v-btn>
 
-            <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin"
+            <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
                 :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
                 type="button" color="primary-light">
                 Update Batch
