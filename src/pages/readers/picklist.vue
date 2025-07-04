@@ -298,7 +298,7 @@ const onDriverTapOutEvent = (data) => {
     console.log(data);
 
     // Attempt to find driver tap out only if picklist satisfied
-    if (totalLoadedQty.value === shipmentData.shipment?.total_pallet_to_load) {
+    if (totalLoadedQty.value > 0 && totalLoadedQty.value === shipmentData.shipment?.total_pallet_to_load) {
         if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
             if (data.driverTapOut?.is_tap_out_found === true) {
                 is_tapping_load_end_found.value = true;
