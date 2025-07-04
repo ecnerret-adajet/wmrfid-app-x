@@ -303,8 +303,8 @@ const onDriverTapOutEvent = (data) => {
             if (data.driverTapOut?.is_tap_out_found === true) {
                 is_tapping_load_end_found.value = true;
             } else {
-                errorMessage.value = 'No tap out found. Please tap out again';
-                dialogVisible.value = true;
+                // errorMessage.value = 'No tap out found. Please tap out again';
+                // dialogVisible.value = true;
             }
         }
     }
