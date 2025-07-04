@@ -81,19 +81,7 @@ const onPicklistLogsEvent = (data) => {
     }
 };
 
-const onDriverTapOutEvent = (data) => {
-    // Ensure to end only the shipment passed
-    console.log(data);
-    if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
-        if (data.driverTapOut?.is_tap_out_found === true) {
-            is_tapping_load_end_found.value = true;
-        } else {
-            errorMessage.value = 'No tap out found. Please tap out again';
-            dialogVisible.value = true;
-        }
-    }
 
-}
 
 const reloadPageChecker = () => {
     setInterval(function () {
@@ -305,6 +293,23 @@ const totalLoadedQty = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
 );
 
+const onDriverTapOutEvent = (data) => {
+    // Ensure to end only the shipment passed
+    console.log(data);
+
+    // Attempt to find driver tap out only if picklist satisfied
+    if (totalLoadedQty.value === shipmentData.shipment?.total_pallet_to_load) {
+        if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
+            if (data.driverTapOut?.is_tap_out_found === true) {
+                is_tapping_load_end_found.value = true;
+            } else {
+                errorMessage.value = 'No tap out found. Please tap out again';
+                dialogVisible.value = true;
+            }
+        }
+    }
+}
+
 watch(
     [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],
     ([newLoadedQty, totalPallets, tappingLoadEndFound]) => {
@@ -376,7 +381,7 @@ watch(
                         </div>
                         <div class="text-body-1 mb-2">
                             We are currently awaiting the driver to tap out.<br>
-                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds.</span>
+                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap out.</span>
                         </div>
                         <v-progress-linear
                             :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
