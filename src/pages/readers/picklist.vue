@@ -30,6 +30,9 @@ const setTimeInSeconds = ref(120);
 const refreshTimer = ref(null);
 const totalRead = ref(0);
 
+// Variable to watch if tapping load end is already provided
+const is_tapping_load_end_found = ref(false);
+
 // initialize null shipment data
 const shipmentData = reactive({
     deliveries: [],
@@ -46,6 +49,10 @@ onMounted(() => {
 
     echo.channel('picklist-refresh')
         .listen('PicklistRefreshEvent', onPicklistRefreshEvent);
+
+    echo.channel('driver-tap-out')
+        .listen('DriverTapOutEvent', onDriverTapOutEvent);
+    
 });
 
 const onPicklistRefreshEvent = (data) => {
@@ -55,13 +62,15 @@ const onPicklistRefreshEvent = (data) => {
 }
 
 const onPicklistLogsEvent = (data) => {
+    console.log(data);
     // Only process if the event is for the current bay
     if (data.picklistLog?.antenna_log?.bay_no == bay) {
+        
         if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
             // Find the delivery with matching batch and increment loaded_qty
             const batch = data.picklistLog.inventory?.batch;
             const is_loaded = data.picklistLog.inventory?.is_loaded;
-
+        
             if (batch && (is_loaded == false || is_loaded == 0)) {
                 const delivery = shipmentData.deliveries.find(d => d.batch === batch);
                 if (delivery) {
@@ -72,6 +81,19 @@ const onPicklistLogsEvent = (data) => {
     }
 };
 
+const onDriverTapOutEvent = (data) => {
+    // Ensure to end only the shipment passed
+    console.log(data);
+    if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
+        if (data.driverTapOut?.is_tap_out_found === true) {
+            is_tapping_load_end_found.value = true;
+        } else {
+            errorMessage.value = 'No tap out found. Please tap out again';
+            dialogVisible.value = true;
+        }
+    }
+
+}
 
 const reloadPageChecker = () => {
     setInterval(function () {
@@ -97,7 +119,7 @@ const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000140073`);
+        // const response = await ApiService.get(`test-loading-entry/0000139697`);
 
         shipment.value = response.data
 
@@ -127,6 +149,7 @@ const fetchData = async () => {
 const sapLoadEnd = async (shipmentNumber) => {
     // ApiService.get(`test-load-end/${shipmentNumber}`)
     //     .then(response => {
+    //         window.location.reload();
     //         console.log(response);
     //     })
     ApiService.get(`picklist/load-end/${shipmentNumber}`)
@@ -282,16 +305,14 @@ const totalLoadedQty = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
 );
 
-// Update the watcher to use totalLoadedQty and total_pallet_to_load
 watch(
-    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load],
-    ([newLoadedQty, totalPallets]) => {
+    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],
+    ([newLoadedQty, totalPallets, tappingLoadEndFound]) => {
         if (
             totalPallets > 0 &&
             newLoadedQty > 0 &&
             newLoadedQty === totalPallets &&
-            shipmentData.shipment?.shipment &&
-            !shipmentData.shipment?.wm_load_end_date
+            tappingLoadEndFound === true // Use the watched value here
         ) {
             sapLoadEnd(shipmentData.shipment.shipment);
         }
@@ -306,7 +327,7 @@ watch(
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null"
+            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty !== shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -343,6 +364,44 @@ watch(
                     </VCol>
                 </VRow>
             </v-card>
+
+            <v-card v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty === shipmentData.shipment?.total_pallet_to_load)"
+                class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
+                style="border-left: 6px solid #4caf50;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #4caf50;">
+                            <v-icon color="success" class="mr-2" size="32" spin icon="ri-progress-1-line"></v-icon>
+                            Pallet Loading Status: Completed
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            We are currently awaiting the driver to tap out.<br>
+                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds.</span>
+                        </div>
+                        <v-progress-linear
+                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
+                            color="success" height="14" rounded
+                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                            <template #default>
+                                <span class="text-caption font-weight-bold">
+                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
+                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment.total_pallet_to_load) *
+                                            100) }}%)
+                                    </span>
+                                </span>
+                            </template>
+                        </v-progress-linear>
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-caption mb-1" style="color: #4caf50;">Status</div>
+                        <div class="text-h4 font-weight-black" style="color: #66bb6a;">
+                            Pallet Completed
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+
             <v-card v-else class="mb-4 pa-4 d-flex align-center" color="primary" variant="tonal" elevation="3"
                 style="border-left: 6px solid #43a047;">
                 <VRow class="w-100" align="center">

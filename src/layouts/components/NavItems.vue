@@ -142,6 +142,12 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authStore.user?.is_super_admin"
         :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions' }" />
 
+    <!-- Admin Components Section  -->
+    <VerticalNavSectionTitle v-if="authUserCan('view.inventory.recon')" :item="{ heading: 'Admin' }" />
+    <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
+    <VerticalNavLink v-if="authUserCan('view.inventory.recon')"
+        :item="{ title: 'Inventory Recon', icon: 'ri-database-2-line', to: '/inventory-recon' }" />
+
     <!-- Warehouse Mapping  -->
     <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'">
         <template #default>

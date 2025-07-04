@@ -287,6 +287,14 @@ export const routes = [
         },
     },
     {
+        path: '/inventory-recon/:type/:plant/:location?',
+        component: () => import('@/pages/inventory-recon.vue'), 
+        meta: {
+            middleware: "auth",
+            pageTitle: "Inventory Recon"
+        },
+    },
+    {
         path: '/warehouse-map/:plant/:location',
         name: 'warehouse-map',
         component: () => import('@/pages/warehouse/showMap.vue'), 
