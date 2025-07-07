@@ -69,9 +69,7 @@ const fetchDropdownData = async () => {
             }
         });
 
-        const { materials, production_lines, tag_types, storage_locations, statistics, plants } = response.data
-
-        statisticsData.value = statistics
+        const { materials, production_lines, tag_types, storage_locations, plants } = response.data
 
         productionLinesOption.value = production_lines.map(item => ({
             value: item.id,
@@ -216,12 +214,12 @@ const headers = [
         key: 'mfg_date',
         sortable: false,
     },
-    {
-        title: 'QUANTITY',
-        key: 'total_quantity',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'QUANTITY',
+    //     key: 'total_quantity',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'SAP COUNT',
         key: 'sap_count',
@@ -294,9 +292,11 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
     })
         .then((response) => {
-            totalItems.value = response.data.total;
-            serverItems.value = response.data.data
-            loading.value = false
+            console.log(response)
+            totalItems.value = response.data.table.total;
+            serverItems.value = response.data.table.data;
+            statisticsData.value = response.data.statistics;
+            loading.value = false;
 
         })
         .catch((error) => {
@@ -605,13 +605,6 @@ const reasonList = [
                         </div>
                     </div>
 
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
                 </div>
             </v-card>
         </v-col>
@@ -645,14 +638,6 @@ const reasonList = [
                             </div>
                         </div>
                     </div>
-
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
                 </div>
             </v-card>
         </v-col>
@@ -678,20 +663,12 @@ const reasonList = [
                             </div>
                             <div>
                                 <span class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    Across {{ statisticsData?.todays_output?.runs_considered.length || 0 }} production
-                                    {{ statisticsData?.todays_output?.runs_considered.length > 1 ? 'runs' : 'run' }}
+                                    Across {{ statisticsData?.todays_output?.runs_considered || 0 }} production
+                                    {{ statisticsData?.todays_output?.runs_considered > 1 ? 'runs' : 'run' }}
                                 </span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
                 </div>
             </v-card>
         </v-col>
@@ -717,10 +694,9 @@ const reasonList = [
                             </div>
                             <div>
                                 <span
-                                    v-if="statisticsData?.todays_most_produced?.material_description || statisticsData?.todays_most_produced?.bu_material"
+                                    v-if="statisticsData?.todays_most_produced?.material_code "
                                     class="text-subtitle-2 font-weight-thin text-grey-600">
-                                    {{ statisticsData?.todays_most_produced?.material_description }} - {{
-                                        statisticsData?.todays_most_produced?.bu_material }}
+                                    {{ statisticsData?.todays_most_produced?.material_code }}
                                 </span>
                                 <span v-else class="text-subtitle-2 font-weight-thin text-grey-600">
                                     No material found
@@ -728,14 +704,6 @@ const reasonList = [
                             </div>
                         </div>
                     </div>
-
-                    <!-- Call to Action Button -->
-                    <!-- <v-btn
-                        color="primary"
-                        variant="outlined"
-                    >
-                        View Items
-                    </v-btn> -->
                 </div>
             </v-card>
         </v-col>
@@ -811,10 +779,10 @@ const reasonList = [
             <template #item.sap_count="{ item }">
                 {{ (item.sap_count) }}
             </template>
-
+            <!-- 
             <template #item.total_quantity="{ item }">
                 {{ (item.inventory_logs?.length || 0) * (item.material?.default_pallet_quantity || 0) }}
-            </template>
+            </template> -->
 
             <template #item.start_date_time="{ item }">
                 <div class="d-flex flex-column">
