@@ -292,10 +292,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
     })
         .then((response) => {
-            console.log(response)
+            // console.log(response)
             totalItems.value = response.data.table.total;
             serverItems.value = response.data.table.data;
-            statisticsData.value = response.data.statistics;
+            // statisticsData.value = response.data.statistics;
             loading.value = false;
 
         })
@@ -575,7 +575,7 @@ const reasonList = [
         </v-btn>
     </div>
 
-    <v-row class="match-height mb-2">
+    <!-- <v-row class="match-height mb-2">
         <v-col cols="3">
             <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
@@ -707,7 +707,7 @@ const reasonList = [
                 </div>
             </v-card>
         </v-col>
-    </v-row>
+    </v-row> -->
 
     <VCard>
         <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
