@@ -237,9 +237,17 @@ defineExpose({
                 <v-text-field class="mt-6" density="compact" label="Role Name" v-model="form.name"
                     :rules="[value => !!value || 'Role name is required']" />
                 <v-text-field class="mt-6" density="compact" label="Description" v-model="form.description" />
-                <v-select class="mt-6" v-model="form.permissions" :items="permissions" item-title="name" item-value="id"
-                    placeholder="Select Permissions" label="Select Permissions" chips multiple persistent-hint clearable
-                    autocomplete />
+                <v-autocomplete
+                    chips
+                    v-model="form.permissions"
+                    label="Select Permissions"
+                    :items="permissions"
+                    item-title="name" 
+                    item-value="id"
+                    persistent-hint clearable
+                    multiple
+                ></v-autocomplete>
+                
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}

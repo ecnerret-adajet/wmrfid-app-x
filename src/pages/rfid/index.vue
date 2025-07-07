@@ -77,16 +77,16 @@ const updateForm = reactive({
 
 const headers = [
     {
-        title: 'RFID CODE',
-        key: 'rfid_code',
+        title: 'PHYSICAL ID',
+        key: 'physical_id',
     },
+    // {
+    //     title: 'RFID CODE',
+    //     key: 'rfid_code',
+    // },
     {
         title: 'Plant',
         key: 'plant',
-    },
-    {
-        title: 'PHYSICAL ID',
-        key: 'physical_id',
     },
     {
         title: 'EPC',
@@ -719,8 +719,24 @@ const bayOptions = [
             </template>
 
             <template #item.physical_id="{ item }">
-                {{ item.name }}
+                <span v-if="item.is_weak_signal">
+                    <VTooltip location="top">
+                        <template #activator="{ props }">
+                            <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name
+                            }}</span>
+                        </template>
+                        <span>Weak Signal</span>
+                    </VTooltip>
+                </span>
+                <span v-else @click="handleViewRfid(item)"
+                    class="text-primary font-weight-bold cursor-pointer hover-underline">
+                    {{ item.name }}
+                </span>
             </template>
+
+            <!-- <template #item.physical_id="{ item }">
+                {{ item.name }}
+            </template> -->
 
             <!-- <template #item.weak_signal="{ item }">
                 <v-badge v-if="item.is_weak_signal" color="error" content="Yes" class="text-uppercase" inline></v-badge>
@@ -731,21 +747,7 @@ const bayOptions = [
             </template>
 
 
-            <template #item.rfid_code="{ item }">
-                <span v-if="item.is_weak_signal">
-                    <VTooltip location="top">
-                        <template #activator="{ props }">
-                            <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.rfid_code
-                            }}</span>
-                        </template>
-                        <span>Weak Signal</span>
-                    </VTooltip>
-                </span>
-                <span v-else @click="handleViewRfid(item)"
-                    class="text-primary font-weight-bold cursor-pointer hover-underline">
-                    {{ item.rfid_code }}
-                </span>
-            </template>
+            
 
             <template #item.epc="{ item }">
                 <v-btn variant="outlined" @click="viewEpc(item)" color="info">
@@ -1004,7 +1006,7 @@ const bayOptions = [
     <EditingModal @close="taggingModal = false" max-width="900px" :show="taggingModal"
         :dialog-title="`Tag RFID as Weak`">
         <template #default>
-            <div class="mx-4 font-">
+            <div class="mx-4">
                 <span class="text-h5 text-high-emphasis">
                     Do you want to tag the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} as weak?
                 </span>

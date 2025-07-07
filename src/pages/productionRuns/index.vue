@@ -255,6 +255,7 @@ const headers = [
     {
         title: 'START DATE',
         key: 'start_date_time',
+        align: 'center',
         sortable: false,
     },
     {
@@ -816,14 +817,18 @@ const reasonList = [
             </template>
 
             <template #item.start_date_time="{ item }">
-                {{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY h:mm A') : '' }}
+                <div class="d-flex flex-column">
+                    <span>{{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY') : '' }}</span>
+                    <span class="font-weight-thin">{{ item.START_T ? Moment(item.START_T).format('h:mm A') : '' }}</span>
+                </div>
             </template>
 
             <template #item.end_date_time="{ item }">
                 <!-- FOR PLC Production run -->
                 <div v-if="item.run_type === 1">
-                    <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930">
-                        {{ Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') }}
+                    <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930" class="d-flex flex-column"> 
+                        <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
+                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : '' }}</span>
                     </div>
                     <div v-else>
                         <v-badge color="warning" content="Ongoing.." class="text-uppercase" inline></v-badge>
@@ -831,8 +836,9 @@ const reasonList = [
                 </div>
                 <!-- FOR Manual Production run -->
                 <div v-else>
-                    <div v-if="item.STOP_T">
-                        {{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY h:mm A') : '' }}
+                    <div v-if="item.STOP_T" class="d-flex flex-column">
+                        <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
+                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : '' }}</span>
                     </div>
                     <div v-else>
                         <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
