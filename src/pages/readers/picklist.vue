@@ -62,20 +62,15 @@ const onPicklistRefreshEvent = (data) => {
 }
 
 const onPicklistLogsEvent = (data) => {
-    console.log(data);
-    // Only process if the event is for the current bay
-    if (data.picklistLog?.antenna_log?.bay_no == bay) {
-        
-        if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
-            // Find the delivery with matching batch and increment loaded_qty
-            const batch = data.picklistLog.inventory?.batch;
-            const is_loaded = data.picklistLog.inventory?.is_loaded;
-        
-            if (batch && (is_loaded == false || is_loaded == 0)) {
-                const delivery = shipmentData.deliveries.find(d => d.batch === batch);
-                if (delivery) {
-                    delivery.loaded_qty += 1;
-                }
+    if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
+        // Find the delivery with matching batch and increment loaded_qty
+        const batch = data.picklistLog.inventory?.batch;
+        const is_loaded = data.picklistLog.inventory?.is_loaded;
+    
+        if (batch && (is_loaded == false || is_loaded == 0)) {
+            const delivery = shipmentData.deliveries.find(d => d.batch === batch);
+            if (delivery) {
+                delivery.loaded_qty += 1;
             }
         }
     }
@@ -100,7 +95,11 @@ const reloadPageChecker = () => {
 }
 
 const refreshData = () => {
-
+    // ApiService.get(`test-load-end/${shipment.value?.shipment_number}`)
+    //     .then(response => {
+    //         window.location.reload();
+    //         console.log(response);
+    //     })
 }
 
 const fetchData = async () => {
@@ -455,7 +454,7 @@ watch(
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black "
                                                 style="margin-top: 1px;">Gate in</span>
                                         </VCol>
-                                        <VCol md="5" class="d-inline-flex align-center">
+                                        <VCol md="4" class="d-inline-flex align-center">
                                             <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
                                         </VCol>
                                         <VCol md="1" class="d-inline-flex align-center">
