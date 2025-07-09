@@ -18,7 +18,6 @@ const lastRead = ref(null);
 const snackbarVisible = ref(false);
 
 onMounted(() => {
-    // fetchLoadingCurtain();
     echo.channel('picklist-logs')
         .listen('PicklistLogsEvent', onPicklistLogsEvent);
 })
@@ -32,7 +31,7 @@ const response = reactive({
 const onPicklistLogsEvent = (data) => {
     console.log(data);
     // Only process if the event is for the current bay
-    if (data.picklistLog?.antenna_log?.bay_no == bay) {
+    if (data.picklistLog?.antenna_log?.bay_no == bay && reader == data.picklistLog?.reader_id) {
 
         if (data.picklistLog.error == true) {
             errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
