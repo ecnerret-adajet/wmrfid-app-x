@@ -315,7 +315,7 @@ watch(
         if (
             totalPallets > 0 &&
             newLoadedQty > 0 &&
-            newLoadedQty === totalPallets &&
+            newLoadedQty >= totalPallets &&
             tappingLoadEndFound === true // Use the watched value here
         ) {
             sapLoadEnd(shipmentData.shipment.shipment);
