@@ -297,7 +297,7 @@ const onDriverTapOutEvent = (data) => {
     console.log(data);
 
     // Attempt to find driver tap out only if picklist satisfied
-    if (totalLoadedQty.value > 0 && totalLoadedQty.value === shipmentData.shipment?.total_pallet_to_load) {
+    if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
         if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
             if (data.driverTapOut?.is_tap_out_found === true) {
                 is_tapping_load_end_found.value = true;
@@ -331,7 +331,7 @@ watch(
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty !== shipmentData.shipment?.total_pallet_to_load)"
+            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -369,7 +369,7 @@ watch(
                 </VRow>
             </v-card>
 
-            <v-card v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty === shipmentData.shipment?.total_pallet_to_load)"
+            <v-card v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
                 style="border-left: 6px solid #4caf50;">
                 <VRow class="w-100" align="center">
