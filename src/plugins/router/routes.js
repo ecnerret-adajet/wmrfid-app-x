@@ -251,11 +251,16 @@ export const routes = [
       ],
     },
     {
-        path: '/picklist/:shipmentNumber',
-        component: () => import('@/pages/picklist.vue'), 
+        path: '/shipment-picklist/:shipmentNumber',
+        component: () => import('@/pages/picklist.vue'),
         meta: {
-            pageTitle: "Picklist Screen"
+            pageTitle: "Checker Picklist Screen"
         },
+        props: (route) => ({ 
+            shipmentNumber: route.params.shipmentNumber,
+            readerId: route.query.reader_id,
+            bayNo: route.query.bay_no
+        })
     },
     {
         path: '/loading-latest/:reader/:bay',
