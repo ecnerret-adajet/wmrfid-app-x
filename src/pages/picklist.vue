@@ -1,13 +1,8 @@
 <script setup>
-import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
-import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
-import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
-import haulerIcon from "@images/pick_list_icons/icons8-company.png";
-import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
-import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
-import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
-import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
-import axios from "axios";
+import Toast from '@/components/Toast.vue';
+import JwtService from '@/services/JwtService';
+import { echo } from '@/utils/echo';
+import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -16,335 +11,409 @@ const route = useRoute();
 const router = useRouter();
 const shipment = ref(null);
 const pageLoading = ref(false);
-const shipmentNumber = route.params.shipmentNumber;
 const errorMessage = ref(null);
-const deliveryItems = ref([])
 
-// UNUSED 
-
-const refreshData = () => {
-    console.log('Reshreshing...');
-}
-
-onMounted(() => {
-    fetchData();  
+const props = defineProps({
+    shipmentNumber: String,
+    readerId: String,
+    bayNo: String
 })
 
-const fetchData = async () => {
-    pageLoading.value = true;
-    try {
-        const response = await axios.get(`shipment/${shipmentNumber}/picklist`);
-        shipment.value = response.data
-    
-        // Fetch all deliveries and included delivery items inside deliveryItems array
-        if (shipment.value?.deliveries?.length) {
-            shipment.value.deliveries.forEach(delivery => {
-                if (delivery.items?.length) {
-                    delivery.items.forEach(item => {
-                        deliveryItems.value.push(item);
-                    });
-            }
-            });
-        }
-        console.log(shipment.value);
-        console.log(deliveryItems.value);
-
-    } catch (error) {
-        errorMessage.value = error.response?.data?.error || 'An unexpected error occurred.';
-    } finally {
-        pageLoading.value = false
-    }
-};
-
-
-const responseToast = ref(false)
-const toastTimeout = ref(2000)
 
 const toast = ref({
-    message: 'Inventory refreshed',
+    message: 'RFID success',
     color: 'success',
     show: false
 });
 
+onMounted(() => {
+    
+})
+
+onMounted(() => {
+    fetchShipmentDetails(props.shipmentNumber);  
+    echo.channel('picklist-logs')
+        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+});
+
+const onPicklistLogsEvent = (data) => {
+    console.log(data);
+    
+    // Only process if the event is for the current bay
+    if (data.picklistLog?.antenna_log?.bay_no == props.bayNo) {
+        if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
+            // Find the delivery with matching batch and increment loaded_qty
+            const batch = data.picklistLog.inventory?.batch;
+            const is_loaded = data.picklistLog.inventory?.is_loaded;
+          
+            if (batch && (is_loaded == false || is_loaded == 0)) {
+                const delivery = shipmentData.deliveries.find(d => d.batch === batch);
+                if (delivery) {
+                    delivery.read_rfids.push({
+                        name: data.picklistLog.name, 
+                        current_quantity: data.picklistLog?.inventory?.quantity,
+                        mfg_date: data.picklistLog?.inventory?.mfg_date,
+                        loaded_date: Moment().format('MMMM D YYYY, h:mm:ss a'),
+                        loose_pallet: false,
+                        loose_quantity: 0,
+                        rfid_id: data.picklistLog?.inventory?.rfid_id,
+                        rfid_code: data.picklistLog?.inventory?.rfid_code,
+                        rfid_type: data.picklistLog?.inventory?.rfid_type,
+                        material_id: data.picklistLog?.inventory?.material_id,
+                        batch: data.picklistLog?.inventory?.batch,
+                        shipment_number: data.picklistLog?.current_shipment_number
+                    });
+                }
+            }
+        }
+    }
+};
+
+const shipmentData = reactive({
+    deliveries: [],
+    shipment: {}
+});
+
+const openedPanels = ref([]);
+const fetchShipmentDetails = async (shipmentNumber) => {
+    pageLoading.value = true;
+    try {
+        const token = JwtService.getToken();
+        let url = `picklist/shipment-picklist/${shipmentNumber}`;
+        // let url = `test-picklist-data/${shipmentNumber}`;
+
+        const response = await axios.get(url, {
+            params: {
+                reader_id: props.readerId,
+                bay_no: props.bayNo
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+       
+        shipmentData.deliveries = response.data.picklists.map(delivery => {
+            const readRfids = delivery.inventory
+                ? delivery.inventory
+                    .filter(item => item.is_loaded === true || item.is_loaded === 1 || item.is_loose)
+                    .map(item => ({
+                        name: item.rfid?.name || '',
+                        current_quantity: item.quantity,
+                        mfg_date: item.mfg_date || null,
+                        loaded_date: item.loaded_datetime,
+                        loose_pallet: item.is_loose, 
+                        is_loose: item.is_loose,
+                        rfid_id: item.rfid_id,
+                        rfid_code: item.rfid_code,
+                        rfid_type: item.rfid_type,
+                        material_id: item.material_id,
+                        batch: item.batch,
+                        shipment_number: item.shipment_number,
+                        loose_original_quantity: item.loose_original_quantity,
+                        loose_quantity: item.loose_quantity, 
+                    }))
+                : [];
+
+            return {
+                ...delivery,
+                read_rfids: readRfids
+            };
+        });
+        
+        shipmentData.shipment = response.data;
+        openedPanels.value = shipmentData.deliveries.map((_, index) => index);
+    } catch (error) {
+        console.error('Error fetching shipment details:', error);
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
 const displayPlateNumber = computed(() => {
-  return shipment.value?.plate_number_1 || 
-         shipment.value?.plate_number_2 || 
-         shipment.value?.plate_number_3 || 
-         ""; // Default value if none exist
+  return shipmentData.shipment?.plate_number_1 || 
+    shipmentData.shipment?.plate_number_2 || 
+    shipmentData.shipment?.plate_number_3 || 
+         "N/A"; // Default value if none exist
 });
 
 const formatDateTime = (date, time) => {
-    if (!date || !time || date === '00000000' || time === '000000') return '';
-    return Moment(`${date} ${time}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
+    // Remove time if it's '000000'
+    if (time === '00:00:00' || time === '000000' || !time) return '';
+    if (!date || date === '00000000') return '';
+
+    // Pad time to 6 digits if needed (for 'HHmmss' format)
+    const paddedTime = time.toString().padStart(6, '0');
+    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-const determineSapQuantity = (quantity, default_pallet_capacity) => {
-    if (default_pallet_capacity != 0) {
-        return Math.ceil(quantity / default_pallet_capacity);
-    } else {
-        return Math.ceil(quantity / 40);
-    }
-}
+const getTotalReadQuantity = (delivery) => {
+    return delivery.read_rfids.reduce((total, item) => total + (item.current_quantity || 0), 0);
+};
+
+const saveLoose = async (item) => {
   
+    if (!item.loose_quantity || item.loose_quantity <= 0) {
+        toast.value.message = 'Please input valid loose quantity.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+
+    pageLoading.value = true;
+
+    try {
+        const token = JwtService.getToken();
+
+        const response = await axios.post('warehouse/store-loose-rfid', {
+            shipment_number: shipmentData.shipment?.shipment,
+            physical_id: item.name,
+            rfid_code: item.rfid_code,
+            rfid_id: item.rfid_id,
+            rfid_type: item.rfid_type,
+            original_quantity: item.current_quantity,
+            loose_quantity: item.loose_quantity,
+            batch: item.batch,          
+            material_id: item.material_id,
+            mfg_date: item.mfg_date,
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data?.result === 'S') {
+            toast.value.message = 'Tagged as loose successfully';
+            toast.value.color = 'success';
+            toast.value.show = true;
+            item.is_loose = true;
+
+            await fetchShipmentDetails(props.shipmentNumber);
+        }
+
+    } catch (error) {
+        console.error('Error saving loose pallet:', error);
+        alert('Failed to save loose pallet.');
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
+const toggleLoose = (delivery, selectedItem) => {
+    delivery.read_rfids.forEach(item => {
+        if (item !== selectedItem) {
+            item.loose_pallet = false;  // Close others
+        }
+    });
+
+    selectedItem.loose_pallet = !selectedItem.loose_pallet;  // Toggle current
+
+    if (selectedItem.loose_pallet) {
+        const totalReadQuantity = delivery.read_rfids.reduce((sum, item) => {
+            return sum + (item.current_quantity || 0);
+        }, 0);
+
+        const overloadQuantity = Math.max(totalReadQuantity - delivery.quantity_all, 0);
+
+        selectedItem.loose_quantity = Math.min(overloadQuantity, selectedItem.current_quantity);
+    }
+};
+
+const handleBack = () => {
+    router.push({
+        path: `/shipments`,
+    });
+}
+
 </script>
+
 <template>
-    <div class="mt-4 px-8 whiteBackground">
-        <VRow >
-            <VCol md="8" >
-                <VList lines="one" density="compact" style="border: 2px solid #329b62; padding-top: 0px !important;">
-                    <VListItem class="d-flex justify-end" style="padding-top: 0px !important; padding-bottom: 0px !important;">
-                        <VTooltip location="top">
-                            <template #activator="{ props }">
-                                <VIcon class="mt-2 clickable-icon"
-                                    v-bind="props"
-                                    size="35"
-                                    color="primary"
-                                    icon="ri-refresh-fill"
-                                    @click="refreshData"
-                                />
-                            </template>
-                            <span>Refresh Data</span>
-                        </VTooltip>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="shipmentIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Shipment</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{ shipment?.shipment_number }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="gateIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black " style="margin-top: 1px;">Gate in</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                       <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
-                                    </VCol>
-                                </VRow>
-                              
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="plateNumberIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Plate Number</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{ displayPlateNumber }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="loadStartIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load Start</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{ formatDateTime(shipment?.loadstart_date, shipment?.loadstart_time) }}</span>
+  <v-container fluid>
+    <!-- Shipment Details -->
+    <v-card class="my-4 mx-2 px-4 py-3 elevation-2" rounded="lg">
+        <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line"
+                    variant="text"></v-btn>
+      <v-card-title class="text-h6 font-weight-bold mb-2 text-primary">
+        Shipment Details
+      </v-card-title>
+      <v-card-text>
+        <v-row dense>
+          <v-col cols="12" md="6">
+            <span class="font-weight-bold text-high-emphasis">Shipment:</span>
+            <span class="ms-2 text-medium-emphasis">{{ shipmentData.shipment?.shipment }}</span>
+          </v-col>
+          <v-col cols="12" md="6">
+            <span class="font-weight-bold text-high-emphasis">Check-in Date:</span>
+            <span class="ms-2 text-medium-emphasis">
+              {{ formatDateTime(shipmentData.shipment.checkin_date, shipmentData.shipment.checkin_time) }}
+            </span>
+          </v-col>
+          <v-col cols="12" md="6">
+            <span class="font-weight-bold text-high-emphasis">Hauler:</span>
+            <span class="ms-2 text-medium-emphasis">{{ shipmentData.shipment?.hauler_name }}</span>
+          </v-col>
+          <v-col cols="12" md="6">
+            <span class="font-weight-bold text-high-emphasis">Plate Number:</span>
+            <span class="ms-2 text-medium-emphasis">{{ displayPlateNumber }}</span>
+          </v-col>
+          <v-col cols="12" md="6">
+            <span class="font-weight-bold text-high-emphasis">Driver:</span>
+            <span class="ms-2 text-medium-emphasis">{{ shipmentData.shipment?.driver_name }}</span>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
-                                    </VCol>
-                                </VRow>
-                               
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="driverIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Driver Name</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{ shipment?.driver_name }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="loadEndIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Load End</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <span class="font-weight-bold">{{ formatDateTime(shipment?.loadend_date, shipment?.loadend_time) }}</span>
-                                    </VCol>
-                                </VRow> 
-                            </VCol>
+    <!-- Picklists -->
+    <v-card class="mb-6 mx-2 px-4 py-3 elevation-2" rounded="lg">
+      <v-card-title class="text-h6 font-weight-bold text-primary">
+        Picklists
+      </v-card-title>
 
-                        </VRow>
-                    </VListItem>
-                    <VListItem>
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <v-img :src="haulerIcon" class="icon-class"/>
-                                        <span class="text-h6 text-uppercase ml-3 font-weight-black" style="margin-top: 1px;">Hauler Name</span>
-                                    </VCol>
-                                    <VCol md="6" class="d-inline-flex align-center">
-                                        <div class="font-weight-bold">{{ shipment?.hauler_name }}</div>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                               
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                </VList>
-                <VDivider />
-            </VCol>
-            <VCol md="4">
-                <v-sheet class="mx-auto px-6 py-4" elevation="2" style="height: 100%; display: flex; flex-direction: column; background-color: #00A36C;">
-                    <div class="text-h4 text-white text-bold-emphasis font-weight-black">
-                        Bay No. {{ shipment?.bay_no || 0 }}
-                    </div>
+      <template v-for="(delivery, index) in shipmentData.deliveries" :key="index">
+        <v-card class="my-4 pa-4 elevation-1" rounded="md">
+          <v-row dense>
+            <v-col cols="12" md="6">
+              <span class="font-weight-bold">Batch:</span>
+              <span class="ms-2">{{ delivery.batch }}</span>
+            </v-col>
+            <v-col cols="12" md="6">
+              <span class="font-weight-bold">DO Number:</span>
+              <span class="ms-2">{{ delivery.delivery }}</span>
+            </v-col>
+            <v-col cols="12" md="6">
+              <span class="font-weight-bold">Material:</span>
+              <span class="ms-2">{{ delivery.material }}</span>
+            </v-col>
+            <v-col cols="12" md="6">
+              <span class="font-weight-bold">Required Quantity:</span>
+              <span class="ms-2">{{ delivery.quantity_all }} {{ delivery.sales_unit }}</span>
+            </v-col>
+          </v-row>
+
+          <div class="mt-4">
+            <p class="text-subtitle-1 font-weight-bold text-primary mb-2">Read Pallets</p>
+
+            <transition-group
+                name="fade"
+                tag="div"
+                class="d-flex flex-column gap-2"
+            >
+                <v-alert
+                    v-if="delivery.read_rfids.length === 0"
+                    color="warning"
+                    variant="outlined"
+                    density="comfortable"
+                    border="start"
+                    class="text-medium-emphasis"
+                    style="border-left-width: 4px"
+                >
+                    <div class="d-flex justify-space-between align-center">
                     <div>
-                        <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">0</h2>
-                    </div>
-                    <div class="d-flex justify-between align-center mt-auto">
-                        <div class="text-h4 text-white font-weight-bold">
-                            Total Pallets
+                        <strong>No read pallets yet</strong><br />
+                        <div class="text-caption text-medium-emphasis">
+                            Waiting for pallet reads on this batch.
                         </div>
-                         <div class="ml-auto">
-                            <img :src="rfidIcon" :width="72" :height="72" alt="RFID Icon" >
-                         </div>
                     </div>
-                </v-sheet>
-            </VCol>
-        </VRow>
-        <div class="mt-4">
-            <div>
-                <VRow no-gutters >
-                    <VCol md="3" style="font-size: 18px; background-color: #00A36C;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
-                        Shipment Details
-                    </VCol>
-                    <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #00A36C; font-size: 18px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        Expected (SAP)
-                    </VCol>
-                    <VCol md="3"  class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100" style="background-color: #00A36C; font-size: 18px; border-right: 1px solid #fff;">
-                        Expected (WMRFID)
-                    </VCol>
-                    <VCol md="3" style="font-size: 18px; background-color: #00A36C;" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
-                        Read (RFID PALLETS)
-                    </VCol>
-                </VRow>
-                <div class="table-wrapper" style="height: 550px;">
-
-                    <!-- Loop Row  -->
-                    <VRow no-gutters style="border: 1px solid #329b62;">
-                        <VCol md="3" class="px-3 py-2 text-center rightBorderedGreen">
-                            <div class="text-center">
-                                <div class="text-overline mb-1 font-weight-bold" style="font-size: 14px !important;">
-                                    Vitamin; Riboflavin; URC
-                                </div>
-                                <div>
-                                    <span style="color: #00A36C;" class="text-uppercase text-h5 font-weight-black">
-                                        MSSJP03C
-                                    </span>
-                                    <br>
-                                    <p style="margin-bottom: 0px !important;" class="font-weight-bold">560 Bag</p>
-                                </div>
+                    </div>
+                </v-alert>
+                <v-alert
+                    v-for="(item, index) in delivery.read_rfids"
+                    :key="item.name + '-' + item.mfg_date + '-' + index"
+                    color="primary"
+                    variant="tonal"
+                    density="compact"
+                    border="start"
+                    class="text-high-emphasis"
+                    style="border-left-width: 4px"
+                >
+                    <!-- Show this template if pallet is tagged as loose on this shipment only -->
+                    <div class="d-flex justify-space-between align-center" v-if="item.is_loose === true && item.shipment_number === shipmentData.shipment?.shipment">
+                        <div>
+                            <div class="d-flex align-center">
+                                 <strong>{{ item.name }}</strong><br />
+                                <v-badge class="ml-3" color="primary-light" content="Loose"
+                                 inline></v-badge>
                             </div>
-                        </VCol>
-                        <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                            <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
-                        </VCol>
-                        <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen" style="border-right: 1px solid #fff;">
-                            <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
-                        </VCol>
-                        <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen">
-                            <span class="font-weight-black" style="font-size: 3rem; color: #3e3b3b !important;">0</span>
-                        </VCol>
-                    </VRow>
-                    
-                </div>
-            </div>
-       </div>
-    </div>
-    <VSnackbar
-        color="secondary"
-        v-model="responseToast"
-        location="top"
-        :timeout="toastTimeout"
-        >
-        Loading Success!
-    </VSnackbar>
+                            {{ item.loose_original_quantity - item.loose_quantity }} bags 
+                            <span v-if="item.mfg_date">
+                                (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})<br />
+                            </span>
+                            Remaining Quantity: {{ item.current_quantity }} bags
+                        </div>
+                        <div v-if="item.is_loose">
+                            <span class="text-error">Tagged as Loose</span>
+                        </div>
+                    </div>
+                    <div v-else class="d-flex justify-space-between align-center">
+                        <div>
+                            <strong>{{ item.name }}</strong><br />
+                            {{ item.current_quantity }} bags
+                            <span v-if="item.mfg_date">
+                                (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
+                            </span>
+                            <div class="text-caption text-medium-emphasis">
+                                Loaded Date: {{ Moment(item.loaded_date).format('MMM D, YYYY - h:mm A') }}
+                            </div>
+                        </div>
+                        <!-- Toggle Loose Input -->
+                        <div class="mt-2" v-if="getTotalReadQuantity(delivery) > delivery.quantity_all">
+                            
+                            <v-row dense align="center">
+                                <!-- Tag as Loose / Cancel button -->
+                                 <v-col :cols="!item.loose_pallet ? 12 : 5" >
+                                    <v-btn
+                                        :color="item.loose_pallet ? 'warning' : 'primary'"
+                                        variant="outlined"
+                                        @click="toggleLoose(delivery, item)"
+                                    >
+                                        {{ item.loose_pallet ? 'Cancel Loose Tag' : 'Tag as Loose' }}
+                                    </v-btn>
+                                </v-col>
+
+                                <!-- Input Field (shown only if loose_pallet is true) -->
+                                <template v-if="item.loose_pallet">
+                                <v-col cols="4">
+                                    <v-text-field
+                                        label="Remaining"
+                                        v-model.number="item.loose_quantity"
+                                        type="number"
+                                        min="1"
+                                        :max="item.current_quantity"
+                                        density="compact"
+                                        hide-details
+                                        variant="outlined"
+                                        class="ma-0"
+                                    />
+                                </v-col>
+
+                                <!-- Confirm Button -->
+                                <v-col cols="3">
+                                    <v-btn
+                                    color="success"
+                                    block
+                                    @click="saveLoose(item)"
+                                    >
+                                    Confirm
+                                    </v-btn>
+                                </v-col>
+                                </template>
+                            </v-row>
+                        </div>
+                    </div>
+                </v-alert>
+            </transition-group>
+        </div>
+        
+         
+        </v-card>
+      </template>
+    </v-card>
+  </v-container>
+    <Loader :show="pageLoading" />
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
+
 </template>
 
 <style scoped>
 
-.progress-with-icon {
-  position: relative;
-}
-
-.icon-moving {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  transition: left 0.3s ease-in-out; /* Smooth transition for the icon movement */
-}
-
-.v-progress-linear__bar {
-  position: relative;
-  height: 10px; /* Progress bar height */
-}
-
-.table-wrapper {
-    overflow-x: hidden; /* Enable horizontal scroll */
-    overflow-y: auto; 
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS devices */
-}
-
-.rightBorderedGreen{
-    border-right: 1px solid rgba(0, 131, 60, 0.5) !important;
-}
-.whiteBackground{
-    background-color: white !important;
-}
-.v-card-item__content {
-    padding-top: 0 !important;
-}
-
-.v-card-item {
-    padding-top: 0 !important;
-    padding-bottom: 15px !important;
-}
-
-.v-table .v-table__wrapper > table > tbody > tr:not(:last-child) > td, .v-table .v-table__wrapper > table > tbody > tr:not(:last-child) > th {
-    border-bottom: 1px solid rgba(0, 131, 60, 0.5) !important;
-}
-
-.icon-class {
-    max-width: 30px !important;
-    max-height: 30px !important;
-}
-
-.clickable-icon {
-  cursor: pointer;
-  transition: color 0.3s ease !important; /* Smooth transition for color change */
-}
-
-.clickable-icon:hover {
-  color: #006830 !important; /* Change color on hover (replace with your desired color) */
-}
-
-.v-table--density-default {
-    --v-table-header-height: 36px;
-}
 </style>

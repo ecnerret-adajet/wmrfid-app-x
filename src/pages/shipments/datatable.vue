@@ -38,8 +38,20 @@ const form = reactive({
 
 const headers = [
     {
+        title: 'ACTION',
+        key: 'action',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'SHIPMENT NUMBER',
         key: 'shipment_number',
+    },
+    {
+        title: 'BAY NO',
+        key: 'bay_no',
+        align: 'center',
+        sortable: false,
     },
     {
         title: 'HAULER',
@@ -49,26 +61,26 @@ const headers = [
         title: 'DRIVER',
         key: 'driver_name',
     },
-    {
-        title: 'LOAD START',
-        key: 'load_start_date',
-    },
-    {
-        title: 'LOAD END',
-        key: 'load_end_date',
-    },
+    // {
+    //     title: 'LOAD START',
+    //     key: 'load_start_date',
+    // },
+    // {
+    //     title: 'LOAD END',
+    //     key: 'load_end_date',
+    // },
     {
         title: 'STATUS',
         key: 'status',
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'ACTION',
-        key: 'action',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'ACTION',
+    //     key: 'action',
+    //     align: 'center',
+    //     sortable: false,
+    // },
 ]
 
 const unauthorizedFlag = ref(false);
@@ -97,6 +109,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
+            console.log(serverItems.value);
+            
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -137,6 +151,10 @@ const items = [
 
 const handleViewShipment = (shipment) => {
     router.push(`/shipments/${shipment.shipment_number}`);
+}
+
+const handleViewPicklist = (shipment) => {
+    router.push(`/shipment-picklist/${shipment.shipment_number}`);
 }
 
 const actionList = [
@@ -187,9 +205,18 @@ const fetchApplicationRequestType = () => {
         });
 }
 
+const formatDateTime = (date, time) => {
+    // Pad time to 6 digits if needed (for 'HHmmss' format)
+    let formattedDate = Moment(date).format('YYYY-MM-DD');
+    
+    return Moment(`${formattedDate} ${time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY hh:mm:ss A');
+};
+
+
 onMounted(() => {
     fetchApplicationRequestType();
-})
+});
+
 
 defineExpose({
     loadItems,
@@ -203,6 +230,54 @@ defineExpose({
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
 
+        <!-- <template #item.action="{ item }">
+            <v-btn :to="{
+                        path: `/shipment-picklist/${item.shipment_number}`,
+                        query: { reader_id: item.reader_id, bay_no: item.bay_no  }
+                    }"
+                    color="primary"
+                    variant="outlined"
+                    :disabled="item.load_end_date ? true: false"
+                    size="small"
+                >
+                    View Picklist
+            </v-btn>
+        </template> -->
+
+         <!-- Actions -->
+         <template #item.action="{ item }">
+            <div class="d-flex justify-center gap-1">
+                <v-menu location="start"> 
+                    <template v-slot:activator="{ props }">
+                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                    </template>
+                    <v-list>
+                        <v-list-item
+                            @click="handleAction(item, action)"
+                            v-for="(action, i) in actionList"
+                                :key="i"
+                                :value="i"
+                            >
+                            <v-list-item-title>{{ action.title }}</v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+                <v-btn :to="{
+                        path: `/shipment-picklist/${item.shipment_number}`,
+                        query: { reader_id: item.reader_id, bay_no: item.bay_no  }
+                    }"
+                    color="primary"
+                    variant="outlined"
+                    :disabled="item.load_end_date ? true: false"
+                    size="small"
+                >
+                    View Picklist
+            </v-btn>
+            </div>
+        </template>
+
+        
+
         <template #item.shipment_number="{ item }">
             <span @click="handleViewShipment(item)"
                 class="text-primary font-weight-bold cursor-pointer hover-underline">
@@ -212,47 +287,38 @@ defineExpose({
 
 
         <template #item.load_start_date="{ item }">
-            {{ item.load_start_date_time ? Moment(item.load_start_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+            {{ formatDateTime(item.load_start_date, item.load_start_time) }}
         </template>
 
         <template #item.load_end_date="{ item }">
-            {{ item.load_end_date_time ? Moment(item.load_end_date_time).format('MMMM D, YYYY h:mm A') : '' }}
+            <span v-if="item.load_end_date">
+                {{ formatDateTime(item.load_end_date, item.load_end_time) }}
+            </span>
+            <span v-else>
+                <v-chip  class="ma-2" color="warning" outlined label>
+                    Pending
+                </v-chip>
+            </span>
         </template>
 
         <template #item.updated_at="{ item }">
             {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
         </template>
         <template #item.status="{ item }">
-            <v-chip v-if="!item.load_end_date || item.load_end_time" class="ma-2" color="success" outlined label>
-                Success
-            </v-chip>
-            <v-chip v-else class="ma-2" color="primary-2-light" outlined label>
+            <v-chip v-if="item.load_end_date === null"  class="ma-2" color="warning" outlined label>
                 Pending
             </v-chip>
+            <v-chip v-else class="ma-2" color="success" outlined label>
+                Completed
+            </v-chip>
         </template>
 
-
-
-        <!-- Actions -->
-        <template #item.action="{ item }">
-            <div class="d-flex justify-center gap-1">
-                <v-menu location="start"> 
-                    <template v-slot:activator="{ props }">
-                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                    </template>
-                    <v-list>
-                    <v-list-item
-                        @click="handleAction(item, action)"
-                        v-for="(action, i) in actionList"
-                            :key="i"
-                            :value="i"
-                        >
-                        <v-list-item-title>{{ action.title }}</v-list-item-title>
-                    </v-list-item>
-                    </v-list>
-                </v-menu>
-            </div>
+        <template #item.bay_no="{ item }">
+            {{ item.bay_no }}
         </template>
+
+       
+
     </VDataTableServer>
 
     <DefaultModal :show="showShipmentServiceModal" :dialogTitle="'Shipment Service Request - ' + shipmentData.shipment_number"
