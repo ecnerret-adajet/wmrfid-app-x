@@ -106,6 +106,7 @@ const proceedMapping = () => {
         :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound' }" />
     <VerticalNavLink v-if="authUserCan('view.fumigation.requests')"
         :item="{ title: 'Fumigations', icon: 'ri-shield-check-line', to: '/fumigations' }" />
+    <VerticalNavLink :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" />
 
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->

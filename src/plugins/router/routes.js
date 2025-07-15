@@ -243,6 +243,18 @@ export const routes = [
         },
 
         {
+            path: 'application-requests',
+            name: 'application-requests',
+            component: () => import('@/pages/applicationRequest/index.vue'),
+            meta: {
+                pageTitle: "Application Requests",
+                breadcrumbs: [
+                  { label: "Application Requests", link: "/application-requests" },
+              ],
+            },
+        },
+
+        {
           path: 'account-settings',
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
