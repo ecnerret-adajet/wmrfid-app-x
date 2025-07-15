@@ -1,9 +1,10 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import UnauthorizedPage from '@/components/UnauthorizedPage.vue';
 import ApiService from '@/services/ApiService';
 import Moment from "moment";
-import { ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -19,6 +20,7 @@ const props = defineProps({
 const router = useRouter();
 
 const isLoading = ref(false);
+const shipmentData = ref([]);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
@@ -26,6 +28,13 @@ const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
+const showShipmentServiceModal = ref(false);
+const applictionRequestTypes = ref([]);
+const form = reactive({
+    application_request_type: '',
+    remarks: '',
+    bu_shipment: ''
+});
 
 const headers = [
     {
@@ -51,6 +60,12 @@ const headers = [
     {
         title: 'STATUS',
         key: 'status',
+        align: 'center',
+        sortable: false,
+    },
+    {
+        title: 'ACTION',
+        key: 'action',
         align: 'center',
         sortable: false,
     },
@@ -124,6 +139,58 @@ const handleViewShipment = (shipment) => {
     router.push(`/shipments/${shipment.shipment_number}`);
 }
 
+const actionList = [
+    { title: 'Service Request', key: 'service_request' },
+]
+
+const handleAction = (shipment, action) => {
+    shipmentData.value = shipment;
+    
+    if(action.key == 'service_request') {
+        showShipmentServiceModal.value = true;
+    } 
+}
+
+const closeModal = () => {
+    showShipmentServiceModal.value = false;
+}
+
+const saveShipmentService = () => {
+
+    form.bu_shipment = shipmentData.value.shipment_number;
+
+    ApiService.post('application-request/shipment-service-request', form)
+        .then((response) => {
+            toast.value.message = 'Application request created successfully.';
+            toast.value.color = 'success';
+            toast.value.show = true;
+            showShipmentServiceModal.value = false;
+        })
+        .catch((error) => {
+            console.error('Error creating application request:', error);
+            toast.value.message = 'An error occurred while creating application request.';
+            toast.value.color = 'error';
+            toast.value.show = true;
+        });
+}
+
+const fetchApplicationRequestType = () => {
+    ApiService.get('application-request/types')
+        .then((response) => {
+            applictionRequestTypes.value = response.data.map(item => ({
+                value: item.id,
+                title: item.name
+            }));
+        })
+        .catch((error) => {
+            console.error('Error fetching application request types:', error);
+        });
+}
+
+onMounted(() => {
+    fetchApplicationRequestType();
+})
+
 defineExpose({
     loadItems,
     applyFilters
@@ -167,25 +234,45 @@ defineExpose({
 
 
         <!-- Actions -->
-        <!-- <template #item.actions="{ item }">
-        <div class="d-flex gap-1">
-            <v-menu location="start"> 
-                <template v-slot:activator="{ props }">
-                    <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                </template>
-                <v-list>
-                <v-list-item
-                    v-for="(item, i) in items"
-                        :key="i"
-                        :value="i"
-                    >
-                    <v-list-item-title>{{ item.title }}</v-list-item-title>
-                </v-list-item>
-                </v-list>
-            </v-menu>
-        </div>
-    </template> -->
+        <template #item.action="{ item }">
+            <div class="d-flex justify-center gap-1">
+                <v-menu location="start"> 
+                    <template v-slot:activator="{ props }">
+                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                    </template>
+                    <v-list>
+                    <v-list-item
+                        @click="handleAction(item, action)"
+                        v-for="(action, i) in actionList"
+                            :key="i"
+                            :value="i"
+                        >
+                        <v-list-item-title>{{ action.title }}</v-list-item-title>
+                    </v-list-item>
+                    </v-list>
+                </v-menu>
+            </div>
+        </template>
     </VDataTableServer>
+
+    <DefaultModal :show="showShipmentServiceModal" :dialogTitle="'Shipment Service Request - ' + shipmentData.shipment_number"
+        @close="closeModal">
+        <template #default>
+            <v-form>
+                <div>
+                    <v-select class="mt-1" label="Request Type" density="compact" :items="applictionRequestTypes"
+                        v-model="form.application_request_type"></v-select>
+                </div>
+                <div class="mt-4">
+                    <v-textarea class="mt-1" label="Remarks" density="compact" v-model="form.remarks"></v-textarea>
+                </div>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="closeModal" class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="saveShipmentService" class="px-8">Proceed</v-btn>
+                </div>
+            </v-form>
+        </template>
+    </DefaultModal>
 
     <Toast :show="toast.show" :message="toast.message" />
     <UnauthorizedPage :show="unauthorizedFlag" @close="unauthorizedFlag = false" />
