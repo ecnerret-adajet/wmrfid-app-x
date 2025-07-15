@@ -62,6 +62,7 @@ const onPicklistRefreshEvent = (data) => {
 }
 
 const onPicklistLogsEvent = (data) => {
+    console.log(data)
     if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
         // Find the delivery with matching batch and increment loaded_qty
         const batch = data.picklistLog.inventory?.batch;
@@ -75,8 +76,6 @@ const onPicklistLogsEvent = (data) => {
         }
     }
 };
-
-
 
 const reloadPageChecker = () => {
     setInterval(function () {
@@ -170,7 +169,6 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                 Authorization: `Bearer ${token}`
             }
         });
-
         // If success
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
