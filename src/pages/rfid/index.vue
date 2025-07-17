@@ -1,6 +1,6 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
-import DatePicker from '@/components/DatePicker.vue';
+import DateTimePicker from '@/components/DateTimePicker.vue';
 import DefaultModal from '@/components/DefaultModal.vue';
 import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
@@ -58,7 +58,8 @@ const batchUpdateForm = reactive({
     reason: null,
     selectedRfid: [],
     bay_no: null,
-    type: 'inventory'
+    type: 'inventory',
+    miller_name: null
 });
 
 const manualBatchUpdateForm = reactive({
@@ -891,7 +892,7 @@ const bayOptions = [
                             :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
+                        <DateTimePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
 
@@ -917,7 +918,7 @@ const bayOptions = [
                     <tr>
                         <th>Physical ID</th>
                         <th>Material</th>
-                        <th>Receipt Date</th>
+                        <th>Mfg Date</th>
                         <th>Quantity</th>
                     </tr>
                 </thead>
@@ -957,7 +958,7 @@ const bayOptions = [
                             :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DatePicker v-model="manualBatchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
+                        <DateTimePicker v-model="manualBatchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
 

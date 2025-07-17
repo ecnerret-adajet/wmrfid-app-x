@@ -963,7 +963,7 @@ const reasonList = [
                             <td>{{ item.batch }}</td>
                             <td>
                                 {{ Moment(`${item.mfg_date.split(' ')[0]} ${item.mfg_time}`,
-                                    'YYYY-MM-DDHH: mm:ss').format('MMMM D, YYYY h: mm A') }}
+                                    'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY h:mm A') }}
                             </td>
                         </tr>
                     </tbody>
