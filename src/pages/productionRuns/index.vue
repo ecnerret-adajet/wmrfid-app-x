@@ -763,7 +763,7 @@ const reasonList = [
 
             <template #item.mfg_date="{ item }">
                 <span>{{ item.manufacturing_date ?
-                    Moment(item.manufacturing_date).format('MMMM D,YYYY') : '' }}</span>
+                    Moment(item.manufacturing_date).format('MMMM D, YYYY') : '' }}</span>
             </template>
 
             <template #item.rfid_type="{ item }">
@@ -1046,7 +1046,7 @@ const reasonList = [
                                 </VRow>
                             </VCol>
                         </VRow>
-                        <VRow class="table-row mt-3" no-gutters>
+                        <!-- <VRow class="table-row mt-3" no-gutters>
                             <VCol md="12" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="6" class="d-inline-flex align-center">
@@ -1058,7 +1058,7 @@ const reasonList = [
                                     </VCol>
                                 </VRow>
                             </VCol>
-                        </VRow>
+                        </VRow> -->
                         <VRow class="table-row mt-3" no-gutters>
                             <VCol md="12" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
@@ -1143,7 +1143,7 @@ const reasonList = [
                         lines="1" clearable></v-textarea>
                 </div>
                 <div class="d-flex justify-end align-center mt-8 mx-4">
-                    <v-btn color="secondary" variant="outlined" @click="showConfirm = false"
+                    <v-btn color="secondary" variant="outlined" @click="showCancel = false"
                         class="px-12 mr-3">Close</v-btn>
                     <v-btn :loading="cancelLoading" color="error" class="d-flex align-center px-12"
                         @click="cancelProductionRunConfirmation">

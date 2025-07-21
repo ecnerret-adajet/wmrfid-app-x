@@ -1,5 +1,6 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
+import ApiService from '@/services/ApiService';
 import { echo } from '@/utils/echo';
 import palletsImage from '@images/curtains/pallets.png';
 import Moment from 'moment';
@@ -18,6 +19,7 @@ const lastRead = ref(null);
 const snackbarVisible = ref(false);
 
 onMounted(() => {
+    fetchLoadingCurtain();
     echo.channel('picklist-logs')
         .listen('PicklistLogsEvent', onPicklistLogsEvent);
 })
@@ -81,23 +83,20 @@ const onPicklistLogsEvent = (data) => {
 };
 
 const fetchLoadingCurtain = async () => {
-    // isLoading.value = true
-    // const url = `loading-curtain/${reader}/${bay}`;
-    // try {
-    //     const response = await ApiService.get(url);
-    //     const { last_read, loading_curtain } = response.data;
-    //     console.log(last_read)
-    //     console.log(loading_curtain)
+    isLoading.value = true
+    const url = `loading-curtain/${reader}/${bay}`;
+    try {
+        const response = await ApiService.get(url);
 
-    //     logs.value = loading_curtain;
-    //     lastRead.value = last_read;
-    //     isLoading.value = false
-    // } catch (error) {
-    //     isLoading.value = false
-    //     errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-    //     hasError.value = true
-    //     console.error('Error fetching data:', error);
-    // }
+        logs.value = response.data || [];
+        lastRead.value = logs.value[0] || null;
+        isLoading.value = false;
+    } catch (error) {
+        isLoading.value = false
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        hasError.value = true
+        console.error('Error fetching data:', error);
+    }
 };
 
 watch(
