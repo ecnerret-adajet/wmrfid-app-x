@@ -51,13 +51,13 @@ const onPicklistLogsEvent = (data) => {
             }
 
             // Only add if epc does not exist
-            if (!logs.value.some(log => log.epc === epc)) {
+            // if (!logs.value.some(log => log.epc === epc)) {
                 logs.value.unshift(data.picklistLog);
                 if (logs.value.length > 5) {
                     logs.value.pop();
                 }
                 lastRead.value = logs.value[0] || null;
-            }
+            // }
 
             // If pallet is unregistered
             if (data.picklistLog.name === 'unregistered') {

@@ -26,9 +26,6 @@ const toast = ref({
     show: false
 });
 
-onMounted(() => {
-    
-})
 
 onMounted(() => {
     fetchShipmentDetails(props.shipmentNumber);  
@@ -63,7 +60,7 @@ const onPicklistLogsEvent = (data) => {
                         batch: data.picklistLog?.inventory?.batch,
                         shipment_number: data.picklistLog?.current_shipment_number
                     });
-                }
+                } 
             }
         }
     }
@@ -91,37 +88,43 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                 Authorization: `Bearer ${token}`
             }
         });
-       
-        shipmentData.deliveries = response.data.picklists.map(delivery => {
-            const readRfids = delivery.inventory
-                ? delivery.inventory
-                    .filter(item => item.is_loaded === true || item.is_loaded === 1 || item.is_loose)
-                    .map(item => ({
-                        name: item.rfid?.name || '',
-                        current_quantity: item.quantity,
-                        mfg_date: item.mfg_date || null,
-                        loaded_date: item.loaded_datetime,
-                        loose_pallet: item.is_loose, 
-                        is_loose: item.is_loose,
-                        rfid_id: item.rfid_id,
-                        rfid_code: item.rfid_code,
-                        rfid_type: item.rfid_type,
-                        material_id: item.material_id,
-                        batch: item.batch,
-                        shipment_number: item.shipment_number,
-                        loose_original_quantity: item.loose_original_quantity,
-                        loose_quantity: item.loose_quantity, 
-                    }))
-                : [];
 
-            return {
-                ...delivery,
-                read_rfids: readRfids
-            };
-        });
+        console.log(response.data);
         
-        shipmentData.shipment = response.data;
-        openedPanels.value = shipmentData.deliveries.map((_, index) => index);
+        if (response.data.picklists?.length > 0) {
+            shipmentData.deliveries = response.data.picklists.map(delivery => {
+                
+                const readRfids = delivery.inventory
+                    ? delivery.inventory
+                        .filter(item => item.is_loaded || (item.is_loose && item.shipment_id === response.data.shipment_id))
+                        .map(item => ({
+                            name: item.rfid?.name || '',
+                            current_quantity: item.quantity,
+                            mfg_date: item.mfg_date || null,
+                            loaded_date: item.loaded_datetime,
+                            loose_pallet: item.is_loose, 
+                            is_loose: item.is_loose,
+                            rfid_id: item.rfid_id,
+                            rfid_code: item.rfid_code,
+                            rfid_type: item.rfid_type,
+                            material_id: item.material_id,
+                            batch: item.batch,
+                            shipment_number: item.shipment_number,
+                            loose_original_quantity: item.loose_original_quantity,
+                            loose_quantity: item.loose_quantity, 
+                        }))
+                    : [];
+
+                return {
+                    ...delivery,
+                    read_rfids: readRfids
+                };
+            });
+            
+            shipmentData.shipment = response.data;
+            openedPanels.value = shipmentData.deliveries.map((_, index) => index);
+        }
+
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     } finally {
@@ -224,6 +227,38 @@ const handleBack = () => {
     });
 }
 
+
+const handleMismatchedAction = async (item, action) => {
+    let inventory_id = item.id;
+
+    if (action === 'accept') {
+        // TODO:: Check if with implementation for accepting
+        // toast.value.message = `Accepted mismatched pallet: ${item.name}`;
+        // toast.value.color = 'success';
+        // toast.value.show = true;
+    } else if (action === 'reject') {
+
+        const token = JwtService.getToken();
+
+        const response = await axios.post('picklist/update-mismatched-inventory', {
+            inventory_id: inventory_id,
+            action: action
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data?.result === 'S') {
+            toast.value.message = `Removed mismatched pallet: ${item.rfid?.name} from shipment #${shipmentData.shipment?.shipment}`;
+            toast.value.color = 'success';
+            toast.value.show = true;
+            await fetchShipmentDetails(props.shipmentNumber);
+        }
+    }
+    
+};
+
 </script>
 
 <template>
@@ -263,152 +298,215 @@ const handleBack = () => {
       </v-card-text>
     </v-card>
 
-    <!-- Picklists -->
-    <v-card class="mb-6 mx-2 px-4 py-3 elevation-2" rounded="lg">
-      <v-card-title class="text-h6 font-weight-bold text-primary">
-        Picklists
-      </v-card-title>
+        <!-- Picklists -->
+        <v-card class="mb-6 mx-2 px-4 py-3 elevation-2" rounded="lg">
+        <v-card-title class="text-h6 font-weight-bold text-primary">
+            Picklists
+        </v-card-title>
 
-      <template v-for="(delivery, index) in shipmentData.deliveries" :key="index">
-        <v-card class="my-4 pa-4 elevation-1" rounded="md">
-          <v-row dense>
-            <v-col cols="12" md="6">
-              <span class="font-weight-bold">Batch:</span>
-              <span class="ms-2">{{ delivery.batch }}</span>
-            </v-col>
-            <v-col cols="12" md="6">
-              <span class="font-weight-bold">DO Number:</span>
-              <span class="ms-2">{{ delivery.delivery }}</span>
-            </v-col>
-            <v-col cols="12" md="6">
-              <span class="font-weight-bold">Material:</span>
-              <span class="ms-2">{{ delivery.material }}</span>
-            </v-col>
-            <v-col cols="12" md="6">
-              <span class="font-weight-bold">Required Quantity:</span>
-              <span class="ms-2">{{ delivery.quantity_all }} {{ delivery.sales_unit }}</span>
-            </v-col>
-          </v-row>
+        <template v-for="(delivery, index) in shipmentData.deliveries" :key="index">
+            <v-card class="my-4 pa-4 elevation-1" rounded="md">
+            <v-row dense>
+                <v-col cols="12" md="6">
+                <span class="font-weight-bold">Batch:</span>
+                <span class="ms-2">{{ delivery.batch }}</span>
+                </v-col>
+                <v-col cols="12" md="6">
+                <span class="font-weight-bold">DO Number:</span>
+                <span class="ms-2">{{ delivery.delivery }}</span>
+                </v-col>
+                <v-col cols="12" md="6">
+                <span class="font-weight-bold">Material:</span>
+                <span class="ms-2">{{ delivery.material }}</span>
+                </v-col>
+                <v-col cols="12" md="6">
+                <span class="font-weight-bold">Required Quantity:</span>
+                <span class="ms-2">{{ delivery.quantity_all }} {{ delivery.sales_unit }}</span>
+                </v-col>
+            </v-row>
 
-          <div class="mt-4">
-            <p class="text-subtitle-1 font-weight-bold text-primary mb-2">Read Pallets</p>
+            <div class="mt-4">
+                <p class="text-subtitle-1 font-weight-bold text-primary mb-2">Read Pallets</p>
 
-            <transition-group
-                name="fade"
-                tag="div"
-                class="d-flex flex-column gap-2"
-            >
-                <v-alert
-                    v-if="delivery.read_rfids.length === 0"
-                    color="warning"
-                    variant="outlined"
-                    density="comfortable"
-                    border="start"
-                    class="text-medium-emphasis"
-                    style="border-left-width: 4px"
+                <transition-group
+                    name="fade"
+                    tag="div"
+                    class="d-flex flex-column gap-2"
                 >
-                    <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <strong>No read pallets yet</strong><br />
-                        <div class="text-caption text-medium-emphasis">
-                            Waiting for pallet reads on this batch.
-                        </div>
-                    </div>
-                    </div>
-                </v-alert>
-                <v-alert
-                    v-for="(item, index) in delivery.read_rfids"
-                    :key="item.name + '-' + item.mfg_date + '-' + index"
-                    color="primary"
-                    variant="tonal"
-                    density="compact"
-                    border="start"
-                    class="text-high-emphasis"
-                    style="border-left-width: 4px"
-                >
-                    <!-- Show this template if pallet is tagged as loose on this shipment only -->
-                    <div class="d-flex justify-space-between align-center" v-if="item.is_loose === true && item.shipment_number === shipmentData.shipment?.shipment">
+                    <v-alert
+                        v-if="delivery.read_rfids.length === 0"
+                        color="warning"
+                        variant="outlined"
+                        density="comfortable"
+                        border="start"
+                        class="text-medium-emphasis"
+                        style="border-left-width: 4px"
+                    >
+                        <div class="d-flex justify-space-between align-center">
                         <div>
-                            <div class="d-flex align-center">
-                                 <strong>{{ item.name }}</strong><br />
-                                <v-badge class="ml-3" color="primary-light" content="Loose"
-                                 inline></v-badge>
-                            </div>
-                            {{ item.loose_original_quantity - item.loose_quantity }} bags 
-                            <span v-if="item.mfg_date">
-                                (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})<br />
-                            </span>
-                            Remaining Quantity: {{ item.current_quantity }} bags
-                        </div>
-                        <div v-if="item.is_loose">
-                            <span class="text-error">Tagged as Loose</span>
-                        </div>
-                    </div>
-                    <div v-else class="d-flex justify-space-between align-center">
-                        <div>
-                            <strong>{{ item.name }}</strong><br />
-                            {{ item.current_quantity }} bags
-                            <span v-if="item.mfg_date">
-                                (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
-                            </span>
+                            <strong>No read pallets yet</strong><br />
                             <div class="text-caption text-medium-emphasis">
-                                Loaded Date: {{ Moment(item.loaded_date).format('MMM D, YYYY - h:mm A') }}
+                                Waiting for pallet reads on this batch.
                             </div>
                         </div>
-                        <!-- Toggle Loose Input -->
-                        <div class="mt-2" v-if="getTotalReadQuantity(delivery) > delivery.quantity_all">
-                            
-                            <v-row dense align="center">
-                                <!-- Tag as Loose / Cancel button -->
-                                 <v-col :cols="!item.loose_pallet ? 12 : 5" >
-                                    <v-btn
-                                        :color="item.loose_pallet ? 'warning' : 'primary'"
-                                        variant="outlined"
-                                        @click="toggleLoose(delivery, item)"
-                                    >
-                                        {{ item.loose_pallet ? 'Cancel Loose Tag' : 'Tag as Loose' }}
-                                    </v-btn>
-                                </v-col>
-
-                                <!-- Input Field (shown only if loose_pallet is true) -->
-                                <template v-if="item.loose_pallet">
-                                <v-col cols="4">
-                                    <v-text-field
-                                        label="Remaining"
-                                        v-model.number="item.loose_quantity"
-                                        type="number"
-                                        min="1"
-                                        :max="item.current_quantity"
-                                        density="compact"
-                                        hide-details
-                                        variant="outlined"
-                                        class="ma-0"
-                                    />
-                                </v-col>
-
-                                <!-- Confirm Button -->
-                                <v-col cols="3">
-                                    <v-btn
-                                    color="success"
-                                    block
-                                    @click="saveLoose(item)"
-                                    >
-                                    Confirm
-                                    </v-btn>
-                                </v-col>
-                                </template>
-                            </v-row>
                         </div>
-                    </div>
-                </v-alert>
-            </transition-group>
-        </div>
-        
-         
+                    </v-alert>
+                    <v-alert
+                        v-for="(item, index) in delivery.read_rfids"
+                        :key="item.name + '-' + item.mfg_date + '-' + index"
+                        color="primary"
+                        variant="tonal"
+                        density="compact"
+                        border="start"
+                        class="text-high-emphasis"
+                        style="border-left-width: 4px"
+                    >
+                        <!-- Show this template if pallet is tagged as loose on this shipment only -->
+                        <div class="d-flex justify-space-between align-center" v-if="item.is_loose === true && item.shipment_number === shipmentData.shipment?.shipment">
+                            <div>
+                                <div class="d-flex align-center">
+                                    <strong>{{ item.name }}</strong><br />
+                                    <v-badge class="ml-3" color="primary-light" content="Loose"
+                                    inline></v-badge>
+                                </div>
+                                {{ item.loose_original_quantity - item.loose_quantity }} bags 
+                                <span v-if="item.mfg_date">
+                                    (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})<br />
+                                </span>
+                                Remaining Quantity: {{ item.current_quantity }} bags
+                            </div>
+                            <div v-if="item.is_loose">
+                                <span class="text-error">Tagged as Loose</span>
+                            </div>
+                        </div>
+                        <div v-else class="d-flex justify-space-between align-center">
+                            <div>
+                                <strong>{{ item.name }}</strong><br />
+                                {{ item.current_quantity }} bags
+                                <span v-if="item.mfg_date">
+                                    (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
+                                </span>
+                                <div class="text-caption text-medium-emphasis">
+                                    Loaded Date: {{ Moment(item.loaded_date).format('MMM D, YYYY - h:mm A') }}
+                                </div>
+                            </div>
+                            <!-- Toggle Loose Input -->
+                            <div class="mt-2" v-if="getTotalReadQuantity(delivery) > delivery.quantity_all">
+                                
+                                <v-row dense align="center">
+                                    <!-- Tag as Loose / Cancel button -->
+                                    <v-col :cols="!item.loose_pallet ? 12 : 5" >
+                                        <v-btn
+                                            :color="item.loose_pallet ? 'warning' : 'primary'"
+                                            variant="outlined"
+                                            @click="toggleLoose(delivery, item)"
+                                        >
+                                            {{ item.loose_pallet ? 'Cancel Loose Tag' : 'Tag as Loose' }}
+                                        </v-btn>
+                                    </v-col>
+
+                                    <!-- Input Field (shown only if loose_pallet is true) -->
+                                    <template v-if="item.loose_pallet">
+                                    <v-col cols="4">
+                                        <v-text-field
+                                            label="Remaining"
+                                            v-model.number="item.loose_quantity"
+                                            type="number"
+                                            min="1"
+                                            :max="item.current_quantity"
+                                            density="compact"
+                                            hide-details
+                                            variant="outlined"
+                                            class="ma-0"
+                                        />
+                                    </v-col>
+
+                                    <!-- Confirm Button -->
+                                    <v-col cols="3">
+                                        <v-btn
+                                        color="success"
+                                        block
+                                        @click="saveLoose(item)"
+                                        >
+                                        Confirm
+                                        </v-btn>
+                                    </v-col>
+                                    </template>
+                                </v-row>
+                            </div>
+                        </div>
+                    </v-alert>
+                </transition-group>
+            </div>
+            
+            
+            
+            </v-card>
+        </template>
         </v-card>
-      </template>
-    </v-card>
-  </v-container>
+
+        <!-- Mismatched pallets area  -->
+        <v-card class="my-4 mx-2 px-4 py-3 elevation-2" rounded="lg">
+            <v-card-title class="text-h6 font-weight-bold mb-2 text-error">
+                Mismatched Pallets <br/>
+                <span class="text-caption text-medium-emphasis">
+                    Pallets read but not on the list of picklist batches. Please confirm if you want to accept or reject.
+                </span>
+            </v-card-title>
+            <v-card-text>
+                <transition-group
+                    name="fade"
+                    tag="div"
+                    class="d-flex flex-column gap-2"
+                >
+                    <v-alert v-if="shipmentData.shipment?.mismatched_pallets?.length > 0" v-for="(item, index) in shipmentData.shipment?.mismatched_pallets" :key="item.id"
+                        color="error"
+                        variant="outlined"
+                        density="comfortable"
+                        border="start"
+                    >
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <strong>{{ item.rfid?.name }}</strong><br />
+                                {{ item.batch }}
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ item.quantity }} bags
+                                    <span v-if="item.mfg_date">
+                                        (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
+                                    </span>
+                                </div>
+                            </div>
+                        
+                            <div class="mt-2 d-flex gap-2">
+                                <!-- <v-btn icon color="success" @click="handleMismatchedAction(item, 'accept')" size="small">
+                                    <v-icon>ri-check-line</v-icon>
+                                </v-btn> -->
+                                <v-btn icon color="error" @click="handleMismatchedAction(item, 'reject')" size="small">
+                                    <v-icon>ri-close-line</v-icon>
+                                </v-btn>
+                            </div>
+                        </div>
+                    </v-alert>
+
+                    <v-alert
+                        v-else
+                        color="warning"
+                        variant="outlined"
+                        density="comfortable"
+                        border="start"
+                        class="text-medium-emphasis"
+                        style="border-left-width: 4px"
+                    >
+                        <div class="d-flex justify-space-between align-center">
+                        <div>
+                            <strong>No mismatched pallets read</strong><br />
+                        </div>
+                        </div>
+                    </v-alert>
+                </transition-group>
+            </v-card-text>
+        </v-card>
+    </v-container>
     <Loader :show="pageLoading" />
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 
