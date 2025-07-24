@@ -326,7 +326,7 @@ const progressPercentage = computed(() => {
     const total = shipmentData.shipment?.total_pallet_to_load || 0;
     if (total === 0) return 0;
 
-    return Math.min(Math.round((totalLoadedQty / total) * 100), 100);
+    return Math.min(Math.round((totalLoadedQty.value / total) * 100), 100);
 });
 
 
@@ -397,7 +397,7 @@ const progressPercentage = computed(() => {
                                 <span class="text-caption font-weight-bold">
                                     {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
                                     <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment.total_pallet_to_load) *
+                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment?.total_pallet_to_load) *
                                             100) }}%)
                                     </span>
                                 </span>
