@@ -39,6 +39,8 @@ const onPicklistLogsEvent = (data) => {
     // Only process if the event is for the current bay
     if (data.picklistLog?.antenna_log?.bay_no == props.bayNo) {
         if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
+            fetchShipmentDetails(props.shipmentNumber);  // Refresh details
+
             // Find the delivery with matching batch and increment loaded_qty
             const batch = data.picklistLog.inventory?.batch;
             const is_loaded = data.picklistLog.inventory?.is_loaded;
@@ -450,7 +452,7 @@ const handleMismatchedAction = async (item, action) => {
             <v-card-title class="text-h6 font-weight-bold mb-2 text-error">
                 Mismatched Pallets <br/>
                 <span class="text-caption text-medium-emphasis">
-                    Pallets read but not on the list of picklist batches. Please confirm if you want to accept or reject.
+                    Pallets read but not on the list of picklist batches. Please confirm if you want to remove it.
                 </span>
             </v-card-title>
             <v-card-text>

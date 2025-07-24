@@ -93,11 +93,12 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { shipment, deliveries_table  } = response.data;
+        const { shipment, deliveries_table } = response.data;
+        
         shipmentData.value = shipment
         totalItems.value = deliveries_table.total;
         serverItems.value = deliveries_table.data;
-
+        
     } catch (error) {
         console.log(error);
     } finally {
@@ -109,9 +110,9 @@ onMounted(async () => {
 });
 
 const displayPlateNumber = computed(() => {
-  return shipmentData.value?.plate_number_1 || 
-    shipmentData.value?.plate_number_2 || 
-    shipmentData.value?.plate_number_3 || 
+  return shipmentData.value?.shipment?.plate_number_1 || 
+    shipmentData.value?.shipment?.plate_number_2 || 
+    shipmentData.value?.shipment?.plate_number_3 || 
          "N/A"; // Default value if none exist
 });
 
@@ -144,7 +145,7 @@ const closeModal = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis" style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment_number }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -155,7 +156,7 @@ const closeModal = () => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-medium-emphasis">
-                                            {{ shipmentData?.check_in_date ? Moment(shipmentData?.check_in_date).format('MMMM D, YYYY') : '--' }}
+                                            {{ shipmentData?.shipment?.check_in_date ? Moment(shipmentData?.shipment?.check_in_date).format('MMMM D, YYYY') : '--' }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -170,7 +171,7 @@ const closeModal = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.hauler_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.hauler_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -194,7 +195,7 @@ const closeModal = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.driver_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -247,24 +248,71 @@ const closeModal = () => {
                 </v-card-text>
             </v-card> -->
         </div>
+
+        <div >
+            <v-card class="mt-2">
+                <v-card-text class="mx-2">
+                    <h4 class="text-h4 font-weight-black text-primary">Picklist Read Pallet Logs</h4>
+                    <div class="mt-2">
+                        <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                        <v-table v-else>
+                            <thead>
+                                <tr>
+                                    <th class="text-left">
+                                        Pallet #
+                                    </th>
+                                    <th class="text-left">
+                                        Batch
+                                    </th>
+                                    <th class="text-left">
+                                        Material
+                                    </th>
+                                    <th class="text-center">
+                                        Item Number
+                                    </th>
+                                    <th class="text-center">
+                                        Quantity
+                                    </th>
+                                    <th class="text-left">
+                                        Mfg Date
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in shipmentData?.shipment?.references" :key="item.rfid_name">
+                                    <td>{{ item.rfid_name }}</td>
+                                    <td>{{ item.batch }}</td>
+                                    <td>{{ item.material?.material_description }}</td>
+                                    <td class="text-center">{{ item.item_number }}</td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td>{{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </div>
+                </v-card-text>
+            </v-card>
+        </div>
     </div>
     <DefaultModal :dialog-title="'Delivery Items'" :show="deliveryItemsModalOpen" @close="closeModal">
         <v-table class="mt-4">
             <thead>
                 <tr>
                     <th>Item</th>
+                    <th>Batch</th>
                     <th>Material</th>
                     <th>Description</th>
-                    <th>Quantity</th>
+                    <th class="text-center">Quantity</th>
                     <th>Unit</th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="(item, index) in selectedDelivery.items" :key="index">
                     <td>{{ item.item_number }}</td>
+                    <td>{{ item.batch }}</td>
                     <td>{{ item.material }}</td>
                     <td>{{ item.material_desc }}</td>
-                    <td>{{ item.quantity }}</td>
+                    <td class="text-center">{{ item.quantity }}</td>
                     <td>{{ item.sales_unit }}</td>
                 </tr>
             </tbody>

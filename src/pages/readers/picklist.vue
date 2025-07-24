@@ -105,7 +105,7 @@ const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000139697`);
+        // const response = await ApiService.get(`test-loading-entry/0000150707`);
 
         shipment.value = response.data
 
@@ -322,6 +322,14 @@ watch(
     { immediate: true }
 );
 
+const progressPercentage = computed(() => {
+    const total = shipmentData.shipment?.total_pallet_to_load || 0;
+    if (total === 0) return 0;
+
+    return Math.min(Math.round((totalLoadedQty / total) * 100), 100);
+});
+
+
 </script>
 <template>
     <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
@@ -344,18 +352,17 @@ watch(
                                 finished.</span>
                         </div>
                         <v-progress-linear
-                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
+                            :model-value="progressPercentage"
                             color="warning" height="14" rounded
                             :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        <!-- ({{ Math.round((totalLoadedQty / shipmentData.shipment.total_pallet_to_load) *
-                                            100) }}%) -->
-                                        ({{ Math.min(Math.round((totalLoadedQty / shipmentData.shipment.total_pallet_to_load) * 100), 100) }}%)
-                                    </span>
-                                    
+                                    {{ Math.min(totalLoadedQty, shipmentData.shipment?.total_pallet_to_load || 0) }}
+                                    out of
+                                    {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
+                                <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                    ({{ progressPercentage }}%)
+                                </span>
                                 </span>
                             </template>
                         </v-progress-linear>

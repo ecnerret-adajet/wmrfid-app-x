@@ -44,6 +44,12 @@ const headers = [
         sortable: false,
     },
     {
+        title: 'Details',
+        key: 'details',
+        align: 'center',
+        sortable: false,
+    },
+    {
         title: 'SHIPMENT NUMBER',
         key: 'shipment_number',
     },
@@ -262,27 +268,35 @@ defineExpose({
                         </v-list-item>
                     </v-list>
                 </v-menu>
-                <v-btn :to="{
+            </div>
+        </template>
+
+        <template #item.details="{ item }">
+            <v-btn v-if="item.load_end_date === null" :to="{
                         path: `/shipment-picklist/${item.shipment_number}`,
                         query: { reader_id: item.reader_id, bay_no: item.bay_no  }
                     }"
-                    color="primary"
+                    color="primary-2"
                     variant="outlined"
-                    :disabled="item.load_end_date ? true: false"
                     size="small"
                 >
                     View Picklist
             </v-btn>
-            </div>
+            <v-btn v-else :to="{
+                        path: `/shipments/${item.shipment_number}`,
+                        query: { reader_id: item.reader_id, bay_no: item.bay_no  }
+                    }"
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                >
+                    View Details
+            </v-btn>
         </template>
-
         
 
         <template #item.shipment_number="{ item }">
-            <span @click="handleViewShipment(item)"
-                class="text-primary font-weight-bold cursor-pointer hover-underline">
-                {{ item.shipment_number }}
-            </span>
+            {{ item.shipment_number }}
         </template>
 
 
