@@ -234,7 +234,9 @@ defineExpose({
                 <VBadge v-if="item.status == READER_STATUS.ACTIVE" content="ACTIVE" color="success pa-3 px-8" />
                 <VBadge v-else-if="item.status == READER_STATUS.INACTIVE" content="INACTIVE"
                     color="primary-2 pa-3 px-6 text-grey-100" />
-                <VBadge v-else content="DEACTIVATED" color="error pa-3" />
+                <VBadge v-else-if="item.status == READER_STATUS.UNREACHABLE" content="UNREACHABLE" color="error pa-3" />
+                <VBadge v-else-if="item.status == READER_STATUS.DEACTIVATED" content="DEACTIVATED"
+                    color="warning pa-3 px-6 text-grey-100" />
             </div>
         </template>
 
