@@ -289,6 +289,13 @@ export const routes = [
         },
     },
     {
+        path: '/reader/depot-picklist/:reader/:bay',
+        component: () => import('@/pages/readers/depotPicklist.vue'), 
+        meta: {
+            pageTitle: "Depot Picklist"
+        },
+    },
+    {
         path: '/rfid-registration/:type/:plant/:location?',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {

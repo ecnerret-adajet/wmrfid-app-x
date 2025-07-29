@@ -50,6 +50,13 @@ router.beforeEach((to, from, next) => {
         } else {
             // Force hide modal since opening it will be done on else if block
             authStore.hidePasswordModal();
+            
+            // Check if user is trying to access production-runs without production access
+            if (to.name === 'production-runs' && !authStore.has_production) {
+                next({ name: 'dashboard' }); // Redirect to dashboard
+                return;
+            }
+            
             next(); // Proceed to the requested route
         }
     } else {

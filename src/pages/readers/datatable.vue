@@ -192,7 +192,12 @@ const form = ref({
 });
 
 const showReaderLastTap = (reader, bay) => {
-    const url = `/reader/picklist/${reader.id}/${bay}`;
+    let url = ''
+    if (reader.plant?.is_warehouse_depot) {
+        url = `/reader/depot-picklist/${reader.id}/${bay}`;
+    } else {
+        url = `/reader/picklist/${reader.id}/${bay}`;
+    }
     window.open(url, '_blank');
 }
 
@@ -244,7 +249,7 @@ defineExpose({
         <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-center">
                 <!-- Picklist  -->
-                <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
+                <template v-if="item.antennas?.some(antenna => antenna.bay_location) && item.is_tapping">
                     <v-menu location="start">
                         <template v-slot:activator="{ props: menuProps }">
                             <v-tooltip location="top">
@@ -267,7 +272,7 @@ defineExpose({
                     </v-menu>
                 </template>
                 <!-- Loading Curtain -->
-                <template v-if="item.antennas?.some(antenna => antenna.bay_location)">
+                <template v-if="item.antennas?.some(antenna => antenna.bay_location) && item.is_tapping && !item.plant?.is_warehouse_depot">
                     <v-menu location="start">
                         <template v-slot:activator="{ props: menuProps }">
                             <v-tooltip location="top">

@@ -76,66 +76,50 @@ const updateForm = reactive({
     rfid: null
 })
 
-const headers = [
-    {
-        title: 'PHYSICAL ID',
-        key: 'physical_id',
-    },
-    // {
-    //     title: 'RFID CODE',
-    //     key: 'rfid_code',
-    // },
-    {
-        title: 'Plant',
-        key: 'plant',
-    },
-    {
-        title: 'EPC',
-        key: 'epc',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'TYPE',
-        key: 'type',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'BATCH',
-        key: 'batch',
-    },
-    {
-        title: 'QUANTITY',
-        key: 'quantity',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'WRAPPING',
-        key: 'is_wrapped',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'LOADING',
-        key: 'is_loaded',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'EMPTY AREA',
-        key: 'is_empty',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'ACTIONS',
-        key: 'actions',
-        align: 'center',
-        sortable: false
-    },
-]
+const hasWrappingArea = computed(() => {
+  return (authStore.user?.plants || []).some(plant => plant.configuration?.has_wrapping_area);
+});
+
+const hasEmptyArea = computed(() => {
+  return (authStore.user?.plants || []).some(plant => plant.configuration?.has_empty_area);
+});
+
+const headers = computed(() => {
+    const baseHeaders = [
+        { title: 'PHYSICAL ID', key: 'physical_id' },
+        { title: 'Plant', key: 'plant' },
+        { title: 'EPC', key: 'epc', align: 'center', sortable: false },
+        { title: 'TYPE', key: 'type', align: 'center', sortable: false },
+        { title: 'BATCH', key: 'batch' },
+        { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
+        // Wrapping column will be conditionally included
+        { title: 'LOADING', key: 'is_loaded', align: 'center', sortable: false },
+        { title: 'ACTIONS', key: 'actions', align: 'center', sortable: false },
+    ];
+
+    if (hasWrappingArea.value) {
+        // Insert WRAPPING column after QUANTITY (index 6)
+        baseHeaders.splice(6, 0, {
+            title: 'WRAPPING',
+            key: 'is_wrapped',
+            align: 'center',
+            sortable: false
+        });
+    }
+
+    if (hasEmptyArea.value) {
+        // If WRAPPING is present, EMPTY AREA should be after it (index 7), else after LOADING (index 6)
+        const emptyAreaIndex = hasWrappingArea.value ? 7 : 6;
+        baseHeaders.splice(emptyAreaIndex, 0, {
+            title: 'EMPTY AREA',
+            key: 'is_empty',
+            align: 'center',
+            sortable: false
+        });
+    }
+
+  return baseHeaders;
+});
 
 const filterModalVisible = ref(false);
 
