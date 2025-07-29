@@ -80,8 +80,11 @@ const onPicklistLogsEvent = (data) => {
 const reloadPageChecker = () => {
     setInterval(function () {
         const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
-        if (isLoadingInProgress) {
-            // Do not decrement timer or reload
+        const isWaitingForBatches = shipmentData.shipment?.no_batches_yet === true;
+        const isNoInventory = shipmentData.shipment?.batch_no_inventory_yet === true && shipmentData.shipment?.no_batches_yet === false;
+        
+        if (isLoadingInProgress && isWaitingForBatches === false && isNoInventory === false) {
+            // Do not decrement timer or reload during loading
             return;
         }
 
@@ -176,6 +179,7 @@ const fetchShipmentDetails = async (shipmentNumber) => {
 
             totalRead.value = shipmentData.shipment?.total_pallet_to_load;
         } else {
+            shipmentData.shipment = response.data;
             if (response.data.result == 'F') {
                 errorMessage.value = response.data.message !== '' ? response.data.message : 'Error encountered. Please contact admin.'
                 dialogVisible.value = true;
@@ -337,7 +341,58 @@ const progressPercentage = computed(() => {
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
+            <v-card v-if="shipmentData.shipment?.no_batches_yet === false && shipmentData.shipment?.wm_load_end_date === null && shipmentData.shipment?.batch_no_inventory_yet === true"
+                class="mb-4 pa-4 d-flex align-center" color="info" variant="tonal" elevation="3"
+                style="border-left: 6px solid #2196f3;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #1976d2;">
+                            <v-icon color="info" class="mr-2" size="32" icon="ri-inbox-line"></v-icon>
+                            No Available Inventory
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            There are currently no pallets available for loading on certain DO.<br>
+                            <span class="font-italic" style="color: #2196f3;">Please contact warehouse production or admin.</span>
+                        </div>
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-h4 font-weight-black" style="color: #2196f3;">
+                            No Inventory
+                        </div>
+                        <div style="color: #2196f3;" class="d-flex align-center justify-center">
+                            Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer }}</span>
+                            <span class="text-h5 font-weight-regular" style="color: #2196f3;">seconds</span>
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+            <v-card v-else-if="shipmentData.shipment?.no_batches_yet === true"
+                class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
+                style="border-left: 6px solid #ff9800;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #e65100;">
+                            <v-icon color="warning" class="mr-2" size="32" icon="ri-time-line"></v-icon>
+                            No Batches Available Yet
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            No picked batches for this shipment yet.<br>
+                            <span class="font-italic" style="color: #ff9800;">Please wait for batches to be picked.</span>
+                        </div>
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-h4 font-weight-black" style="color: #ff9800;">
+                            Awaiting Batches
+                        </div>
+                        <div style="color: #e65100;" class="d-flex align-center justify-center">
+                            Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer }}</span>
+                            <span class="text-h5 font-weight-regular" style="color: #e65100;">seconds</span>
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+
+            <v-card v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
