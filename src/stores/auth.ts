@@ -10,6 +10,10 @@ export interface User {
     password: string;
     api_token: string;
     email_verified_at: string;
+    has_production?: boolean;
+    is_super_admin?: boolean;
+    is_warehouse_admin?: boolean;
+    is_warehouse_operator?: boolean;
 }
 
 export const useAuthStore = defineStore(

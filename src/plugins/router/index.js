@@ -52,7 +52,7 @@ router.beforeEach((to, from, next) => {
             authStore.hidePasswordModal();
             
             // Check if user is trying to access production-runs without production access
-            if (to.name === 'production-runs' && !authStore.has_production) {
+            if (to.name === 'production-runs' && !authStore.user?.has_production) {
                 next({ name: 'dashboard' }); // Redirect to dashboard
                 return;
             }

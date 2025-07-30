@@ -360,7 +360,7 @@ const progressPercentage = computed(() => {
                             No Inventory
                         </div>
                         <div style="color: #2196f3;" class="d-flex align-center justify-center">
-                            Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer }}</span>
+                            Reloading in <span class="text-h4 font-weight-black text-primary-light mx-2">{{ refreshTimer }}</span>
                             <span class="text-h5 font-weight-regular" style="color: #2196f3;">seconds</span>
                         </div>
                     </VCol>
@@ -373,16 +373,16 @@ const progressPercentage = computed(() => {
                     <VCol cols="12" md="8" class="d-flex flex-column justify-center">
                         <div class="text-h6 font-weight-bold mb-1" style="color: #e65100;">
                             <v-icon color="warning" class="mr-2" size="32" icon="ri-time-line"></v-icon>
-                            No Batches Available Yet
+                            Awaiting Batches
                         </div>
                         <div class="text-body-1 mb-2">
-                            No picked batches for this shipment yet.<br>
+                            No batches found for this shipment yet<br>
                             <span class="font-italic" style="color: #ff9800;">Please wait for batches to be picked.</span>
                         </div>
                     </VCol>
                     <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
                         <div class="text-h4 font-weight-black" style="color: #ff9800;">
-                            Awaiting Batches
+                            No Available Batches Yet
                         </div>
                         <div style="color: #e65100;" class="d-flex align-center justify-center">
                             Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer }}</span>
