@@ -107,8 +107,8 @@ const refreshData = () => {
 const fetchData = async () => {
     loading.value = true;
     try {
-        // const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        const response = await ApiService.get(`test-loading-entry/0000150707`);
+        const response = await ApiService.post(`depot-loading-tapping/${readerId}/${bay}`);
+        // const response = await ApiService.get(`test-loading-entry/0000150707`);
 
         shipment.value = response.data
 
@@ -153,6 +153,7 @@ const sapLoadEnd = async (shipmentNumber) => {
 };
 
 const fetchShipmentDetails = async (shipmentNumber) => {
+    console.log(shipmentNumber);
     try {
         const token = JwtService.getToken();
         let bay_no = 1; // Default bay number
@@ -160,8 +161,8 @@ const fetchShipmentDetails = async (shipmentNumber) => {
         if (bay) {
             bay_no = bay;
         }
-        // let url = `picklist/shipment-picklist/${shipmentNumber}`;
-        let url = `test-picklist-data/${shipmentNumber}`;
+        let url = `depot-loading-tapping/shipment-picklist/${shipmentNumber}`;
+        // let url = `test-picklist-data/${shipmentNumber}`;
 
         const response = await axios.get(url, {
             params: {
@@ -172,6 +173,8 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                 Authorization: `Bearer ${token}`
             }
         });
+        console.log(response.data);
+        
         // If success
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
