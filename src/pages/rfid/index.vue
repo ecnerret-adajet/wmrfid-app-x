@@ -552,7 +552,6 @@ const editItem = (item) => {
     updateForm.rfid = item;
     updateForm.quantity = item.quantity;
     editDialog.value = true;
-    console.log(item);
 }
 
 const handleUpdate = async () => {

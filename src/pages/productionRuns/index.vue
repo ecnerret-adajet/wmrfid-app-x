@@ -903,7 +903,7 @@ const reasonList = [
     </FilteringModal>
 
     <!-- Batch Details Modal -->
-    <v-dialog v-if="selectedProductionRun" v-model="showProductionRunDetails" max-width="1500px">
+    <v-dialog v-if="selectedProductionRun" v-model="showProductionRunDetails" max-width="1550px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-semibold ps-2 text-primary d-flex align-center">

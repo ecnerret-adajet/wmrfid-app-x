@@ -104,6 +104,13 @@ const headers = [
         key: 'age',
         align: 'center'
     },
+    {
+        title: 'Action',
+        key: 'action',
+        align: 'center',
+    }
+
+    
 
 ]
 
@@ -355,6 +362,54 @@ const exportData = async () => {
         exportLoading.value = false;
     }
 }
+
+const updateForm = reactive({
+    quantity: null,
+    rfid: null
+})
+
+const selectedItem = ref(null);
+const updateLoading = ref(false);
+const editDialog = ref(false);
+const selectedRfid = ref(null);
+const editItem = (item) => {
+    selectedItem.value = item;
+    selectedRfid.value = item.rfid;
+    updateForm.rfid = {
+        ...item.rfid,
+        type: item.type_slug
+    };
+    updateForm.quantity = item.quantity;
+    editDialog.value = true;
+}
+
+const handleUpdate = async () => {
+    updateLoading.value = true;
+    toast.value.show = false;
+
+    try {
+        const response = await ApiService.post(`rfid/${selectedRfid.value.id}/update`, updateForm);
+        if (response.status !== 200) {
+            throw new Error('Failed to update RFID');
+        }
+        updateLoading.value = false;
+        toast.value.message = 'Current quantity updated successfully!';
+        toast.value.color = 'success';
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+    } catch (error) {
+        console.error('Error updating:', error);
+    } finally {
+        updateLoading.value = false;
+        editDialog.value = false;
+    }
+}
+
 
 </script>
 
@@ -622,13 +677,12 @@ const exportData = async () => {
                                 {{ item.current_age }}
                             </template>
 
-                            <template #item.latest_created_at="{ item }">
-                                {{ item.latest_created_at ? Moment(item.latest_created_at).format('MMMM D, YYYY') : ''
-                                }}
-                            </template>
-
-                            <template #item.updated_at="{ item }">
-                                {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+                             <template #item.action="{ item }">
+                                <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
+                                    <IconBtn size="small" @click="editItem(item)">
+                                        <VIcon icon="ri-pencil-line" />
+                                    </IconBtn>
+                                </div>
                             </template>
 
                         </VDataTableServer>
@@ -735,6 +789,23 @@ const exportData = async () => {
                     Update
                 </PrimaryButton>
             </div>
+        </template>
+    </EditingModal>
+
+    <EditingModal v-if="selectedItem" @close="editDialog = false" :show="editDialog"
+        :dialog-title="`Update ${selectedItem.rfid?.name}`" >
+        <template #default>
+            <v-form @submit.prevent="handleUpdate">
+                <v-text-field class="mt-6" density="compact" :rules="[value => !!value || 'Quantity is required']"
+                    label="Actual Quantity" v-model="updateForm.quantity" />
+                <div class="d-flex justify-end align-center mt-4">
+                    <v-btn color="secondary" variant="outlined" @click="editDialog = false"
+                        class="px-12 mr-3">Cancel</v-btn>
+                    <PrimaryButton color="primary" class="px-12" type="submit" :loading="updateLoading">
+                        Update
+                    </PrimaryButton>
+                </div>
+            </v-form>
         </template>
     </EditingModal>
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
