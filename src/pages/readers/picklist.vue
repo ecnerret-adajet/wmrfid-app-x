@@ -360,7 +360,7 @@ const progressPercentage = computed(() => {
                             No Inventory
                         </div>
                         <div style="color: #2196f3;" class="d-flex align-center justify-center">
-                            Reloading in <span class="text-h4 font-weight-black text-primary-light mx-2">{{ refreshTimer }}</span>
+                            Reloading in <span class="text-h4 font-weight-black mx-2" style="color: #2196f3;">{{ refreshTimer }}</span>
                             <span class="text-h5 font-weight-regular" style="color: #2196f3;">seconds</span>
                         </div>
                     </VCol>

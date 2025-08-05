@@ -10,14 +10,19 @@ const props = defineProps({
 
 const route = useRoute()
 
+// TODO:: Fix if rfid-monitoring
 const isActive = computed(() => {
-  if (!props.item.to) return false
+    if (!props.item.to) return false
 
-  // Normalize route and current path for comparison
-  const baseRoute = props.item.to.toString().replace(/\/$/, '')
-  const currentRoute = route.path.toString().replace(/\/$/, '')
-
-  return currentRoute.startsWith(baseRoute)
+    // Normalize route and current path for comparison
+    const baseRoute = props.item.to.toString().replace(/\/$/, '')
+    const currentRoute = route.path.toString().replace(/\/$/, '')
+    if (currentRoute === '/rfid-monitoring') {
+        return currentRoute === baseRoute 
+    } else {
+        return currentRoute.startsWith(baseRoute)
+    }
+  
 })
 </script>
 

@@ -219,6 +219,17 @@ export const routes = [
             },
         },
         {
+            path: 'rfid-monitoring',
+            name: 'rfid-monitoring',
+            component: () => import('@/pages/rfidMonitoring/index.vue'),
+            meta: {
+              pageTitle: "RFID Monitoring",
+              breadcrumbs: [
+                  { label: "RFID Monitoring", link: "/rfid-monitoring" },
+              ],
+            },
+        },
+        {
             path: 'fumigations',
             name: 'fumigations',
             component: () => import('@/pages/fumigation/index.vue'),
