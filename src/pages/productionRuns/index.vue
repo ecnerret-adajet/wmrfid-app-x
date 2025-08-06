@@ -150,7 +150,8 @@ const filters = reactive({
     tag_type_id: null,
     storage_location_id: null,
     plant_code: null,
-    status: null
+    status: null,
+    date_filter: 'today'
 });
 
 const isFiltersEmpty = computed(() => {
@@ -306,6 +307,19 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 watch(() => filters.plant_code, () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{
+            key: sortQuery.value.replace('-', ''),
+            order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+        }]
+    });
+
+    fetchDropdownData()
+});
+
+watch(() => filters.date_filter, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -530,6 +544,13 @@ const reasonList = [
     { title: 'OTHER REASON', value: 'OTHER REASON' }
 ]
 
+const dateFilters = [
+    { title: 'Today', value: 'today' },
+    { title: 'Yesterday', value: 'yesterday' },
+    { title: 'Last 7 Days', value: 'last_7_days' },
+    { title: 'This Month', value: 'this_month' },
+]
+
 </script>
 
 <template>
@@ -542,6 +563,12 @@ const reasonList = [
             </template>
             Filter
         </v-btn>
+
+        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" 
+            density="compact"
+            :items="dateFilters"
+            v-model="filters.date_filter">
+        </v-select>
 
         <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
             density="compact"
