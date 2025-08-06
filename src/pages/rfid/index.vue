@@ -76,13 +76,19 @@ const updateForm = reactive({
     rfid: null
 })
 
-const hasWrappingArea = computed(() => {
-  return (authStore.user?.plants || []).some(plant => plant.configuration?.has_wrapping_area);
-});
+const hasWrappingArea = computed(() => 
+    authStore.user?.is_super_admin || 
+    (authStore.user?.plants || []).some(plant => 
+        plant.configuration?.has_wrapping_area
+    )
+);
 
-const hasEmptyArea = computed(() => {
-  return (authStore.user?.plants || []).some(plant => plant.configuration?.has_empty_area);
-});
+const hasEmptyArea = computed(() => 
+    authStore.user?.is_super_admin || 
+    (authStore.user?.plants || []).some(plant => 
+        plant.configuration?.has_empty_area
+    )
+);
 
 const headers = computed(() => {
     const baseHeaders = [

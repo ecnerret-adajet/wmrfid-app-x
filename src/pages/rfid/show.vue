@@ -2,11 +2,13 @@
 import SearchInput from '@/components/SearchInput.vue';
 import { convertSlugToUpperCase, exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const pageLoading = ref(false);
@@ -162,6 +164,13 @@ const exportBatchData = async () => {
     }
 }
 
+const hasWrappingArea = computed(() => 
+    authStore.user?.is_super_admin || 
+    (authStore.user?.plants || []).some(plant => 
+        plant.configuration?.has_wrapping_area
+    )
+);
+
 </script>
 
 <template>
@@ -223,13 +232,13 @@ const exportBatchData = async () => {
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
+                                <V-Row class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
-                                            style="margin-top: 1px;">Wrapping Area</span>
+                                            style="margin-top: 1px;">Empty Area</span>
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
-                                        <i v-if="rfidData?.inventory?.is_wrapped"
+                                        <i v-if="rfidData?.inventory?.is_empty"
                                             style="font-size: 30px; background-color: green;"
                                             class="ri-checkbox-circle-line"></i>
                                         <i v-else style="font-size: 30px; background-color: #FF4C51;"
@@ -238,7 +247,7 @@ const exportBatchData = async () => {
                                     <VCol v-else class="d-inline-flex align-center">
                                         <v-badge color="warning" content="NO INVENTORY YET" inline></v-badge>
                                     </VCol>
-                                </VRow>
+                                </V-Row>
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -293,13 +302,13 @@ const exportBatchData = async () => {
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
+                                <VRow v-if="hasWrappingArea" class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
-                                            style="margin-top: 1px;">Empty Area</span>
+                                            style="margin-top: 1px;">Wrapping Area</span>
                                     </VCol>
                                     <VCol v-if="rfidData?.inventory" class="d-inline-flex align-center">
-                                        <i v-if="rfidData?.inventory?.is_empty"
+                                        <i v-if="rfidData?.inventory?.is_wrapped"
                                             style="font-size: 30px; background-color: green;"
                                             class="ri-checkbox-circle-line"></i>
                                         <i v-else style="font-size: 30px; background-color: #FF4C51;"
