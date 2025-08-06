@@ -439,9 +439,9 @@ const handleUpdate = async () => {
                             </VCol>
                             <VCol class="d-flex flex-column">
                                 <span class="text-medium-emphasis font-weight-medium">{{
-                                    productionRun?.reader?.default_storage_location?.code }}</span>
+                                    productionRun?.plant?.default_storage_location?.code }}</span>
                                 <div class="text-subtitle-1 font-weight-thin">{{
-                                    productionRun?.reader?.default_storage_location?.name }}</div>
+                                    productionRun?.plant?.default_storage_location?.name }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
