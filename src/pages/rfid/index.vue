@@ -627,6 +627,8 @@ const bayOptions = [
     { title: 'Not Loaded', value: null },
     { title: 'Bay 1', value: 1 },
     { title: 'Bay 2', value: 2 },
+    { title: 'Bay 3', value: 3 },
+    { title: 'Bay 4', value: 4 },
 ];
 
 </script>
