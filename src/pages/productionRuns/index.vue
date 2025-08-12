@@ -940,7 +940,14 @@ const dateFilters = [
                 <v-btn icon="ri-close-line" variant="text" @click="showProductionRunDetails = false"></v-btn>
             </v-card-title>
             <v-card-text>
-                <productionRunDetails :production-run="selectedProductionRun" />
+                <productionRunDetails :production-run="selectedProductionRun" @updateSuccess="loadItems({
+                    page: page,
+                    itemsPerPage: itemsPerPage,
+                    sortBy: [{
+                        key: sortQuery.replace('-', ''),
+                        order: sortQuery.startsWith('-') ? 'desc' : 'asc'
+                    }]
+                })"/>
             </v-card-text>
         </v-card>
     </v-dialog>

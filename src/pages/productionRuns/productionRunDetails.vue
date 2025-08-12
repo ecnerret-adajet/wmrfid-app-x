@@ -15,6 +15,8 @@ import { VTextarea } from 'vuetify/components';
 
 const { authUserCan } = useAuthorization();
 
+const emits = defineEmits(['update-success']);
+
 const props = defineProps({
     productionRun: Object
 })
@@ -57,12 +59,10 @@ const fumigateForm = reactive({
 
 const headers = [
     {
-        title: 'RFID CODE',
-        key: 'rfid_code',
-    },
-    {
         title: 'PHYSICAL ID',
         key: 'physical_id',
+        align: 'center',
+        sortable: false
     },
     {
         title: 'QUANTITY',
@@ -110,8 +110,6 @@ const headers = [
         align: 'center',
     }
 
-    
-
 ]
 
 const batchUpdateForm = reactive({
@@ -123,6 +121,10 @@ const batchUpdateForm = reactive({
     type: 'inventory_log'
 });
 
+const wrongPalletForm = reactive({
+    selectedRfid: [],
+})
+
 const router = useRouter();
 
 const lastOptions = ref({});
@@ -131,8 +133,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     const options = { page, itemsPerPage, sortBy, search: searchValue.value };
 
     // Check if the options are the same as the last call
-    const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options);
-    if (isSame) return;
+    // const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options);
+    // if (isSame) return;
 
     // Store the current options
     lastOptions.value = options;
@@ -383,6 +385,12 @@ const editItem = (item) => {
     editDialog.value = true;
 }
 
+const showWrongPalletModal = ref(false)
+const wrongPalletLoading = ref(false);
+const wrongPalletPosition = () => {
+    showWrongPalletModal.value = true;
+}
+
 const handleUpdate = async () => {
     updateLoading.value = true;
     toast.value.show = false;
@@ -407,6 +415,37 @@ const handleUpdate = async () => {
     } finally {
         updateLoading.value = false;
         editDialog.value = false;
+        selectedRfid.value = null;
+    }
+}
+
+const handleWrongPallet = async () => {
+    wrongPalletLoading.value = true;
+    toast.value.show = false;
+    wrongPalletForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post(`production-runs/remove-batch-to-pallets`, wrongPalletForm);
+        if (response.status !== 200) {
+            throw new Error('Failed to update RFID');
+        }
+        wrongPalletLoading.value = false;
+        toast.value.message = 'Successfully removed batch from pallet(s)';
+        toast.value.color = 'success';
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        emits('update-success')
+        selectedItems.value = []
+    } catch (error) {
+        console.error('Error updating:', error);
+    } finally {
+        wrongPalletLoading.value = false;
+        showWrongPalletModal.value = false;
+        selectedRfid.value = null;
     }
 }
 
@@ -600,7 +639,13 @@ const handleUpdate = async () => {
                         <div class="mb-4 d-flex justify-between align-center">
                             <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
                             <v-spacer></v-spacer>
-                            <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5"
+
+                            <v-btn @click="wrongPalletPosition" :disabled="selectedItems.length === 0" class="px-5"
+                                type="button" color="warning">
+                                Remove Batch
+                            </v-btn>
+
+                            <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5 ml-2"
                                 type="button" color="primary-light">
                                 Change Batch
                             </v-btn>
@@ -623,19 +668,15 @@ const handleUpdate = async () => {
                             item-value="id" :search="searchValue" @update:options="loadItems" show-select return-object
                             class="text-no-wrap">
 
-                            <template #item.rfid_code="{ item }">
+                            <template #item.physical_id="{ item }">
                                 <span @click="handleViewRfid(item)"
                                     class="text-primary font-weight-bold cursor-pointer hover-underline">
-                                    {{ item.rfid_code }}
+                                    {{ item.rfid?.name }}
                                 </span>
                             </template>
 
                             <template #item.material_id="{ item }">
                                 {{ item.material?.description }}
-                            </template>
-
-                            <template #item.physical_id="{ item }">
-                                {{ item.rfid?.name }}
                             </template>
 
                             <template #item.type="{ item }">
@@ -806,6 +847,42 @@ const handleUpdate = async () => {
                     </PrimaryButton>
                 </div>
             </v-form>
+        </template>
+    </EditingModal>
+
+
+    <EditingModal @close="showWrongPalletModal = false" max-width="900px" :show="showWrongPalletModal"
+        :dialog-title="`Remove Batch on Pallets`">
+        <template #default>
+            <div class="mx-4">
+                <span class="text-h5 text-high-emphasis">
+                    Do you want to remove the attached batch <span class="text-primary">{{ productionRun.COMMODITY }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
+                </span>
+            </div>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>Type</th>
+                        <th>Physical ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ productionRun.plant?.name }}</td>
+                        <td class="text-uppercase">{{ item.type }}</td>
+                        <td>{{ item.rfid?.name }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="showWrongPalletModal = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleWrongPallet" color="primary" class="px-12" type="submit"
+                    :loading="wrongPalletLoading">
+                    Confirm
+                </PrimaryButton>
+            </div>
         </template>
     </EditingModal>
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
