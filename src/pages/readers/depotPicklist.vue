@@ -1,15 +1,12 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import ApiService from "@/services/ApiService";
 import JwtService from '@/services/JwtService';
-import { echo } from '@/utils/echo';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
 import haulerIcon from "@images/pick_list_icons/icons8-company.png";
 import plateNumberIcon from "@images/pick_list_icons/icons8-licence-plate.png";
 import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
-import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import axios from 'axios';
 import Moment from 'moment';
@@ -44,56 +41,28 @@ onMounted(() => {
 
     reloadPageChecker();
 
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
-
-    echo.channel('picklist-refresh')
-        .listen('PicklistRefreshEvent', onPicklistRefreshEvent);
-
-    echo.channel('driver-tap-out')
-        .listen('DriverTapOutEvent', onDriverTapOutEvent);
+    // echo.channel('driver-tap-out')
+    //     .listen('DriverTapOutEvent', onDriverTapOutEvent);
     
 });
 
-const onPicklistRefreshEvent = (data) => {
-    if (data.picklistRefresh === true) {
-        fetchShipmentDetails(shipment.value?.shipment_number);
-    }
-}
-
-const onPicklistLogsEvent = (data) => {
-    console.log(data)
-    if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
-        // Find the delivery with matching batch and increment loaded_qty
-        const batch = data.picklistLog.inventory?.batch;
-        const is_loaded = data.picklistLog.inventory?.is_loaded;
-    
-        if (batch && (is_loaded == false || is_loaded == 0)) {
-            const delivery = shipmentData.deliveries.find(d => d.batch === batch);
-            if (delivery) {
-                delivery.loaded_qty += 1;
-            }
-        }
-    }
-};
-
 const reloadPageChecker = () => {
-    setInterval(function () {
-        const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
-        const isWaitingForBatches = shipmentData.shipment?.no_batches_yet === true;
-        const isNoInventory = shipmentData.shipment?.batch_no_inventory_yet === true && shipmentData.shipment?.no_batches_yet === false;
+    // setInterval(function () {
+    //     const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
+    //     const isWaitingForBatches = shipmentData.shipment?.no_batches_yet === true;
+    //     const isNoInventory = shipmentData.shipment?.batch_no_inventory_yet === true && shipmentData.shipment?.no_batches_yet === false;
         
-        if (isLoadingInProgress && isWaitingForBatches === false && isNoInventory === false) {
-            // Do not decrement timer or reload during loading
-            return;
-        }
+    //     if (isLoadingInProgress && isWaitingForBatches === false && isNoInventory === false) {
+    //         // Do not decrement timer or reload during loading
+    //         return;
+    //     }
 
-        setTimeInSeconds.value -= 1;
-        refreshTimer.value = setTimeInSeconds.value;
-        if (setTimeInSeconds.value == 1) {
-            window.location.reload();
-        }
-    }, 1000);
+    //     setTimeInSeconds.value -= 1;
+    //     refreshTimer.value = setTimeInSeconds.value;
+    //     if (setTimeInSeconds.value == 1) {
+    //         window.location.reload();
+    //     }
+    // }, 1000);
 }
 
 const refreshData = () => {
@@ -141,15 +110,6 @@ const sapLoadEnd = async (shipmentNumber) => {
             window.location.reload();
             console.log(response);
         })
-    // ApiService.get(`picklist/load-end/${shipmentNumber}`)
-    //     .then(response => {
-    //         window.location.reload();
-    //     })
-    //     .catch(error => {
-    //         console.error(error);
-    //         window.location.reload();
-    //     });
-
 };
 
 const fetchShipmentDetails = async (shipmentNumber) => {
@@ -173,21 +133,24 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                 Authorization: `Bearer ${token}`
             }
         });
+        
         console.log(response.data);
         
         // If success
         if (response.data.result == 'S') {
             shipmentData.deliveries = response.data.picklists;
             shipmentData.shipment = response.data;
-
-            totalRead.value = shipmentData.shipment?.total_pallet_to_load;
+            
         } else {
-            shipmentData.shipment = response.data;
+            // shipmentData.shipment = response.data;
             if (response.data.result == 'F') {
                 errorMessage.value = response.data.message !== '' ? response.data.message : 'Error encountered. Please contact admin.'
                 dialogVisible.value = true;
             }
         }
+
+        console.log(shipmentData.shipment);
+        console.log(shipmentData.deliveries);
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     }
@@ -292,35 +255,22 @@ watch(
     }
 )
 
-// Add this computed to get the total loaded quantity
-const totalLoadedQty = computed(() =>
-    shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
-);
-
 const onDriverTapOutEvent = (data) => {
     // Ensure to end only the shipment passed
     console.log(data);
 
     // Attempt to find driver tap out only if picklist satisfied
-    if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
-        if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
-            if (data.driverTapOut?.is_tap_out_found === true) {
-                is_tapping_load_end_found.value = true;
-            } else {
-                // errorMessage.value = 'No tap out found. Please tap out again';
-                // dialogVisible.value = true;
-            }
-        }
+    if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
+        if (data.driverTapOut?.is_tap_out_found === true) {
+            is_tapping_load_end_found.value = true;
+        } 
     }
 }
 
 watch(
-    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],
-    ([newLoadedQty, totalPallets, tappingLoadEndFound]) => {
+    [() => is_tapping_load_end_found.value],
+    ([tappingLoadEndFound]) => {
         if (
-            totalPallets > 0 &&
-            newLoadedQty > 0 &&
-            newLoadedQty >= totalPallets &&
             tappingLoadEndFound === true // Use the watched value here
         ) {
             sapLoadEnd(shipmentData.shipment.shipment);
@@ -329,24 +279,26 @@ watch(
     { immediate: true }
 );
 
-const progressPercentage = computed(() => {
-    const total = shipmentData.shipment?.total_pallet_to_load || 0;
-    if (total === 0) return 0;
 
-    return Math.min(Math.round((totalLoadedQty.value / total) * 100), 100);
-});
+function removeLeadingZeros(str) {
+    let i = 0;
+    // Find first non-zero character
+    while (i < str.length - 1 && str[i] === '0') {
+      i++;
+    }
+    return str.substring(i);
+}
 
 
 </script>
 <template>
+   
     <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
 
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-           
-
-            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
+            <v-card v-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -385,43 +337,6 @@ const progressPercentage = computed(() => {
                 </VRow>
             </v-card>
 
-            <v-card v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
-                class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
-                style="border-left: 6px solid #4caf50;">
-                <VRow class="w-100" align="center">
-                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
-                        <div class="text-h6 font-weight-bold mb-1" style="color: #4caf50;">
-                            <v-icon color="success" class="mr-2" size="32" spin icon="ri-progress-1-line"></v-icon>
-                            Pallet Loading Status: Completed
-                        </div>
-                        <div class="text-body-1 mb-2">
-                            We are currently awaiting the driver to tap out.<br>
-                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap out.</span>
-                        </div>
-                        <v-progress-linear
-                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
-                            color="success" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
-                            <template #default>
-                                <span class="text-caption font-weight-bold">
-                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment?.total_pallet_to_load) *
-                                            100) }}%)
-                                    </span>
-                                </span>
-                            </template>
-                        </v-progress-linear>
-                    </VCol>
-                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
-                        <div class="text-caption mb-1" style="color: #4caf50;">Status</div>
-                        <div class="text-h4 font-weight-black" style="color: #66bb6a;">
-                            Pallet Completed
-                        </div>
-                    </VCol>
-                </VRow>
-            </v-card>
-
             <v-card v-else class="mb-4 pa-4 d-flex align-center" color="primary" variant="tonal" elevation="3"
                 style="border-left: 6px solid #1ab394;">
                 <VRow class="w-100" align="center">
@@ -446,7 +361,7 @@ const progressPercentage = computed(() => {
                 </VRow>
             </v-card>
             <VRow>
-                <VCol md="8">
+                <VCol md="12">
                     <VList lines="one" density="compact"
                         style="border: 2px solid #1ab394; padding-top: 0px !important;">
                         <VListItem>
@@ -459,7 +374,7 @@ const progressPercentage = computed(() => {
                                                 style="margin-top: 1px;">Shipment</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <span class="font-weight-bold">{{ shipmentData.shipment?.shipment }}</span>
+                                            <span class="font-weight-bold">{{ shipmentData?.shipment?.shipment }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -474,13 +389,6 @@ const progressPercentage = computed(() => {
                                             <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
                                         </VCol>
                                         <VCol md="1" class="d-inline-flex align-center">
-                                            <!-- <VTooltip location="top">
-                                                <template #activator="{ props }">
-                                                    <VIcon class="clickable-icon" v-bind="props" size="30"
-                                                        color="primary" icon="ri-refresh-fill" @click="refreshData" />
-                                                </template>
-                                                <span>Refresh Data</span>
-                                            </VTooltip> -->
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -577,7 +485,7 @@ const progressPercentage = computed(() => {
                     </VList>
                     <VDivider />
                 </VCol>
-                <VCol md="4">
+                <!-- <VCol md="4">
                     <v-sheet class="mx-auto px-6 py-1" elevation="2"
                         style="height: 100%; display: flex; flex-direction: column; background-color: #1ab394;">
                         <div class="text-h4 text-white text-bold-emphasis font-weight-black">
@@ -586,7 +494,7 @@ const progressPercentage = computed(() => {
                         </div>
                         <div>
                             <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">
-                                123
+                                2
                             </h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
@@ -598,7 +506,7 @@ const progressPercentage = computed(() => {
                             </div>
                         </div>
                     </v-sheet>
-                </VCol>
+                </VCol> -->
             </VRow>
             <div v-if="noAccessLog">
                 <div style="min-height: 200px;" class="d-flex justify-center align-center">
@@ -641,11 +549,11 @@ const progressPercentage = computed(() => {
                                                     <div class="text-center">
                                                         <div class="text-overline mb-3 font-weight-black"
                                                             style="font-size: 20px !important;">
-                                                            {{ delivery.material }}
+                                                            {{ removeLeadingZeros(delivery.MATERIAL) }}
                                                         </div>
                                                         <div class="text-overline mb-1 font-weight-bold"
                                                             style="font-size: 18px !important;">
-                                                            {{ delivery.material_desc }}
+                                                            {{ delivery.MATERIAL_DESC }}
                                                         </div>
                                                     </div>
                                                 </VCol>
@@ -653,20 +561,20 @@ const progressPercentage = computed(() => {
                                                     style="border-left: 1px solid #fff; border-right: 1px solid #fff; min-height: 70px;">
                                                     <span class="font-weight-black"
                                                         style="font-size: 2.5rem; color: #3e3b3b !important;">
-                                                        {{ delivery.batch }}
+                                                        {{ delivery.BATCH }}
                                                     </span>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex align-center justify-center"
                                                     style="border-right: 1px solid #fff; min-height: 70px;">
                                                     <div class="font-weight-black"
                                                         style="font-size: 2.5rem; color: #3e3b3b !important;">
-                                                        {{  delivery.quantity_all }}
+                                                        {{  delivery.QUANTITY }}
                                                     </div>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 py-1.5 text-center rightBorderedGreen d-flex align-center justify-center" style="min-height: 70px;">
                                                     <span class="font-weight-black"
                                                         style="font-size: 2.5rem; color: #3e3b3b !important;">
-                                                        {{ delivery.sales_unit }}
+                                                        {{ delivery.SALES_UNIT }}
                                                     </span>
                                                 </VCol>
                                             </VRow>
@@ -702,20 +610,6 @@ const progressPercentage = computed(() => {
             </div>
         </v-sheet>
     </v-dialog>
-
-    <DefaultModal :show="showSyncConfirmModal" dialogTitle="Proceed with Sync?" maxWidth="400px" minHeight="200px"
-        @close="cancelSync">
-        <template #default>
-            <div class="text-center">
-                <p class="mb-6 text-h5">Are you sure you want to proceed with this action?</p>
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="cancelSync" class="px-8 mr-3">Cancel</v-btn>
-                    <v-btn color="primary" @click="proceedSync" class="px-8">Proceed</v-btn>
-                </div>
-            </div>
-        </template>
-    </DefaultModal>
-
 </template>
 
 <style scoped>
