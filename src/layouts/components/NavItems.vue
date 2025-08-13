@@ -130,12 +130,12 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
     <VerticalNavLink v-if="authUserCan('view.rfid')"
         :item="{ title: 'RFID Master', icon: 'ri-database-2-line', to: '/rfid' }" />
-
     <VerticalNavLink v-if="authUserCan('view.rfid.monitoring')"
         :item="{ title: 'RFID Monitoring', icon: 'ri-stacked-view', to: '/rfid-monitoring' }" />
-
     <VerticalNavLink v-if="authUserCan('view.readers')"
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
+    <VerticalNavLink v-if="authUserCan('view.weak.pallets')"
+        :item="{ title: 'Weak Pallets', icon: 'ri-signal-wifi-error-line', to: '/weak-pallets' }" />
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"

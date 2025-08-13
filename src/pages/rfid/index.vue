@@ -823,7 +823,6 @@ const bayOptions = [
         <v-table class="mt-4">
             <thead>
                 <tr>
-                    <th>RFID Code</th>
                     <th>Physical ID</th>
                     <th>EPC</th>
                     <th>TID</th>
@@ -831,7 +830,6 @@ const bayOptions = [
             </thead>
             <tbody>
                 <tr v-for="(item, index) in epcData" :key="index">
-                    <td>{{ item.rfid_code }}</td>
                     <td>{{ item.name }}</td>
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }} </td>

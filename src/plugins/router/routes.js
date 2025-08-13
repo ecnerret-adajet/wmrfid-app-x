@@ -230,6 +230,17 @@ export const routes = [
             },
         },
         {
+            path: 'weak-pallets',
+            name: 'weak-pallets',
+            component: () => import('@/pages/rfid/weakPallets.vue'),
+            meta: {
+              pageTitle: "Weak Pallets",
+              breadcrumbs: [
+                  { label: "Weak Pallets", link: "/weak-pallets" },
+              ],
+            },
+        },
+        {
             path: 'fumigations',
             name: 'fumigations',
             component: () => import('@/pages/fumigation/index.vue'),
