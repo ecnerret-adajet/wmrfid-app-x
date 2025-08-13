@@ -13,7 +13,7 @@ import rfidIcon from "@images/pick_list_icons/icons8-rfid-50.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import axios from 'axios';
 import Moment from 'moment';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -39,23 +39,42 @@ const shipmentData = reactive({
     shipment: {}
 });
 
+let picklistLogsChannel = null;
+let picklistRefreshChannel = null;
+let driverTapOutChannel = null;
+
 onMounted(() => {
     fetchData();
-
     reloadPageChecker();
 
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
-
-    echo.channel('picklist-refresh')
-        .listen('PicklistRefreshEvent', onPicklistRefreshEvent);
-
-    echo.channel('driver-tap-out')
-        .listen('DriverTapOutEvent', onDriverTapOutEvent);
+    // Create private channels for each event type
+    const channelNameBase = `shipment.${readerId}.${bay}`;
     
+    picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
+    picklistRefreshChannel = echo.channel(`${channelNameBase}.picklist-refresh`);
+    driverTapOutChannel = echo.channel(`${channelNameBase}.driver-tap-out`);
+
+    picklistLogsChannel.listen('PicklistLogsEvent', onPicklistLogsEvent);
+    picklistRefreshChannel.listen('PicklistRefreshEvent', onPicklistRefreshEvent);
+    driverTapOutChannel.listen('DriverTapOutEvent', onDriverTapOutEvent);
 });
 
+onUnmounted(() => {
+    if (picklistLogsChannel) {
+        echo.leaveChannel(picklistLogsChannel.name);
+    }
+
+    if (picklistRefreshChannel) {
+        echo.leaveChannel(picklistRefreshChannel.name);
+    }
+
+    if (driverTapOutChannel) {
+        echo.leaveChannel(driverTapOutChannel.name);
+    }
+})
+
 const onPicklistRefreshEvent = (data) => {
+    console.log(data);
     if (data.picklistRefresh === true) {
         fetchShipmentDetails(shipment.value?.shipment_number);
     }
@@ -310,6 +329,16 @@ const onDriverTapOutEvent = (data) => {
         }
     }
 }
+
+// Stop listening to event once found
+watch(is_tapping_load_end_found.value, (newValue) => {
+    if (newValue) {
+        // Stop listening to driver tap out events once found
+        if (driverTapOutChannel) {
+            driverTapOutChannel.stopListening('DriverTapOutEvent', onDriverTapOutEvent);
+        }
+    }
+});
 
 watch(
     [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],

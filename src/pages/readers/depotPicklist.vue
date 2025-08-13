@@ -11,7 +11,7 @@ import driverIcon from "@images/pick_list_icons/icons8-name-tag.png";
 import shipmentIcon from "@images/pick_list_icons/icons8-truck.png";
 import axios from 'axios';
 import Moment from 'moment';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -35,15 +35,24 @@ const shipmentData = reactive({
     shipment: {}
 });
 
+let driverTapOutChannel = null;
+
 onMounted(() => {
     fetchData();
-
     reloadPageChecker();
 
-    echo.channel('driver-tap-out')
-        .listen('DriverTapOutEvent', onDriverTapOutEvent);
+    // Create private channel for driver tap out event
+    const channelNameBase = `shipment.${readerId}.${bay}`;
+    driverTapOutChannel = echo.channel(`${channelNameBase}.driver-tap-out`);
+    driverTapOutChannel.listen('DriverTapOutEvent', onDriverTapOutEvent);
     
 });
+
+onUnmounted(() => {
+    if (driverTapOutChannel) {
+        echo.leaveChannel(driverTapOutChannel.name);
+    }
+})
 
 const reloadPageChecker = () => {
     setInterval(function () {
@@ -209,6 +218,15 @@ watch(
     { immediate: true }
 );
 
+// Stop listening to event once found
+watch(is_tapping_load_end_found.value, (newValue) => {
+    if (newValue) {
+        // Stop listening to driver tap out events once found
+        if (driverTapOutChannel) {
+            driverTapOutChannel.stopListening('DriverTapOutEvent', onDriverTapOutEvent);
+        }
+    }
+});
 
 function removeLeadingZeros(str) {
     let i = 0;
@@ -485,7 +503,7 @@ function removeLeadingZeros(str) {
                                                 </VCol>
                                                 <VCol md="3" class="px-3 text-center rightBorderedGreen d-flex align-center justify-center"
                                                     style="border-right: 1px solid #fff; min-height: 70px;">
-                                                    <div class="font-weight-black"
+                                                   <div class="font-weight-black"
                                                         style="font-size: 2.5rem; color: #3e3b3b !important;">
                                                         {{  delivery.QUANTITY }}
                                                     </div>
