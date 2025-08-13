@@ -1,6 +1,7 @@
 <script setup>
 import ApiService from "@/services/ApiService";
 import JwtService from '@/services/JwtService';
+import { echo } from '@/utils/echo';
 import gateIcon from "@images/pick_list_icons/icons8-airport-gate.png";
 import loadEndIcon from "@images/pick_list_icons/icons8-calendar-minus.png";
 import loadStartIcon from "@images/pick_list_icons/icons8-calendar-plus.png";
@@ -21,11 +22,9 @@ const loading = ref(false);
 const shipment = ref(null);
 const noAccessLog = ref(false);
 const dialogVisible = ref(false);
-const syncingLoading = ref(false);
 const errorMessage = ref(null);
 const setTimeInSeconds = ref(120);
 const refreshTimer = ref(null);
-const totalRead = ref(0);
 
 // Variable to watch if tapping load end is already provided
 const is_tapping_load_end_found = ref(false);
@@ -41,43 +40,32 @@ onMounted(() => {
 
     reloadPageChecker();
 
-    // echo.channel('driver-tap-out')
-    //     .listen('DriverTapOutEvent', onDriverTapOutEvent);
+    echo.channel('driver-tap-out')
+        .listen('DriverTapOutEvent', onDriverTapOutEvent);
     
 });
 
 const reloadPageChecker = () => {
-    // setInterval(function () {
-    //     const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
-    //     const isWaitingForBatches = shipmentData.shipment?.no_batches_yet === true;
-    //     const isNoInventory = shipmentData.shipment?.batch_no_inventory_yet === true && shipmentData.shipment?.no_batches_yet === false;
+    setInterval(function () {
+        const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
         
-    //     if (isLoadingInProgress && isWaitingForBatches === false && isNoInventory === false) {
-    //         // Do not decrement timer or reload during loading
-    //         return;
-    //     }
+        if (isLoadingInProgress) {
+            // Do not decrement timer or reload during loading
+            return;
+        }
 
-    //     setTimeInSeconds.value -= 1;
-    //     refreshTimer.value = setTimeInSeconds.value;
-    //     if (setTimeInSeconds.value == 1) {
-    //         window.location.reload();
-    //     }
-    // }, 1000);
-}
-
-const refreshData = () => {
-    // ApiService.get(`test-load-end/${shipment.value?.shipment_number}`)
-    //     .then(response => {
-    //         window.location.reload();
-    //         console.log(response);
-    //     })
+        setTimeInSeconds.value -= 1;
+        refreshTimer.value = setTimeInSeconds.value;
+        if (setTimeInSeconds.value == 1) {
+            window.location.reload();
+        }
+    }, 1000);
 }
 
 const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`depot-loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000150707`);
 
         shipment.value = response.data
 
@@ -105,15 +93,13 @@ const fetchData = async () => {
 };
 
 const sapLoadEnd = async (shipmentNumber) => {
-    ApiService.get(`test-load-end/${shipmentNumber}`)
+    ApiService.get(`depot-loading-tapping/load-end/${shipmentNumber}`)
         .then(response => {
             window.location.reload();
-            console.log(response);
         })
 };
 
 const fetchShipmentDetails = async (shipmentNumber) => {
-    console.log(shipmentNumber);
     try {
         const token = JwtService.getToken();
         let bay_no = 1; // Default bay number
@@ -122,7 +108,6 @@ const fetchShipmentDetails = async (shipmentNumber) => {
             bay_no = bay;
         }
         let url = `depot-loading-tapping/shipment-picklist/${shipmentNumber}`;
-        // let url = `test-picklist-data/${shipmentNumber}`;
 
         const response = await axios.get(url, {
             params: {
@@ -133,8 +118,6 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                 Authorization: `Bearer ${token}`
             }
         });
-        
-        console.log(response.data);
         
         // If success
         if (response.data.result == 'S') {
@@ -149,43 +132,12 @@ const fetchShipmentDetails = async (shipmentNumber) => {
             }
         }
 
-        console.log(shipmentData.shipment);
-        console.log(shipmentData.deliveries);
     } catch (error) {
         console.error('Error fetching shipment details:', error);
     }
 
 };
 
-const showSyncConfirmModal = ref(false);
-
-const triggerLoadingSync = () => {
-    showSyncConfirmModal.value = true;
-};
-
-const proceedSync = () => {
-    showSyncConfirmModal.value = false;
-    // Place the original sync logic here, or call the actual sync function
-    if (shipmentData.shipment?.shipment_number) {
-        sapLoadSync(shipmentData.shipment.shipment_number);
-    }
-};
-
-const cancelSync = () => {
-    showSyncConfirmModal.value = false;
-};
-
-const sapLoadSync = (shipmentNumber) => {
-    ApiService.get(`picklist/sync/${shipmentNumber}`)
-        .then(response => {
-            if (response.status == 200) {
-                // success message here
-            }
-        })
-        .catch((error) => {
-            // error message here for something went wrong
-        })
-};
 
 const close = () => {
     dialogVisible.value = false
@@ -208,29 +160,7 @@ const formatDateTime = (date, time) => {
     return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
-    uom = String(uom).toLowerCase();
 
-    if (uom === 'kg') {
-        // Convert kg qty to bags, then calculate pallets
-        return Math.ceil((quantity / (numerator / denominator)) / defaultPalletCapacity);
-    }
-
-    if (uom === 'bag') {
-        // If bag based, convert quantity
-        const convertedQuantity = quantity * (numerator / denominator);
-        return Math.ceil((convertedQuantity / (numerator / denominator)) / defaultPalletCapacity);
-    }
-
-    // Default fallback: treat as bags and divide by default pallet capacity
-    return Math.ceil(quantity / defaultPalletCapacity);
-}
-
-const toast = ref({
-    message: 'Inventory refreshed',
-    color: 'success',
-    show: false
-});
 
 const chunkArray = (arr, size) => {
     const result = []
@@ -313,19 +243,8 @@ function removeLeadingZeros(str) {
                                 finished.</span>
                         </div>
                         <v-progress-linear
-                            :model-value="progressPercentage"
                             color="warning" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
-                            <template #default>
-                                <span class="text-caption font-weight-bold">
-                                    {{ Math.min(totalLoadedQty, shipmentData.shipment?.total_pallet_to_load || 0) }}
-                                    out of
-                                    {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                    ({{ progressPercentage }}%)
-                                </span>
-                                </span>
-                            </template>
+                            indeterminate>
                         </v-progress-linear>
                     </VCol>
                     <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
