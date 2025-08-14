@@ -4,7 +4,7 @@ import ApiService from '@/services/ApiService';
 import { echo } from '@/utils/echo';
 import palletsImage from '@images/curtains/pallets.png';
 import Moment from 'moment';
-import { onMounted, reactive, watch } from 'vue';
+import { onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -18,10 +18,21 @@ const logs = ref([])
 const lastRead = ref(null);
 const snackbarVisible = ref(false);
 
+let picklistLogsChannel = null;
 onMounted(() => {
     fetchLoadingCurtain();
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+    // echo.channel('picklist-logs')
+    //     .listen('PicklistLogsEvent', onPicklistLogsEvent);
+
+    const channelNameBase = `shipment.${reader}.${bay}`;
+    picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
+    picklistLogsChannel.listen('PicklistLogsEvent', onPicklistLogsEvent);
+})
+
+onUnmounted(() => {
+    if (picklistLogsChannel) {
+        echo.leaveChannel(picklistLogsChannel.name);
+    }
 })
 
 const response = reactive({
