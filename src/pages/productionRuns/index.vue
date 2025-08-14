@@ -240,12 +240,6 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'LINE',
-        key: 'line',
-        align: 'center',
-        sortable: false,
-    },
-    {
         title: 'RUN TYPE',
         key: 'run_type',
         align: 'center',
@@ -564,9 +558,7 @@ const dateFilters = [
             Filter
         </v-btn>
 
-        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" 
-            density="compact"
-            :items="dateFilters"
+        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" density="compact" :items="dateFilters"
             v-model="filters.date_filter">
         </v-select>
 
@@ -778,10 +770,6 @@ const dateFilters = [
                 {{ item.COMMODITY }}
             </template>
 
-            <template #item.line="{ item }">
-                {{ item.SILO.trim() }}
-            </template>
-
             <template #item.run_type="{ item }">
                 <v-badge v-if="item.run_type === 1" color="primary-light" content="PLC RUN" class="text-uppercase"
                     inline></v-badge>
@@ -814,16 +802,18 @@ const dateFilters = [
             <template #item.start_date_time="{ item }">
                 <div class="d-flex flex-column">
                     <span>{{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY') : '' }}</span>
-                    <span class="font-weight-thin">{{ item.START_T ? Moment(item.START_T).format('h:mm A') : '' }}</span>
+                    <span class="font-weight-thin">{{ item.START_T ? Moment(item.START_T).format('h:mm A') : ''
+                        }}</span>
                 </div>
             </template>
 
             <template #item.end_date_time="{ item }">
                 <!-- FOR PLC Production run -->
                 <div v-if="item.run_type === 1">
-                    <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930" class="d-flex flex-column"> 
+                    <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930" class="d-flex flex-column">
                         <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
-                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : '' }}</span>
+                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : ''
+                            }}</span>
                     </div>
                     <div v-else>
                         <v-badge color="warning" content="Ongoing.." class="text-uppercase" inline></v-badge>
@@ -833,7 +823,8 @@ const dateFilters = [
                 <div v-else>
                     <div v-if="item.STOP_T" class="d-flex flex-column">
                         <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
-                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : '' }}</span>
+                        <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : ''
+                            }}</span>
                     </div>
                     <div v-else>
                         <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
@@ -947,7 +938,7 @@ const dateFilters = [
                         key: sortQuery.replace('-', ''),
                         order: sortQuery.startsWith('-') ? 'desc' : 'asc'
                     }]
-                })"/>
+                })" />
             </v-card-text>
         </v-card>
     </v-dialog>
@@ -1029,7 +1020,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.COMMODITY
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1075,7 +1066,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.SILO.trim()
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1103,7 +1094,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.sap_count
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
