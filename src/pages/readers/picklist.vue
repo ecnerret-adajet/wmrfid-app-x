@@ -60,17 +60,17 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    if (picklistLogsChannel) {
-        echo.leaveChannel(picklistLogsChannel.name);
-    }
+    // if (picklistLogsChannel) {
+    //     echo.leaveChannel(picklistLogsChannel.name);
+    // }
 
-    if (picklistRefreshChannel) {
-        echo.leaveChannel(picklistRefreshChannel.name);
-    }
+    // if (picklistRefreshChannel) {
+    //     echo.leaveChannel(picklistRefreshChannel.name);
+    // }
 
-    if (driverTapOutChannel) {
-        echo.leaveChannel(driverTapOutChannel.name);
-    }
+    // if (driverTapOutChannel) {
+    //     echo.leaveChannel(driverTapOutChannel.name);
+    // }
 })
 
 const onPicklistRefreshEvent = (data) => {
@@ -331,14 +331,14 @@ const onDriverTapOutEvent = (data) => {
 }
 
 // Stop listening to event once found
-watch(is_tapping_load_end_found.value, (newValue) => {
-    if (newValue) {
-        // Stop listening to driver tap out events once found
-        if (driverTapOutChannel) {
-            driverTapOutChannel.stopListening('DriverTapOutEvent', onDriverTapOutEvent);
-        }
-    }
-});
+// watch(is_tapping_load_end_found.value, (newValue) => {
+//     if (newValue) {
+//         // Stop listening to driver tap out events once found
+//         if (driverTapOutChannel) {
+//             driverTapOutChannel.stopListening('DriverTapOutEvent', onDriverTapOutEvent);
+//         }
+//     }
+// });
 
 watch(
     [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],

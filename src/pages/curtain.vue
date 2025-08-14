@@ -31,7 +31,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (picklistLogsChannel) {
-        echo.leaveChannel(picklistLogsChannel.name);
+        // echo.leaveChannel(picklistLogsChannel.name);
     }
 })
 
