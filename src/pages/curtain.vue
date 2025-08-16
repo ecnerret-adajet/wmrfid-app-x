@@ -145,22 +145,22 @@ watch(
     <div class="background-container">
         <div class="d-flex justify-end" style="position: relative;">
             <!-- Latest Pallet Label -->
-            <div class="position-absolute" style="z-index: 9; left: 50px; top: 90px;">
+            <div class="position-absolute" style="z-index: 9; left: 50px; top: 60px;">
                 <span class="text-h1 font-weight-black text-grey-700">Latest Pallet </span>
                 <span class="text-h1 font-weight-black text-primary-2">(Bay {{ bay }})</span>
             </div>
 
             <!-- Image -->
-            <img style="position: absolute; z-index: 1; margin-right: 150px; top: -30px" :src="palletsImage"
-                :width="230" :height="230" />
+            <img style="position: absolute; z-index: 1; margin-right: 150px; top: -50px" :src="palletsImage"
+                :width="200" :height="200" />
 
             <!-- v-sheet background -->
-            <v-sheet style="position: absolute !important;" :height="150" color="primary-2" :width="230"></v-sheet>
+            <v-sheet style="position: absolute !important;" :height="120" color="primary-2" :width="200"></v-sheet>
         </div>
 
 
 
-        <div style="padding-top: 175px;" class="px-12">
+        <div style="padding-top: 125px;" class="px-12">
             <VRow no-gutters>
                 <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
@@ -200,11 +200,21 @@ watch(
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4">{{ lastRead?.epc }}</span>
                     </VCol>
-                    <VCol md="2" class="text-center rightBorderedGreen d-flex justify-center align-center"
-                        style="border-right: 1px solid #fff;">
-                        <span v-if="lastRead?.inventory" class="font-weight-black text-h3">{{ lastRead?.inventory?.batch
-                            }}</span>
-                        <span v-else class="font-weight-black text-error text-h3">NO BATCH</span>
+                    <VCol
+                        md="2"
+                        class="text-center rightBorderedGreen d-flex flex-column justify-center align-center"
+                        style="border-right: 1px solid #fff;"
+                    >
+                        <span v-if="lastRead?.inventory" class="font-weight-black text-h3">
+                            {{ lastRead?.inventory?.batch }}
+                        </span>
+                        <span v-else class="font-weight-black text-error text-h3">
+                            NO BATCH
+                        </span>
+                        <span v-if="lastRead?.inventory?.material" class="text-h6">
+                            {{ lastRead.inventory.material.description }} <br />
+                            {{ Moment(lastRead.inventory.mfg_date).format('MMMM D, YYYY')  }}
+                        </span>
                     </VCol>
                     <VCol md="1" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
@@ -253,7 +263,7 @@ watch(
             </div>
         </div>
 
-        <div class="px-12 mt-8 pb-4">
+        <div class="px-12 mt-2 pb-2">
             <span class="text-h1 font-weight-black text-grey-700">Recent </span>
             <span class="text-h1 font-weight-black text-primary-2">Pallet Logs</span>
         </div>
@@ -300,10 +310,21 @@ watch(
                         style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4">{{ log?.epc || '' }}</span>
                     </VCol>
-                    <VCol md="2" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
-                        style="border-right: 1px solid #fff;">
-                        <span v-if="log.inventory" class="font-weight-black text-h3">{{ log.inventory?.batch }}</span>
-                        <span v-else class="font-weight-black text-error text-h3">NO BATCH</span>
+                    <VCol
+                        md="2"
+                        class="text-center rightBorderedGreen d-flex flex-column justify-center align-center"
+                        style="border-right: 1px solid #fff;"
+                    >
+                        <span v-if="log?.inventory" class="font-weight-black text-h3">
+                            {{ log?.inventory?.batch }}
+                        </span>
+                        <span v-else class="font-weight-black text-error text-h3">
+                            NO BATCH
+                        </span>
+                        <span v-if="log?.inventory?.material" class="text-h6">
+                            {{ log.inventory.material.description }}<br/>
+                            {{ Moment(log.inventory.material.mfg_date).format('MMMM D, YYYY') }}
+                        </span>
                     </VCol>
                     <VCol md="1" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
