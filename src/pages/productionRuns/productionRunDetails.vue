@@ -100,8 +100,8 @@ const headers = [
         sortable: false
     },
     {
-        title: 'CURRENT AGE',
-        key: 'age',
+        title: 'Line',
+        key: 'line',
         align: 'center'
     },
     {
@@ -496,7 +496,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
-                                }}</span>
+                                    }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -508,7 +508,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.material?.description
-                                }}</span>
+                                    }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -714,11 +714,13 @@ const handleWrongPallet = async () => {
                                     class="ri-close-circle-line"></i>
                             </template>
 
-                            <template #item.age="{ item }">
-                                {{ item.current_age }}
+                            <template #item.line="{ item }">
+                                <div v-if="item.plc_run">
+                                    {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? null }}
+                                </div>
                             </template>
 
-                             <template #item.action="{ item }">
+                            <template #item.action="{ item }">
                                 <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
                                     <IconBtn size="small" @click="editItem(item)">
                                         <VIcon icon="ri-pencil-line" />
@@ -834,7 +836,7 @@ const handleWrongPallet = async () => {
     </EditingModal>
 
     <EditingModal v-if="selectedItem" @close="editDialog = false" :show="editDialog"
-        :dialog-title="`Update ${selectedItem.rfid?.name}`" >
+        :dialog-title="`Update ${selectedItem.rfid?.name}`">
         <template #default>
             <v-form @submit.prevent="handleUpdate">
                 <v-text-field class="mt-6" density="compact" :rules="[value => !!value || 'Quantity is required']"
@@ -856,7 +858,8 @@ const handleWrongPallet = async () => {
         <template #default>
             <div class="mx-4">
                 <span class="text-h5 text-high-emphasis">
-                    Do you want to remove the attached batch <span class="text-primary">{{ productionRun.COMMODITY }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
+                    Do you want to remove the attached batch <span class="text-primary">{{ productionRun.COMMODITY
+                        }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
                 </span>
             </div>
             <v-table class="mt-4">
