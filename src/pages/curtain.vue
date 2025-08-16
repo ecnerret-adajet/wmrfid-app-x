@@ -323,7 +323,7 @@ watch(
                         </span>
                         <span v-if="log?.inventory?.material" class="text-h6">
                             {{ log.inventory.material.description }}<br/>
-                            {{ Moment(log.inventory.material.mfg_date).format('MMMM D, YYYY') }}
+                            {{ Moment(log.inventory.mfg_date).format('MMMM D, YYYY') }}
                         </span>
                     </VCol>
                     <VCol md="1" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
