@@ -80,12 +80,23 @@ const onPicklistRefreshEvent = (data) => {
     }
 }
 
+const processedEpcs = ref({});
 const onPicklistLogsEvent = (data) => {
     console.log(data)
     if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
         // Find the delivery with matching batch and increment loaded_qty
         const batch = data.picklistLog.inventory?.batch;
         const is_loaded = data.picklistLog.inventory?.is_loaded;
+        const epc = data.picklistLog.inventory?.epc || data.picklistLog?.epc;
+        const shipmentNumber = data.picklistLog?.current_shipment_number;
+
+        // Compose a unique key for this shipment, bay, and epc
+        const key = `${shipmentNumber}_${bay}_${epc}`;
+        if (!epc || !shipmentNumber || !bay) return;
+        console.log(key);
+        // Prevent double increment: skip if already processed
+        if (processedEpcs.value[key]) return;
+        processedEpcs.value[key] = true;
     
         if (batch && (is_loaded == false || is_loaded == 0)) {
             const delivery = shipmentData.deliveries.find(d => d.batch === batch);
