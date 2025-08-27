@@ -1,10 +1,12 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
+import Toast from '@/components/Toast.vue';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -53,6 +55,11 @@ const headers = [
 const lastOptions = ref({});
 const currentOptions = ref({});
 
+const toast = ref({
+    message: '',
+    color: 'success',
+    show: false
+});
 
 // TODO:: Consider separating the API for calling the header and for the datatable
 // to avoid loading the header if next/prev page 
@@ -125,6 +132,39 @@ const closeModal = () => {
     deliveryItemsModalOpen.value = false;
 }
 
+const isStatusMatched = computed(() => {
+    return shipmentData.value?.shipment?.bu_overall_status === shipmentData.value?.shipment?.alc_overall_status;
+});
+
+const syncingLoading = ref(false)
+const syncStatus = async() => {
+    syncingLoading.value = true;
+    try {
+        const token = JwtService.getToken();
+        const response = await axios.get(`/picklist/sync/${shipmentData.value?.shipment?.shipment_number}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        
+        if (response.status === 200) {
+            await loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{key: 'created_at', order: 'desc'}],
+                search: searchValue.value
+            });
+            toast.value.color = 'success';
+            toast.value.message = 'Sync successful!';
+            toast.value.show = true;
+        }
+    } catch (error) {
+        console.log(error);
+    } finally {
+        syncingLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -134,6 +174,11 @@ const closeModal = () => {
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
+                    <v-spacer></v-spacer>
+                    <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false" class="px-5"
+                        type="button" color="warning">
+                        Sync Status
+                    </v-btn>
                 </div>
                 <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
                 <VList v-else lines="one" density="compact" class="mt-4">
@@ -200,10 +245,53 @@ const closeModal = () => {
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">BU Trans Status</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        {{ shipmentData?.shipment?.bu_overall_status }}
+                                        <v-chip
+                                            :color="isStatusMatched ? 'success' : 'error'"
+                                            :content="isStatusMatched ? 'synced' : 'not synced'"
+                                            class="text-uppercase ml-3"
+                                            size="x-small"
+                                            inline
+                                            variant="outlined"
+                                        >
+                                            {{ isStatusMatched ? 'synced' : 'not synced' }}
+                                        </v-chip>
+                                    </VCol>
+                                </VRow>
                             </VCol>
                         </VRow>
                     </VListItem>
-                    <!-- Add item as needed  -->
+                        <VListItem>
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">ALC Trans Status</span>
+                                    </VCol>
+                                    <VCol class="d-inline-flex align-center">
+                                        {{ shipmentData?.shipment?.alc_overall_status }}
+                                        <v-chip 
+                                            :color="isStatusMatched ? 'success' : 'error'"
+                                            :content="isStatusMatched ? 'synced' : 'not synced'"
+                                            class="text-uppercase ml-3"
+                                            inline
+                                            size="x-small"
+                                            variant="outlined"
+                                        >
+                                            {{ isStatusMatched ? 'synced' : 'not synced' }}
+                                        </v-chip>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
                 </VList>
             </v-card-title>
         </v-card>
@@ -318,7 +406,7 @@ const closeModal = () => {
             </tbody>
         </v-table>
     </DefaultModal>
-
+<Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 
 <style scoped>
