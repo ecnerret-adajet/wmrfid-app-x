@@ -175,8 +175,12 @@ const syncStatus = async() => {
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
                     <v-spacer></v-spacer>
-                    <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false" class="px-5"
-                        type="button" color="warning">
+                    <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false &&
+                        (
+                            [3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status)) &&
+                            [3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))
+                        )" class="px-5"
+                    type="button" color="warning">
                         Sync Status
                     </v-btn>
                 </div>
@@ -245,7 +249,8 @@ const syncStatus = async() => {
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
+                                <!-- Show only if 3 or 4 (Load end/LoadStart) -->
+                                <VRow v-if="[3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status))" class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">BU Trans Status</span>
                                     </VCol>
@@ -271,7 +276,8 @@ const syncStatus = async() => {
                             <VCol md="6" class="table-cell d-inline-flex">
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
+                                <!-- Show only if 3 or 4 (Load end/LoadStart) -->
+                                <VRow v-if="[3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))" class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">ALC Trans Status</span>
                                     </VCol>
