@@ -93,7 +93,6 @@ const hasEmptyArea = computed(() =>
 const headers = computed(() => {
     const baseHeaders = [
         { title: 'PHYSICAL ID', key: 'physical_id' },
-        { title: 'Plant', key: 'plant' },
         { title: 'EPC', key: 'epc', align: 'center', sortable: false },
         { title: 'TYPE', key: 'type', align: 'center', sortable: false },
         { title: 'BATCH', key: 'batch' },
