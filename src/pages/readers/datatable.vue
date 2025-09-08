@@ -109,7 +109,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
-            console.log(serverItems.value);
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });

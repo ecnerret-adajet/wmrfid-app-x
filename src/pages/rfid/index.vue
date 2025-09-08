@@ -101,6 +101,7 @@ const headers = computed(() => {
         { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
         // Wrapping column will be conditionally included
         { title: 'LOADING', key: 'is_loaded', align: 'center', sortable: false },
+        { title: 'LAST LOADED', key: 'last_loaded', align: 'center', sortable: false },
         { title: 'ACTIONS', key: 'actions', align: 'center', sortable: false },
     ];
 
@@ -706,30 +707,39 @@ const bayOptions = [
         <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
             return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
             @update:options="loadItems" class="text-no-wrap">
-
-            <template #item.plant="{ item }">
-                {{ item.plant_name }}
-            </template>
+           
 
             <template #item.physical_id="{ item }">
-                <span v-if="item.is_weak_signal">
-                    <VTooltip location="top">
-                        <template #activator="{ props }">
-                            <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name
-                            }}</span>
-                        </template>
-                        <span>Weak Signal</span>
-                    </VTooltip>
-                </span>
-                <span v-else @click="handleViewRfid(item)"
-                    class="text-primary font-weight-bold cursor-pointer hover-underline">
-                    {{ item.name }}
-                </span>
+                <div class="d-flex flex-column">
+                    <!-- Main RFID name with conditional rendering -->
+                    <div class="text-h6">
+                        <span v-if="item.is_weak_signal">
+                            <v-tooltip location="top">
+                                <template #activator="{ props }">
+                                    <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name }}</span>
+                                </template>
+                                <span>Weak Signal</span>
+                            </v-tooltip>
+                        </span>
+                        <span v-else @click="handleViewRfid(item)"
+                            class="text-primary font-weight-bold cursor-pointer hover-underline">
+                            {{ item.name }}
+                        </span>
+                    </div>
+
+                    <!-- Plant name displayed below -->
+                    <div class="text-caption text-grey-600">
+                        {{ item.plant_name }}
+                    </div>
+                </div>
             </template>
 
-            <!-- <template #item.physical_id="{ item }">
-                {{ item.name }}
-            </template> -->
+            <template #item.last_loaded="{ item }">
+                <div class="d-flex flex-column">
+                    <div v-if="item.last_log_updated_at" class="text-h6">{{ Moment(item.last_log_updated_at).format('MMM D, YYYY h:mm A') }}</div>
+                    <div v-if="item.last_log_bay_no" class="text-caption text-grey-600">Bay {{ item.last_log_bay_no }}</div>
+                </div>
+            </template>
 
             <!-- <template #item.weak_signal="{ item }">
                 <v-badge v-if="item.is_weak_signal" color="error" content="Yes" class="text-uppercase" inline></v-badge>
@@ -751,7 +761,7 @@ const bayOptions = [
             </template>
 
             <template #item.mfg_date="{ item }">
-                <span>{{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</span>
+                <span>{{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}</span>
             </template>
 
             <template #item.is_wrapped="{ item }">
