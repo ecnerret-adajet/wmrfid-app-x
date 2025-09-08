@@ -49,13 +49,17 @@ const headers = [
         title: 'READER NAME',
         key: 'name',
     },
-    {
-        title: 'READER TYPE',
-        key: 'reader_type_id',
-    },
+    // {
+    //     title: 'READER TYPE',
+    //     key: 'reader_type_id',
+    // },
     {
         title: 'Plant',
         key: 'plant_code',
+    },
+    {
+        title: 'Antenna Reads',
+        key: 'antenna_reads',
     },
     {
         title: 'Last Log',
@@ -105,6 +109,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
+            console.log(serverItems.value);
             loading.value = false
 
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
@@ -211,6 +216,20 @@ defineExpose({
     applyFilters
 })
 
+const getUniqueBayLocations = (antennas) => {
+    if (!antennas) {
+        return [];
+    }
+
+    const bayMap = new Map();
+    antennas.forEach(antenna => {
+        if (antenna.bay_location_id && !bayMap.has(antenna.bay_location_id)) {
+            bayMap.set(antenna.bay_location_id, antenna);
+        }
+    });
+    return Array.from(bayMap.values());
+};
+
 </script>
 
 <template>
@@ -218,9 +237,11 @@ defineExpose({
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
 
-        <template #item.reader_type_id="{ item }">
-            <!-- Use the reader_type_name instead of reader_type_id -->
-            {{ item.reader_type?.name }}
+        <template #item.name="{ item }">
+            <div class="d-flex flex-column">
+                <div class="text-h6">{{ item.name }}</div>
+                <div class="text-caption text-grey-600">{{ item.reader_type?.name }}</div>
+            </div>
         </template>
 
         <!-- Get plant object and name -->
@@ -228,9 +249,27 @@ defineExpose({
             {{ item.plant?.name }}
         </template>
 
+        <template #item.antenna_reads="{ item }">
+            <div v-if="item.antennas?.length > 0" class="my-2">
+                <v-row v-for="antenna in item.antennas" :key="antenna.id" no-gutters>
+                    <v-col cols="5">
+                        <span>Antenna {{ antenna.antenna_number }}:</span>
+                    </v-col>
+                    <v-col cols="7">
+                        <span v-if="antenna.last_log">{{ Moment(antenna.last_log?.updated_at).format('MMM D, YYYY h:mm A')}}</span>
+                        <span v-else>
+                            <v-chip size="x-small" variant="outlined" color="error">
+                                No Log
+                            </v-chip>
+                        </span>
+                    </v-col>
+                </v-row>
+            </div>
+        </template>
+
         <template #item.last_log="{ item }">
             <span v-if="item.last_log?.created_at">
-                {{ item.last_log?.created_at ? Moment(item.last_log?.created_at).format('MMMM D, YYYY h:mm A') : '' }}
+                {{ item.last_log?.created_at ? Moment(item.last_log?.created_at).format('MMM D, YYYY h:mm A') : '' }}
             </span>
         </template>
 
@@ -249,7 +288,7 @@ defineExpose({
         <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-center">
                 <!-- Picklist  -->
-                <template v-if="item.antennas?.some(antenna => antenna.bay_location) && item.is_tapping">
+                <template v-if="item.antennas?.length > 0 && item.antennas?.some(antenna => antenna.bay_location_id) && item.is_tapping">
                     <v-menu location="start">
                         <template v-slot:activator="{ props: menuProps }">
                             <v-tooltip location="top">
@@ -261,18 +300,18 @@ defineExpose({
                             </v-tooltip>
                         </template>
                         <v-list>
-                            <v-list-item v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" :key="i"
+                            <v-list-item v-for="(antenna, i) in getUniqueBayLocations(item.antennas)" :key="antenna.bay_location_id"
                                 :value="i">
-                                <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location.bay_no)"
+                                <v-list-item-title @click="showReaderLastTap(item, antenna.bay_location_id)"
                                     class="px-4">
-                                    Bay No. {{ antenna.bay_location.bay_no }}
+                                    Bay No. {{ antenna.bay_location_id }}
                                 </v-list-item-title>
                             </v-list-item>
                         </v-list>
                     </v-menu>
                 </template>
                 <!-- Loading Curtain -->
-                <template v-if="item.antennas?.some(antenna => antenna.bay_location) && item.is_tapping && !item.plant?.is_warehouse_depot">
+                <template v-if="item.antennas?.some(antenna => antenna.bay_location_id) && item.is_tapping && !item.plant?.is_warehouse_depot">
                     <v-menu location="start">
                         <template v-slot:activator="{ props: menuProps }">
                             <v-tooltip location="top">
@@ -284,11 +323,11 @@ defineExpose({
                             </v-tooltip>
                         </template>
                         <v-list>
-                            <v-list-item v-for="(antenna, i) in item.antennas.filter(a => a.bay_location)" :key="i"
+                            <v-list-item v-for="(antenna, i) in getUniqueBayLocations(item.antennas)" :key="i"
                                 :value="i">
-                                <v-list-item-title @click="showCurtainScreen(item, antenna.bay_location.bay_no)"
+                                <v-list-item-title @click="showCurtainScreen(item, antenna.bay_location_id)"
                                     class="px-4">
-                                    Bay No. {{ antenna.bay_location.bay_no }}
+                                    Bay No. {{ antenna.bay_location_id }}
                                 </v-list-item-title>
                             </v-list-item>
                         </v-list>
