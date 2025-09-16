@@ -372,6 +372,14 @@ export const routes = [
         }
     },
     {
+        path: '/sso-login',
+        name: 'sso-callback',
+        component: () => import('@/pages/sso-callback.vue'),
+        meta: {
+            pageTitle: "SSO Callback"
+        },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [
