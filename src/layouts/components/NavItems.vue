@@ -5,6 +5,7 @@ import { useAuthorization } from '@/composables/useAuthorization';
 import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
+import VerticalNavGroup from '@layouts/components/VerticalNavGroup.vue';
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -136,6 +137,24 @@ const proceedMapping = () => {
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
     <VerticalNavLink v-if="authUserCan('view.weak.pallets')"
         :item="{ title: 'Weak Pallets', icon: 'ri-signal-wifi-error-line', to: '/weak-pallets' }" />
+
+    <VerticalNavGroup v-if="authUserCan('view.pallet.inverter')" :item="{title: 'Pallet Inverter', icon: 'ri-clockwise-line'}">
+        <VerticalNavLink
+            :item="{
+                title: 'View Inversions',
+                href: '/view-inversions',
+            }"
+        />
+        <VerticalNavLink
+            :item="{
+                title: 'New Inversion',
+                href: '/new-inversion',
+            }"
+        />
+    </VerticalNavGroup>
+
+    <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
+        :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"

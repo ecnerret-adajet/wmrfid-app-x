@@ -241,13 +241,24 @@ export const routes = [
             },
         },
         {
-            path: 'fumigations',
-            name: 'fumigations',
-            component: () => import('@/pages/fumigation/index.vue'),
+            path: 'view-inversions',
+            name: 'view-inversions',
+            component: () => import('@/pages/palletInverter/index.vue'),
             meta: {
-                pageTitle: "Fumigations",
+              pageTitle: "View Inversion",
+              breadcrumbs: [
+                  { label: "View Inversion", link: "/view-inversions" },
+              ],
+            }
+        },
+        {
+            path: 'new-inversion',
+            name: 'new-inversion',
+            component: () => import('@/pages/palletInverter/feed.vue'),
+            meta: {
+                pageTitle: "New Inversion",
                 breadcrumbs: [
-                  { label: "Fumigations", link: "/fumigations" },
+                  { label: "New Inversion", link: "/new-inversion" },
               ],
             },
         },
