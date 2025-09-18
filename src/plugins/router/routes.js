@@ -196,24 +196,49 @@ export const routes = [
             },
         },
         {
-            path: 'rfid',
-            name: 'rfid',
-            component: () => import('@/pages/rfid/index.vue'),
+            path: 'rfid/pallets',
+            name: 'rfid-pallets',
+            component: () => import('@/pages/rfid-pallets/index.vue'),
             meta: {
-              pageTitle: "RFID Master",
-              breadcrumbs: [
-                  { label: "RFID Master", link: "/rfid" },
-              ],
+                pageTitle: "Pallets - RFID Master",
+                breadcrumbs: [
+                    { label: "Pallets", link: "/rfid/pallets" },
+                ],
             },
         },
         {
+            path: 'rfid/tonner-bags',
+            name: 'rfid-tonner-bags',
+            component: () => import('@/pages/rfid-tonner-bags/index.vue'),
+            meta: {
+              pageTitle: "Tonner Bags - RFID Master",
+              breadcrumbs: [
+                  { label: "Tonner Bags", link: "/rfid/tonner-bags" },
+              ],
+            },
+        },
+        // Used for pallets
+        {
             path: 'rfid/:type/:physicalId',
             name: 'rfid.show',
-            component: () => import('@/pages/rfid/show.vue'),
+            component: () => import('@/pages/rfid-pallets/show.vue'),
             meta: {
-                pageTitle: "RFID Master",
+                pageTitle: "Pallets - RFID Master",
                 breadcrumbs: (route) => [
-                    { label: "RFID Master", link: "/rfid" },
+                    { label: "Pallets", link: "/rfid/pallets" },
+                    { label: `${route.params.physicalId}`, link: `/rfid/${route.params.type}/${route.params.physicalId}` }
+                ],
+            },
+        },
+        // Used for tonner bags
+        {
+            path: 'rfid/:type/:physicalId',
+            name: 'rfid.show',
+            component: () => import('@/pages/rfid-tonner-bags/show.vue'),
+            meta: {
+                pageTitle: "Tonner Bags - RFID Master",
+                breadcrumbs: (route) => [
+                    { label: "Tonner Bags", link: "/rfid/tonner-bags" },
                     { label: `${route.params.physicalId}`, link: `/rfid/${route.params.type}/${route.params.physicalId}` }
                 ],
             },
@@ -232,7 +257,7 @@ export const routes = [
         {
             path: 'weak-pallets',
             name: 'weak-pallets',
-            component: () => import('@/pages/rfid/weakPallets.vue'),
+            component: () => import('@/pages/rfid-pallets/weakPallets.vue'),
             meta: {
               pageTitle: "Weak Pallets",
               breadcrumbs: [

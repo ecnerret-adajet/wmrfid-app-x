@@ -601,7 +601,7 @@ const handleWrongPallet = async () => {
                             </div>
                             <div>
                                 <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                    Toner Bag
+                                    Tonner Bag
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
                                     {{ tonerBagStats?.toner_bag_count || 0 }}

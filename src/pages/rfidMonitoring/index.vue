@@ -341,7 +341,7 @@ const totalPages = computed(() => {
                                                 Label
                                             </span>
                                             <span v-else-if="selectedLog?.rfid_type === 'RfidTonerBag'">
-                                                Toner Bag
+                                                Tonner Bag
                                             </span>
                                             <span v-else>
                                                 N/A

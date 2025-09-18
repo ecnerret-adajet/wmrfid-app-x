@@ -7,7 +7,7 @@ import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { echo } from '@/utils/echo';
 import axios from 'axios';
-import { computed, reactive, nextTick, watch, ref } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -417,7 +417,7 @@ const commonEpc = computed(() => {
             <VRow>
                 <VCol cols="4" class="d-flex align-start">
                     <v-btn :to="{
-                        path: `/rfid`,
+                        path: `/rfid/pallets`,
                     }" class="ma-2" color="grey-700" icon="ri-arrow-left-line" variant="text">
                     </v-btn>
                     <div class="text-h2 font-weight-black ps-2">

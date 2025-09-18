@@ -10,7 +10,6 @@ const props = defineProps({
 
 const route = useRoute()
 
-// TODO:: Fix if rfid-monitoring
 const isActive = computed(() => {
     if (!props.item.to) return false
 

@@ -1,0 +1,793 @@
+<script setup>
+import AddingModal from '@/components/AddingModal.vue';
+import DefaultModal from '@/components/DefaultModal.vue';
+import EditingModal from '@/components/EditingModal.vue';
+import FilteringModal from '@/components/FilteringModal.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
+import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
+import { exportExcel, generateSlug } from '@/composables/useHelpers';
+import ApiService from '@/services/ApiService';
+import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
+import axios from 'axios';
+import Moment from 'moment';
+import { reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+const { authUserCan } = useAuthorization();
+
+const searchValue = ref('');
+const serverItems = ref([]);
+const totalItems = ref(0);
+const itemsPerPage = ref(10);
+const page = ref(1);
+const sortQuery = ref('-created_at');
+const allStorageLocations = ref([]); // all slocs
+const storageLocations = ref([]); // filtered slocs based on plant_code
+const plantsOption = ref([]);
+
+const errorMessage = ref(null);
+const registrationModalForm = ref(null);
+const materialsOption = ref([]);
+const selectedItems = ref([]);
+const tagTypesOption = ref([]);
+const pageLoading = ref(false);
+const showEpcModal = ref(false);
+const epcData = ref([])
+const changeBatchModal = ref(false);
+const manualBatchModal = ref(false);
+const selectedItem = ref(null);
+
+const showRegistrationModal = ref(false);
+
+const toast = ref({
+    message: 'RFID success',
+    color: 'success',
+    show: false
+});
+
+const batchUpdateForm = reactive({
+    material_id: null,
+    mfg_date: null,
+    quantity: null,
+    reason: null,
+    selectedRfid: [],
+    bay_no: null,
+    type: 'inventory',
+    miller_name: null
+});
+
+const manualBatchUpdateForm = reactive({
+    material_id: null,
+    mfg_date: null,
+    quantity: null,
+    selectedRfid: [],
+    bay_no: null,
+    type: 'inventory'
+});
+
+const updateForm = reactive({
+    quantity: null,
+    rfid: null
+})
+
+const hasWrappingArea = computed(() => 
+    authStore.user?.is_super_admin || 
+    (authStore.user?.plants || []).some(plant => 
+        plant.configuration?.has_wrapping_area
+    )
+);
+
+const hasEmptyArea = computed(() => 
+    authStore.user?.is_super_admin || 
+    (authStore.user?.plants || []).some(plant => 
+        plant.configuration?.has_empty_area
+    )
+);
+
+const headers = computed(() => {
+    const baseHeaders = [
+        { title: 'PHYSICAL ID', key: 'physical_id' },
+        { title: 'EPC', key: 'epc', align: 'center', sortable: false },
+        // { title: 'MFG DATE', key: 'mfg_date', align: 'center' },
+        { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
+        // Wrapping column will be conditionally included
+        { title: 'LOADING', key: 'is_loaded', align: 'center', sortable: false },
+        { title: 'LAST LOADED', key: 'last_loaded', align: 'center', sortable: false },
+    ];
+    return baseHeaders;
+});
+
+const filterModalVisible = ref(false);
+
+const handleSearch = () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: searchValue.value
+    });
+};
+
+const handleRegister = () => {
+    showRegistrationModal.value = true;
+}
+
+const filterModalOpen = () => {
+    if (!filterModalVisible.value) {
+        filterModalVisible.value = true;
+    }
+};
+
+const filters = reactive({
+    created_at: null,
+    updated_at: null,
+    plant_code: null,
+});
+
+const form = reactive({
+    storage_location_id: null,
+    plant_code: null
+});
+
+const isFiltersEmpty = computed(() => {
+    return !filters.created_at &&
+        !filters.updated_at &&
+        !filters.plant_code
+});
+
+const applyFilter = () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: searchValue.value
+    });
+    filterModalVisible.value = false;
+}
+
+const resetFilter = () => {
+    clearFilters();
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: searchValue.value
+    });
+    filterModalVisible.value = false;
+}
+
+const clearFilters = () => {
+    filters.created_at = null;
+    filters.updated_at = null;
+    filters.plant_code = null;
+};
+
+const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
+    pageLoading.value = true
+    if (sortBy && sortBy.length > 0) {
+        const sort = sortBy[0];  // Assuming single sort field
+        sortQuery.value = `${sort.key}`;  // Default ascending order
+        if (sort.order === 'desc') {
+            sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
+        }
+    } else {
+        sortQuery.value = '-created_at';
+    }
+
+    try {
+        const token = JwtService.getToken();
+
+        const response = await axios.get('rfid/tonner-bags/get-data', {
+            params: {
+                page,
+                itemsPerPage,
+                sort: sortQuery.value,
+                search: searchValue.value,
+                filters: filters
+            },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const { table, statistics, tag_types, storage_locations, materials, plants } = response.data;
+        totalItems.value = table.total;
+        serverItems.value = table.data;
+        console.log(serverItems.value);
+        materialsOption.value = materials.map(item => ({
+            value: item.id,
+            title: `${item.plant_code} - ${item.code} - ${item.description}`,
+            default_pallet_quantity: item.default_pallet_quantity
+        }));
+
+        tagTypesOption.value = tag_types.map(item => ({
+            value: item.id,
+            title: item.title,
+            name: item.title
+        }));
+
+        allStorageLocations.value = storage_locations;
+
+        // Apply initial filter (if any plant_code is already selected)
+        updateFilteredStorageLocations();
+
+        plantsOption.value = plants.map(item => ({
+            value: item.plant_code,
+            title: `${item.plant_code} - ${item.name}`,
+            name: `${item.plant_code} - ${item.name}`
+        }));
+
+    } catch (error) {
+        console.log(error);
+    } finally {
+        pageLoading.value = false;
+    }
+}
+
+const handleViewRfid = (item) => {
+    router.push(`/rfid/${item.type}/${item.name}`);
+}
+
+const viewEpc = (item) => {
+    epcData.value = item.epc_data
+    showEpcModal.value = true;
+}
+
+const changeBatch = () => {
+    const hasNoBatch = selectedItems.value.some(item => !item.batch);
+
+    if (hasNoBatch) {
+        toast.value.message = 'All selected items must have a batch assigned to update batch.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+    changeBatchModal.value = true;
+}
+
+const manualBatch = () => {
+    const hasBatch = selectedItems.value.some(item => item.batch);
+
+    if (hasBatch) {
+        toast.value.message = 'All selected items must NOT have a batch assigned to perform this action.';
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+    manualBatchModal.value = true;
+}
+
+const proceedRegister = () => {
+
+    if (registrationModalForm.value.isValid) {
+
+        if (!form.tag_type_id || !form.plant_code) {
+            console.error("Tag Type and Plant is not selected.");
+            return; // Return early if form values are not set
+        }
+
+        let tagType = tagTypesOption.value.find(item => item.value === form.tag_type_id);
+        let storageLocation = storageLocations.value.find(item => item.value === form.storage_location_id);
+        let plant = plantsOption.value.find(item => item.value === form.plant_code);
+
+        if (!tagType || !plant) {
+            console.error("Invalid Tag Type and Plant selected.");
+            return;
+        }
+
+        const slugType = generateSlug(tagType.name);
+        const slugPlant = generateSlug(plant.value);
+        const slugLocation = storageLocation?.name ? generateSlug(storageLocation.name) : null;
+
+        if (tagType.name && plant.value) {
+            // Construct the path depending on whether location is set
+            const path = slugLocation
+                ? `/rfid-registration/${slugType}/${slugPlant}/${slugLocation}`
+                : `/rfid-registration/${slugType}/${slugPlant}`;
+            router.push({ path });
+            showRegistrationModal.value = false;
+        }
+    }
+}
+
+const changeBatchLoading = ref(false);
+
+const cancelChangeBatch = () => {
+    clearChangeBatch()
+    changeBatchModal.value = false;
+}
+
+const cancelManualBatch = () => {
+    clearManualBatch()
+    manualBatchModal.value = false;
+}
+
+const clearChangeBatch = () => {
+    batchUpdateForm.material_id = null;
+    batchUpdateForm.mfg_date = null;
+    batchUpdateForm.batch = null;
+    batchUpdateForm.reason = null;
+    batchUpdateForm.miller_name = null;
+    batchUpdateForm.selectedRfid = [];
+    batchUpdateForm.bay_no = null;
+    selectedItems.value = []
+}
+
+const clearManualBatch = () => {
+    manualBatchUpdateForm.material_id = null;
+    manualBatchUpdateForm.mfg_date = null;
+    manualBatchUpdateForm.batch = null;
+    manualBatchUpdateForm.selectedRfid = []
+    manualBatchUpdateForm.bay_no = null;
+
+    selectedItems.value = []
+}
+
+const handleChangeBatch = async () => {
+    changeBatchLoading.value = true;
+    toast.value.show = false;
+
+    // Overwrite id with inventory_id
+    selectedItems.value.forEach(item => {
+        item.id = item.inventory_id;
+    });
+
+    batchUpdateForm.selectedRfid = selectedItems.value
+
+    try {
+        const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
+        changeBatchLoading.value = false;
+        toast.value.message = 'Batch updated successfully!'
+        toast.value.show = true;
+        clearChangeBatch();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        changeBatchModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        changeBatchLoading.value = false;
+    }
+}
+
+const manualBatchLoading = ref(false);
+const handleManualBatch = async () => {
+    manualBatchLoading.value = true;
+    toast.value.show = false;
+
+    manualBatchUpdateForm.selectedRfid = selectedItems.value
+
+    try {
+        const response = await ApiService.post('inventories/manual-batch-update', manualBatchUpdateForm)
+        manualBatchLoading.value = false;
+        toast.value.color = 'success';
+        toast.value.message = 'Manual Batch updated successfully!'
+        toast.value.show = true;
+        clearManualBatch();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        manualBatchModal.value = false;
+        errorMessage.value = null;
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        console.error('Error submitting:', error);
+        manualBatchLoading.value = false;
+    }
+}
+
+const updateFilteredStorageLocations = () => {
+    if (form.plant_code) {
+        storageLocations.value = allStorageLocations.value
+            .filter(loc => loc.plant_code === form.plant_code)
+            .map(loc => ({
+                value: loc.id,
+                title: loc.name,
+                name: loc.name
+            }));
+
+        // Optionally reset invalid selection
+        if (!storageLocations.value.some(loc => loc.value === form.storage_location_id)) {
+            form.storage_location_id = null;
+        }
+    } else {
+        storageLocations.value = allStorageLocations.value.map(loc => ({
+            value: loc.id,
+            title: loc.name,
+            name: loc.name
+        }));
+    }
+};
+
+const taggingModal = ref(false);
+const taggingLoading = ref(false);
+const handleTagAsWeak = () => {
+    taggingModal.value = true;
+};
+
+const looseTaggingModal = ref(false);
+const looseTaggingLoading = ref(false);
+const handleTagAsLoose = () => {
+    looseTaggingModal.value = true;
+};
+
+const looseUpdateForm = reactive({
+    selectedRfid: [],
+});
+
+const handleLooseTagging = async () => {
+    looseTaggingLoading.value = true;
+    toast.show = false;
+    looseUpdateForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post('rfid/loose-tagging', looseUpdateForm)
+        if (response.status !== 200) {
+            throw new Error('Failed to tag as loose');
+        }
+        looseTaggingLoading.value = false;
+        toast.value.message = 'RFID tagged as loose!'
+        toast.value.color = 'success'
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        selectedItems.value = [];
+    } catch (error) {
+        console.error('Error submitting:', error);
+    } finally {
+        looseTaggingLoading.value = false;
+        looseTaggingModal.value = false;
+    }
+}
+
+const tagUpdateForm = reactive({
+    selectedRfid: [],
+});
+
+const handleTagging = async () => {
+    taggingLoading.value = true;
+    toast.show = false;
+    tagUpdateForm.selectedRfid = selectedItems.value
+    try {
+        const response = await ApiService.post('rfid/toggle-weak-tag', tagUpdateForm)
+        if (response.status !== 200) {
+            throw new Error('Failed to tag as weak');
+        }
+        taggingLoading.value = false;
+        toast.value.message = 'RFID tagged as weak!'
+        toast.value.color = 'success'
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        selectedItems.value = [];
+    } catch (error) {
+        console.error('Error submitting:', error);
+    } finally {
+        taggingLoading.value = false;
+        taggingModal.value = false;
+    }
+}
+
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: '/export/rfid/',
+            params: {
+                plant_code: filters.plant_code,
+                search: searchValue.value,
+            },
+            filename: 'rfid-master-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
+// Auto-update when plant_code changes
+watch(() => form.plant_code, () => {
+    updateFilteredStorageLocations();
+});
+
+
+const handleUpdate = async () => {
+    updateLoading.value = true;
+    toast.value.show = false;
+
+    try {
+        const response = await ApiService.post(`rfid/${selectedItem.value.id}/update`, updateForm);
+        if (response.status !== 200) {
+            throw new Error('Failed to update RFID');
+        }
+        updateLoading.value = false;
+        toast.value.message = 'Current quantity updated successfully!';
+        toast.value.color = 'success';
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+    } catch (error) {
+        console.error('Error updating:', error);
+    } finally {
+        updateLoading.value = false;
+        editDialog.value = false;
+    }
+}
+
+
+</script>
+
+<template>
+    <div class="d-flex gap-4 align-center justify-center mb-2">
+        <VTextField v-model="searchValue" label="Search" placeholder="placeholder" append-inner-icon="ri-search-line"
+            single-line hide-details density="compact" class="flex-grow-1" />
+        <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Search
+        </v-btn>
+    </div>
+
+    <div class="mb-2 d-flex flex-wrap align-center gap-2">
+
+        <div v-if="selectedItems.length > 0" class="px-3 py-1 border">
+            <span class="d-flex align-center text-h6 font-weight-medium text-high-emphasis">
+                Selected items count: ({{ selectedItems.length }})
+
+                <v-btn class="ml-2" @click="selectedItems = []" color="red-lighten-2" icon="ri-close-line"
+                    variant="text"></v-btn>
+            </span>
+        </div>
+
+        <div class="d-flex flex-wrap align-center gap-2 justify-end ml-auto">
+            <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Filter
+            </v-btn>
+            <v-btn @click="handleRegister">Register RFID</v-btn>
+
+            <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line"
+                @click="exportData">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Export
+            </v-btn>
+
+            <v-btn @click="handleTagAsWeak" :disabled="selectedItems.length === 0" class="px-5" type="button"
+                color="warning">
+                Tag as Weak
+            </v-btn>
+        </div>
+    </div>
+
+    <VCard>
+
+        <!-- TODO:: Update condition  -->
+        <!-- v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}" -->
+        <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
+            return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
+            @update:options="loadItems" class="text-no-wrap">
+           
+
+            <template #item.physical_id="{ item }">
+                <div class="d-flex flex-column">
+                    <!-- Main RFID name with conditional rendering -->
+                    <div class="text-h6">
+                        <span v-if="item.is_weak_signal">
+                            <v-tooltip location="top">
+                                <template #activator="{ props }">
+                                    <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name }}</span>
+                                </template>
+                                <span>Weak Signal</span>
+                            </v-tooltip>
+                        </span>
+                        <span v-else @click="handleViewRfid(item)"
+                            class="text-primary font-weight-bold cursor-pointer hover-underline">
+                            {{ item.name }}
+                        </span>
+                    </div>
+
+                    <!-- Plant name displayed below -->
+                    <div class="text-caption text-grey-600">
+                        {{ item.plant?.name }}
+                    </div>
+                </div>
+            </template>
+
+            <template #item.last_loaded="{ item }">
+                <div class="d-flex flex-column">
+                    <div v-if="item.last_log_updated_at" class="text-h6">{{ Moment(item.last_log_updated_at).format('MMM D, YYYY h:mm A') }}</div>
+                    <div v-if="item.last_log_bay_no" class="text-caption text-grey-600">Bay {{ item.last_log_bay_no }}</div>
+                </div>
+            </template>
+            
+            <template #item.epc="{ item }">
+                <v-btn variant="outlined" @click="viewEpc(item)" color="info">
+                    View EPC
+                </v-btn>
+            </template>
+
+            <template #item.batch="{ item }">
+                <span class="font-weight-bold">{{ item.batch }}</span><br/>
+                <span v-if="item.material_name" class="text-subtitle-1">{{ item.material_name }}</span>
+            </template>
+
+            <template #item.mfg_date="{ item }">
+                <span>{{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}</span>
+            </template>
+
+            <template #item.is_wrapped="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+            <template #item.is_loaded="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+            <template #item.is_empty="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+        </VDataTableServer>
+    </VCard>
+
+    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter RFID'">
+        <template #default>
+            <v-form>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Plant</label>
+                    <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"
+                        v-model="filters.plant_code"
+                        :rules="[value => !!value || 'Please select an item from the list']">
+                    </v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Date Created</label>
+                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created" />
+                </div>
+
+                <div class="mt-4">
+                    <label class="font-weight-bold">Date Updated</label>
+                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated" />
+                </div>
+
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                        class="px-12 mr-3">Reset Filter</v-btn>
+                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter">
+                        Apply Filter
+                    </PrimaryButton>
+                </div>
+            </v-form>
+        </template>
+    </FilteringModal>
+
+    <DefaultModal :dialog-title="'EPCs'" :show="showEpcModal" @close="showEpcModal = false" min-height="auto">
+        <v-table class="mt-4">
+            <thead>
+                <tr>
+                    <th>Physical ID</th>
+                    <th>EPC</th>
+                    <th>TID</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in epcData" :key="index">
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.epc }}</td>
+                    <td>{{ item.tid }} </td>
+                </tr>
+            </tbody>
+        </v-table>
+    </DefaultModal>
+
+    <!--  RFID Registration  -->
+    <AddingModal @close="showRegistrationModal = false" :show="showRegistrationModal"
+        :dialogTitle="'Select Type and Location'">
+        <template #default>
+            <v-form @submit.prevent="proceedRegister" ref="registrationModalForm">
+                <div>
+                    <label class="font-weight-bold">RFID Type<span class="text-error">*</span></label>
+                    <v-select class="mt-1" label="Select Type" density="compact" :items="tagTypesOption"
+                        v-model="form.tag_type_id" :rules="[value => !!value || 'Please select an item from the list']">
+                    </v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Plant<span class="text-error">*</span></label>
+                    <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"
+                        v-model="form.plant_code" :rules="[value => !!value || 'Please select an item from the list']">
+                    </v-select>
+                </div>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Location</label>
+                    <v-select class="mt-1" label="Select Location" density="compact" :items="storageLocations"
+                        v-model="form.storage_location_id">
+                    </v-select>
+                </div>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="showRegistrationModal = false"
+                        class="px-12 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" type="submit" class="px-12">Proceed</v-btn>
+                </div>
+            </v-form>
+        </template>
+    </AddingModal>
+
+    <EditingModal @close="taggingModal = false" max-width="900px" :show="taggingModal"
+        :dialog-title="`Tag RFID as Weak`">
+        <template #default>
+            <div class="mx-4">
+                <span class="text-h5 text-high-emphasis">
+                    Do you want to tag the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} as weak?
+                </span>
+            </div>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>Type</th>
+                        <th>Physical ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.plant?.name }}</td>
+                        <td class="text-uppercase">{{ item.type }}</td>
+                        <td>{{ item.name }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="taggingModal = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleTagging" color="primary" class="px-12" type="submit"
+                    :loading="taggingLoading">
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+    <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
+</template>

@@ -1,16 +1,15 @@
 <script setup>
 import AddingModal from '@/components/AddingModal.vue';
 import Loader from '@/components/Loader.vue';
-import { useRfidPalletStore } from '@/stores/RfidPalletStore';
-import PrimaryButton from '@/components/PrimaryButton.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useRfidPalletStore } from '@/stores/RfidPalletStore';
 
 
 import { echo } from '@/utils/echo';
 import axios from 'axios';
-import { onMounted, computed, reactive, nextTick, watch, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 
@@ -652,7 +651,7 @@ const commonEpc = computed(() => {
             <VRow>
                 <VCol cols="6" class="d-flex align-start">
                     <v-btn :to="{
-                        path: `/rfid`,
+                        path: `/rfid/pallets`,
                     }" class="ma-2" color="grey-700" icon="ri-arrow-left-line" variant="text">
                     </v-btn>
                     <!-- <div class="text-h6 font-weight-black ps-2">

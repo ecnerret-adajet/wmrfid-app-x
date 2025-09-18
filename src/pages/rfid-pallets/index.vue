@@ -94,7 +94,6 @@ const headers = computed(() => {
     const baseHeaders = [
         { title: 'PHYSICAL ID', key: 'physical_id' },
         { title: 'EPC', key: 'epc', align: 'center', sortable: false },
-        { title: 'TYPE', key: 'type', align: 'center', sortable: false },
         { title: 'BATCH', key: 'batch' },
         { title: 'MFG DATE', key: 'mfg_date', align: 'center' },
         { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
@@ -740,14 +739,6 @@ const bayOptions = [
                 </div>
             </template>
 
-            <!-- <template #item.weak_signal="{ item }">
-                <v-badge v-if="item.is_weak_signal" color="error" content="Yes" class="text-uppercase" inline></v-badge>
-            </template> -->
-
-            <template #item.type="{ item }">
-                <span class="text-uppercase">{{ item.type }}</span>
-            </template>
-            
             <template #item.epc="{ item }">
                 <v-btn variant="outlined" @click="viewEpc(item)" color="info">
                     View EPC
@@ -801,12 +792,6 @@ const bayOptions = [
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter RFID'">
         <template #default>
             <v-form>
-                <div>
-                    <label class="font-weight-bold">Tag Type</label>
-                    <v-select label="Filter by Type" density="compact" :items="tagTypesOption"
-                        v-model="filters.tag_type_id">
-                    </v-select>
-                </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Plant</label>
                     <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"

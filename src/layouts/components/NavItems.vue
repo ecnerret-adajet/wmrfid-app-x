@@ -128,9 +128,24 @@ const proceedMapping = () => {
     <!-- RFID Components Section  -->
     <VerticalNavSectionTitle v-if="authUserCan('view.rfid') || authUserCan('view.readers') || authUserCan('view.rfid.monitoring')"
         :item="{ heading: 'RFID Components' }" />
-    <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
-    <VerticalNavLink v-if="authUserCan('view.rfid')"
-        :item="{ title: 'RFID Master', icon: 'ri-database-2-line', to: '/rfid' }" />
+
+    <VerticalNavGroup v-if="authUserCan('view.rfid')" :item="{title: 'RFID Master', icon: 'ri-database-2-line'}">
+        <VerticalNavLink v-if="authUserCan('view.rfid')"
+            :item="{
+                title: 'Pallets',
+                href: '/rfid/pallets',
+                to: '/rfid/pallets',
+            }"
+        />
+        <VerticalNavLink v-if="authUserCan('view.rfid.tonner.bags')"
+            :item="{
+                title: 'Tonner Bags',
+                href: '/rfid/tonner-bags',
+                to: '/rfid/tonner-bags',
+            }"
+        />
+    </VerticalNavGroup>
+
     <VerticalNavLink v-if="authUserCan('view.rfid.monitoring')"
         :item="{ title: 'RFID Monitoring', icon: 'ri-stacked-view', to: '/rfid-monitoring' }" />
     <VerticalNavLink v-if="authUserCan('view.readers')"
