@@ -2,10 +2,12 @@
 import InventoryAgeChart from '@/components/dashboard/InventoryAgeChart.vue';
 import WarehouseUtilization from '@/components/dashboard/WarehouseUtilization.vue';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import Moment from "moment";
 import { ref, watch } from 'vue';
 
+const authStore = useAuthStore();
 const storageLocations = ref([]);
 const plantsOption = ref([]);
 const totalItems = ref(0);
@@ -17,7 +19,7 @@ const sortQuery = ref('-created_at'); // Default sort
 const statisticsData = ref(null);
 const filters = reactive({
     storage_location_id: null, // Prepared for future usage
-    plant_id: null
+    plant_id: authStore.user?.assigned_plant?.id || null
 })
 
 const headers = [

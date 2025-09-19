@@ -80,7 +80,7 @@ const headers = [
         title: 'ACTIONS',
         key: 'actions',
         sortable: false,
-        align: 'center'
+        align: 'end'
     },
 ]
 
@@ -285,7 +285,7 @@ const getUniqueBayLocations = (antennas) => {
 
         <!-- Actions -->
         <template #item.actions="{ item }">
-            <div class="d-flex gap-1 justify-center">
+            <div class="d-flex gap-1 justify-end">
                 <!-- Picklist  -->
                 <template v-if="item.antennas?.length > 0 && item.antennas?.some(antenna => antenna.bay_location_id) && item.is_tapping">
                     <v-menu location="start">
@@ -332,6 +332,16 @@ const getUniqueBayLocations = (antennas) => {
                         </v-list>
                     </v-menu>
                 </template>
+
+                <!-- <template v-if="item.is_inverter">
+                    <v-tooltip location="top">
+                        <template v-slot:activator="{ props: tooltipProps }">
+                            <v-btn icon="ri-artboard-line" variant="text" color="grey"
+                                v-bind="{ ...tooltipProps }"></v-btn>
+                        </template>
+                        <span>View Pallet Inverter Screen</span>
+                    </v-tooltip>
+                </template> -->
 
                 <IconBtn v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin" size="small"
                     @click="editItem(item)">
