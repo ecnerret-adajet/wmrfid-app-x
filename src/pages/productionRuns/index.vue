@@ -149,7 +149,7 @@ const filters = reactive({
     start_date_time: null,
     tag_type_id: null,
     storage_location_id: null,
-    plant_code: null,
+    plant_code: authStore.user?.assigned_plant?.plant_code || null,
     status: null,
     date_filter: 'today'
 });
@@ -563,9 +563,7 @@ const dateFilters = [
         </v-select>
 
         <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
-            density="compact"
-            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-            v-model="filters.plant_code"
+            density="compact" :items="plantsOption" v-model="filters.plant_code"
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
@@ -803,7 +801,7 @@ const dateFilters = [
                 <div class="d-flex flex-column">
                     <span>{{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY') : '' }}</span>
                     <span class="font-weight-thin">{{ item.START_T ? Moment(item.START_T).format('h:mm A') : ''
-                        }}</span>
+                    }}</span>
                 </div>
             </template>
 
@@ -813,7 +811,7 @@ const dateFilters = [
                     <div v-if="item.STOP_T && Moment(item.STOP_T).year() >= 1930" class="d-flex flex-column">
                         <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
                         <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : ''
-                            }}</span>
+                        }}</span>
                     </div>
                     <div v-else>
                         <v-badge color="warning" content="Ongoing.." class="text-uppercase" inline></v-badge>
@@ -824,7 +822,7 @@ const dateFilters = [
                     <div v-if="item.STOP_T" class="d-flex flex-column">
                         <span>{{ item.STOP_T ? Moment(item.STOP_T).format('MMMM D, YYYY') : '' }}</span>
                         <span class="font-weight-thin">{{ item.STOP_T ? Moment(item.STOP_T).format('h:mm A') : ''
-                            }}</span>
+                        }}</span>
                     </div>
                     <div v-else>
                         <v-btn class="px-2" @click="triggerEnd(item)" type="button" color="primary-light">
@@ -1020,7 +1018,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.COMMODITY
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1066,7 +1064,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.SILO.trim()
-                                        }}</span>
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1094,7 +1092,7 @@ const dateFilters = [
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">{{
                                             selectedProductionRun.sap_count
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
