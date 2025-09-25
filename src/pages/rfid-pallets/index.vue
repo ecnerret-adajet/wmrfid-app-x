@@ -488,6 +488,7 @@ const handleLooseTagging = async () => {
 
 const tagUpdateForm = reactive({
     selectedRfid: [],
+    bay_no: null
 });
 
 const handleTagging = async () => {
@@ -510,6 +511,7 @@ const handleTagging = async () => {
             search: searchValue.value
         });
         selectedItems.value = [];
+        tagUpdateForm.bay_no = null;
     } catch (error) {
         console.error('Error submitting:', error);
     } finally {
@@ -1020,6 +1022,30 @@ const bayOptions = [
                     </tr>
                 </tbody>
             </v-table>
+            <v-divider></v-divider>
+            <div class="mx-4 mt-6">
+                <v-row>
+                    <v-col cols="12" md="7">
+                        <span class="text-h5 text-high-emphasis">
+                            Tag the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} also as loaded?
+                        </span>
+                    </v-col>
+                    <v-col cols="12" md="5">
+                        <v-autocomplete
+                            class="mb-4"
+                            label="Tag also as Loaded?"
+                            placeholder="Select Bay"
+                            density="compact"
+                            item-title="title"
+                            item-value="value"
+                            :items="bayOptions"
+                            v-model="tagUpdateForm.bay_no"
+                            persistent-hint
+                            hint="Selecting a bay will also tag the pallet(s) as loaded and assign them to the bay's current shipment."
+                        />
+                    </v-col>
+                </v-row>
+            </div>
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="taggingModal = false"
                     class="px-12 mr-3">Cancel</v-btn>
