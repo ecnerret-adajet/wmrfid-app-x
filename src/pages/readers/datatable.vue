@@ -229,6 +229,10 @@ const getUniqueBayLocations = (antennas) => {
     return Array.from(bayMap.values());
 };
 
+const isOlderThanWeek = (date) => {
+    return Moment().diff(Moment(date), "days") > 7;
+};
+
 </script>
 
 <template>
@@ -252,10 +256,20 @@ const getUniqueBayLocations = (antennas) => {
             <div v-if="item.antennas?.length > 0" class="my-2">
                 <v-row v-for="antenna in item.antennas" :key="antenna.id" no-gutters>
                     <v-col cols="5">
-                        <span>Antenna {{ antenna.antenna_number }}:</span>
+                         <span
+                            :class="{
+                                'text-error': antenna.last_log == null || (antenna.last_log && isOlderThanWeek(antenna.last_log?.updated_at))
+                            }"
+                        >
+                        Antenna {{ antenna.antenna_number }}:</span>
                     </v-col>
                     <v-col cols="7">
-                        <span v-if="antenna.last_log">{{ Moment(antenna.last_log?.updated_at).format('MMM D, YYYY h:mm A')}}</span>
+                        <span
+                            v-if="antenna.last_log"
+                            :class="{
+                                'text-error': isOlderThanWeek(antenna.last_log?.updated_at)
+                            }"
+                        >{{ Moment(antenna.last_log?.updated_at).format('MMM D, YYYY h:mm A')}}</span>
                         <span v-else>
                             <v-chip size="x-small" variant="outlined" color="error">
                                 No Log
