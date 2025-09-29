@@ -80,6 +80,9 @@ async function onPalletRegistration(data) {
 
     // Collect new tags
     for (const tag of incomingReads) {
+        if (!tag.tid || tag.tid.trim() === '') {
+            continue;
+        }
         const key = `${tag.epc}_${tag.tid}`
         if (!seenKeys.has(key)) {
             seenKeys.add(key)
@@ -510,7 +513,7 @@ const commonEpc = computed(() => {
             </VCol>
             <VCol cols="2" offset="6">
                 <!-- Enable add to existing if there's atleast 1 registered tag  -->
-                <v-btn block color="primary-2" :disabled="registeredTags.length === 0" @click="handleAddExisting"
+                <v-btn block color="primary-2" :disabled="registeredTags.length === 0 || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)" @click="handleAddExisting"
                     style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
