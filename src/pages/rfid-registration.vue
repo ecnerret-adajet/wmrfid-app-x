@@ -47,7 +47,6 @@ const form = reactive({
 })
 
 const removeItem = (index) => {
-
     const [removedTag] = uniqueTags.value.splice(index, 1)
 
     if (!removedTag) {
@@ -57,25 +56,13 @@ const removeItem = (index) => {
     const removedKey = `${removedTag.epc}_${removedTag.tid}`
     seenKeys.delete(removedKey)
 
-    const epc = getUniqueEpc(uniqueTags.value)
-    if (epc) {
-        getLastItem(epc)
-    }
 }
 
-const getUniqueEpc = (tags) => {
-
-    if (!Array.isArray(tags) || uniqueTags.value.length === 0) return null;
-
-    const uniqueEpcs = new Set(uniqueTags.value.map(tag => tag.epc));
-    return uniqueEpcs.size === 1 ? [...uniqueEpcs][0] : null;
-
-};
 
 const checkIfExists = async (epc = null, tid = null, tagType) => {
     try {
         const response = await axios.get('registration/check-reference', {
-            params: { epc: epc, tid: tid, tag_type: tagType }
+            params: { epc: epc, tid: tid, tag_type: tagType, plant_code: plantCode}
         });
         return response.data; // adjust based on your actual API response
     } catch (error) {
@@ -121,11 +108,6 @@ const processTags = async () => {
         return
     }
 
-    // (Optional) Mismatch‐EPC check on the deduped list
-    if (uniqueTags.value.length > 1 && !getUniqueEpc(uniqueTags.value)) {
-        responseModal.value = true
-    }
-
     getLastItem(uniqueTags.value[0]?.epc)
 
     // Step 2: Call API for each unique tag to assign status
@@ -133,6 +115,7 @@ const processTags = async () => {
         const result = await checkIfExists(tag.epc, tag.tid, tagType)
         if (result?.found) {
             tag.status = result.name
+            tag.group_no = result.group_no
         } else if (result?.epc_exists) {
             tag.status = 'Unregistered TID'
         } else {
@@ -150,6 +133,12 @@ const processTags = async () => {
     unregisteredIdTags.value = uniqueTags.value.filter(
         t => t.status === 'Unregistered TID'
     )
+
+    if (registeredTags.value.length > 0) {
+        form.name = registeredTags.value[0].status;
+        form.epc_exists = true; // To disable typing in physical ID
+        form.group_no = registeredTags.value[0].group_no;
+    }
 }
 
 const addHandheldTag = async () => {
@@ -335,17 +324,17 @@ const submit = async () => {
 }
 
 const handleAddExisting = () => {
-    const filteredTags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
-    // Check for duplicate EPC values by using a Set
-    const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
+    // const filteredTags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
+    // // Check for duplicate EPC values by using a Set
+    // const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
 
-    // // If the size of the Set is different from the length of the combined array, open the modal
-    if (uniqueEpcs.size > 1) {
-        responseModal.value = true
-    } else {
+    // // // If the size of the Set is different from the length of the combined array, open the modal
+    // if (uniqueEpcs.size > 1) {
+    //     responseModal.value = true
+    // } else {
         // Proceed
         addExistingModal.value = true;
-    }
+    // }
 
 }
 
@@ -521,7 +510,7 @@ const commonEpc = computed(() => {
             </VCol>
             <VCol cols="2" offset="6">
                 <!-- Enable add to existing if there's atleast 1 registered tag  -->
-                <v-btn block color="primary-2" :disabled="unregisteredIdTags.length === 0" @click="handleAddExisting"
+                <v-btn block color="primary-2" :disabled="registeredTags.length === 0" @click="handleAddExisting"
                     style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
@@ -556,8 +545,7 @@ const commonEpc = computed(() => {
                     <td colspan="7" class="text-center">No data available</td>
                 </tr>
                 <tr v-for="(item, index) in uniqueTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID',
-                    'error-epc': commonEpc === null && item.epc !== uniqueTags.value[0]?.epc
+                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID'
                 }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
@@ -607,8 +595,7 @@ const commonEpc = computed(() => {
                     <td colspan="3" class="text-center">No data available</td>
                 </tr>
                 <tr v-for="(item, index) in handheldTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID',
-                    'error-epc': commonEpc === null && item.epc !== handheldTags.value[0]?.epc
+                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID'
                 }">
                     <td>{{ item.epc }}</td>
                     <td class="text-center">
