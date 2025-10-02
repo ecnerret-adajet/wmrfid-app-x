@@ -75,6 +75,7 @@ const seenKeys = new Set()
 
 async function onPalletRegistration(data) {
     // Extract incoming reads
+    console.log(data);
     const incomingReads = data.palletRegistration.tag_reads || []
     const justAdded = []  // will hold any tags we actually add
 
