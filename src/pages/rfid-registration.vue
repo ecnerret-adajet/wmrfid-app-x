@@ -256,9 +256,12 @@ watch(readerType, (newValue) => {
     }
 });
 
+
+let palletRegistrationChannel = null;
 onMounted(() => {
-    echo.channel('pallet-registration').listen('PalletRegistrationEvent', onPalletRegistration);
-    
+    palletRegistrationChannel = echo.channel(`pallet-registration.${plantCode}`);
+    palletRegistrationChannel.listen('PalletRegistrationEvent', onPalletRegistration);
+
     // Focus the input field if reader type is handheld
     if (form.reader_type === 'handheld') {
         nextTick(() => {
