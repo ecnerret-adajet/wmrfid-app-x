@@ -29,7 +29,7 @@ const materialsOption = ref([]);
 const statisticsData = ref(null);
 const palletStats = ref({});
 const labelStats = ref({});
-const tonerBagStats = ref({});
+const tonnerBagStats = ref({});
 const selectedTagType = ref(null);
 const changeBatchModal = ref(false);
 const changeBatchLoading = ref(false);
@@ -168,7 +168,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             statisticsData.value = statistics
             palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
             labelStats.value = statisticsData.value.find(item => item.type === 'Label')
-            tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
+            tonnerBagStats.value = statisticsData.value.find(item => item.type === 'Tonner Bag')
 
             tagTypesOption.value = [
                 { value: null, title: 'All' },
@@ -213,7 +213,7 @@ watch(selectedTagType, async (newVal) => {
         statisticsData.value = statistics
         palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
         labelStats.value = statisticsData.value.find(item => item.type === 'Label')
-        tonerBagStats.value = statisticsData.value.find(item => item.type === 'Toner Bag')
+        tonnerBagStats.value = statisticsData.value.find(item => item.type === 'Tonner Bag')
 
         pageLoading.value = false
     } catch (error) {
@@ -604,7 +604,7 @@ const handleWrongPallet = async () => {
                                     Tonner Bag
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
-                                    {{ tonerBagStats?.toner_bag_count || 0 }}
+                                    {{ tonnerBagStats?.tonner_bag_count || 0 }}
                                 </div>
                             </div>
                         </div>

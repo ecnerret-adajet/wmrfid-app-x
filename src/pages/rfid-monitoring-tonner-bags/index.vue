@@ -22,7 +22,7 @@ const toast = ref({
 });
 const filters = reactive({
     storage_location_id: null,
-    plant_id: null
+    plant_code: null
 })
 
 onMounted(() => {
@@ -50,11 +50,6 @@ const headers = [
     {
         title: 'EPC',
         key: 'epc',
-        sortable: false
-    },
-    {
-        title: 'Type',
-        key: 'type',
         sortable: false
     },
     {
@@ -93,7 +88,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     try {
         const token = JwtService.getToken();
 
-        const response = await axios.get('/datatable/rfid-monitoring', {
+        const response = await axios.get('/datatable/rfid-monitoring-tonner-bags', {
             params: {
                 page,
                 itemsPerPage,
@@ -130,7 +125,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     }
 }
 
-watch(() => filters.plant_id, () => {
+watch(() => filters.plant_code, () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -149,7 +144,7 @@ const exportData = async () => {
         await exportExcel({
             url: '/export/inventories/',
             params: {
-                plant_id: filters.plant_id,
+                plant_code: filters.plant_code,
                 search: searchValue.value,
             },
             filename: 'inventories.xlsx',
@@ -180,11 +175,6 @@ const itemHeaders = [
         sortable: false
     },
     {
-        title: 'Type',
-        key: 'type',
-        sortable: false
-    },
-    {
         title: 'plant',
         key: 'plant',
         sortable: false
@@ -209,17 +199,17 @@ const currentPage = ref(1);
 const itemsPerPageModal = ref(5); // Number of items per page in modal
 
 const paginatedSessions = computed(() => {
-    if (!selectedLog.value?.sessions) return [];
+    if (!selectedLog.value?.read_stats?.sessions) return [];
     
     const start = (currentPage.value - 1) * itemsPerPageModal.value;
     const end = start + itemsPerPageModal.value;
     
-    return selectedLog.value.sessions.slice(start, end);
+    return selectedLog.value.read_stats?.sessions.slice(start, end);
 });
 
 const totalPages = computed(() => {
-    if (!selectedLog.value?.sessions) return 0;
-    return Math.ceil(selectedLog.value.sessions.length / itemsPerPageModal.value);
+    if (!selectedLog.value?.read_stats?.sessions) return 0;
+    return Math.ceil(selectedLog.value.read_stats?.sessions.length / itemsPerPageModal.value);
 });
 
 </script>
@@ -235,7 +225,7 @@ const totalPages = computed(() => {
                 label="Filter by Plant"
                 density="compact"
                 :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-                v-model="filters.plant_id"
+                v-model="filters.plant_code"
                 :rules="[value => value !== undefined || 'Please select an item from the list']"
             >
             </v-select>
@@ -269,26 +259,12 @@ const totalPages = computed(() => {
         >
             <template #item="{ item }">
                 <tr @click="handleViewEntry(item)" class="clickable-row">
-                    <td>{{ item.physical_id }}</td>
+                    <td>{{ item.name }}</td>
                     <td>{{ item.epc }}</td>
-                    <td>
-                        <span v-if="item.rfid_type === 'RfidPallet'">
-                            Pallet
-                        </span>
-                        <span v-else-if="item.rfid_type === 'RfidLabel'">
-                            Label
-                        </span>
-                        <span v-else-if="item.rfid_type === 'RfidTonerBag'">
-                            Toner Bag
-                        </span>
-                        <span v-else>
-                            N/A
-                        </span>
-                    </td>
                     <td>{{ item.plant?.name }}</td>
-                    <td class="text-center">{{ item.unique_read_count }}</td>
-                    <td>{{ item.last_read ? Moment(item.last_read).format('MMMM D, YYYY h:mm A') : '' }}</td>
-                    <td>{{ item.last_reader ? item.last_reader?.name : '' }}</td>
+                    <td class="text-center">{{ item.read_stats?.unique_read_count || 0 }}</td>
+                    <td>{{ item.read_stats?.last_read ? Moment(item.read_stats?.last_read).format('MMMM D, YYYY h:mm A') : '' }}</td>
+                    <td>{{ item.read_stats?.last_reader ? item.read_stats?.last_reader?.name : '' }}</td>
                 </tr>
             </template>
 
@@ -321,7 +297,7 @@ const totalPages = computed(() => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
-                                            {{ selectedLog?.physical_id }}
+                                            {{ selectedLog?.name }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -334,17 +310,8 @@ const totalPages = computed(() => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
-                                            <span v-if="selectedLog?.rfid_type === 'RfidPallet'">
-                                                Pallet
-                                            </span>
-                                            <span v-else-if="selectedLog?.rfid_type === 'RfidLabel'">
-                                                Label
-                                            </span>
-                                            <span v-else-if="selectedLog?.rfid_type === 'RfidTonerBag'">
+                                            <span>
                                                 Tonner Bag
-                                            </span>
-                                            <span v-else>
-                                                N/A
                                             </span>
                                         </span>
                                     </VCol>
@@ -360,7 +327,7 @@ const totalPages = computed(() => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
-                                            {{ selectedLog?.unique_read_count }}
+                                            {{ selectedLog?.read_stats?.unique_read_count }}
                                         </span>
                                     </VCol>
                                 </VRow>

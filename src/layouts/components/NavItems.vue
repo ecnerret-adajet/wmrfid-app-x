@@ -146,8 +146,23 @@ const proceedMapping = () => {
         />
     </VerticalNavGroup>
 
-    <VerticalNavLink v-if="authUserCan('view.rfid.monitoring')"
-        :item="{ title: 'RFID Monitoring', icon: 'ri-stacked-view', to: '/rfid-monitoring' }" />
+    <VerticalNavGroup v-if="authUserCan('monitor.rfid.pallets') || authUserCan('monitor.rfid.tonner.bags')" :item="{title: 'RFID Monitoring', icon: 'ri-stacked-view'}">
+        <VerticalNavLink v-if="authUserCan('monitor.rfid.pallets')"
+            :item="{
+                title: 'Pallets',
+                href: '/monitoring/pallets',
+                to: '/monitoring/pallets',
+            }"
+        />
+        <VerticalNavLink v-if="authUserCan('monitor.rfid.tonner.bags')"
+            :item="{
+                title: 'Tonner Bags',
+                href: '/monitoring/tonner-bags',
+                to: '/monitoring/tonner-bags',
+            }"
+        />
+    </VerticalNavGroup>
+
     <VerticalNavLink v-if="authUserCan('view.readers')"
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
     <VerticalNavLink v-if="authUserCan('view.weak.pallets')"

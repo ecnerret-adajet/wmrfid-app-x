@@ -243,17 +243,41 @@ export const routes = [
                 ],
             },
         },
+
         {
-            path: 'rfid-monitoring',
-            name: 'rfid-monitoring',
-            component: () => import('@/pages/rfidMonitoring/index.vue'),
+            path: 'monitoring/pallets',
+            name: 'rfid-monitoring-pallets',
+            component: () => import('@/pages/rfid-monitoring-pallets/index.vue'),
             meta: {
-              pageTitle: "RFID Monitoring",
+                pageTitle: "RFID Monitoring - Pallets",
+                breadcrumbs: [
+                    { label: "RFID Monitoring - Pallets", link: "/monitoring/pallets" },
+                ],
+            },
+        },
+        {
+            path: 'monitoring/tonner-bags',
+            name: 'rfid-monitoring-tonner-bags',
+            component: () => import('@/pages/rfid-monitoring-tonner-bags/index.vue'),
+            meta: {
+              pageTitle: "RFID Monitoring - Tonner Bags",
               breadcrumbs: [
-                  { label: "RFID Monitoring", link: "/rfid-monitoring" },
+                  { label: "RFID Monitoring - Tonner Bags", link: "/monitoring/tonner-bags" },
               ],
             },
         },
+
+        // {
+        //     path: 'rfid-monitoring',
+        //     name: 'rfid-monitoring',
+        //     component: () => import('@/pages/rfidMonitoring/index.vue'),
+        //     meta: {
+        //       pageTitle: "RFID Monitoring",
+        //       breadcrumbs: [
+        //           { label: "RFID Monitoring", link: "/rfid-monitoring" },
+        //       ],
+        //     },
+        // },
         {
             path: 'weak-pallets',
             name: 'weak-pallets',

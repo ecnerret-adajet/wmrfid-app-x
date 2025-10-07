@@ -980,7 +980,7 @@ const dateFilters = [
                     <tbody v-else>
                         <tr v-for="(item, index) in recentProduced" :key="index">
                             <td>{{ item.material?.plant?.name }}</td>
-                            <td>{{ item.production_run?.production_line?.reader?.default_storage_location?.name }}</td>
+                            <td>{{ item.material?.plant?.default_storage_location?.name }}</td>
                             <td>{{ item.rfid_code }}</td>
                             <td>{{ item.material?.description }}</td>
                             <td>{{ item.batch }}</td>
