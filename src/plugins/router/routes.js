@@ -279,13 +279,24 @@ export const routes = [
         //     },
         // },
         {
-            path: 'weak-pallets',
-            name: 'weak-pallets',
-            component: () => import('@/pages/rfid-pallets/weakPallets.vue'),
+            path: 'reports/weak-pallets',
+            name: 'weak-pallets-report',
+            component: () => import('@/pages/reports/weakPalletsIndex.vue'),
             meta: {
               pageTitle: "Weak Pallets",
               breadcrumbs: [
                   { label: "Weak Pallets", link: "/weak-pallets" },
+              ],
+            },
+        },
+        {
+            path: 'reports/readers-report',
+            name: 'readers-report',
+            component: () => import('@/pages/reports/readersReport.vue'),
+            meta: {
+              pageTitle: "Readers Report",
+              breadcrumbs: [
+                  { label: "Readers Report", link: "/readers-report" },
               ],
             },
         },

@@ -165,8 +165,6 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.readers')"
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
-    <VerticalNavLink v-if="authUserCan('view.weak.pallets')"
-        :item="{ title: 'Weak Pallets', icon: 'ri-signal-wifi-error-line', to: '/weak-pallets' }" />
 
     <VerticalNavGroup v-if="authUserCan('view.pallet.inverter')" :item="{title: 'Pallet Inverter', icon: 'ri-clockwise-line'}">
         <VerticalNavLink
@@ -182,6 +180,24 @@ const proceedMapping = () => {
             }"
         />
     </VerticalNavGroup>
+
+    <VerticalNavGroup v-if="authUserCan('view.weak.pallets') || authUserCan('view.readers.report')" :item="{title: 'RFID Reports', icon: 'ri-file-chart-line'}">
+        <VerticalNavLink v-if="authUserCan('view.weak.pallets')"
+            :item="{
+                title: 'Weak Pallets',
+                href: '/reports/weak-pallets',
+                to: '/reports/weak-pallets',
+            }"
+        />
+        <VerticalNavLink v-if="authUserCan('view.readers.report')"
+            :item="{
+                title: 'Readers Report',
+                href: '/reports/readers-report',
+                to: '/reports/readers-report',
+            }"
+        />
+    </VerticalNavGroup>
+    
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
