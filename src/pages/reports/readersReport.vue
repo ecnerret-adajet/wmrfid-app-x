@@ -3,12 +3,14 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { exportExcel } from '@/composables/useHelpers';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+const authStore = useAuthStore();
 const pageLoading = ref(false);
 const plantsOption = ref([]);
 const tagTypesOption = ref([]);
@@ -20,10 +22,11 @@ const toast = ref({
     color: 'success',
     show: false
 });
+
 const filters = reactive({
-    storage_location_id: null,
-    plant_code: null
-})
+    plant_code: authStore.user?.assigned_plant?.plant_code || null,
+    date_filter: 'today'
+});
 
 onMounted(() => {
 })
@@ -43,33 +46,33 @@ const sortQuery = ref('-created_at'); // Default sort
 
 const headers = [
     {
-        title: 'Physical ID',
-        key: 'physical_id',
+        title: 'Reader Name',
+        key: 'name',
         sortable: false
     },
     {
-        title: 'EPC',
-        key: 'epc',
+        title: 'Type',
+        key: 'type',
         sortable: false
     },
     {
-        title: 'plant',
+        title: 'Plant',
         key: 'plant',
         sortable: false
     },
     {
-        title: 'Read Count',
-        key: 'unique_read_count',
+        title: 'Read Pallets Count',
+        key: 'count_pallets',
         align: 'center',
-        sortable: false
     },
+    // {
+    //     title: 'Read Tonner Bags Count',
+    //     key: 'count_tonner_bags',
+    //     align: 'center',
+    // },
     {
-        title: 'Last Read Date',
-        key: 'last_read_date',
-    },
-    {
-        title: 'Last Reader',
-        key: 'last_reader',
+        title: 'Last Read',
+        key: 'last_read',
     },
 ]
 
@@ -88,7 +91,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     try {
         const token = JwtService.getToken();
 
-        const response = await axios.get('/datatable/rfid-monitoring-tonner-bags', {
+        const response = await axios.get('/reports/datatable/readers-report', {
             params: {
                 page,
                 itemsPerPage,
@@ -101,16 +104,10 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { table, tag_types, plants } = response.data;
+        const { table, plants } = response.data;
         totalItems.value = table.total;
         serverItems.value = table.data;
         console.log(serverItems.value);
-
-        tagTypesOption.value = tag_types.map(item => ({
-            value: item.id,
-            title: item.title,
-            name: item.title
-        }));
 
         plantsOption.value = plants.map(item => ({
             value: item.plant_code,
@@ -131,6 +128,17 @@ watch(() => filters.plant_code, () => {
         itemsPerPage: itemsPerPage.value,
         sortBy: [{ key: sortQuery.value.replace('-', ''), 
         order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }]
+    });
+});
+
+watch(() => filters.date_filter, () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{
+            key: sortQuery.value.replace('-', ''),
+            order: sortQuery.value.startsWith('-') ? 'desc' : 'asc'
+        }]
     });
 });
 
@@ -163,88 +171,49 @@ const handleViewEntry = (item) => {
     currentPage.value = 1; // Reset pagination when opening a new log
 }
 
-const itemHeaders = [
-    {
-        title: 'Physical ID',
-        key: 'physical_id',
-        sortable: false
-    },
-    {
-        title: 'EPC',
-        key: 'epc',
-        sortable: false
-    },
-    {
-        title: 'plant',
-        key: 'plant',
-        sortable: false
-    },
-    {
-        title: 'Read Count',
-        key: 'unique_read_count',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'Last Read Date',
-        key: 'last_read_date',
-    },
-    {
-        title: 'Last Reader',
-        key: 'last_reader',
-    },
-]
-
 const currentPage = ref(1);
 const itemsPerPageModal = ref(5); // Number of items per page in modal
 
 const paginatedSessions = computed(() => {
-    if (!selectedLog.value?.read_stats?.sessions) return [];
+    if (!selectedLog.value?.unique_pallet_reads) return [];
     
     const start = (currentPage.value - 1) * itemsPerPageModal.value;
     const end = start + itemsPerPageModal.value;
     
-    return selectedLog.value.read_stats?.sessions.slice(start, end);
+    return selectedLog.value.unique_pallet_reads.slice(start, end);
 });
 
 const totalPages = computed(() => {
-    if (!selectedLog.value?.read_stats?.sessions) return 0;
-    return Math.ceil(selectedLog.value.read_stats?.sessions.length / itemsPerPageModal.value);
+    if (!selectedLog.value?.unique_pallet_reads) return 0;
+    return Math.ceil(selectedLog.value.unique_pallet_reads.length / itemsPerPageModal.value);
 });
+
+const dateFilters = [
+    { title: 'Today', value: 'today' },
+    { title: 'Yesterday', value: 'yesterday' },
+    { title: 'Last 7 Days', value: 'last_7_days' },
+    { title: 'This Month', value: 'this_month' },
+]
 
 </script>
 
 <template>
-    <VRow>
-        <VCol md="7">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
-        <VCol md="3" class="d-flex justify-center align-center">
-            <v-select
-                class="mt-1"
-                label="Filter by Plant"
-                density="compact"
-                :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-                v-model="filters.plant_code"
-                :rules="[value => value !== undefined || 'Please select an item from the list']"
-            >
-            </v-select>
-        </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-            <v-btn block
-                :loading="exportLoading"
-                class="d-flex align-center"
-                prepend-icon="ri-download-line"
-                @click="exportData"
-            >
-                <template #prepend>
+    <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <SearchInput class="flex-grow-1" @update:search="handleSearch" />
+        <v-select style="max-width: 300px;" class="flex-grow-1 align-center mt-1" density="compact" :items="dateFilters"
+            v-model="filters.date_filter">
+        </v-select>
+        <v-select style="max-width: 400px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
+            density="compact" :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption" v-model="filters.plant_code"
+            :rules="[value => value !== undefined || 'Please select an item from the list']">
+        </v-select>
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+            <template #prepend>
                 <v-icon color="white"></v-icon>
-                </template>
-                Export
-            </v-btn>
-        </VCol>
-    </VRow>
-  
+            </template>
+            Export
+        </v-btn>
+    </div>
     <VCard>
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
@@ -260,11 +229,11 @@ const totalPages = computed(() => {
             <template #item="{ item }">
                 <tr @click="handleViewEntry(item)" class="clickable-row">
                     <td>{{ item.name }}</td>
-                    <td>{{ item.epc }}</td>
+                    <td>{{ item.reader_type?.name }}</td>
                     <td>{{ item.plant?.name }}</td>
-                    <td class="text-center">{{ item.read_stats?.unique_read_count || 0 }}</td>
-                    <td>{{ item.read_stats?.last_read ? Moment(item.read_stats?.last_read).format('MMMM D, YYYY h:mm A') : '' }}</td>
-                    <td>{{ item.read_stats?.last_reader ? item.read_stats?.last_reader?.name : '' }}</td>
+                    <td class="text-center">{{ item.unique_pallet_reads.length }}</td>
+                    <!-- <td class="text-center">{{ item.unique_tonner_bag_reads.length }}</td> -->
+                    <td>{{ item.unique_pallet_reads.length > 0 ? Moment(item.unique_pallet_reads[0]?.updated_at).format('MMMM D, YYYY h:mm A') : '' }}</td>
                 </tr>
             </template>
 
@@ -293,7 +262,7 @@ const totalPages = computed(() => {
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
-                                            style="margin-top: 1px;">Physical ID</span>
+                                            style="margin-top: 1px;">Reader Name</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
@@ -306,14 +275,42 @@ const totalPages = computed(() => {
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
-                                            style="margin-top: 1px;">Type</span>
+                                            style="margin-top: 1px;">Reader Type</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
                                             <span>
-                                                Tonner Bag
+                                                {{selectedLog.reader_type?.name}}
                                             </span>
                                         </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                        <VRow class="table-row mt-3" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-start">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Plant</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis font-weight-medium">{{
+                                            selectedLog?.plant?.plant_code }}</span>
+                                        <div class="text-subtitle-1 font-weight-thin">{{ selectedLog?.plant?.name }}</div>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-start">
+                                        <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
+                                            style="margin-top: 1px;">Storage Location</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis font-weight-medium">{{
+                                            selectedLog?.plant?.default_storage_location?.code }}</span>
+                                        <div class="text-subtitle-1 font-weight-thin">{{ selectedLog?.plant?.default_storage_location?.name }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -327,15 +324,13 @@ const totalPages = computed(() => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
-                                            {{ selectedLog?.read_stats?.unique_read_count }}
+                                            {{ selectedLog?.unique_pallet_reads.length }}
                                         </span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    
-                                </VRow>
+                               
                             </VCol>
                         </VRow>
                     </VListItem>
@@ -344,18 +339,20 @@ const totalPages = computed(() => {
                  <v-table class="mt-4">
                     <thead>
                         <tr>
+                            <th>Physical ID</th>
                             <th>EPC</th>
-                            <th>Plant</th>
+                            <th>TID</th>
+                            <th>ANTENNA</th>
                             <th>Read Date</th>
-                            <th>Reader</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="(item, index) in paginatedSessions" :key="index">
-                            <td>{{ selectedLog?.epc }}</td>
-                            <td>{{ item.plant?.name }}</td>
-                            <td>{{ item.last_read ? Moment(item.last_read).format('MMMM D, YYYY h:mm A') : '' }}</td>
-                            <td>{{ item.reader_name }}</td>
+                            <td>{{ item.rfid?.name }}</td>
+                            <td>{{ item.epc }}</td>
+                            <td>{{ item.tid }}</td>
+                            <td>{{ item.antenna }}</td>
+                            <td>{{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY h:mm A') : '' }}</td>
                         </tr>
                     </tbody>
                 </v-table>
