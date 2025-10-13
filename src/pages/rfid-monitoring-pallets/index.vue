@@ -310,18 +310,7 @@ const totalPages = computed(() => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-grey-700">
-                                            <span v-if="selectedLog?.rfid_type === 'RfidPallet'">
-                                                Pallet
-                                            </span>
-                                            <span v-else-if="selectedLog?.rfid_type === 'RfidLabel'">
-                                                Label
-                                            </span>
-                                            <span v-else-if="selectedLog?.rfid_type === 'RfidTonnerBag'">
-                                                Tonner Bag
-                                            </span>
-                                            <span v-else>
-                                                N/A
-                                            </span>
+                                            Pallet
                                         </span>
                                     </VCol>
                                 </VRow>
