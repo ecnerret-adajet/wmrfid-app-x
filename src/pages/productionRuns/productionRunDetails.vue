@@ -671,7 +671,7 @@ const handleWrongPallet = async () => {
                             <template #item.physical_id="{ item }">
                                 <span @click="handleViewRfid(item)"
                                     class="text-primary font-weight-bold cursor-pointer hover-underline">
-                                    {{ item.rfid?.name }}
+                                    {{ item.rfid[0]?.name }}
                                 </span>
                             </template>
 
@@ -769,7 +769,7 @@ const handleWrongPallet = async () => {
                 <tbody>
                     <tr v-for="(item, index) in selectedItems" :key="index">
                         <td>{{ item.rfid_code }}</td>
-                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.rfid[0]?.name }}</td>
                         <td>{{ item.material?.description ?? 'N/A' }}</td>
                         <td>
                             {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
