@@ -219,8 +219,8 @@ export const routes = [
         },
         // Used for pallets
         {
-            path: 'rfid/:type/:physicalId',
-            name: 'rfid.show',
+            path: 'rfid/pallets/:physicalId',
+            name: 'rfid.pallet.show.',
             component: () => import('@/pages/rfid-pallets/show.vue'),
             meta: {
                 pageTitle: "Pallets - RFID Master",
@@ -232,8 +232,8 @@ export const routes = [
         },
         // Used for tonner bags
         {
-            path: 'rfid/:type/:physicalId',
-            name: 'rfid.show',
+            path: 'rfid/tonner-bags/:physicalId',
+            name: 'rfid.tonner-bag.show',
             component: () => import('@/pages/rfid-tonner-bags/show.vue'),
             meta: {
                 pageTitle: "Tonner Bags - RFID Master",
@@ -448,6 +448,13 @@ export const routes = [
         component: () => import('@/pages/sso-callback.vue'),
         meta: {
             pageTitle: "SSO Callback"
+        },
+    },
+    {
+        path: '/batch-picking/:do_number/',
+        component: () => import('@/pages/batch-picking/index.vue'), 
+        meta: {
+            pageTitle: "Batch Picking"
         },
     },
     {
