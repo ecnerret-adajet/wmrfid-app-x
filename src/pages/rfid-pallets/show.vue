@@ -1,6 +1,6 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
-import { convertSlugToUpperCase, exportExcel } from '@/composables/useHelpers';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
@@ -13,7 +13,6 @@ const route = useRoute();
 const router = useRouter();
 const pageLoading = ref(false);
 const physicalId = route.params.physicalId;
-const rfidType = route.params.type;
 const rfidData = ref(null);
 
 const searchValue = ref('');
@@ -35,7 +34,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`rfid/get-physical-id-data/${rfidType}/${physicalId}`, {
+    ApiService.query(`rfid/get-physical-id-data/pallet/${physicalId}`, {
         params: {
             page,
             itemsPerPage,
@@ -58,22 +57,16 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         });
 }
 
-
-
 const headers = [
-    {
-        title: 'EPC',
-        key: 'epc',
-    },
-    {
-        title: 'TID',
-        key: 'tid',
-    },
     {
         title: 'BATCH',
         key: 'batch',
         align: 'center',
         sortable: false
+    },
+    {
+        title: 'MFG DATE',
+        key: 'mfg_date',
     },
     {
         title: 'CREATED AT',
@@ -111,7 +104,7 @@ const historyLoading = ref(false);
 const loadHistory = ({ historyPage, historyItemsPerPage }) => {
     historyLoading.value = true
 
-    ApiService.query(`rfid/get-history/${rfidType}/${physicalId}`, {
+    ApiService.query(`rfid/get-history/pallet/${physicalId}`, {
         params: {
             page: historyPage,
             itemsPerPage: historyItemsPerPage,
@@ -136,7 +129,7 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: `/export/rfid-history/${rfidType}/${physicalId}`,
+            url: `/export/rfid-history/pallet/${physicalId}`,
             filename: 'rfid-history-report.xlsx',
         });
     } catch (error) {
@@ -153,7 +146,7 @@ const exportBatchData = async () => {
         await exportExcel({
             url: `/export/rfid-batch-history/${physicalId}`,
             params: {
-                rfid_type: rfidType,
+                rfid_type: 'pallet',
             },
             filename: 'rfid-batch-history-report.xlsx',
         });
@@ -164,12 +157,11 @@ const exportBatchData = async () => {
     }
 }
 
-const hasWrappingArea = computed(() => 
-    authStore.user?.is_super_admin || 
-    (authStore.user?.plants || []).some(plant => 
-        plant.configuration?.has_wrapping_area
-    )
-);
+const hasWrappingArea = computed(() => {
+    return (authStore.user?.plants || []).some(plant =>
+        plant.configuration?.has_wrapping_area === true
+    );
+});
 
 </script>
 
@@ -180,7 +172,7 @@ const hasWrappingArea = computed(() =>
             <v-card-title>
                 <div class="d-flex align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">RFID Details</h4>
-                    <v-badge class="ml-3" color="primary-light" :content="convertSlugToUpperCase(rfidType)"
+                    <v-badge class="ml-3" color="primary-light" content="Pallet"
                         inline></v-badge>
 
                     <v-badge v-if="rfidData?.inventory?.under_fumigation" color="warning" content="UNDER FUMIGATION"
@@ -366,13 +358,12 @@ const hasWrappingArea = computed(() =>
                             <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers"
                                 :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
                                 :search="searchValue" @update:options="loadItems" class="text-no-wrap">
-
                                 <template #item.epc="{ item }">
-                                    {{ item.rfid?.epc }}
+                                    {{ item.epc }}
                                 </template>
 
                                 <template #item.tid="{ item }">
-                                    {{ item.rfid?.tid }}
+                                    {{ item.tid }}
                                 </template>
 
                                 <template #item.created_at="{ item }">

@@ -134,7 +134,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                 isAssigned: item.block_id !== null ? true : false,
                 material_id: item.material_id,
                 material: item.material,
-                under_fumigation: item.under_fumigation
+                under_fumigation: item.under_fumigation,
+                physical_id: item.physical_id
             }));
 
             loading.value = false
@@ -220,6 +221,7 @@ const assign = (item) => {
     confirmModalOpen.value = true
 }
 
+const assignLoading = ref(false);
 const proceedAssign = async () => {
     let allow_multiple_materials = props.block.data?.allowMultipleMaterials;
     let selectedMaterialId = selectedInventory.value?.material_id;
@@ -241,7 +243,7 @@ const proceedAssign = async () => {
     //     toast.value.show = true;
     //     return;
     // }
-
+    assignLoading.value = true;
     try {
         const response = await axios.post(`warehouse/assign-inventory`, {
             block: props.block.data,
@@ -265,6 +267,7 @@ const proceedAssign = async () => {
         console.error("Error assigning inventory:", error);
     } finally {
         confirmModalOpen.value = false
+        assignLoading.value = false;
     }
 }
 
@@ -292,12 +295,14 @@ const handleActionClick = (action, layer, index) => {
     } else if (action === 'For RTM') {
         enableBinTransfer.value = false;
         selectedAction.title = 'Return to Mill';
-        selectedAction.message = `Are you sure you want to return RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong> to mill?`;
+        selectedAction.message = `Are you sure you want to return RFID with physical ID of <strong>${selectedInventory.value.physical_id}</strong> to mill?`;
         actionModalOpen.value = true;
     }
 }
 
+const proceedActionLoading = ref(false);
 const proceedAction = async () => {
+    proceedActionLoading.value = true;
     try {
         // Check if action is 'Return to Mill'
         if (selectedAction.title === 'Return to Mill') {
@@ -358,6 +363,7 @@ const proceedAction = async () => {
         console.error("Error proceeding with action:", error);
     } finally {
         closeModal();
+        proceedActionLoading.value = false;
     }
 
     actionModalOpen.value = false;
@@ -367,7 +373,7 @@ const binTransfer = (item) => {
 
     selectedNewBlock.value = item;
     selectedAction.title = 'Bin Transfer';
-    selectedAction.message = `Transfer selected RFID with physical ID of <strong>${selectedInventory.value.rfid?.name}</strong> to bin location <strong>${selectedNewBlock.value.lot?.label} - ${selectedNewBlock.value.label}</strong>?`;
+    selectedAction.message = `Transfer selected RFID with physical ID of <strong>${selectedInventory.value?.physical_id}</strong> to bin location <strong>${selectedNewBlock.value.lot?.label} - ${selectedNewBlock.value.label}</strong>?`;
     actionModalOpen.value = true;
 }
 
@@ -385,7 +391,7 @@ const handleSearch = debounce((search) => {
 
 </script>
 <template>
-    <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal">
+    <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal" :max-width="'1100px'">
         <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
             <template v-for="(layer, index) of block.layers" :key="layer.layer_name">
@@ -398,11 +404,14 @@ const handleSearch = debounce((search) => {
                                 <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
                             </VListItemTitle>
                             <template #append>
-                                <div class="flex-column text-h5 text-white">
-                                    Batch: <span class="font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
-                                    <div>
-                                        Group Name:
-                                        <span class="font-weight-bold">{{ layer.assigned_inventory.rfid?.name }}</span>
+                                <div class="assigned-info text-h5 text-white">
+                                    <div class="assigned-row">
+                                        <span class="label">Batch:</span>
+                                        <span class="value">{{ layer.assigned_inventory?.batch }}</span>
+                                    </div>
+                                    <div class="assigned-row">
+                                        <span class="label">Physical ID:</span>
+                                        <span class="value">{{ layer.assigned_inventory?.physical_id }}</span>
                                     </div>
                                 </div>
                                 <div class="d-flex gap-1">
@@ -493,13 +502,13 @@ const handleSearch = debounce((search) => {
             </template>
         </VDataTableServer>
 
-        <VDataTableServer v-else v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+        <VDataTableServer v-else  :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
-            @update:options="loadItems" class="text-no-wrap">
+            @update:options="loadItems" class="text-no-wrap" :items-per-page-options="[]">
 
             <template v-slot:item="{ item }">
                 <tr class="text-no-wrap">
-                    <td style="width: 200px;">{{ item.rfid?.name }}</td>
+                    <td style="width: 200px;">{{ item.physical_id }}</td>
                     <td style="width: 150px;">{{ item.material?.description }}</td>
                     <td class="text-center" style="width: 100px;">{{ item.batch }}</td>
                     <td style="width: 200px;">
@@ -538,14 +547,14 @@ const handleSearch = debounce((search) => {
                 <i class="ri-add-box-line" style="font-size: 54px;"></i>
             </div>
             <p class="mt-4 text-h4 text-center text-high-emphasis">Assign RFID with physical ID of <span
-                    class="font-weight-bold">{{ selectedInventory.rfid?.name }}</span>
+                    class="font-weight-bold">{{ selectedInventory?.physical_id }}</span>
                 to <span class="font-weight-black">{{ selectedLayer.layer_name }}</span> of <span
                     class="font-weight-black">{{ block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
 
             <v-card-actions class="mt-5">
                 <v-spacer></v-spacer>
                 <v-btn color="secondary" variant="flat" class="px-6" @click="confirmModalOpen = false">Cancel</v-btn>
-                <v-btn color="primary" variant="flat" class="px-6" @click="proceedAssign" type="button">Confirm</v-btn>
+                <v-btn color="primary" :loading="assignLoading" variant="flat" class="px-6" @click="proceedAssign" type="button">Confirm</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -563,7 +572,7 @@ const handleSearch = debounce((search) => {
             <v-card-actions class="mt-5">
                 <v-spacer></v-spacer>
                 <v-btn color="secondary" variant="flat" class="px-6" @click="actionModalOpen = false">Cancel</v-btn>
-                <v-btn color="primary" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
+                <v-btn color="primary" :loading="proceedActionLoading" variant="flat" class="px-6" @click="proceedAction" type="button">Confirm</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -605,5 +614,28 @@ const handleSearch = debounce((search) => {
 
 .under-fumigation {
     background-color: #f7897e;
+}
+
+.assigned-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assigned-row {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.assigned-row .label {
+  min-width: 120px; /* aligns the values */
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.assigned-row .value {
+  font-weight: 800;
+  margin-left: 8px;
 }
 </style>

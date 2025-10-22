@@ -260,7 +260,11 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 const handleViewRfid = (item) => {
-    router.push(`/rfid/${item.type}/${item.name}`);
+    if (item.type === 'pallet') {
+        router.push(`/rfid/pallets/${item.name}`);
+    } else {
+        router.push(`/rfid/tonner-bags/${item.name}`);
+    }
 }
 
 const viewEpc = (item) => {
@@ -594,8 +598,9 @@ watch(
     (newMaterialId) => {
         if (!newMaterialId) return;
         // Find the selected material
+        console.log(manualBatchUpdateForm.material_id)
         const selectedMaterial = materialsOption.value.find(m => m.value === newMaterialId);
-
+        console.log(selectedMaterial)
         if (selectedMaterial && selectedMaterial.default_pallet_quantity !== undefined) {
             selectedItems.value.forEach(item => {
                 // Only set if not already set
