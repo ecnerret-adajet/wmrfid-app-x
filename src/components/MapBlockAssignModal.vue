@@ -430,6 +430,7 @@ const handleSearch = debounce((search) => {
                                 </div>
                             </template>
                         </VListItem>
+                        <VDivider v-if="index !== block.layers - 1" />
                     </template>
 
 

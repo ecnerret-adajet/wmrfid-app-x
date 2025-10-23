@@ -452,9 +452,19 @@ export const routes = [
     },
     {
         path: '/batch-picking/:do_number/',
+        name: 'batch-picking',
         component: () => import('@/pages/batch-picking/index.vue'), 
         meta: {
             pageTitle: "Batch Picking"
+        },
+    },
+
+    {
+        path: '/batch-picking/:do_number/pallet-selection',
+        name: 'pallet-selection',
+        component: () => import('@/pages/batch-picking/palletPicking.vue'), 
+        meta: {
+            pageTitle: "Pallet Selection - Batch Picking"
         },
     },
     {
