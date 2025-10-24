@@ -1,4 +1,5 @@
 <script setup>
+import Toast from '@/components/Toast.vue';
 import axios from 'axios';
 import { computed, onMounted, reactive, watch } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
@@ -6,10 +7,14 @@ import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 const props = defineProps({
     plantCode: String,
     storageLocation: String,
-    selectedBatches: Array
+    selectedBatches: Array,
+    selectedPallets: {
+        type: Array,
+        default: () => []
+    }
 });
 
-const selectedPallets = ref([]);
+const selectedPallets = ref([...props.selectedPallets]);
 
 const state = reactive({
     layout: [],
@@ -26,21 +31,57 @@ const state = reactive({
     legend_only: false
 });
 
+const toast = ref({
+    message: 'Pallet selected',
+    color: 'success',
+    show: false
+});
+
 const emit = defineEmits(['update:selectedPallets']);
 
 const assignPallet = (inventory) => {
-    const existingIndex = selectedPallets.value.findIndex(p => p.physical_id === inventory.physical_id);
-
-    if (existingIndex > -1) {
-        selectedPallets.value.splice(existingIndex, 1);
+    toast.value.show = false
+    const existingPallet = selectedPallets.value.find(p => p.physical_id === inventory.physical_id);
+   
+    if (existingPallet) {
+        // Pallet found, so remove it and show a removal message.
+        selectedPallets.value = selectedPallets.value.filter(p => p.physical_id !== inventory.physical_id);
+        toast.value.message = `PHYSICAL ID ${inventory.physical_id} has been removed from the selected pallets.`;
+        toast.value.color = 'warning'; // Or a different color like 'warning'
+        toast.value.show = true;
     } else {
-        selectedPallets.value.push(inventory);
+        
+        const batch = props.selectedBatches.find(b => b.BATCH === inventory.batch);
+        
+        if (batch) {
+            // Count how many pallets from this batch are already selected.
+            const selectedCountForBatch = selectedPallets.value.filter(p => p.batch === inventory.batch).length;
+
+            // Check if adding this pallet will exceed the batch's limit.
+            if (selectedCountForBatch >= batch.pallet_quantity) {
+                toast.value.message = `Cannot add more than ${batch.pallet_quantity} pallets for batch ${inventory.batch}.`;
+                toast.value.color = 'error';
+                toast.value.show = true;
+                return; 
+            }
+        }
+
+        selectedPallets.value = [...selectedPallets.value, inventory];
+        toast.value.message = `PHYSICAL ID ${inventory.physical_id} has been added to the selected pallets.`;
+        toast.value.color = 'primary';
+        toast.value.show = true;
     }
+    emit('update:selectedPallets', selectedPallets.value);
 };
 
-watch(selectedPallets, (newValue) => {
-    emit('update:selectedPallets', newValue);
-}, { deep: true });
+watch(
+    () => props.selectedPallets,
+    (newVal) => {
+        selectedPallets.value = [...newVal];
+    },
+    { deep: true }
+);
+
 
 const isSelected = (inventory) => {
     return selectedPallets.value.some(p => p.physical_id === inventory.physical_id);
@@ -226,7 +267,7 @@ function handleBlockClick(item) {
             </v-card-text>
         </v-card>
     </v-dialog>
-
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 
 <style scoped>

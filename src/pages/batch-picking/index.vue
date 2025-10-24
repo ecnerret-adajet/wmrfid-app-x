@@ -11,7 +11,7 @@ const batchPickingStore = useBatchPickingStore();
 // const signature = route.query.signature;
 
 const do_number = route.params.do_number;
-const activeTab = ref('available_stocks');
+
 onMounted(async () => {
     const params = {
         // signature: signature,
@@ -27,10 +27,17 @@ function removeLeadingZeros(value) {
 }
 
 const showBatchSelection = ref(false);
-const batchLoading = ref(false)
-const selectBatch = (item) => {
-    showBatchSelection.value = true;
+const batchLoading = ref(false);
+const viewReservedPallets = ref(false);
+const selectBatch = (item, isReserved) => {
     batchPickingStore.selectedDeliveryItem = item;
+
+    if (isReserved) {
+        viewReservedPallets.value = true
+        return;
+    }
+
+    showBatchSelection.value = true;
     return new Promise(async (resolve, reject) => {
         try {
             batchLoading.value = true;
@@ -70,7 +77,7 @@ const expirationChecking = (date) => {
 const selectPallets = () => {
     let selectedBatchData = [];
 
-    if (activeTab.value === 'available_stocks') {
+    if (batchPickingStore.activeTab === 'available_stocks') {
         selectedBatchData = batchPickingStore.availableStocks
             .filter(stock => stock.is_selected)
             .map(stock => ({
@@ -88,12 +95,26 @@ const selectPallets = () => {
     }
     
     batchPickingStore.setBatches(selectedBatchData);
+    batchPickingStore.setOriginalBatchList(selectedBatchData);
  
     router.push({ 
         name: 'pallet-selection', 
         params: { do_number: do_number } 
     });
 }
+
+const calculateAge = (date) => {
+    if (!date) return '';
+    const now = Moment();
+    const mfgDate= Moment(date);
+    const days = now.diff(mfgDate, 'days');
+    return days;
+};
+const cancelReservation = () => {
+    console.log('/cancel');
+    
+};
+
 
 </script>
 <template>
@@ -266,7 +287,7 @@ const selectPallets = () => {
                                     inline
                                 ></v-badge>
                                 <!-- if reserved full quantity  -->
-                                <v-badge v-else-if="item.total_reserved_pallets > 0 && (parseInt(item.total_reserved_pallets) === parseInt(item.required_pallets))"
+                                <v-badge v-else-if="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
                                     color="success"
                                     content="Reserved"
                                     class="text-uppercase"
@@ -280,17 +301,17 @@ const selectPallets = () => {
                                         class="text-uppercase"
                                         inline
                                     ></v-badge>
-                                    <span class="mt-1">{{ item.total_reserved_pallets }} out of {{ item.required_pallets }} pallet(s)</span>
+                                    <span class="mt-1 text-xs">{{ item.reserved_qty }} {{item.sales_unit}}(s) out of {{ item.delivery_quantity }} {{item.sales_unit}}(s)</span>
                                 </div>
                             </td>
                             <td class="text-center">
                                 <v-btn
-                                    @click="selectBatch(item)"
-                                    :color="item.total_reserved_pallets > 0 && (parseInt(item.total_reserved_pallets) === parseInt(item.required_pallets)) ? 'success' : 'primary-light'"
+                                    @click="selectBatch(item, item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity) ? true : false)"
+                                    :color="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)) ? 'success' : 'primary-light'"
                                     variant="outlined"
                                     size="small"
                                 >
-                                    {{ item.total_reserved_pallets > 0 && (parseInt(item.total_reserved_pallets) === parseInt(item.required_pallets)) ? 'View Reserved' : 'Select Batch' }}
+                                    {{ item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)) ? 'View Reserved' : 'Select Batch' }}
                                 </v-btn>
                             </td>
                         </tr>
@@ -481,7 +502,7 @@ const selectPallets = () => {
 
                     <div v-if="parseInt(batchPickingStore.selectedDeliveryItem.required_pallets) !== parseInt(batchPickingStore.selectedDeliveryItem.total_reserved_pallets)">
 
-                        <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
+                        <v-tabs v-model="batchPickingStore.activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
                             <v-tab value="available_stocks" class="text-h5">
                                 Available Stocks
                             </v-tab>
@@ -491,7 +512,7 @@ const selectPallets = () => {
                         </v-tabs>
 
                         <v-skeleton-loader v-if="batchPickingStore.loadingAvailableStocks" type="article"></v-skeleton-loader>
-                        <v-tabs-window v-else v-model="activeTab" class="mt-4" >
+                        <v-tabs-window v-else v-model="batchPickingStore.activeTab" class="mt-4" >
                             <v-tabs-window-item value="available_stocks">
                                 <v-table density="compact" class="stock-table elevation-0 border">
                                     <thead>
@@ -648,6 +669,47 @@ const selectPallets = () => {
                         <v-btn color="secondary" variant="outlined" @click="showBatchSelection = false" class="mr-3">Back to Delivery Items</v-btn>
                         <v-btn color="primary" @click="selectPallets" type="button">Select Pallets</v-btn>
                     </div>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Reserved Pallets
+                </div>
+                <v-btn
+                    icon="ri-close-line"
+                    variant="text"
+                    @click="viewReservedPallets = false"
+                ></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <v-table density="compact" class="elevation-0 border mx-4">
+                    <thead>
+                        <tr>
+                            <th>Physical ID</th>
+                            <th>Batch Code</th>
+                            <th>Mfg Date</th>
+                            <th class="text-center">Quantity</th>
+                            <th class="text-center">Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in batchPickingStore.selectedDeliveryItem?.reserved_pallets">
+                            <td>{{ item.pallet_physical_id }}</td>
+                            <td>{{ item.commodity_batch_code }}</td>
+                            <td>{{ item.manufacturing_date }}</td>
+                            <td class="text-center">{{ item.total_qty }}</td>
+                            <td class="text-center">{{ calculateAge(item.manufacturing_date) }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false" type="button">Close</v-btn>
+                    <v-btn color="error" class="ml-3" @click="cancelReservation" type="button">Cancel Reservation</v-btn>
                 </div>
             </v-card-text>
         </v-card>

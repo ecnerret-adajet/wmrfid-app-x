@@ -1,5 +1,8 @@
 <script setup>
+import Toast from '@/components/Toast.vue';
+import JwtService from '@/services/JwtService';
 import { useBatchPickingStore } from '@/stores/batchPickingStore';
+import axios from 'axios';
 import moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -34,8 +37,14 @@ function viewReserved() {
     viewReservedPallets.value = true;
 }
 
+const selectedBatch = ref(null);
 function batchSelected(batch) {
-    console.log(batch);
+    selectedBatch.value = batch;
+    if(batch === null) {
+        batchPickingStore.setBatches(batchPickingStore.originalBatchList);
+        return;
+    }
+    batchPickingStore.setBatches([batch]);
 }
 
 const calculateAge = (date) => {
@@ -48,11 +57,12 @@ const calculateAge = (date) => {
 
 const parentSelectedPallets = ref([]);
 const handleSelectedPalletsUpdate = (pallets) => {
-    parentSelectedPallets.value = pallets;
+    // Sort by ascending mfg_date
+    parentSelectedPallets.value = [...pallets].sort((a, b) => new Date(a.mfg_date) - new Date(b.mfg_date));
 };
 
 const computedBatchList = computed(() => {
-    return batchPickingStore.batchList.map(batch => {
+    return batchPickingStore.originalBatchList.map(batch => {
         // Count how many pallets from this batch are in parentSelectedPallets
         const countInTable = parentSelectedPallets.value.filter(
             pallet => pallet.batch === batch.BATCH
@@ -69,6 +79,129 @@ const computedBatchList = computed(() => {
     });
 });
 
+const distributedPallets = computed(() => {
+    let remaining = batchPickingStore.deliveryDetails?.open_quantity;
+    return parentSelectedPallets.value.map(item => {
+        // Assume item.quantity is the max available for this pallet
+        const maxTake = item.quantity || 0;
+        const take = Math.min(maxTake, remaining);
+        remaining -= take;
+        return {
+            ...item,
+            take_quantity: take
+        };
+    });
+});
+
+const toast = ref({
+    message: 'Pallet selected',
+    color: 'success',
+    show: false
+});
+
+const removeSelectedPallet = (item, index) => {
+    if (toast.value.show) {
+        toast.value.show = false
+    }
+   if (item && item.physical_id !== undefined) {
+        parentSelectedPallets.value.splice(index, 1)
+        
+        toast.value.message = `PHYSICAL ID ${item.physical_id} has been removed from the selected pallets.`;
+        toast.value.color = 'warning'; 
+        toast.value.show = true;
+    }
+}
+
+const submitProposalLoading = ref(false);
+const proceedReserve = async () => {
+    if (parentSelectedPallets.value.length === 0) {
+        toast.value.message = 'No pallets selected to reserve.';
+        toast.value.color = 'error'; 
+        toast.value.show = true;
+        return;
+    }
+    
+    let formData = new FormData();
+    formData.append('do_number', batchPickingStore.deliveryDetails?.do_number);
+    formData.append('material_name', batchPickingStore.selectedDeliveryItem?.material_description);
+    formData.append('material_code', removeLeadingZeros(batchPickingStore.selectedDeliveryItem.material_number));
+    formData.append('delivery_document', batchPickingStore.selectedDeliveryItem?.delivery_document);
+    formData.append('item_number', batchPickingStore.selectedDeliveryItem?.item_number);
+    formData.append('delivery_quantity', batchPickingStore.selectedDeliveryItem?.delivery_quantity);
+    formData.append('numerator', batchPickingStore.selectedDeliveryItem?.numerator);
+    formData.append('denominator', batchPickingStore.selectedDeliveryItem?.denominator);
+    formData.append('plant', batchPickingStore.selectedDeliveryItem?.plant);
+    formData.append('sloc', batchPickingStore.selectedDeliveryItem?.storage_location);
+    formData.append('mode', batchPickingStore.activeTab);
+    formData.append('stock_exception', batchPickingStore.activeTab !== 'available_stocks');
+    formData.append(`batches`, JSON.stringify(distributedPallets.value));
+    formData.append('sap_server', batchPickingStore.selectedDeliveryItem?.sap_server);
+
+    try {
+        submitProposalLoading.value = true;
+        const token = JwtService.getToken();
+        const { data } = await axios.post(
+            `deliveries/delivery-order-proposed`,
+            formData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+        if (!data.success) {
+            console.log(data.errors)
+            // Handle validation errors
+            // const errorMsg = data.errors?.customer_approval_document?.[0] 
+            const batchPickError = data.errors?.length > 0 ? data.errors?.[0] : null
+            
+            if (batchPickError) {
+                toast.value.color = 'error';
+                toast.value.message = batchPickError;
+                toast.value.show = true;
+                // loadItems({
+                //     page: page.value,
+                //     itemsPerPage: itemsPerPage.value,
+                //     sortBy: [{key: 'created_at', order: 'desc'}],
+                //     search: props.search
+                // });
+                // closeModal()
+            }
+
+            return;
+        } 
+
+        // Proceed normally if successful
+        if (data.success) {
+          
+            const fetchParams = {
+                delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
+                item_number: batchPickingStore.selectedDeliveryItem?.item_number,
+                delivery_quantity: batchPickingStore.selectedDeliveryItem?.delivery_quantity,
+                storage_location: batchPickingStore.selectedDeliveryItem?.storage_location,
+                plant: batchPickingStore.selectedDeliveryItem?.plant,
+            };
+
+            // Wait for both to finish before routing
+            // await batchPickingStore.fetchOpenQuantity(fetchParams);
+            await batchPickingStore.fetchHeaderDetails({do_number: do_number});
+
+            // Now redirect
+            router.push({ 
+                name: 'batch-picking', 
+                params: { do_number: do_number } 
+            });
+        }
+        
+    } catch (response) {
+        console.log(response);
+    } finally {
+        submitProposalLoading.value = false;
+        // customerApprovalFile.value = null;
+        // customerApprovalRemarks.value = null;
+    }
+}
 </script>
 
 <template>
@@ -77,6 +210,10 @@ const computedBatchList = computed(() => {
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Pallet Selection
+                </div>
+                <div>
+                    <v-btn @click="redirectPage" class="mr-2" color="secondary" variant="outlined">Back to Delivery Item</v-btn>
+                    <v-btn :loading="submitProposalLoading" @click="proceedReserve" color="primary">Proceed Reserve</v-btn>
                 </div>
             </v-card-title>
             <v-card-text>
@@ -197,7 +334,7 @@ const computedBatchList = computed(() => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Reserved Pallets </span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <v-btn density="compact" @click="viewReserved">View Reserved Pallets</v-btn>
+                                        <v-btn density="compact" variant="outlined" @click="viewReserved">View Reserved Pallets</v-btn>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -208,12 +345,23 @@ const computedBatchList = computed(() => {
                             <VCol md="12" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="2" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Selected Batches </span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Filter Batches</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <!-- <span class="text-medium-emphasis ml-1"></span> -->
+                                         <v-chip
+                                            @click="batchSelected(null)"
+                                            color="primary"
+                                            class="ml-1 cursor-pointer"
+                                            v-if="computedBatchList.length > 0"
+                                            :key="'all'"
+                                            :variant="selectedBatch === null ? 'elevated' : 'outlined'"
+                                            label
+                                        >
+                                            All Batches
+                                        </v-chip>
                                         <v-chip @click="batchSelected(batch)" color="primary" class="ml-1 cursor-pointer" 
                                             v-if="computedBatchList.length > 0"
+                                            :variant="selectedBatch && selectedBatch.BATCH === batch.BATCH ? 'elevated' : 'outlined'"
                                             v-for="(batch, index) in computedBatchList"
                                             :key="index" label>
                                             {{ batch.pallet_quantity }}x - {{ batch.BATCH}}
@@ -234,20 +382,22 @@ const computedBatchList = computed(() => {
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
-                            <th class="text-center">Quantity</th>
+                            <th class="text-center">Current Quantity</th>
+                            <th class="text-center">Allocated Quantity</th>
                             <th class="text-sm text-center">Age</th>
                             <th class="text-end"></th>
                         </tr>
                     </thead>
-                    <tbody v-if="parentSelectedPallets.length > 0">
-                        <tr v-for="(item, index) in parentSelectedPallets">
+                    <tbody v-if="distributedPallets.length > 0">
+                        <tr v-for="(item, index) in distributedPallets">
                             <td>{{ item.physical_id }}</td>
                             <td>{{ item.batch }}</td>
                             <td>{{ item.mfg_date ? moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</td>
                             <td class="text-center">{{ item.quantity }} {{ item.material?.base_unit }}</td>
+                            <td class="text-center">{{ item.take_quantity }} {{ item.material?.base_unit }}</td>
                             <td class="text-center">{{ calculateAge(item.mfg_date) }} day(s)</td>
                             <td class="text-end">
-                                <i @click="parentSelectedPallets.splice(index, 1)" class="ri-close-large-line text-error cursor-pointer"></i>
+                                <i @click="removeSelectedPallet(item, index)" class="ri-close-large-line text-error cursor-pointer"></i>
                             </td>
                         </tr>
                     </tbody>
@@ -269,6 +419,7 @@ const computedBatchList = computed(() => {
                     <WarehouseMap v-if="batchPickingStore.selectedDeliveryItem"
                         :plantCode="batchPickingStore.selectedDeliveryItem?.plant" 
                         :selected-batches="batchPickingStore.batchList"
+                        :selectedPallets="parentSelectedPallets"
                         :storageLocation="batchPickingStore.selectedDeliveryItem?.storage_location"
                         @update:selectedPallets="handleSelectedPalletsUpdate"
                     />
@@ -334,7 +485,7 @@ const computedBatchList = computed(() => {
                     </tbody>
                 </v-table>
                 <div class="d-flex justify-end mt-8">
-                    <v-btn color="secondary" @click="viewReservedPallets = false" type="button">Close</v-btn>
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false" type="button">Close</v-btn>
                 </div>
             </v-card-text>
 
@@ -342,5 +493,30 @@ const computedBatchList = computed(() => {
         </v-card>
     </v-dialog>
 
+    <v-dialog v-model="submitProposalLoading" max-width="700px" persistent>
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-center align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary text-center">
+                    Batch Picking In Progress
+                </div>
+            </v-card-title>
+              <v-card-text>
+                <!-- Circular progress centered -->
+                <div class="d-flex justify-center my-6">
+                    <v-progress-circular
+                        indeterminate
+                        color="primary"
+                        size="64"
+                        width="6"
+                    />
+                </div>
+                <div class="px-4 mt-4 mx-2 text-h5">
+                    Please wait while we process your request. Do not close this window.
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 

@@ -5,6 +5,7 @@ import { ref } from 'vue';
 
 export const useBatchPickingStore = defineStore('batches', () => {
     const batchList = ref([]);
+    const originalBatchList = ref([]);
     const deliveryDetails = ref({});
     const headerDetailsLoading = ref(false);
     const loadingAvailableStocks = ref(false);
@@ -13,9 +14,15 @@ export const useBatchPickingStore = defineStore('batches', () => {
     const product_age = ref({ from: null, to: null }); 
     const availableStocks = ref([]); 
     const otherStocks = ref([])
+    const activeTab = ref('available_stocks');
 
     function setBatches(batches) {
         batchList.value = batches;
+    }
+
+    function setOriginalBatchList(batches) {
+        originalBatchList.value = batches
+        batchList.value = batches // initial display
     }
 
     async function checkAgeRange(object) {
@@ -180,6 +187,8 @@ export const useBatchPickingStore = defineStore('batches', () => {
 
     return { 
         batchList,
+        originalBatchList,
+        setOriginalBatchList,
         deliveryDetails,
         product_age,
         availableStocks,
@@ -192,6 +201,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
         fetchHeaderDetails,
         loadingAvailableStocks,
         headerDetailsLoading,
-        selectedDeliveryItem
+        selectedDeliveryItem,
+        activeTab
     };
 });
