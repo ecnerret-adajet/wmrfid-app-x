@@ -500,7 +500,7 @@ const cancelReservation = () => {
                         </VListItem>
                     </VList>
 
-                    <div v-if="parseInt(batchPickingStore.selectedDeliveryItem.required_pallets) !== parseInt(batchPickingStore.selectedDeliveryItem.total_reserved_pallets)">
+                    <div v-if="parseInt(batchPickingStore.deliveryDetails?.open_quantity) > 0" class="mt-4">
 
                         <v-tabs v-model="batchPickingStore.activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
                             <v-tab value="available_stocks" class="text-h5">
@@ -660,7 +660,7 @@ const cancelReservation = () => {
                                 </v-table>
                             </v-tabs-window-item>
                         </v-tabs-window>
-                    </div>
+                    </div> 
                     <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
                         <span class="text-h3 text-primary">Reserved</span>
                     </div>
