@@ -1,9 +1,13 @@
 <script setup>
+import Toast from '@/components/Toast.vue';
 import { numberWithComma } from '@/composables/useHelpers';
+import JwtService from '@/services/JwtService';
 import { useBatchPickingStore } from '@/stores/batchPickingStore';
+import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +29,12 @@ function removeLeadingZeros(value) {
     if (!value) return '';
     return value.replace(/^0+/, '');
 }
+
+const toast = ref({
+    message: 'Pallet selected',
+    color: 'success',
+    show: false
+});
 
 const showBatchSelection = ref(false);
 const batchLoading = ref(false);
@@ -66,7 +76,7 @@ const selectBatch = (item, isReserved) => {
             batchLoading.value = false;
         }
     });
-} 
+}
 
 const expirationChecking = (date) => {
     const currentDate = Moment();
@@ -93,27 +103,80 @@ const selectPallets = () => {
                 pallet_quantity: stock.split_qty_pallets
             }));
     }
-    
+
     batchPickingStore.setBatches(selectedBatchData);
     batchPickingStore.setOriginalBatchList(selectedBatchData);
- 
-    router.push({ 
-        name: 'pallet-selection', 
-        params: { do_number: do_number } 
+
+    router.push({
+        name: 'pallet-selection',
+        params: { do_number: do_number }
     });
 }
 
 const calculateAge = (date) => {
     if (!date) return '';
     const now = Moment();
-    const mfgDate= Moment(date);
+    const mfgDate = Moment(date);
     const days = now.diff(mfgDate, 'days');
     return days;
 };
-const cancelReservation = () => {
-    console.log('/cancel');
-    
-};
+
+const cancelProposalLoading = ref(false);
+const cancelConfirmationModal = ref(false);
+
+const handleCancelProposal = () => {
+    cancelConfirmationModal.value = true;
+}
+
+const cancelProposal = async () => {
+    try {
+        cancelProposalLoading.value = true;
+        const token = JwtService.getToken();
+        const { data } = await axios.post(
+            `deliveries/delivery-order-remove`,
+            {
+                delivery_id: 1,
+                delivery_document: '00001',
+                delivery_item_number: '123',
+                plant: 2120,
+                storage_location: 'W209'
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!data.success) {
+            // Handle validation errors
+            const cancelBatchError = data.errors?.length > 0 ? data.errors?.[0] : null
+
+            if (cancelBatchError) {
+                toast.value.color = 'error';
+                toast.value.message = cancelBatchError;
+                toast.value.show = true;
+            }
+        }
+
+        // Proceed normally if successful
+        if (data.success) {
+            toast.value.color = 'success';
+            toast.value.message = "Successfully cancelled reserved pallets";
+            toast.value.show = true;
+            // closeModal()
+        }
+
+    } catch (response) {
+        console.log(response);
+    } finally {
+        cancelProposalLoading.value = false;
+        cancelConfirmationModal.value = false
+        // customerApprovalFile.value = null;
+        // customerApprovalRemarks.value = null;
+    }
+}
 
 
 </script>
@@ -134,20 +197,24 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">ALC
+                                                Delivery</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.do_number }}</span>
+                                            <span class="font-weight-medium text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.do_number }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                                 <VCol md="6" class="table-cell d-inline-flex">
+                                <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis" >BU Delivery</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document || null }}</span>
+                                            <span class="font-weight-medium text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document
+                                                || null }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -158,25 +225,33 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Party</span>
+                                            <span
+                                                class="text-h6 font-weight-bold text-high-emphasis ">Ship-to-Party</span>
                                         </VCol>
                                         <VCol class="d-flex flex-column">
-                                            <span class="text-medium-emphasis font-weight-medium">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name }}</span>
-                                            <div class="text-subtitle-1 font-weight-thin">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer }}</div>
+                                            <span class="text-medium-emphasis font-weight-medium">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name
+                                                }}</span>
+                                            <div class="text-subtitle-1 font-weight-thin">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer
+                                                }}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Address</span>
+                                            <span
+                                                class="text-h6 font-weight-bold text-high-emphasis">Ship-to-Address</span>
                                         </VCol>
                                         <VCol class="d-inline-flex">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_address }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_address
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                           
+
                             </VRow>
                         </VListItem>
                         <VListItem style="padding-top: 0px; padding-bottom: 0px;">
@@ -184,7 +259,8 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Shipping Point</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Shipping
+                                                Point</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
                                             <span class="text-medium-emphasis">N/A</span>
@@ -192,12 +268,15 @@ const cancelReservation = () => {
                                     </VRow>
                                 </VCol>
                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Shipment Number</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Shipment
+                                                Number</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.shipment_no }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.shipment_no
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -211,17 +290,20 @@ const cancelReservation = () => {
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Route</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.route }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.route }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Server</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.sap_server }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.sap_server
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -232,10 +314,13 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery
+                                                Date</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.delivery_date }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.delivery_date
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -262,7 +347,8 @@ const cancelReservation = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in batchPickingStore.deliveryDetails?.customer_delivery?.delivery_items" :key="item.id">
+                        <tr v-for="(item, index) in batchPickingStore.deliveryDetails?.customer_delivery?.delivery_items"
+                            :key="item.id">
                             <td>{{ item.item_number }}</td>
                             <td>
                                 <div class="d-flex flex-column py-3">
@@ -280,38 +366,28 @@ const cancelReservation = () => {
                             <td class="text-center">{{ batchPickingStore.deliveryDetails?.goods_issue_status }}</td>
                             <td class="text-center">
                                 <!-- If no reservation yet -->
-                                <v-badge v-if="item.delivery_reserved_orders?.length === 0"
-                                    color="warning"
-                                    content="No Pallet"
-                                    class="text-uppercase"
-                                    inline
-                                ></v-badge>
+                                <v-badge v-if="item.delivery_reserved_orders?.length === 0" color="warning"
+                                    content="No Pallet" class="text-uppercase" inline></v-badge>
                                 <!-- if reserved full quantity  -->
-                                <v-badge v-else-if="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
-                                    color="success"
-                                    content="Reserved"
-                                    class="text-uppercase"
-                                    inline
-                                ></v-badge>
+                                <v-badge
+                                    v-else-if="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
+                                    color="success" content="Reserved" class="text-uppercase" inline></v-badge>
                                 <!-- If partially reserved  -->
                                 <div v-else class="d-flex flex-column py-3">
-                                    <v-badge 
-                                        color="info"
-                                        content="Partially Reserved"
-                                        class="text-uppercase"
-                                        inline
-                                    ></v-badge>
-                                    <span class="mt-1 text-xs">{{ item.reserved_qty }} {{item.sales_unit}}(s) out of {{ item.delivery_quantity }} {{item.sales_unit}}(s)</span>
+                                    <v-badge color="info" content="Partially Reserved" class="text-uppercase"
+                                        inline></v-badge>
+                                    <span class="mt-1 text-xs">{{ item.reserved_qty }} {{ item.sales_unit }}(s) out of
+                                        {{
+                                            item.delivery_quantity }} {{ item.sales_unit }}(s)</span>
                                 </div>
                             </td>
                             <td class="text-center">
                                 <v-btn
                                     @click="selectBatch(item, item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity) ? true : false)"
                                     :color="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)) ? 'success' : 'primary-light'"
-                                    variant="outlined"
-                                    size="small"
-                                >
-                                    {{ item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)) ? 'View Reserved' : 'Select Batch' }}
+                                    variant="outlined" size="small">
+                                    {{ item.reserved_qty > 0 && (parseInt(item.reserved_qty) ===
+                                        parseInt(item.delivery_quantity)) ? 'View Reserved' : 'Select Batch' }}
                                 </v-btn>
                             </td>
                         </tr>
@@ -327,11 +403,7 @@ const cancelReservation = () => {
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Batch Selection
                 </div>
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="showBatchSelection = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="showBatchSelection = false"></v-btn>
             </v-card-title>
             <v-card-text>
                 <v-skeleton-loader v-if="batchLoading" type="article"></v-skeleton-loader>
@@ -343,20 +415,24 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">ALC
+                                                Delivery</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.do_number }}</span>
+                                            <span class="font-weight-medium text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.do_number }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                                 <VCol md="6" class="table-cell d-inline-flex">
+                                <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis" >BU Delivery</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document || null }}</span>
+                                            <span class="font-weight-medium text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document
+                                                || null }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -367,11 +443,16 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Party</span>
+                                            <span
+                                                class="text-h6 font-weight-bold text-high-emphasis ">Ship-to-Party</span>
                                         </VCol>
                                         <VCol class="d-flex flex-column">
-                                            <span class="text-medium-emphasis font-weight-medium">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name }}</span>
-                                            <div class="text-subtitle-1 font-weight-thin">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer }}</div>
+                                            <span class="text-medium-emphasis font-weight-medium">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name
+                                                }}</span>
+                                            <div class="text-subtitle-1 font-weight-thin">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer
+                                                }}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -381,8 +462,11 @@ const cancelReservation = () => {
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Material</span>
                                         </VCol>
                                         <VCol class="d-flex flex-column">
-                                            <span class="text-medium-emphasis font-weight-medium">{{ batchPickingStore.selectedDeliveryItem.material_description }}</span>
-                                            <div class="text-subtitle-1 font-weight-thin">{{ removeLeadingZeros(batchPickingStore.selectedDeliveryItem.material_number) }}</div>
+                                            <span class="text-medium-emphasis font-weight-medium">{{
+                                                batchPickingStore.selectedDeliveryItem.material_description }}</span>
+                                            <div class="text-subtitle-1 font-weight-thin">{{
+                                                removeLeadingZeros(batchPickingStore.selectedDeliveryItem.material_number)
+                                                }}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -396,17 +480,20 @@ const cancelReservation = () => {
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Route</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.route }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.route }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Server</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.sap_server }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.sap_server
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -417,26 +504,31 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery
+                                                Date</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.delivery_date }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.customer_delivery?.delivery_date
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                <VCol md="6" class="table-cell d-inline-flex">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Item Number</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Item
+                                                Number</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.item_number }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.selectedDeliveryItem?.item_number }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
                             </VRow>
                         </VListItem>
-                          <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+                        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
                             <VRow class="table-row" no-gutters>
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
@@ -444,17 +536,24 @@ const cancelReservation = () => {
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Plant</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.plant_model?.plant_code }} - {{ batchPickingStore.selectedDeliveryItem?.plant_model?.name }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.selectedDeliveryItem?.plant_model?.plant_code }} - {{
+                                                    batchPickingStore.selectedDeliveryItem?.plant_model?.name }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                <VCol md="6" class="table-cell d-inline-flex">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Storage Location</span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Storage
+                                                Location</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.storage_location_model?.code }} - {{ batchPickingStore.selectedDeliveryItem?.storage_location_model?.name }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.selectedDeliveryItem?.storage_location_model?.code }}
+                                                - {{
+                                                    batchPickingStore.selectedDeliveryItem?.storage_location_model?.name
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -465,34 +564,39 @@ const cancelReservation = () => {
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Required Quantity </span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Required Quantity
+                                            </span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
-                                 <VCol md="6" class="table-cell d-inline-flex">
-                                     <VRow class="table-row">
+                                <VCol md="6" class="table-cell d-inline-flex">
+                                    <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
                                             <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore?.product_age?.from }} - {{ batchPickingStore?.product_age?.to }} Days</span>
+                                            <span class="text-medium-emphasis">{{ batchPickingStore?.product_age?.from
+                                                }} - {{ batchPickingStore?.product_age?.to }} Days</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
                             </VRow>
                         </VListItem>
-                          <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+                        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
                             <VRow class="table-row" no-gutters>
                                 <VCol md="6" class="table-cell d-inline-flex">
                                     <VRow class="table-row">
                                         <VCol cols="4" class="d-inline-flex align-center">
-                                            <span class="text-h6 font-weight-bold text-high-emphasis">Open Quantity </span>
+                                            <span class="text-h6 font-weight-bold text-high-emphasis">Open Quantity
+                                            </span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.open_quantity }}</span>
+                                            <span class="text-medium-emphasis">{{
+                                                batchPickingStore.deliveryDetails?.open_quantity }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -502,7 +606,8 @@ const cancelReservation = () => {
 
                     <div v-if="parseInt(batchPickingStore.deliveryDetails?.open_quantity) > 0" class="mt-4">
 
-                        <v-tabs v-model="batchPickingStore.activeTab" bg-color="transparent" variant="tonal" class="custom-tabs">
+                        <v-tabs v-model="batchPickingStore.activeTab" bg-color="transparent" variant="tonal"
+                            class="custom-tabs">
                             <v-tab value="available_stocks" class="text-h5">
                                 Available Stocks
                             </v-tab>
@@ -511,8 +616,9 @@ const cancelReservation = () => {
                             </v-tab>
                         </v-tabs>
 
-                        <v-skeleton-loader v-if="batchPickingStore.loadingAvailableStocks" type="article"></v-skeleton-loader>
-                        <v-tabs-window v-else v-model="batchPickingStore.activeTab" class="mt-4" >
+                        <v-skeleton-loader v-if="batchPickingStore.loadingAvailableStocks"
+                            type="article"></v-skeleton-loader>
+                        <v-tabs-window v-else v-model="batchPickingStore.activeTab" class="mt-4">
                             <v-tabs-window-item value="available_stocks">
                                 <v-table density="compact" class="stock-table elevation-0 border">
                                     <thead>
@@ -530,18 +636,20 @@ const cancelReservation = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(item, index) in batchPickingStore.availableStocks" class="text-sm" :key="index" 
-                                            :class="{ 
-                                                'selected-row': item.is_selected, 
+                                        <tr v-for="(item, index) in batchPickingStore.availableStocks" class="text-sm"
+                                            :key="index" :class="{
+                                                'selected-row': item.is_selected,
                                                 'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
                                             }
-                                        ">
+                                                ">
                                             <td>{{ item.BATCH }}</td>
                                             <td>
-                                                {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                                {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : ''
+                                                }}
                                             </td>
-                                            <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
-                                                {{ item.SLED_STR }} 
+                                            <td
+                                                :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
+                                                {{ item.SLED_STR }}
                                             </td>
                                             <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
                                             <!-- Avail Quantity  -->
@@ -555,21 +663,19 @@ const cancelReservation = () => {
                                                 {{ item.inventory.length }} PALLET
                                             </td>
                                             <!-- Split QTY  -->
-                                            <td> {{ numberWithComma(item.split_qty_bag) }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
+                                            <td> {{ numberWithComma(item.split_qty_bag) }} {{
+                                                batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
 
-                                            <td
-                                                class="text-uppercase"
-                                                :class="{ 'text-error': item.saved_reserved != null }"
-                                            >
+                                            <td class="text-uppercase"
+                                                :class="{ 'text-error': item.saved_reserved != null }">
                                                 {{ item.split_qty_pallets }}
                                                 Pallet
                                             </td>
-                                            <td>{{ item.inventory_qty }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
-                                            <td >
-                                                <v-checkbox v-model="item.is_selected"
-                                                    hide-details 
+                                            <td>{{ item.inventory_qty }} {{
+                                                batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
+                                            <td>
+                                                <v-checkbox v-model="item.is_selected" hide-details
                                                     :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                                    
                                                     density="compact">
                                                 </v-checkbox>
                                             </td>
@@ -580,21 +686,13 @@ const cancelReservation = () => {
 
                             <v-tabs-window-item value="other_stocks">
                                 <div class="my-4 border pa-4">
-                                    <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document</div>
-                                    <v-file-input
-                                        accept="image/*,application/pdf"
-                                        v-model="customerApprovalFile"
-                                        density="compact"
-                                        prepend-icon=""
-                                        label="Choose file"
-                                    ></v-file-input>
+                                    <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document
+                                    </div>
+                                    <v-file-input accept="image/*,application/pdf" v-model="customerApprovalFile"
+                                        density="compact" prepend-icon="" label="Choose file"></v-file-input>
                                     <div class="text-subtitle-1 font-weight-medium mt-4">Remarks</div>
-                                    <v-textarea class="mt-1"
-                                        clear-icon="ri-close-line"
-                                        placeholder="Remarks/Comments"
-                                        v-model="customerApprovalRemarks"
-                                        clearable
-                                    ></v-textarea>
+                                    <v-textarea class="mt-1" clear-icon="ri-close-line" placeholder="Remarks/Comments"
+                                        v-model="customerApprovalRemarks" clearable></v-textarea>
                                 </div>
                                 <v-table density="compact" class="stock-table elevation-0">
                                     <thead>
@@ -612,18 +710,19 @@ const cancelReservation = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(item, index) in otherStocks" :key="index" 
-                                            :class="{ 
-                                                'selected-row': item.is_selected, 
-                                                'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
-                                            }
-                                        ">
+                                        <tr v-for="(item, index) in otherStocks" :key="index" :class="{
+                                            'selected-row': item.is_selected,
+                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
+                                        }
+                                            ">
                                             <td>{{ item.BATCH }}</td>
                                             <td>
-                                                {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                                {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : ''
+                                                }}
                                             </td>
-                                            <td :class="{ 'text-error font-weight-bold' : expirationChecking(item.SLED_STR) }">
-                                                {{ item.SLED_STR }} 
+                                            <td
+                                                :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
+                                                {{ item.SLED_STR }}
                                             </td>
                                             <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
                                             <!-- Avail Quantity  -->
@@ -637,20 +736,19 @@ const cancelReservation = () => {
                                                 {{ item.inventory.length }} PALLET
                                             </td>
                                             <!-- Split QTY  -->
-                                            <td> {{ numberWithComma(item.split_qty_bag) }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
+                                            <td> {{ numberWithComma(item.split_qty_bag) }} {{
+                                                batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
 
-                                            <td
-                                                class="text-uppercase"
-                                                :class="{ 'text-error': item.saved_reserved != null }"
-                                            >
+                                            <td class="text-uppercase"
+                                                :class="{ 'text-error': item.saved_reserved != null }">
                                                 {{ item.split_qty_pallets }}
                                                 Pallet
-                                                
+
                                             </td>
-                                            <td>{{ item.inventory_qty }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
-                                            <td >
-                                                <v-checkbox v-model="item.is_selected"
-                                                    hide-details 
+                                            <td>{{ item.inventory_qty }} {{
+                                                batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
+                                            <td>
+                                                <v-checkbox v-model="item.is_selected" hide-details
                                                     :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
                                                     density="compact">
                                                 </v-checkbox>
@@ -660,13 +758,14 @@ const cancelReservation = () => {
                                 </v-table>
                             </v-tabs-window-item>
                         </v-tabs-window>
-                    </div> 
+                    </div>
                     <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
                         <span class="text-h3 text-primary">Reserved</span>
                     </div>
 
                     <div class="d-flex justify-end mt-8">
-                        <v-btn color="secondary" variant="outlined" @click="showBatchSelection = false" class="mr-3">Back to Delivery Items</v-btn>
+                        <v-btn color="secondary" variant="outlined" @click="showBatchSelection = false"
+                            class="mr-3">Back to Delivery Items</v-btn>
                         <v-btn color="primary" @click="selectPallets" type="button">Select Pallets</v-btn>
                     </div>
                 </div>
@@ -680,11 +779,7 @@ const cancelReservation = () => {
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Reserved Pallets
                 </div>
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="viewReservedPallets = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
             </v-card-title>
             <v-card-text>
                 <v-table density="compact" class="elevation-0 border mx-4">
@@ -708,10 +803,30 @@ const cancelReservation = () => {
                     </tbody>
                 </v-table>
                 <div class="d-flex justify-end mt-8 mx-4">
-                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false" type="button">Close</v-btn>
-                    <v-btn color="error" class="ml-3" @click="cancelReservation" type="button">Cancel Reservation</v-btn>
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
+                        type="button">Close</v-btn>
+                    <v-btn color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
+                        Reservation</v-btn>
                 </div>
             </v-card-text>
         </v-card>
     </v-dialog>
+
+    <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+        <v-card class="pa-4">
+            <div class="text-center">
+                <v-icon class="mb-5" color="error" icon="ri-close-circle-line" size="112"></v-icon>
+                <p class="mb-6 text-h5">Are you sure you want to cancel reserved pallets?</p>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="cancelConfirmationModal = false"
+                        class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="cancelProposal" :loading="cancelProposalLoading"
+                        class="px-8">Proceed</v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-dialog>
+
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+
 </template>
