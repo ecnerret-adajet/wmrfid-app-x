@@ -132,14 +132,15 @@ const cancelProposal = async () => {
     try {
         cancelProposalLoading.value = true;
         const token = JwtService.getToken();
+
         const { data } = await axios.post(
             `deliveries/delivery-order-remove`,
             {
-                delivery_id: 1,
-                delivery_document: '00001',
-                delivery_item_number: '123',
-                plant: 2120,
-                storage_location: 'W209'
+                delivery_id: batchPickingStore.selectedDeliveryItem?.delivery_reserved_orders?.[0]?.delivery_id,
+                delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
+                delivery_item_number: batchPickingStore.selectedDeliveryItem?.item_number,
+                plant: batchPickingStore.selectedDeliveryItem?.plant,
+                storage_location: batchPickingStore.selectedDeliveryItem?.storage_location
             },
             {
                 headers: {
@@ -165,6 +166,8 @@ const cancelProposal = async () => {
             toast.value.color = 'success';
             toast.value.message = "Successfully cancelled reserved pallets";
             toast.value.show = true;
+            await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
+            cancelConfirmationModal.value = false
             // closeModal()
         }
 
@@ -631,7 +634,7 @@ const cancelProposal = async () => {
                                             <th>Avail Pallets</th>
                                             <th>Split Qty</th>
                                             <th>Min. Pallet</th>
-                                            <th>Min. Qty</th>
+                                            <th>Remaining Qty</th>
                                             <th></th>
                                         </tr>
                                     </thead>
