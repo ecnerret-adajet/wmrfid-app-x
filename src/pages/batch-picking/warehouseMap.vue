@@ -167,6 +167,8 @@ function handleBlockClick(item) {
     showBlockDetails.value = true;
 }
 
+const isBatchDisabled = batch => !props.selectedBatches.some(selected => selected.BATCH === batch);
+
 </script>
 
 <template>
@@ -218,8 +220,14 @@ function handleBlockClick(item) {
                 <div class="px-4 mt-4 mx-2 text-h5">
                     <VList class="py-0 mt-3" lines="two" border rounded density="compact">
                         <template v-for="(layer, index) of selectedBlock.layers" :key="layer.layer_name">
-                            <VListItem class="py-0 px-0"
-                                :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
+                            <VListItem
+                                class="py-0 px-0"
+                                :class="[
+                                    selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
+                                    layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
+                                ]"
+                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))"
+                            >
                                 <template v-if="layer.assigned_inventory">
                                     <VListItem :class="[layer.layer_class,
                                     (selectedLayerIndex === index) ? 'highlighted-item' : '']">

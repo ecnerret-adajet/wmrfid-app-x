@@ -39,6 +39,7 @@ const toast = ref({
 const showBatchSelection = ref(false);
 const batchLoading = ref(false);
 const viewReservedPallets = ref(false);
+
 const selectBatch = (item, isReserved) => {
     batchPickingStore.selectedDeliveryItem = item;
 
@@ -86,13 +87,14 @@ const expirationChecking = (date) => {
 
 const selectPallets = () => {
     let selectedBatchData = [];
-
+    toast.value.show = false;
     if (batchPickingStore.activeTab === 'available_stocks') {
         selectedBatchData = batchPickingStore.availableStocks
             .filter(stock => stock.is_selected)
             .map(stock => ({
                 BATCH: stock.BATCH,
-                pallet_quantity: stock.split_qty_pallets
+                pallet_quantity: stock.split_qty_pallets,
+                bags_quantity: stock.split_qty_bag
             }));
     } else {
         // Assuming the same logic for the other data source
@@ -100,8 +102,18 @@ const selectPallets = () => {
             .filter(stock => stock.is_selected)
             .map(stock => ({
                 BATCH: stock.BATCH,
-                pallet_quantity: stock.split_qty_pallets
+                pallet_quantity: stock.split_qty_pallets,
+                bags_quantity: stock.split_qty_bag
             }));
+    }
+
+    const totalSelectedBags = selectedBatchData.reduce((sum, batch) => sum + Number(batch.bags_quantity), 0);
+
+    if (totalSelectedBags > batchPickingStore.deliveryDetails.open_quantity) {
+        toast.value.color = 'error';
+        toast.value.message = 'Bags on selected pallet exceeds open quantity.';
+        toast.value.show = true;
+        return;
     }
 
     batchPickingStore.setBatches(selectedBatchData);
@@ -140,7 +152,8 @@ const cancelProposal = async () => {
                 delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
                 delivery_item_number: batchPickingStore.selectedDeliveryItem?.item_number,
                 plant: batchPickingStore.selectedDeliveryItem?.plant,
-                storage_location: batchPickingStore.selectedDeliveryItem?.storage_location
+                storage_location: batchPickingStore.selectedDeliveryItem?.storage_location,
+                do_number: do_number
             },
             {
                 headers: {
@@ -163,11 +176,14 @@ const cancelProposal = async () => {
 
         // Proceed normally if successful
         if (data.success) {
+            
+            await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
+            cancelConfirmationModal.value = false
+            viewReservedPallets.value = false
+
             toast.value.color = 'success';
             toast.value.message = "Successfully cancelled reserved pallets";
             toast.value.show = true;
-            await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
-            cancelConfirmationModal.value = false
             // closeModal()
         }
 
@@ -345,6 +361,7 @@ const cancelProposal = async () => {
                             <th class="text-center">Storage Location</th>
                             <th class="text-center">Picking</th>
                             <th class="text-center">GI</th>
+                            <th class="text-center">Batch Split</th>
                             <th class="text-center">Pallet Status</th>
                             <th class="text-center"></th>
                         </tr>
@@ -368,16 +385,23 @@ const cancelProposal = async () => {
                             <td class="text-center">{{ batchPickingStore.deliveryDetails?.picking_status }}</td>
                             <td class="text-center">{{ batchPickingStore.deliveryDetails?.goods_issue_status }}</td>
                             <td class="text-center">
+                                <i v-if="item.is_batch_split"
+                                    style="font-size: 24px; background-color: green;"
+                                    class="ri-checkbox-circle-line mt-2"></i>
+                                <i v-else style="font-size: 24px; background-color: #FF4C51;"
+                                    class="ri-close-circle-line mt-2"></i>
+                            </td>
+                            <td class="text-center">
                                 <!-- If no reservation yet -->
                                 <v-badge v-if="item.delivery_reserved_orders?.length === 0" color="warning"
                                     content="No Pallet" class="text-uppercase" inline></v-badge>
                                 <!-- if reserved full quantity  -->
                                 <v-badge
-                                    v-else-if="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
-                                    color="success" content="Reserved" class="text-uppercase" inline></v-badge>
+                                    v-else-if="item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)"
+                                    color="success" content="Reserved" @click="selectBatch(item, true)" class="text-uppercase cursor-pointer" inline></v-badge>
                                 <!-- If partially reserved  -->
                                 <div v-else class="d-flex flex-column py-3">
-                                    <v-badge color="info" content="Partially Reserved" class="text-uppercase"
+                                    <v-badge color="info" content="Partially Reserved" @click="selectBatch(item, true)" class="text-uppercase cursor-pointer"
                                         inline></v-badge>
                                     <span class="mt-1 text-xs">{{ item.reserved_qty }} {{ item.sales_unit }}(s) out of
                                         {{
@@ -386,11 +410,11 @@ const cancelProposal = async () => {
                             </td>
                             <td class="text-center">
                                 <v-btn
-                                    @click="selectBatch(item, item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity) ? true : false)"
-                                    :color="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)) ? 'success' : 'primary-light'"
+                                    @click="selectBatch(item, false)"
+                                    color="primary-light"
+                                    :disabled="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
                                     variant="outlined" size="small">
-                                    {{ item.reserved_qty > 0 && (parseInt(item.reserved_qty) ===
-                                        parseInt(item.delivery_quantity)) ? 'View Reserved' : 'Select Batch' }}
+                                    Select Batch
                                 </v-btn>
                             </td>
                         </tr>
@@ -788,6 +812,7 @@ const cancelProposal = async () => {
                 <v-table density="compact" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
+                            <th>Item Number</th>
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
@@ -797,6 +822,7 @@ const cancelProposal = async () => {
                     </thead>
                     <tbody>
                         <tr v-for="(item, index) in batchPickingStore.selectedDeliveryItem?.reserved_pallets">
+                            <td>{{ item.item_number }}</td>
                             <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.commodity_batch_code }}</td>
                             <td>{{ item.manufacturing_date }}</td>
