@@ -12,16 +12,13 @@ import { useRoute, useRouter } from 'vue-router';
 const route = useRoute();
 const router = useRouter();
 const batchPickingStore = useBatchPickingStore();
-// const signature = route.query.signature;
 
 const do_number = route.params.do_number;
 
 onMounted(async () => {
     const params = {
-        // signature: signature,
-        do_number: do_number
+        do_number: do_number,
     };
-
     await batchPickingStore.fetchHeaderDetails(params);
 });
 

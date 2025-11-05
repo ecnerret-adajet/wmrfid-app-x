@@ -232,14 +232,18 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                     <VListItem :class="[layer.layer_class,
                                     (selectedLayerIndex === index) ? 'highlighted-item' : '']">
                                         <VListItemTitle>
-                                            <div class="assigned-info text-h5 text-white">
+                                            <div class="assigned-info text-h5 text-grey-800 ">
                                                 <div class="assigned-row">
-                                                    <span class="label">Batch:</span>
-                                                    <span class="value">{{ layer.assigned_inventory?.batch }}</span>
+                                                    <span class="label">Batch: </span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
                                                 </div>
                                                 <div class="assigned-row">
-                                                    <span class="label">Physical ID:</span>
-                                                    <span class="value">{{ layer.assigned_inventory?.physical_id }}</span>
+                                                    <span class="label">Physical ID: </span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.physical_id }}</span>
+                                                </div>
+                                                <div class="assigned-row">
+                                                    <span class="label">Quantity: </span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.quantity }}</span>
                                                 </div>
                                             </div>
                                         </VListItemTitle>
@@ -294,7 +298,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .dimmed-block {
-    opacity: 0.1;
+    opacity: 0.2;
     pointer-events: none;
     transition: opacity 0.6s ease;
 }
@@ -328,23 +332,19 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .layer-1 {
-    background-color: #eece70;
-    color: white;
+    color: rgb(39, 39, 39);
 }
 
 .layer-2 {
-    background-color: #4877f7;
-    color: white;
+    color: rgb(39, 39, 39);
 }
 
 .layer-3 {
-    background-color: #48a348;
-    color: white;
+    color: rgb(39, 39, 39);
 }
 
 .layer-4 {
-    background-color: #a06ee2;
-    color: white;
+    color: rgb(39, 39, 39);
 }
 
 .empty-layer {
