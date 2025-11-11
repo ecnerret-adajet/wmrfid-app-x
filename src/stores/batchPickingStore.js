@@ -15,6 +15,8 @@ export const useBatchPickingStore = defineStore('batches', () => {
     const availableStocks = ref([]); 
     const otherStocks = ref([])
     const activeTab = ref('available_stocks');
+    const customerApprovalFile = ref(null);
+    const customerApprovalRemarks = ref('');
 
     function setBatches(batches) {
         batchList.value = batches;
@@ -185,6 +187,10 @@ export const useBatchPickingStore = defineStore('batches', () => {
         }
     }
 
+    function resetActiveTab() {
+        activeTab.value = 'available_stocks';
+    }
+
     return { 
         batchList,
         originalBatchList,
@@ -202,6 +208,9 @@ export const useBatchPickingStore = defineStore('batches', () => {
         loadingAvailableStocks,
         headerDetailsLoading,
         selectedDeliveryItem,
-        activeTab
+        activeTab,
+        customerApprovalFile,
+        customerApprovalRemarks,
+        resetActiveTab
     };
 });

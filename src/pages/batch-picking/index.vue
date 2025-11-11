@@ -46,6 +46,7 @@ const selectBatch = (item, isReserved) => {
     }
 
     showBatchSelection.value = true;
+    batchPickingStore.resetActiveTab();
     return new Promise(async (resolve, reject) => {
         try {
             batchLoading.value = true;
@@ -62,9 +63,8 @@ const selectBatch = (item, isReserved) => {
 
                 await batchPickingStore.checkAgeRange(delParams);
                 await batchPickingStore.fetchAvailableCommodities(delParams);
+                await batchPickingStore.fetchOtherAvailableCommodities(delParams);
                 await batchPickingStore.fetchOpenQuantity(delParams);
-
-                // await batchPickingStore.fetchOtherAvailableCommodities(delParams);
             }
 
             resolve();
@@ -84,6 +84,8 @@ const expirationChecking = (date) => {
 
 const selectPallets = () => {
     let selectedBatchData = [];
+
+    
     toast.value.show = false;
     if (batchPickingStore.activeTab === 'available_stocks') {
         selectedBatchData = batchPickingStore.availableStocks
@@ -94,14 +96,30 @@ const selectPallets = () => {
                 bags_quantity: stock.split_qty_bag
             }));
     } else {
+        
+        if (batchPickingStore.customerApprovalFile === null) {
+            toast.value.color = 'error';
+            toast.value.message = 'Please select customer approval document.';
+            toast.value.show = true;
+            return;
+        }
+
         // Assuming the same logic for the other data source
-        selectedBatchData = batchPickingStore.otherDataSource
+        selectedBatchData = batchPickingStore.otherStocks
             .filter(stock => stock.is_selected)
             .map(stock => ({
                 BATCH: stock.BATCH,
                 pallet_quantity: stock.split_qty_pallets,
                 bags_quantity: stock.split_qty_bag
             }));
+
+    }
+
+    if (selectedBatchData.length === 0) {
+        toast.value.color = 'error';
+        toast.value.message = 'No selected batches.';
+        toast.value.show = true;
+        return;
     }
 
     const totalSelectedBags = selectedBatchData.reduce((sum, batch) => sum + Number(batch.bags_quantity), 0);
@@ -189,8 +207,8 @@ const cancelProposal = async () => {
     } finally {
         cancelProposalLoading.value = false;
         cancelConfirmationModal.value = false
-        // customerApprovalFile.value = null;
-        // customerApprovalRemarks.value = null;
+        batchPickingStore.customerApprovalFile = null;
+        batchPickingStore.customerApprovalRemarks = null;
     }
 }
 
@@ -710,33 +728,34 @@ const cancelProposal = async () => {
                                 <div class="my-4 border pa-4">
                                     <div class="text-subtitle-1 font-weight-medium mb-2">Customer Approval Document
                                     </div>
-                                    <v-file-input accept="image/*,application/pdf" v-model="customerApprovalFile"
+                                    <v-file-input accept="image/*,application/pdf" v-model="batchPickingStore.customerApprovalFile"
                                         density="compact" prepend-icon="" label="Choose file"></v-file-input>
                                     <div class="text-subtitle-1 font-weight-medium mt-4">Remarks</div>
                                     <v-textarea class="mt-1" clear-icon="ri-close-line" placeholder="Remarks/Comments"
-                                        v-model="customerApprovalRemarks" clearable></v-textarea>
+                                        v-model="batchPickingStore.customerApprovalRemarks" clearable></v-textarea>
                                 </div>
-                                <v-table density="compact" class="stock-table elevation-0">
+                                <v-table density="compact" class="stock-table elevation-0 border">
                                     <thead>
                                         <tr>
                                             <th>Batch Code</th>
                                             <th>Mfg Date</th>
-                                            <th>Expiration Date</th>
-                                            <th>Age</th>
+                                            <th class="text-sm">Expiration Date</th>
+                                            <th class="text-sm">Age</th>
                                             <th>Avail. Qty</th>
                                             <th>Avail Pallets</th>
                                             <th>Split Qty</th>
                                             <th>Min. Pallet</th>
-                                            <th>Min. Qty</th>
+                                            <th>Remaining Qty</th>
                                             <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(item, index) in otherStocks" :key="index" :class="{
-                                            'selected-row': item.is_selected,
-                                            'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
-                                        }
-                                            ">
+                                        <tr v-for="(item, index) in batchPickingStore.otherStocks" class="text-sm"
+                                            :key="index" :class="{
+                                                'selected-row': item.is_selected,
+                                                'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0
+                                            }
+                                                ">
                                             <td>{{ item.BATCH }}</td>
                                             <td>
                                                 {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : ''
@@ -765,7 +784,6 @@ const cancelProposal = async () => {
                                                 :class="{ 'text-error': item.saved_reserved != null }">
                                                 {{ item.split_qty_pallets }}
                                                 Pallet
-
                                             </td>
                                             <td>{{ item.inventory_qty }} {{
                                                 batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
