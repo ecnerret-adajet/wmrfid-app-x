@@ -26,9 +26,9 @@ function removeLeadingZeros(value) {
 }
 
 function redirectPage() {
-    router.push({ 
-        name: 'batch-picking', 
-        params: { do_number: do_number } 
+    router.push({
+        name: 'batch-picking',
+        params: { do_number: do_number }
     });
 }
 
@@ -40,7 +40,7 @@ function viewReserved() {
 const selectedBatch = ref(null);
 function batchSelected(batch) {
     selectedBatch.value = batch;
-    if(batch === null) {
+    if (batch === null) {
         batchPickingStore.setBatches(batchPickingStore.originalBatchList);
         return;
     }
@@ -103,11 +103,11 @@ const removeSelectedPallet = (item, index) => {
     if (toast.value.show) {
         toast.value.show = false
     }
-   if (item && item.physical_id !== undefined) {
+    if (item && item.physical_id !== undefined) {
         parentSelectedPallets.value.splice(index, 1)
-        
+
         toast.value.message = `PHYSICAL ID ${item.physical_id} has been removed from the selected pallets.`;
-        toast.value.color = 'warning'; 
+        toast.value.color = 'warning';
         toast.value.show = true;
     }
 }
@@ -116,11 +116,11 @@ const submitProposalLoading = ref(false);
 const proceedReserve = async () => {
     if (parentSelectedPallets.value.length === 0) {
         toast.value.message = 'No pallets selected to reserve.';
-        toast.value.color = 'error'; 
+        toast.value.color = 'error';
         toast.value.show = true;
         return;
     }
-    
+
     let formData = new FormData();
     formData.append('do_number', batchPickingStore.deliveryDetails?.do_number);
     formData.append('material_name', batchPickingStore.selectedDeliveryItem?.material_description);
@@ -155,7 +155,7 @@ const proceedReserve = async () => {
             // Handle validation errors
             // const errorMsg = data.errors?.customer_approval_document?.[0] 
             const batchPickError = data.errors?.length > 0 ? data.errors?.[0] : null
-            
+
             if (batchPickError) {
                 toast.value.color = 'error';
                 toast.value.message = batchPickError;
@@ -170,11 +170,11 @@ const proceedReserve = async () => {
             }
 
             return;
-        } 
+        }
 
         // Proceed normally if successful
         if (data.success) {
-          
+
             const fetchParams = {
                 delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
                 item_number: batchPickingStore.selectedDeliveryItem?.item_number,
@@ -185,15 +185,15 @@ const proceedReserve = async () => {
 
             // Wait for both to finish before routing
             // await batchPickingStore.fetchOpenQuantity(fetchParams);
-            await batchPickingStore.fetchHeaderDetails({do_number: do_number});
+            await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
 
             // Now redirect
-            router.push({ 
-                name: 'batch-picking', 
-                params: { do_number: do_number } 
+            router.push({
+                name: 'batch-picking',
+                params: { do_number: do_number }
             });
         }
-        
+
     } catch (response) {
         console.log(response);
     } finally {
@@ -205,15 +205,17 @@ const proceedReserve = async () => {
 </script>
 
 <template>
-    <div class="d-flex align-center justify-center mt-6">
-        <v-card elevation="2" class="mx-auto" style="min-width:1000px; max-width:1800px; width:100%;">
+    <div>
+        <v-card elevation="2" class="mx-auto">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Pallet Selection
                 </div>
                 <div>
-                    <v-btn @click="redirectPage" class="mr-2" color="secondary" variant="outlined">Back to Delivery Item</v-btn>
-                    <v-btn :loading="submitProposalLoading" @click="proceedReserve" color="primary">Proceed Reserve</v-btn>
+                    <v-btn @click="redirectPage" class="mr-2" color="secondary" variant="outlined">Back to Delivery
+                        Item</v-btn>
+                    <v-btn :loading="submitProposalLoading" @click="proceedReserve" color="primary">Proceed
+                        Reserve</v-btn>
                 </div>
             </v-card-title>
             <v-card-text>
@@ -226,17 +228,20 @@ const proceedReserve = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.do_number }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{
+                                            batchPickingStore.deliveryDetails?.do_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
-                                <VCol md="6" class="table-cell d-inline-flex">
+                            <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" >BU Delivery</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document || null }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{
+                                            batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document ||
+                                            null }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -247,11 +252,14 @@ const proceedReserve = async () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Party</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis ">Ship-to-Party</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis font-weight-medium">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name }}</span>
-                                        <div class="text-subtitle-1 font-weight-thin">{{ batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer }}</div>
+                                        <span class="text-medium-emphasis font-weight-medium">{{
+                                            batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name }}</span>
+                                        <div class="text-subtitle-1 font-weight-thin">{{
+                                            batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer }}
+                                        </div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -261,8 +269,11 @@ const proceedReserve = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Material</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis font-weight-medium">{{ batchPickingStore.selectedDeliveryItem?.material_description }}</span>
-                                        <div class="text-subtitle-1 font-weight-thin">{{ removeLeadingZeros(batchPickingStore.selectedDeliveryItem?.material_number) }}</div>
+                                        <span class="text-medium-emphasis font-weight-medium">{{
+                                            batchPickingStore.selectedDeliveryItem?.material_description }}</span>
+                                        <div class="text-subtitle-1 font-weight-thin">{{
+                                            removeLeadingZeros(batchPickingStore.selectedDeliveryItem?.material_number)
+                                            }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -276,17 +287,23 @@ const proceedReserve = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Plant</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.plant_model?.plant_code }} - {{ batchPickingStore.selectedDeliveryItem?.plant_model?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            batchPickingStore.selectedDeliveryItem?.plant_model?.plant_code }} - {{
+                                                batchPickingStore.selectedDeliveryItem?.plant_model?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
-                                <VCol md="6" class="table-cell d-inline-flex">
-                                    <VRow class="table-row">
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Storage Location</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Storage
+                                            Location</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.storage_location_model?.code }} - {{ batchPickingStore.selectedDeliveryItem?.storage_location_model?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            batchPickingStore.selectedDeliveryItem?.storage_location_model?.code }} - {{
+                                                batchPickingStore.selectedDeliveryItem?.storage_location_model?.name
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -297,20 +314,23 @@ const proceedReserve = async () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Required Quantity </span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Required Quantity
+                                        </span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
-                                <VCol md="6" class="table-cell d-inline-flex">
-                                    <VRow class="table-row">
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore?.product_age?.from }} - {{ batchPickingStore?.product_age?.to }} Days</span>
+                                        <span class="text-medium-emphasis">{{ batchPickingStore?.product_age?.from }} -
+                                            {{ batchPickingStore?.product_age?.to }} Days</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -324,17 +344,20 @@ const proceedReserve = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Open Quantity </span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore.deliveryDetails?.open_quantity }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            batchPickingStore.deliveryDetails?.open_quantity }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Reserved Pallets </span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Reserved Pallets
+                                        </span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <v-btn density="compact" variant="outlined" @click="viewReserved">View Reserved Pallets</v-btn>
+                                        <v-btn density="compact" variant="outlined" @click="viewReserved">View Reserved
+                                            Pallets</v-btn>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -348,23 +371,16 @@ const proceedReserve = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Filter Batches</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                         <v-chip
-                                            @click="batchSelected(null)"
-                                            color="primary"
-                                            class="ml-1 cursor-pointer"
-                                            v-if="computedBatchList.length > 0"
-                                            :key="'all'"
-                                            :variant="selectedBatch === null ? 'elevated' : 'outlined'"
-                                            label
-                                        >
+                                        <v-chip @click="batchSelected(null)" color="primary" class="ml-1 cursor-pointer"
+                                            v-if="computedBatchList.length > 0" :key="'all'"
+                                            :variant="selectedBatch === null ? 'elevated' : 'outlined'" label>
                                             All Batches
                                         </v-chip>
-                                        <v-chip @click="batchSelected(batch)" color="primary" class="ml-1 cursor-pointer" 
-                                            v-if="computedBatchList.length > 0"
+                                        <v-chip @click="batchSelected(batch)" color="primary"
+                                            class="ml-1 cursor-pointer" v-if="computedBatchList.length > 0"
                                             :variant="selectedBatch && selectedBatch.BATCH === batch.BATCH ? 'elevated' : 'outlined'"
-                                            v-for="(batch, index) in computedBatchList"
-                                            :key="index" label>
-                                            {{ batch.pallet_quantity }}x - {{ batch.BATCH}}
+                                            v-for="(batch, index) in computedBatchList" :key="index" label>
+                                            {{ batch.pallet_quantity }}x - {{ batch.BATCH }}
                                         </v-chip>
                                     </VCol>
                                 </VRow>
@@ -397,7 +413,8 @@ const proceedReserve = async () => {
                             <td class="text-center">{{ item.take_quantity }} {{ item.material?.base_unit }}</td>
                             <td class="text-center">{{ calculateAge(item.mfg_date) }} day(s)</td>
                             <td class="text-end">
-                                <i @click="removeSelectedPallet(item, index)" class="ri-close-large-line text-error cursor-pointer"></i>
+                                <i @click="removeSelectedPallet(item, index)"
+                                    class="ri-close-large-line text-error cursor-pointer"></i>
                             </td>
                         </tr>
                     </tbody>
@@ -408,7 +425,7 @@ const proceedReserve = async () => {
                             </td>
                         </tr>
                     </tbody>
-                    
+
                 </v-table>
 
                 <div class="text-h4 font-weight-bold ps-2 ml-2 mt-3 text-primary">
@@ -417,12 +434,10 @@ const proceedReserve = async () => {
 
                 <div class="mt-3 mx-4">
                     <WarehouseMap v-if="batchPickingStore.selectedDeliveryItem"
-                        :plantCode="batchPickingStore.selectedDeliveryItem?.plant" 
-                        :selected-batches="batchPickingStore.batchList"
-                        :selectedPallets="parentSelectedPallets"
+                        :plantCode="batchPickingStore.selectedDeliveryItem?.plant"
+                        :selected-batches="batchPickingStore.batchList" :selectedPallets="parentSelectedPallets"
                         :storageLocation="batchPickingStore.selectedDeliveryItem?.storage_location"
-                        @update:selectedPallets="handleSelectedPalletsUpdate"
-                    />
+                        @update:selectedPallets="handleSelectedPalletsUpdate" />
                 </div>
             </v-card-text>
         </v-card>
@@ -452,11 +467,7 @@ const proceedReserve = async () => {
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Reserved Pallets
                 </div>
-                <v-btn
-                    icon="ri-close-line"
-                    variant="text"
-                    @click="viewReservedPallets = false"
-                ></v-btn>
+                <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
             </v-card-title>
             <v-card-text>
                 <v-table density="compact" class="elevation-0 border mx-4">
@@ -485,11 +496,12 @@ const proceedReserve = async () => {
                     </tbody>
                 </v-table>
                 <div class="d-flex justify-end mt-8">
-                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false" type="button">Close</v-btn>
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
+                        type="button">Close</v-btn>
                 </div>
             </v-card-text>
 
-            
+
         </v-card>
     </v-dialog>
 
@@ -500,15 +512,10 @@ const proceedReserve = async () => {
                     Batch Picking In Progress
                 </div>
             </v-card-title>
-              <v-card-text>
+            <v-card-text>
                 <!-- Circular progress centered -->
                 <div class="d-flex justify-center my-6">
-                    <v-progress-circular
-                        indeterminate
-                        color="primary"
-                        size="64"
-                        width="6"
-                    />
+                    <v-progress-circular indeterminate color="primary" size="64" width="6" />
                 </div>
                 <div class="px-4 mt-4 mx-2 text-h5">
                     Please wait while we process your request. Do not close this window.
@@ -517,6 +524,5 @@ const proceedReserve = async () => {
         </v-card>
     </v-dialog>
 
-    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
-

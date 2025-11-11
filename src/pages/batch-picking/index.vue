@@ -173,7 +173,7 @@ const cancelProposal = async () => {
 
         // Proceed normally if successful
         if (data.success) {
-            
+
             await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
             cancelConfirmationModal.value = false
             viewReservedPallets.value = false
@@ -197,8 +197,8 @@ const cancelProposal = async () => {
 
 </script>
 <template>
-    <div class="d-flex align-center justify-center" style="min-height: calc(100vh - 64px);">
-        <v-card elevation="2" class="mx-auto" style="min-width:400px; max-width:1200px; width:100%;">
+    <div>
+        <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Delivery Details
@@ -382,8 +382,7 @@ const cancelProposal = async () => {
                             <td class="text-center">{{ batchPickingStore.deliveryDetails?.picking_status }}</td>
                             <td class="text-center">{{ batchPickingStore.deliveryDetails?.goods_issue_status }}</td>
                             <td class="text-center">
-                                <i v-if="item.is_batch_split"
-                                    style="font-size: 24px; background-color: green;"
+                                <i v-if="item.is_batch_split" style="font-size: 24px; background-color: green;"
                                     class="ri-checkbox-circle-line mt-2"></i>
                                 <i v-else style="font-size: 24px; background-color: #FF4C51;"
                                     class="ri-close-circle-line mt-2"></i>
@@ -395,20 +394,19 @@ const cancelProposal = async () => {
                                 <!-- if reserved full quantity  -->
                                 <v-badge
                                     v-else-if="item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)"
-                                    color="success" content="Reserved" @click="selectBatch(item, true)" class="text-uppercase cursor-pointer" inline></v-badge>
+                                    color="success" content="Reserved" @click="selectBatch(item, true)"
+                                    class="text-uppercase cursor-pointer" inline></v-badge>
                                 <!-- If partially reserved  -->
                                 <div v-else class="d-flex flex-column py-3">
-                                    <v-badge color="info" content="Partially Reserved" @click="selectBatch(item, true)" class="text-uppercase cursor-pointer"
-                                        inline></v-badge>
+                                    <v-badge color="info" content="Partially Reserved" @click="selectBatch(item, true)"
+                                        class="text-uppercase cursor-pointer" inline></v-badge>
                                     <span class="mt-1 text-xs">{{ item.reserved_qty }} {{ item.sales_unit }}(s) out of
                                         {{
                                             item.delivery_quantity }} {{ item.sales_unit }}(s)</span>
                                 </div>
                             </td>
                             <td class="text-center">
-                                <v-btn
-                                    @click="selectBatch(item, false)"
-                                    color="primary-light"
+                                <v-btn @click="selectBatch(item, false)" color="primary-light"
                                     :disabled="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
                                     variant="outlined" size="small">
                                     Select Batch

@@ -352,6 +352,22 @@ export const routes = [
           name: 'account-settings',
           component: () => import('@/pages/account-settings.vue'),
         },
+        {
+            path: '/batch-picking/:do_number',
+            name: 'batch-picking',
+            component: () => import('@/pages/batch-picking/index.vue'), 
+            meta: {
+                pageTitle: "Batch Picking"
+            },
+        },
+        {
+            path: '/batch-picking/:do_number/pallet-selection',
+            name: 'pallet-selection',
+            component: () => import('@/pages/batch-picking/palletPicking.vue'), 
+            meta: {
+                pageTitle: "Pallet Selection - Batch Picking"
+            },
+        },
 
       ],
     },
@@ -458,23 +474,23 @@ export const routes = [
             pageTitle: "Batch Picking"
         },
     },
-    {
-        path: '/batch-picking/:do_number',
-        name: 'batch-picking',
-        component: () => import('@/pages/batch-picking/index.vue'), 
-        meta: {
-            pageTitle: "Batch Picking"
-        },
-    },
+    // {
+    //     path: '/batch-picking/:do_number',
+    //     name: 'batch-picking',
+    //     component: () => import('@/pages/batch-picking/index.vue'), 
+    //     meta: {
+    //         pageTitle: "Batch Picking"
+    //     },
+    // },
 
-    {
-        path: '/batch-picking/:do_number/pallet-selection',
-        name: 'pallet-selection',
-        component: () => import('@/pages/batch-picking/palletPicking.vue'), 
-        meta: {
-            pageTitle: "Pallet Selection - Batch Picking"
-        },
-    },
+    // {
+    //     path: '/batch-picking/:do_number/pallet-selection',
+    //     name: 'pallet-selection',
+    //     component: () => import('@/pages/batch-picking/palletPicking.vue'), 
+    //     meta: {
+    //         pageTitle: "Pallet Selection - Batch Picking"
+    //     },
+    // },
     {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
