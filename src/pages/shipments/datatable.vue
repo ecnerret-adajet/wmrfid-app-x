@@ -164,7 +164,8 @@ const handleViewPicklist = (shipment) => {
 }
 
 const actionList = [
-    { title: 'Service Request', key: 'service_request' },
+    // { title: 'Service Request', key: 'service_request' },
+    { title: 'View Reserved Pallets', key: 'view_reserved_pallets' },
 ]
 
 const handleAction = (shipment, action) => {
@@ -172,7 +173,9 @@ const handleAction = (shipment, action) => {
     
     if(action.key == 'service_request') {
         showShipmentServiceModal.value = true;
-    } 
+    } else if (action.key == 'view_reserved_pallets') {
+        window.open(`/shipment-reserved-pallets/${shipment.shipment_number}`, '_blank', 'noopener');
+    }
 }
 
 const closeModal = () => {
@@ -253,7 +256,7 @@ defineExpose({
          <!-- Actions -->
          <template #item.action="{ item }">
             <div class="d-flex justify-center gap-1">
-                <v-menu location="start"> 
+                <v-menu location="end"> 
                     <template v-slot:activator="{ props }">
                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
@@ -299,6 +302,13 @@ defineExpose({
             {{ item.shipment_number }}
         </template>
 
+        <template #item.bay_no="{ item }">
+            <span v-if="item.bay_no">{{ item.bay_no }}</span>
+            <v-chip v-else class="ma-2" color="warning" outlined label>
+                Pending
+            </v-chip>
+        </template>
+
 
         <template #item.load_start_date="{ item }">
             {{ formatDateTime(item.load_start_date, item.load_start_time) }}
@@ -326,12 +336,6 @@ defineExpose({
                 Completed
             </v-chip>
         </template>
-
-        <template #item.bay_no="{ item }">
-            {{ item.bay_no }}
-        </template>
-
-       
 
     </VDataTableServer>
 

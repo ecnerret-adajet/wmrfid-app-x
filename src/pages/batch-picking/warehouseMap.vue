@@ -251,7 +251,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                             <div class="d-flex gap-1">
                                                 <v-btn
                                                     @click="assignPallet(layer.assigned_inventory)"
-                                                    :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'"
+                                                    :color="isSelected(layer.assigned_inventory) ? 'warning' : 'primary'"
                                                 >
                                                     {{ isSelected(layer.assigned_inventory) ? 'Selected' : '&nbsp Assign &nbsp' }}
                                                 </v-btn>

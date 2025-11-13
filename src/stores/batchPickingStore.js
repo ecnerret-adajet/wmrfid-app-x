@@ -52,30 +52,6 @@ export const useBatchPickingStore = defineStore('batches', () => {
         }
     }
 
-    async function fetchOpenQuantity(params) {
-        const token = JwtService.getToken();
-        try {
-            const { data } = await axios.post(`deliveries/get-open-quantity`, {
-                delivery_document: params.delivery_document,
-                delivery_item_number: params.item_number,
-                delivery_quantity: params.delivery_quantity,
-                sloc: params.storage_location,
-                plant_code: params.plant
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            this.deliveryDetails.open_quantity = data;
-            return data;
-        } catch (error) {
-            console.error('Failed to fetch open quantity:', error);
-            throw error;
-        } finally {
-        }
-    }
-
     // Action to fetch available commodities
     async function fetchAvailableCommodities(params) {
         const token = JwtService.getToken();
@@ -86,6 +62,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
                 delivery_document: params.delivery_document,
                 item_number: params.item_number,
                 delivery_quantity: params.delivery_quantity,
+                open_quantity: params.open_quantity,
                 sales_unit: params.sales_unit,
                 from: this.product_age.from,
                 to: this.product_age.to,
@@ -98,7 +75,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
                 }
             });
 
-            let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
+            let remainingRequiredQty = parseInt(params.open_quantity) || 0;
             let splitQty = params.default_pallet_quantity || 40;
             
             this.availableStocks = data.map((item) => {
@@ -132,6 +109,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
                 delivery_document: params.delivery_document,
                 item_number: params.item_number,
                 delivery_quantity: params.delivery_quantity,
+                open_quantity: params.open_quantity,
                 sales_unit: params.sales_unit,
                 from: this.product_age.from,
                 to: this.product_age.to,
@@ -144,7 +122,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
                 }
             });
 
-            let remainingRequiredQty = parseInt(params.delivery_quantity) || 0;
+            let remainingRequiredQty = parseInt(params.open_quantity) || 0;
             let splitQty = params.default_pallet_quantity || 40;
             
             this.otherStocks = data.map((item) => {
@@ -201,7 +179,6 @@ export const useBatchPickingStore = defineStore('batches', () => {
         otherStocks,
         setBatches,
         checkAgeRange,
-        fetchOpenQuantity,
         fetchAvailableCommodities,
         fetchOtherAvailableCommodities,
         fetchHeaderDetails,

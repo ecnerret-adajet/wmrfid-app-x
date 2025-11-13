@@ -80,7 +80,7 @@ const computedBatchList = computed(() => {
 });
 
 const distributedPallets = computed(() => {
-    let remaining = batchPickingStore.deliveryDetails?.open_quantity;
+    let remaining = batchPickingStore.selectedDeliveryItem?.open_quantity;
     return parentSelectedPallets.value.map(item => {
         // Assume item.quantity is the max available for this pallet
         const maxTake = item.quantity || 0;
@@ -136,6 +136,7 @@ const proceedReserve = async () => {
     formData.append('stock_exception', batchPickingStore.activeTab !== 'available_stocks');
     formData.append(`batches`, JSON.stringify(distributedPallets.value));
     formData.append('sap_server', batchPickingStore.selectedDeliveryItem?.sap_server);
+    formData.append('customer_approval_document', batchPickingStore.customerApprovalFile);
 
     try {
         submitProposalLoading.value = true;
@@ -345,7 +346,7 @@ const proceedReserve = async () => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">{{
-                                            batchPickingStore.deliveryDetails?.open_quantity }}</span>
+                                            batchPickingStore.selectedDeliveryItem?.open_quantity }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -417,6 +418,34 @@ const proceedReserve = async () => {
                                     class="ri-close-large-line text-error cursor-pointer"></i>
                             </td>
                         </tr>
+                        <tr>
+                            <td colspan="3" >
+                            </td>
+                            <td class="text-end font-weight-bold text-h6">
+                                Total Allocated Quantity:
+                            </td>
+                            <td class="text-center">
+                                <span class="font-weight-bold text-h6 ">
+                                    {{
+                                    distributedPallets.reduce((total, pallet) => total + pallet.take_quantity, 0)
+                                    }} 
+                                </span>
+                            </td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" >
+                            </td>
+                            <td class="text-end font-weight-bold text-h6">
+                                Open Quantity:
+                            </td>
+                            <td class="text-center">
+                                <span class="font-weight-bold text-h6">
+                                    {{ batchPickingStore.selectedDeliveryItem?.open_quantity }}
+                                </span>
+                            </td>
+                        </tr>
                     </tbody>
                     <tbody v-else>
                         <tr style="height: 200px;">
@@ -461,7 +490,7 @@ const proceedReserve = async () => {
         </v-card>
     </v-dialog>
 
-    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+    <v-dialog v-model="viewReservedPallets" max-width="1200px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
@@ -473,25 +502,34 @@ const proceedReserve = async () => {
                 <v-table density="compact" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
+                            <th>Item Number</th>
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
+                            <th class="text-center">Stock Exception</th>
                             <th class="text-center">Quantity</th>
                             <th class="text-center">Age</th>
                         </tr>
                     </thead>
                     <tbody v-if="batchPickingStore.selectedDeliveryItem?.reserved_pallets?.length > 0">
                         <tr v-for="(item, index) in batchPickingStore.selectedDeliveryItem?.reserved_pallets">
+                            <td>{{ item.item_number }}</td>
                             <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.commodity_batch_code }}</td>
                             <td>{{ item.manufacturing_date }}</td>
-                            <td class="text-center">{{ item.total_qty }}</td>
+                            <td class="text-center">
+                                <i v-if="item.is_stock_exception" style="font-size: 24px; background-color: green;"
+                                    class="ri-checkbox-circle-line mt-2"></i>
+                                <i v-else style="font-size: 24px; background-color: #FF4C51;"
+                                    class="ri-close-circle-line mt-2"></i>
+                            </td>
+                            <td class="text-center">{{ item.total_qty }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}(s)</td>
                             <td class="text-center">{{ calculateAge(item.manufacturing_date) }}</td>
                         </tr>
                     </tbody>
                     <tbody v-else>
-                        <tr colspan="7">
-                            <td>No Reserved Pallets</td>
+                        <tr>
+                            <td colspan="7" class="text-center py-4">No Reserved Pallets</td>
                         </tr>
                     </tbody>
                 </v-table>

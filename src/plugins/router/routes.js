@@ -373,7 +373,8 @@ export const routes = [
     },
     {
         path: '/shipment-picklist/:shipmentNumber',
-        component: () => import('@/pages/picklist.vue'),
+        component: () => import('@/pages/picklistNew.vue'),
+        // component: () => import('@/pages/picklist.vue'),
         meta: {
             pageTitle: "Checker Picklist Screen"
         },
@@ -433,6 +434,15 @@ export const routes = [
         component: () => import('@/pages/warehouse/showMap.vue'), 
         meta: {
             pageTitle: "Warehouse Map"
+        }
+    },
+    // Warehouse map to show reserved pallets - Full Screen View
+    {
+        path: '/shipment-reserved-pallets/:shipment_number',
+        name: 'shipment-reserved-pallets',
+        component: () => import('@/pages/warehouse/reservedPallets.vue'), 
+        meta: {
+            pageTitle: "Shipment Reserved Pallets"
         }
     },
     {

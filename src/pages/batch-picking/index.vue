@@ -56,6 +56,7 @@ const selectBatch = (item, isReserved) => {
                     delivery_document: item.delivery_document,
                     item_number: item.item_number,
                     delivery_quantity: item.delivery_quantity,
+                    open_quantity: item.open_quantity,
                     sales_unit: item.sales_unit,
                     storage_location: item.storage_location,
                     plant: item.plant,
@@ -64,7 +65,6 @@ const selectBatch = (item, isReserved) => {
                 await batchPickingStore.checkAgeRange(delParams);
                 await batchPickingStore.fetchAvailableCommodities(delParams);
                 await batchPickingStore.fetchOtherAvailableCommodities(delParams);
-                await batchPickingStore.fetchOpenQuantity(delParams);
             }
 
             resolve();
@@ -124,7 +124,7 @@ const selectPallets = () => {
 
     const totalSelectedBags = selectedBatchData.reduce((sum, batch) => sum + Number(batch.bags_quantity), 0);
 
-    if (totalSelectedBags > batchPickingStore.deliveryDetails.open_quantity) {
+    if (totalSelectedBags > batchPickingStore.selectedDeliveryItem?.open_quantity) {
         toast.value.color = 'error';
         toast.value.message = 'Bags on selected pallet exceeds open quantity.';
         toast.value.show = true;
@@ -372,7 +372,8 @@ const cancelProposal = async () => {
                         <tr>
                             <th>Item No.</th>
                             <th>Material</th>
-                            <th class="text-center">Quantity</th>
+                            <th class="text-center">Delivery Qty</th>
+                            <th class="text-center">Open Qty</th>
                             <th class="text-center">Storage Location</th>
                             <th class="text-center">Picking</th>
                             <th class="text-center">GI</th>
@@ -391,7 +392,8 @@ const cancelProposal = async () => {
                                     <span>{{ item.material_description }}</span>
                                 </div>
                             </td>
-                            <td class="text-center">{{ item.delivery_quantity }}</td>
+                            <td class="text-center">{{ parseInt(item.reserved_qty)  + parseInt(item.open_quantity) }}</td>
+                            <td class="text-center">{{ item.open_quantity }}</td>
                             <td class="text-center">
                                 <div class="d-flex flex-column py-3">
                                     <span>{{ item?.storage_location }}</span>
@@ -411,7 +413,7 @@ const cancelProposal = async () => {
                                     content="No Pallet" class="text-uppercase" inline></v-badge>
                                 <!-- if reserved full quantity  -->
                                 <v-badge
-                                    v-else-if="item.reserved_qty > 0 && parseInt(item.reserved_qty) === parseInt(item.delivery_quantity)"
+                                    v-else-if="parseInt(item.open_quantity) === 0"
                                     color="success" content="Reserved" @click="selectBatch(item, true)"
                                     class="text-uppercase cursor-pointer" inline></v-badge>
                                 <!-- If partially reserved  -->
@@ -420,12 +422,13 @@ const cancelProposal = async () => {
                                         class="text-uppercase cursor-pointer" inline></v-badge>
                                     <span class="mt-1 text-xs">{{ item.reserved_qty }} {{ item.sales_unit }}(s) out of
                                         {{
-                                            item.delivery_quantity }} {{ item.sales_unit }}(s)</span>
+                                            parseInt(item.reserved_qty)  + parseInt(item.open_quantity) }} {{ item.sales_unit }}(s)
+                                    </span>
                                 </div>
                             </td>
                             <td class="text-center">
                                 <v-btn @click="selectBatch(item, false)" color="primary-light"
-                                    :disabled="item.reserved_qty > 0 && (parseInt(item.reserved_qty) === parseInt(item.delivery_quantity))"
+                                    :disabled="item.reserved_qty > 0 && parseInt(item.open_quantity) === 0"
                                     variant="outlined" size="small">
                                     Select Batch
                                 </v-btn>
@@ -608,8 +611,11 @@ const cancelProposal = async () => {
                                             </span>
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
-                                            <span class="text-medium-emphasis">{{
-                                                batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
+                                            <span class="text-medium-emphasis">
+                                                {{ 
+                                                    parseInt(batchPickingStore.selectedDeliveryItem?.reserved_qty) + parseInt(batchPickingStore.selectedDeliveryItem?.open_quantity) 
+                                                }}
+                                            </span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -636,7 +642,7 @@ const cancelProposal = async () => {
                                         </VCol>
                                         <VCol class="d-inline-flex align-center">
                                             <span class="text-medium-emphasis">{{
-                                                batchPickingStore.deliveryDetails?.open_quantity }}</span>
+                                                batchPickingStore.selectedDeliveryItem?.open_quantity }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -644,7 +650,7 @@ const cancelProposal = async () => {
                         </VListItem>
                     </VList>
 
-                    <div v-if="parseInt(batchPickingStore.deliveryDetails?.open_quantity) > 0" class="mt-4">
+                    <div v-if="parseInt(batchPickingStore.selectedDeliveryItem?.open_quantity) > 0" class="mt-4">
 
                         <v-tabs v-model="batchPickingStore.activeTab" bg-color="transparent" variant="tonal"
                             class="custom-tabs">
@@ -675,7 +681,7 @@ const cancelProposal = async () => {
                                             <th></th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody v-if="batchPickingStore.availableStocks.length > 0">
                                         <tr v-for="(item, index) in batchPickingStore.availableStocks" class="text-sm"
                                             :key="index" :class="{
                                                 'selected-row': item.is_selected,
@@ -721,6 +727,11 @@ const cancelProposal = async () => {
                                             </td>
                                         </tr>
                                     </tbody>
+                                    <tbody v-else>
+                                        <tr>
+                                            <td colspan="10" class="text-center py-4">No Batch Found</td>
+                                        </tr>
+                                    </tbody>
                                 </v-table>
                             </v-tabs-window-item>
 
@@ -749,7 +760,7 @@ const cancelProposal = async () => {
                                             <th></th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody v-if="batchPickingStore.otherStocks.length > 0">
                                         <tr v-for="(item, index) in batchPickingStore.otherStocks" class="text-sm"
                                             :key="index" :class="{
                                                 'selected-row': item.is_selected,
@@ -789,10 +800,15 @@ const cancelProposal = async () => {
                                                 batchPickingStore.selectedDeliveryItem?.sales_unit }}</td>
                                             <td>
                                                 <v-checkbox v-model="item.is_selected" hide-details
-                                                    :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                                    :disabled="item.inventory.length === 0 || item.split_qty_bag === 0"
                                                     density="compact">
                                                 </v-checkbox>
                                             </td>
+                                        </tr>
+                                    </tbody>
+                                    <tbody v-else>
+                                        <tr>
+                                            <td colspan="10" class="text-center py-4">No Batch Found</td>
                                         </tr>
                                     </tbody>
                                 </v-table>
@@ -813,7 +829,7 @@ const cancelProposal = async () => {
         </v-card>
     </v-dialog>
 
-    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+    <v-dialog v-model="viewReservedPallets" max-width="1200px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
@@ -829,6 +845,7 @@ const cancelProposal = async () => {
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
+                            <th class="text-center">Stock Exception</th>
                             <th class="text-center">Quantity</th>
                             <th class="text-center">Age</th>
                         </tr>
@@ -839,7 +856,13 @@ const cancelProposal = async () => {
                             <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.commodity_batch_code }}</td>
                             <td>{{ item.manufacturing_date }}</td>
-                            <td class="text-center">{{ item.total_qty }}</td>
+                            <td class="text-center">
+                                <i v-if="item.is_stock_exception" style="font-size: 24px; background-color: green;"
+                                    class="ri-checkbox-circle-line mt-2"></i>
+                                <i v-else style="font-size: 24px; background-color: #FF4C51;"
+                                    class="ri-close-circle-line mt-2"></i>
+                            </td>
+                            <td class="text-center">{{ item.total_qty }} {{ batchPickingStore.selectedDeliveryItem?.sales_unit }}(s)</td>
                             <td class="text-center">{{ calculateAge(item.manufacturing_date) }}</td>
                         </tr>
                     </tbody>

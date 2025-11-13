@@ -545,9 +545,9 @@ const handleSearch = debounce((search) => {
     <v-dialog v-model="confirmModalOpen" v-if="selectedInventory" max-width="700">
         <v-card class="py-8 px-6">
             <div class="mx-auto">
-                <i class="ri-add-box-line" style="font-size: 54px;"></i>
+                <i class="ri-add-box-line" style="font-size: 50px;"></i>
             </div>
-            <p class="mt-4 text-h4 text-center text-high-emphasis">Assign RFID with physical ID of <span
+            <p class="mt-4 text-h5 text-center text-high-emphasis">Assign inventory with physical ID of <span
                     class="font-weight-bold">{{ selectedInventory?.physical_id }}</span>
                 to <span class="font-weight-black">{{ selectedLayer.layer_name }}</span> of <span
                     class="font-weight-black">{{ block.data.lot?.label }} - {{ block.data.label }}</span> block?</p>
@@ -565,8 +565,8 @@ const handleSearch = debounce((search) => {
         <v-card class="py-8 px-6">
             <div class="mx-auto">
                 <i v-if="selectedAction.type == 'Bin Transfer'" class="ri-folder-transfer-line"
-                    style="font-size: 54px;"></i>
-                <i v-else class="ri-arrow-go-back-line" style="font-size: 54px;"></i>
+                    style="font-size: 50px;"></i>
+                <i v-else class="ri-arrow-go-back-line" style="font-size: 50px;"></i>
             </div>
             <p class="mt-4 text-h4 text-center">{{ selectedAction.title }}</p>
             <p class="text-h5 text-center" v-html="selectedAction.message"></p>
@@ -577,6 +577,7 @@ const handleSearch = debounce((search) => {
             </v-card-actions>
         </v-card>
     </v-dialog>
+
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
