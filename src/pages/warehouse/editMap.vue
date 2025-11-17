@@ -472,10 +472,9 @@ const handleBack = () => {
         <v-card>
             <v-form @submit.prevent="saveEdit" ref="actionForm">
                 <v-card-title>Edit Item</v-card-title>
-
-                <v-select v-if="selectedItem.type === 'block'" class="mt-1 mx-5" label="Select Lot" density="compact"
-                    :items="lots" item-title="label" item-value="id" v-model="selectedItem.lot_id"
-                    :rules="[value => !!value || 'Please select lot from the list']" persistent-hint clearable />
+                <v-autocomplete class="mx-5" v-if="selectedItem.type === 'block'" density="compact" item-title="label" item-value="id"
+                    :items="lots" v-model="selectedItem.lot_id"
+                    :rules="[value => !!value || 'Please select lot from the list']" />
                 <v-card-text class="mt-5">
                     <v-text-field v-model="selectedItem.label" label="Enter label" type="text"></v-text-field>
                 </v-card-text>
@@ -519,6 +518,7 @@ const handleBack = () => {
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
 
+
 <style scoped>
 .grid-scroll-wrapper {
     overflow-x: auto;
@@ -529,73 +529,72 @@ const handleBack = () => {
 
 .grid-layout {
     width: max-content;
-    min-width: 2500px;
-    /* ensure grid has a minimum visible width */
+    min-width: 2500px; /* ensure grid has a minimum visible width */
     min-height: 250px;
 }
 
-.vue-grid-layout {
-    margin: 0;
-    padding: 0;
-}
-
-.bg-legend {
-    background-color: white !important;
-}
-
+/* Ensure grid items are positioned relative so absolutely-positioned children are contained */
 .vue-grid-item {
-    margin-left: 0 !important;
-    /* Remove left margin */
-    margin-right: 0 !important;
-    /* Remove right margin */
+    position: relative;
+    margin-left: 0 !important; /* Remove left margin */
+    margin-right: 0 !important; /* Remove right margin */
     padding: 0 !important;
+    box-sizing: border-box;
 }
 
+/* Default background and border for grid items (except placeholders) */
 .vue-grid-item:not(.vue-grid-placeholder) {
     background: #b9bbba;
     border: 1px solid black;
 }
 
+/* styling for placeholder */
 :deep(.vue-grid-item.vue-grid-placeholder) {
     background: rgb(159, 182, 159);
 }
 
+/* Make text centered both horizontally and vertically without changing layout height.
+   Use inset: 0 to fill the grid item and flexbox to center content. Avoid explicit height/top/bottom. */
+.vue-grid-item .text,
+.vue-grid-item .legend-text {
+    position: absolute;
+    inset: 0; /* shorthand for top:0; right:0; bottom:0; left:0; */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px; /* small padding to avoid hugging borders */
+    box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none; /* allows clicks to pass through if needed */
+}
+
+/* Appearance differences between normal text and legend text */
 .vue-grid-item .text {
     font-size: 16px;
     color: white;
-    text-align: center;
-    position: absolute;
-    top: 3px;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 100%;
-    width: 100%;
 }
 
 .vue-grid-item .legend-text {
     font-size: 16px;
     color: rgb(36, 35, 35);
-    position: absolute;
-    top: 0px;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 100%;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    /* Vertically center */
-    justify-content: center;
-    /* Horizontally center */
-    text-align: center;
+    background: transparent;
 }
 
-
+/* optional: icon/remove button inside item should be clickable and sit on top */
 .vue-grid-item .remove {
     position: absolute;
-    top: 0;
+    top: 2px;
+    right: 2px;
     cursor: pointer;
+    z-index: 2;
+}
+
+/* small utility so legend-only lots can have white background */
+.bg-legend {
+    background-color: white !important;
 }
 
 .layoutJSON {
