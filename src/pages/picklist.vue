@@ -49,7 +49,7 @@ const onPicklistLogsEvent = (data) => {
                 const delivery = shipmentData.deliveries.find(d => d.batch === batch);
                 if (delivery) {
                     delivery.read_rfids.push({
-                        name: data.picklistLog.name, 
+                        name: data.picklistLog.inventory?.physical_id || '',
                         current_quantity: data.picklistLog?.inventory?.quantity,
                         mfg_date: data.picklistLog?.inventory?.mfg_date,
                         loaded_date: Moment().format('MMMM D YYYY, h:mm:ss a'),
@@ -98,7 +98,7 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                     ? delivery.inventory
                         .filter(item => item.is_loaded || (item.is_loose && item.shipment_id === response.data.shipment_id))
                         .map(item => ({
-                            name: item.rfid?.name || '',
+                            name: item.physical_id || '',
                             current_quantity: item.quantity,
                             mfg_date: item.mfg_date || null,
                             loaded_date: item.loaded_datetime,
