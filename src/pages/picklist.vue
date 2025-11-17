@@ -570,7 +570,7 @@ const viewRequiredPallets = ref(false);
                             <tr v-for="(item, index) in delivery.inventory" :key="item.id">
                                 <td>{{ item.physical_id }}</td>
                                 <td>{{ item.batch }}</td>
-                                <td>{{ item.mfg_date }}</td>
+                                <td>{{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}</td>
                                 <td class="text-center">{{ item.quantity }}</td>
                                 <td class="text-center d-flex justify-center align-center">
                                     <i v-if="item.is_loose" style="font-size: 24px; background-color: green;"
