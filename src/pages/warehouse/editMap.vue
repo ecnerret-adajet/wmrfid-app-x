@@ -121,7 +121,7 @@ function addItem() {
     state.layout.push({
         x: 0,
         y: 0, // puts it at the bottom
-        w: 2,
+        w: 3,
         h: 2,
         i: state.index,
         index: state.index,
