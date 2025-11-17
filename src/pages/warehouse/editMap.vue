@@ -472,7 +472,7 @@ const handleBack = () => {
         <v-card>
             <v-form @submit.prevent="saveEdit" ref="actionForm">
                 <v-card-title>Edit Item</v-card-title>
-                <v-autocomplete v-if="selectedItem.type === 'block'" density="compact" item-title="label" item-value="id"
+                <v-autocomplete class="mx-5" v-if="selectedItem.type === 'block'" density="compact" item-title="label" item-value="id"
                     :items="lots" v-model="selectedItem.lot_id"
                     :rules="[value => !!value || 'Please select lot from the list']" />
                 <v-card-text class="mt-5">
