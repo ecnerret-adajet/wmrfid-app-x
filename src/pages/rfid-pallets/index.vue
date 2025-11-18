@@ -746,6 +746,13 @@ const bayOptions = [
                 </div>
             </template>
 
+            <template #item.quantity="{ item }">
+                <div class="d-flex flex-column">
+                    <div class="text-h6">{{ item.quantity }}</div>
+                    <div v-if="item.is_loose" class="text-caption text-warning">Loose</div>
+                </div>
+            </template>
+
             <template #item.epc="{ item }">
                 <v-btn variant="outlined" @click="viewEpc(item)" color="info">
                     View EPC
