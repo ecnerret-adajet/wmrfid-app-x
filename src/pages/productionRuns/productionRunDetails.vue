@@ -78,27 +78,31 @@ const headers = [
 
     },
     {
+        title: 'MATERIAL',
+        key: 'material',
+    },
+    {
         title: 'MFG DATE',
         key: 'mfg_date',
     },
-    {
-        title: 'IS LOADED',
-        key: 'is_loaded',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'IS EMPTY',
-        key: 'is_empty',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'Under Fumigation',
-        key: 'under_fumigation',
-        align: 'center',
-        sortable: false
-    },
+    // {
+    //     title: 'IS LOADED',
+    //     key: 'is_loaded',
+    //     align: 'center',
+    //     sortable: false
+    // },
+    // {
+    //     title: 'IS EMPTY',
+    //     key: 'is_empty',
+    //     align: 'center',
+    //     sortable: false
+    // },
+    // {
+    //     title: 'Under Fumigation',
+    //     key: 'under_fumigation',
+    //     align: 'center',
+    //     sortable: false
+    // },
     {
         title: 'Line',
         key: 'line',
@@ -496,7 +500,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
-                                    }}</span>
+                                }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -508,7 +512,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.material?.description
-                                    }}</span>
+                                }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -675,8 +679,9 @@ const handleWrongPallet = async () => {
                                 </span>
                             </template>
 
-                            <template #item.material_id="{ item }">
-                                {{ item.material?.description }}
+                            <template #item.material="{ item }">
+                                <span class="font-weight-bold">{{ item.material?.description }}</span><br />
+                                <span class="text-subtitle-1">{{ item.material?.bu_material }}</span>
                             </template>
 
                             <template #item.type="{ item }">
@@ -687,7 +692,7 @@ const handleWrongPallet = async () => {
                                 {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
                             </template>
 
-                            <template #item.is_loaded="{ item }">
+                            <!-- <template #item.is_loaded="{ item }">
                                 <div class="d-flex justify-center align-center">
                                     <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
                                         class="ri-checkbox-circle-line"></i>
@@ -712,7 +717,7 @@ const handleWrongPallet = async () => {
                                 </v-btn>
                                 <i v-else style="font-size: 30px; background-color: #FF4C51;"
                                     class="ri-close-circle-line"></i>
-                            </template>
+                            </template> -->
 
                             <template #item.line="{ item }">
                                 <div v-if="item.plc_run">
@@ -859,7 +864,7 @@ const handleWrongPallet = async () => {
             <div class="mx-4">
                 <span class="text-h5 text-high-emphasis">
                     Do you want to remove the attached batch <span class="text-primary">{{ productionRun.COMMODITY
-                        }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
+                    }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
                 </span>
             </div>
             <v-table class="mt-4">
