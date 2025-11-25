@@ -73,7 +73,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     // Store the current options
     lastOptions.value = options;
     currentOptions.value = options;
-    
+
     pageLoading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -87,7 +87,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 
     try {
         const token = JwtService.getToken();
-    
+
         const response = await axios.get(`/shipments/${shipmentNumber}`, {
             params: {
                 page,
@@ -101,11 +101,11 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         });
 
         const { shipment, deliveries_table } = response.data;
-        
+
         shipmentData.value = shipment
         totalItems.value = deliveries_table.total;
         serverItems.value = deliveries_table.data;
-        
+
     } catch (error) {
         console.log(error);
     } finally {
@@ -117,10 +117,10 @@ onMounted(async () => {
 });
 
 const displayPlateNumber = computed(() => {
-  return shipmentData.value?.shipment?.plate_number_1 || 
-    shipmentData.value?.shipment?.plate_number_2 || 
-    shipmentData.value?.shipment?.plate_number_3 || 
-         "N/A"; // Default value if none exist
+    return shipmentData.value?.shipment?.plate_number_1 ||
+        shipmentData.value?.shipment?.plate_number_2 ||
+        shipmentData.value?.shipment?.plate_number_3 ||
+        "N/A"; // Default value if none exist
 });
 
 const handleViewDelivery = (delivery) => {
@@ -137,7 +137,7 @@ const isStatusMatched = computed(() => {
 });
 
 const syncingLoading = ref(false)
-const syncStatus = async() => {
+const syncStatus = async () => {
     syncingLoading.value = true;
     try {
         const token = JwtService.getToken();
@@ -146,12 +146,12 @@ const syncStatus = async() => {
                 Authorization: `Bearer ${token}`
             }
         });
-        
+
         if (response.status === 200) {
             await loadItems({
                 page: page.value,
                 itemsPerPage: itemsPerPage.value,
-                sortBy: [{key: 'created_at', order: 'desc'}],
+                sortBy: [{ key: 'created_at', order: 'desc' }],
                 search: searchValue.value
             });
             toast.value.color = 'success';
@@ -168,7 +168,7 @@ const syncStatus = async() => {
 </script>
 
 <template>
-  
+
     <div>
         <v-card>
             <v-card-title>
@@ -177,35 +177,39 @@ const syncStatus = async() => {
                     <v-spacer></v-spacer>
                     <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false &&
                         (
-                            [3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status)) &&
-                            [3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))
-                        )" class="px-5"
-                    type="button" color="warning">
+                            [2, 3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status)) &&
+                            [2, 3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))
+                        )" class="px-5" type="button" color="warning">
                         Sync Status
                     </v-btn>
                 </div>
-                <v-skeleton-loader  v-if="pageLoading" type="article"></v-skeleton-loader>
+                <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
                 <VList v-else lines="one" density="compact" class="mt-4">
                     <VListItem>
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" style="margin-top: 1px;">Shipment</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis"
+                                            style="margin-top: 1px;">Shipment</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.shipment_number }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{
+                                            shipmentData?.shipment?.shipment_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis" style="margin-top: 1px;">Check-in Date</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis"
+                                            style="margin-top: 1px;">Check-in Date</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-medium-emphasis">
-                                            {{ shipmentData?.shipment?.check_in_date ? Moment(shipmentData?.shipment?.check_in_date).format('MMMM D, YYYY') : '--' }}
+                                            {{ shipmentData?.shipment?.check_in_date ?
+                                                Moment(shipmentData?.shipment?.check_in_date).format('MMMM D, YYYY') : '--'
+                                            }}
                                         </span>
                                     </VCol>
                                 </VRow>
@@ -217,20 +221,24 @@ const syncStatus = async() => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Hauler</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis "
+                                            style="margin-top: 1px;">Hauler</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.hauler_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{
+                                            shipmentData?.shipment?.hauler_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Plate Number</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis "
+                                            style="margin-top: 1px;">Plate Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ displayPlateNumber
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -241,29 +249,27 @@ const syncStatus = async() => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">Driver</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis "
+                                            style="margin-top: 1px;">Driver</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ shipmentData?.shipment?.driver_name }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{
+                                            shipmentData?.shipment?.driver_name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <!-- Show only if 3 or 4 (Load end/LoadStart) -->
-                                <VRow v-if="[3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status))" class="table-row">
+                                <VRow v-if="[2, 3, 4].includes(Number(shipmentData?.shipment?.bu_overall_status))"
+                                    class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">BU Trans Status</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis "
+                                            style="margin-top: 1px;">BU Trans Status</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         {{ shipmentData?.shipment?.bu_overall_status }}
-                                        <v-chip
-                                            :color="isStatusMatched ? 'success' : 'error'"
+                                        <v-chip :color="isStatusMatched ? 'success' : 'error'"
                                             :content="isStatusMatched ? 'synced' : 'not synced'"
-                                            class="text-uppercase ml-3"
-                                            size="x-small"
-                                            inline
-                                            variant="outlined"
-                                        >
+                                            class="text-uppercase ml-3" size="x-small" inline variant="outlined">
                                             {{ isStatusMatched ? 'synced' : 'not synced' }}
                                         </v-chip>
                                     </VCol>
@@ -271,26 +277,22 @@ const syncStatus = async() => {
                             </VCol>
                         </VRow>
                     </VListItem>
-                        <VListItem>
+                    <VListItem>
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                <!-- Show only if 3 or 4 (Load end/LoadStart) -->
-                                <VRow v-if="[3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))" class="table-row">
+                                <VRow v-if="[2, 3, 4].includes(Number(shipmentData?.shipment?.alc_overall_status))"
+                                    class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis " style="margin-top: 1px;">ALC Trans Status</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis "
+                                            style="margin-top: 1px;">ALC Trans Status</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         {{ shipmentData?.shipment?.alc_overall_status }}
-                                        <v-chip 
-                                            :color="isStatusMatched ? 'success' : 'error'"
+                                        <v-chip :color="isStatusMatched ? 'success' : 'error'"
                                             :content="isStatusMatched ? 'synced' : 'not synced'"
-                                            class="text-uppercase ml-3"
-                                            inline
-                                            size="x-small"
-                                            variant="outlined"
-                                        >
+                                            class="text-uppercase ml-3" inline size="x-small" variant="outlined">
                                             {{ isStatusMatched ? 'synced' : 'not synced' }}
                                         </v-chip>
                                     </VCol>
@@ -301,22 +303,14 @@ const syncStatus = async() => {
                 </VList>
             </v-card-title>
         </v-card>
-        <div >
+        <div>
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
                     <div class="mt-2">
-                        <VDataTableServer
-                            v-model:items-per-page="itemsPerPage"
-                            :headers="headers"
-                            :items="serverItems"
-                            :items-length="totalItems"
-                            :loading="pageLoading"
-                            item-value="id"
-                            :search="searchValue"
-                            @update:options="loadItems"
-                            class="text-no-wrap"
-                        >
+                        <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+                            :items-length="totalItems" :loading="pageLoading" item-value="id" :search="searchValue"
+                            @update:options="loadItems" class="text-no-wrap">
 
                             <template #item="{ item }">
                                 <tr @click="handleViewDelivery(item)" class="clickable-row">
@@ -343,7 +337,7 @@ const syncStatus = async() => {
             </v-card> -->
         </div>
 
-        <div >
+        <div>
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Picklist Read Pallet Logs</h4>
@@ -412,17 +406,16 @@ const syncStatus = async() => {
             </tbody>
         </v-table>
     </DefaultModal>
-<Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 
 <style scoped>
-
 .clickable-row {
     cursor: pointer;
     transition: background-color 0.2s ease-in-out;
 }
 
 .clickable-row:hover {
-    background-color: rgba(173,215,192, 0.3); 
+    background-color: rgba(173, 215, 192, 0.3);
 }
 </style>
