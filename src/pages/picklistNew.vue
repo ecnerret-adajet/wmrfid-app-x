@@ -28,18 +28,18 @@ const toast = ref({
 
 
 onMounted(() => {
-    fetchShipmentDetails(props.shipmentNumber);  
+    fetchShipmentDetails(props.shipmentNumber);
     echo.channel('picklist-logs')
         .listen('PicklistLogsEvent', onPicklistLogsEvent);
 });
 
 const onPicklistLogsEvent = (data) => {
     console.log(data);
-    
+
     // Only process if the event is for the current bay
     if (data.picklistLog?.antenna_log?.bay_no == props.bayNo) {
         if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
-           const pick = data.picklistLog;
+            const pick = data.picklistLog;
             if (!pick) return;
             if (pick?.antenna_log?.bay_no != props.bayNo) return;
 
@@ -66,22 +66,22 @@ const markItemLoaded = ({ materialCode, physicalId, rfidId }) => {
 
         const items = Array.isArray(group.items) ? group.items : (group.items?.toArray ? group.items.toArray() : []);
         const itemIndex = items.findIndex(it => String(it.physical_id || '').trim() === String(physicalId || '').trim()
-        || String(it.rfid_id || '').trim() === String(rfidId || '').trim());
+            || String(it.rfid_id || '').trim() === String(rfidId || '').trim());
 
         if (itemIndex !== -1) {
-        // mutate in-place
-        const target = items[itemIndex];
-        target.is_loaded = true;
-        target.loaded_at = new Date().toISOString();
+            // mutate in-place
+            const target = items[itemIndex];
+            target.is_loaded = true;
+            target.loaded_at = new Date().toISOString();
 
-        // ensure reactivity for templates that only watch array reference:
-        if (Array.isArray(group.items)) {
-            group.items.splice(itemIndex, 1, { ...target });
-        } else {
-            // if group.items is a collection-like, try to replace/populate accordingly
-            group.items[itemIndex] = { ...target };
-        }
-        return true;
+            // ensure reactivity for templates that only watch array reference:
+            if (Array.isArray(group.items)) {
+                group.items.splice(itemIndex, 1, { ...target });
+            } else {
+                // if group.items is a collection-like, try to replace/populate accordingly
+                group.items[itemIndex] = { ...target };
+            }
+            return true;
         }
     }
     return false;
@@ -89,7 +89,8 @@ const markItemLoaded = ({ materialCode, physicalId, rfidId }) => {
 
 const shipmentData = reactive({
     reserved_inventories: [],
-    shipment: {}
+    shipment: {},
+    total_pallet_to_load: 0
 });
 
 const openedPanels = ref([]);
@@ -98,8 +99,7 @@ const fetchShipmentDetails = async (shipmentNumber) => {
     pageLoading.value = true;
     try {
         const token = JwtService.getToken();
-        let url = `shipments/get-picklist-data/${shipmentNumber}`;
-        // let url = `test-picklist-data/${shipmentNumber}`;
+        let url = `picklist/shipment-picklist/${shipmentNumber}`;
 
         const response = await axios.get(url, {
             params: {
@@ -113,11 +113,12 @@ const fetchShipmentDetails = async (shipmentNumber) => {
 
         console.log(response.data);
 
-        if (response.data.success) {
-            shipmentData.shipment = response.data.shipment || {};
-            shipmentData.reserved_inventories = response.data.reserved_inventories || [];
+        if (response.data.result === 'S') {
+            shipmentData.shipment = response.data.shipmentData || {};
+            shipmentData.reserved_inventories = response.data.picklists || [];
+            shipmentData.total_pallet_to_load = response.data.total_pallet_to_load || 0;
         } else {
-            shipmentData.shipment = response.data.shipment || {};
+            shipmentData.shipment = response.data.shipmentData || {};
             dialogVisible.value = true;
             errorMessage.value = response.data.message || 'Failed to fetch shipment details.';
         }
@@ -130,10 +131,10 @@ const fetchShipmentDetails = async (shipmentNumber) => {
 };
 
 const displayPlateNumber = computed(() => {
-  return shipmentData?.shipment?.plate_number_1 || 
-    shipmentData?.shipment?.plate_number_2 || 
-    shipmentData?.shipment?.plate_number_3 || 
-         "N/A"; // Default value if none exist
+    return shipmentData?.shipment?.plate_number_1 ||
+        shipmentData?.shipment?.plate_number_2 ||
+        shipmentData?.shipment?.plate_number_3 ||
+        "N/A"; // Default value if none exist
 });
 
 const handleBack = () => {
@@ -148,8 +149,7 @@ const handleBack = () => {
     <v-container fluid>
         <!-- Shipment Details -->
         <v-card class="my-4 mx-2 px-4 py-3 elevation-2" rounded="lg">
-            <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line"
-                        variant="text"></v-btn>
+            <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line" variant="text"></v-btn>
             <v-card-title class="text-h6 font-weight-bold mb-2 text-primary">
                 Shipment Details
             </v-card-title>
@@ -157,12 +157,13 @@ const handleBack = () => {
                 <v-row dense>
                     <v-col cols="12" md="6">
                         <span class="font-weight-bold text-high-emphasis">Shipment:</span>
-                        <span class="ms-2 text-medium-emphasis">{{shipmentData?.shipment?.shipment_number}}</span>
+                        <span class="ms-2 text-medium-emphasis">{{ shipmentData?.shipment?.shipment_number }}</span>
                     </v-col>
                     <v-col cols="12" md="6">
                         <span class="font-weight-bold text-high-emphasis">Check-in Date:</span>
                         <span class="ms-2 text-medium-emphasis">
-                        {{ shipmentData?.shipment?.check_in_date_time ? Moment(shipmentData?.shipment?.check_in_date_time).format('MMMM D, YYYY h:mm A') : ''}}
+                            {{ shipmentData?.shipment?.check_in_date_time ?
+                                Moment(shipmentData?.shipment?.check_in_date_time).format('MMMM D, YYYY h:mm A') : '' }}
                         </span>
                     </v-col>
                     <v-col cols="12" md="6">
@@ -184,7 +185,7 @@ const handleBack = () => {
         <!-- Picklists -->
         <v-card class="mb-6 mx-2 px-4 py-3 elevation-2" rounded="lg">
             <v-card-title class="text-h6 font-weight-bold text-primary">
-                Reserved Pallets
+                Reserved Pallets <span>({{ shipmentData.total_pallet_to_load }})</span>
             </v-card-title>
             <v-card-text>
                 <template v-for="(delivery, index) in shipmentData.reserved_inventories" :key="index">
@@ -192,45 +193,47 @@ const handleBack = () => {
                         <v-row dense class="mt-3">
                             <v-col cols="12" md="6">
                                 <span class="font-weight-bold">Material:</span>
-                                <span class="ms-2">{{ delivery.material_description }}</span>
+                                <span class="ms-2">{{ delivery.material_desc }}</span>
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <span class="font-weight-bold">Allocated Quantity:</span>
+                                <span class="ms-2">{{ delivery.quantity }} {{ delivery.sales_unit }}</span>
+
                             </v-col>
                             <v-col cols="12" md="6">
                                 <span class="font-weight-bold">Material Code:</span>
-                                <span class="ms-2">{{ delivery.material_code }}</span>
+                                <span class="ms-2">{{ delivery.material }}</span>
+
                             </v-col>
                             <v-col cols="12" md="6">
-                                <span class="font-weight-bold">Required Quantity:</span>
-                                <span class="ms-2">{{ delivery.total_allocated }} {{ delivery.sales_unit }}</span>
+                                <span class="font-weight-bold">Batch:</span>
+                                <span class="ms-2">{{ delivery.batch }}</span>
                             </v-col>
+
                         </v-row>
-                    
-                        <v-alert
-                            v-for="(item, index) in delivery.items"
+
+                        <v-alert v-for="(item, index) in delivery.inventory"
                             :key="item.physical_id + '-' + item.mfg_date + '-' + index"
-                            color="primary"
-                            variant="tonal"
-                            density="compact"
-                            border="start"
-                            class="text-high-emphasis mt-2"
-                            style="border-left-width: 4px"
-                        >
+                            :color="item.is_loaded ? 'success' : 'warning'" variant="tonal" density="compact"
+                            border="start" class="text-high-emphasis mt-2" style="border-left-width: 4px">
                             <div class="d-flex justify-space-between align-center gap-2">
                                 <div>
-                                    <strong>{{ item.physical_id }}</strong><br />
+                                    <strong>{{ item.pallet_physical_id }}</strong><br />
                                     <div>
-                                        {{ item.quantity }} bags
+                                        {{ item.quantity }} bags (Current Quantity)
                                         <span v-if="item.mfg_date">
                                             (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
                                         </span>
                                     </div>
                                     <div class="font-weight-bold">
-                                        {{ item.allocated_quantity }} bags
-                                        <span v-if="item.mfg_date">
+                                        {{ item.total_qty }} bags
+                                        <span v-if="item.total_qty">
                                             (Allocated Quantity)
                                         </span>
                                     </div>
                                     <div v-if="item.quantity > item.allocated_quantity" class="text-warning">
-                                        <span class="font-italic">Pallet will be automatically tagged as loose when scanned.</span>
+                                        <span class="font-italic">Pallet will be automatically tagged as loose when
+                                            scanned.</span>
                                     </div>
                                 </div>
                                 <div>
@@ -248,7 +251,7 @@ const handleBack = () => {
             </v-card-text>
         </v-card>
     </v-container>
- 
+
     <v-dialog v-model="dialogVisible" max-width="600px" persistent>
         <v-sheet class="pa-4 text-center mx-auto" elevation="12" max-width="600" rounded="lg" width="100%">
             <v-icon class="mb-5" color="error" icon="ri-error-warning-line" size="72"></v-icon>
@@ -273,6 +276,4 @@ const handleBack = () => {
 
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>
