@@ -870,7 +870,8 @@ const cancelProposal = async () => {
                 <div class="d-flex justify-end mt-8 mx-4">
                     <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
                         type="button">Close</v-btn>
-                    <v-btn color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
+                    <!-- If already started, cancellation of batch is hidden  -->
+                    <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
                         Reservation</v-btn>
                 </div>
             </v-card-text>
