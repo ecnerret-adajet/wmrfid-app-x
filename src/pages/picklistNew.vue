@@ -13,6 +13,7 @@ const shipment = ref(null);
 const pageLoading = ref(false);
 const errorMessage = ref(null);
 
+
 const props = defineProps({
     shipmentNumber: String,
     readerId: String,
@@ -26,65 +27,85 @@ const toast = ref({
     show: false
 });
 
+let picklistLogsChannel = null;
+let picklistRefreshChannel = null;
 
 onMounted(() => {
     fetchShipmentDetails(props.shipmentNumber);
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+    // Create private channels for each event type
+    const channelNameBase = `shipment.${props.readerId}.${props.bayNo}`;
+    
+    picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
+    picklistRefreshChannel = echo.channel(`${channelNameBase}.picklist-refresh`);
+
+    picklistLogsChannel.listen('PicklistLogsEvent', onPicklistLogsEvent);
+    picklistRefreshChannel.listen('PicklistRefreshEvent', onPicklistRefreshEvent);
+
 });
 
+const onPicklistRefreshEvent = (data) => {
+    if (data.picklistRefresh === true) {
+        fetchShipmentDetails(props.shipmentNumber);
+    }
+}
+
+const processedEpcs = ref({});
 const onPicklistLogsEvent = (data) => {
-    console.log(data);
+    const payload = data.picklistLog;
+    if (!payload) return;
 
-    // Only process if the event is for the current bay
-    if (data.picklistLog?.antenna_log?.bay_no == props.bayNo) {
-        if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
-            const pick = data.picklistLog;
-            if (!pick) return;
-            if (pick?.antenna_log?.bay_no != props.bayNo) return;
+    if (payload.current_shipment_number != props.shipmentNumber) return;
 
-            const materialCode = pick.inventory?.material_code || pick.inventory?.material_id;
-            const physicalId = pick.inventory?.pallet_physical_id;
-            const rfidId = pick.inventory?.rfid_id;
+    const inventoryPayload = payload.inventory || {};
+    const batch = (inventoryPayload.batch || '').toString().trim();
+    const epc = inventoryPayload.epc || payload.epc;
+    const shipmentNumber = payload.current_shipment_number;
 
-            // try incremental update first
-            const updated = markItemLoaded({ materialCode, physicalId, rfidId });
+    if (!batch || !epc || !shipmentNumber || !props.bayNo) return;
 
-            if (!updated) {
-                // fallback: re-sync the shipment (once) if no in-memory match found
-                fetchShipmentDetails(props.shipmentNumber);
-            }
-        }
+    // unique processing key to avoid double-processing
+    const key = `${shipmentNumber}_${props.bayNo}_${epc}`;
+    if (processedEpcs.value[key]) return;
+    processedEpcs.value[key] = true;
+
+    // find reserved entry by batch (normalize)
+    const reserved = shipmentData.reserved_inventories.find(
+        r => (r.batch || '').toString().trim() === batch
+    );
+    if (!reserved) {
+        console.warn('No reserved entry found for batch', batch);
+        return;
     }
-};
 
-const markItemLoaded = ({ materialCode, physicalId, rfidId }) => {
-    const mcode = String(materialCode || '').trim();
+    // inventory array inside reserved entry (adjust property name if different)
+    const invArray = reserved.inventory || reserved.inventories || [];
 
-    for (const group of shipmentData.reserved_inventories) {
-        if (mcode && String(group.material_code || '').trim() !== mcode) continue;
+    // find specific inventory/pallet inside the reserved entry by epc / physical id / rfid_code
+    const invIndex = invArray.findIndex(i =>
+        (i.epc && i.epc === epc) ||
+        (i.pallet_physical_id && i.pallet_physical_id == inventoryPayload.physical_id) ||
+        (i.rfid_code && i.rfid_code === inventoryPayload.rfid_code)
+    );
 
-        const items = Array.isArray(group.items) ? group.items : (group.items?.toArray ? group.items.toArray() : []);
-        const itemIndex = items.findIndex(it => String(it.physical_id || '').trim() === String(physicalId || '').trim()
-            || String(it.rfid_id || '').trim() === String(rfidId || '').trim());
-
-        if (itemIndex !== -1) {
-            // mutate in-place
-            const target = items[itemIndex];
-            target.is_loaded = true;
-            target.loaded_at = new Date().toISOString();
-
-            // ensure reactivity for templates that only watch array reference:
-            if (Array.isArray(group.items)) {
-                group.items.splice(itemIndex, 1, { ...target });
-            } else {
-                // if group.items is a collection-like, try to replace/populate accordingly
-                group.items[itemIndex] = { ...target };
-            }
-            return true;
-        }
+    if (invIndex === -1) {
+        console.warn('No inventory item found for epc/physical id', epc, inventoryPayload.physical_id);
+        return;
     }
-    return false;
+
+    const inv = invArray[invIndex];
+
+    // update only if not already marked loaded
+    if (!inv.is_loaded) {
+        // update the inventory object in-place so Vue reactivity picks it up
+        Object.assign(inv, {
+            is_loaded: true,
+            loaded_datetime: inventoryPayload.loaded_datetime || new Date().toISOString(),
+            current_inventory_count: typeof inventoryPayload.current_inventory_count !== 'undefined'
+                ? inventoryPayload.current_inventory_count
+                : inv.current_inventory_count
+        });
+
+    }
 };
 
 const shipmentData = reactive({
@@ -111,7 +132,6 @@ const fetchShipmentDetails = async (shipmentNumber) => {
             }
         });
 
-        console.log(response.data);
 
         if (response.data.result === 'S') {
             shipmentData.shipment = response.data.shipmentData || {};
@@ -196,7 +216,7 @@ const handleBack = () => {
                                 <span class="ms-2">{{ delivery.material_desc }}</span>
                             </v-col>
                             <v-col cols="12" md="6">
-                                <span class="font-weight-bold">Allocated Quantity:</span>
+                                <span class="font-weight-bold">Delivery Quantity:</span>
                                 <span class="ms-2">{{ delivery.quantity }} {{ delivery.sales_unit }}</span>
 
                             </v-col>
@@ -220,7 +240,7 @@ const handleBack = () => {
                                 <div>
                                     <strong>{{ item.pallet_physical_id }}</strong><br />
                                     <div>
-                                        {{ item.quantity }} bags (Current Quantity)
+                                        {{ item.current_inventory_count }} bags (Current Quantity)
                                         <span v-if="item.mfg_date">
                                             (Manufactured Date: {{ Moment(item.mfg_date).format('MMM D, YYYY') }})
                                         </span>
@@ -231,8 +251,8 @@ const handleBack = () => {
                                             (Allocated Quantity)
                                         </span>
                                     </div>
-                                    <div v-if="item.quantity > item.allocated_quantity" class="text-warning">
-                                        <span class="font-italic">Pallet will be automatically tagged as loose when
+                                    <div v-if="item.current_inventory_count > item.total_qty && !item.is_loaded" class="text-warning">
+                                        <span class="font-italic font-weight-bold">Pallet will be automatically tagged as loose when
                                             scanned.</span>
                                     </div>
                                 </div>

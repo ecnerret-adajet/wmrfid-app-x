@@ -841,8 +841,8 @@ const cancelProposal = async () => {
                 <v-table density="compact" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
-                            <th>Item Number</th>
                             <th>Physical ID</th>
+                            <th>Item Number</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
                             <th class="text-center">Stock Exception</th>
@@ -852,8 +852,8 @@ const cancelProposal = async () => {
                     </thead>
                     <tbody>
                         <tr v-for="(item, index) in batchPickingStore.selectedDeliveryItem?.reserved_pallets">
-                            <td>{{ item.item_number }}</td>
                             <td>{{ item.pallet_physical_id }}</td>
+                            <td>{{ item.item_number }}</td>
                             <td>{{ item.commodity_batch_code }}</td>
                             <td>{{ item.manufacturing_date }}</td>
                             <td class="text-center">

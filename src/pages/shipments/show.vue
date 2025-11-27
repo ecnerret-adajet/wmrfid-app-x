@@ -1,5 +1,4 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
@@ -29,26 +28,23 @@ const headers = [
     {
         title: 'DELIVERY DOCUMENT',
         key: 'delivery_document',
+        sortable: false
+    },
+    {
+        title: 'DO NUMBER',
+        key: 'do_number',
+        sortable: false
     },
     {
         title: 'PLANT',
         key: 'plant_id',
+        sortable: false
     },
     {
-        title: 'SHIP TO',
-        key: 'ship_to_name',
-    },
-    {
-        title: 'SOLD TO',
-        key: 'sold_to_name',
-    },
-    {
-        title: 'LAST UPDATED AT',
-        key: 'updated_at',
-    },
-    {
-        title: 'CREATED AT',
-        key: 'created_at',
+        title: 'PICKING STATUS',
+        key: 'picking_status',
+        align: 'center',
+        sortable: false
     },
 ]
 
@@ -101,7 +97,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         });
 
         const { shipment, deliveries_table } = response.data;
-
+        
         shipmentData.value = shipment
         totalItems.value = deliveries_table.total;
         serverItems.value = deliveries_table.data;
@@ -165,6 +161,14 @@ const syncStatus = async () => {
     }
 }
 
+const proceedBatchPicking = (delivery) => {
+    router.push({ name: 'batch-picking', params: {  do_number: delivery.sap_delivery?.servicio_delivery?.do_number, shipment_number: delivery.shipment_number } });
+}
+
+const viewReservedOnMap = () => {
+    window.open(`/shipment-reserved-pallets/${shipmentData.value?.shipment?.shipment_number}`, '_blank', 'noopener');
+}
+
 </script>
 
 <template>
@@ -174,6 +178,12 @@ const syncStatus = async () => {
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
+                    <v-badge v-if="shipmentData?.shipment?.load_end_date === null"  class="ml-3" color="warning" content="Pending"
+                        inline>
+                    </v-badge>
+                    <v-badge v-else class="ml-3" color="success" content="Completed"
+                        inline>
+                    </v-badge>
                     <v-spacer></v-spacer>
                     <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false &&
                         (
@@ -196,6 +206,7 @@ const syncStatus = async () => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-medium-emphasis">{{
                                             shipmentData?.shipment?.shipment_number }}</span>
+                                          
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -315,11 +326,19 @@ const syncStatus = async () => {
                             <template #item="{ item }">
                                 <tr @click="handleViewDelivery(item)" class="clickable-row">
                                     <td>{{ item.delivery_document }}</td>
+                                    <td>{{ item.sap_delivery?.servicio_delivery?.do_number }}</td>
                                     <td>{{ item.plant?.name }}</td>
-                                    <td>{{ item.ship_to_name }}</td>
-                                    <td>{{ item.sold_to_name }}</td>
-                                    <td>{{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}</td>
-                                    <td>{{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}</td>
+                                    <td class="text-center">
+                                        <v-badge v-if="item.sap_delivery?.picking_status === 'A'" color="warning" content="A - NOT YET PICKED"
+                                            inline>
+                                        </v-badge>
+                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'B'" color="primary-light" content="B - PARTIALLY PICKED"
+                                            inline>
+                                        </v-badge>
+                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'C'" color="success" content="C - FULLY PICKED"
+                                            inline>
+                                        </v-badge>
+                                    </td>
                                 </tr>
                             </template>
 
@@ -340,7 +359,10 @@ const syncStatus = async () => {
         <div>
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
-                    <h4 class="text-h4 font-weight-black text-primary">Picklist Read Pallet Logs</h4>
+                    <div class="d-flex justify-space-between align-center px-4 mt-4">
+                        <h4 class="text-h4 font-weight-black text-primary">Reserved Pallets</h4>
+                        <v-btn v-if="shipmentData?.shipment?.reserved_pallets?.length > 0 && shipmentData?.shipment?.load_end_date === null" color="primary" @click="viewReservedOnMap" density="compact">View on Map</v-btn>
+                    </div>
                     <div class="mt-2">
                         <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
                         <v-table v-else>
@@ -356,24 +378,34 @@ const syncStatus = async () => {
                                         Material
                                     </th>
                                     <th class="text-center">
+                                        Delivery Document
+                                    </th>
+                                    <th class="text-center">
                                         Item Number
                                     </th>
                                     <th class="text-center">
-                                        Quantity
-                                    </th>
-                                    <th class="text-left">
-                                        Mfg Date
+                                        Status
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="item in shipmentData?.shipment?.references" :key="item.rfid_name">
-                                    <td>{{ item.rfid_name }}</td>
-                                    <td>{{ item.batch }}</td>
-                                    <td>{{ item.material?.material_description }}</td>
-                                    <td class="text-center">{{ item.item_number }}</td>
-                                    <td class="text-center">{{ item.quantity }}</td>
-                                    <td>{{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</td>
+                                <tr v-for="item in shipmentData?.shipment?.reserved_pallets" :key="item.id">
+                                    <td>{{ item.pallet_physical_id }}</td>
+                                    <td>{{ item.commodity_batch_code }}</td>
+                                    <td>
+                                        <span class="font-weight-bold">{{ item.material_code }}</span><br/>
+                                        <span v-if="item.material_description" class="text-subtitle-1">{{ item.material_description }}</span>
+                                    </td>
+                                    <td class="text-center">{{ item.delivery_document }}</td>
+                                    <td class="text-center">{{ item.delivery_item_number }}</td>
+                                    <td class="text-center">
+                                        <v-chip v-if="!item.is_loaded" color="warning">
+                                            Pending
+                                        </v-chip>
+                                        <v-chip v-else color="primary">
+                                            Loaded
+                                        </v-chip>
+                                    </td>
                                 </tr>
                             </tbody>
                         </v-table>
@@ -382,30 +414,49 @@ const syncStatus = async () => {
             </v-card>
         </div>
     </div>
-    <DefaultModal :dialog-title="'Delivery Items'" :show="deliveryItemsModalOpen" @close="closeModal">
-        <v-table class="mt-4">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Batch</th>
-                    <th>Material</th>
-                    <th>Description</th>
-                    <th class="text-center">Quantity</th>
-                    <th>Unit</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="(item, index) in selectedDelivery.items" :key="index">
-                    <td>{{ item.item_number }}</td>
-                    <td>{{ item.batch }}</td>
-                    <td>{{ item.material }}</td>
-                    <td>{{ item.material_desc }}</td>
-                    <td class="text-center">{{ item.quantity }}</td>
-                    <td>{{ item.sales_unit }}</td>
-                </tr>
-            </tbody>
-        </v-table>
-    </DefaultModal>
+
+      
+
+    <v-dialog v-model="deliveryItemsModalOpen" max-width="1000" transition="dialog-bottom-transition">
+        <v-card class="pa-4 rounded-lg">
+            <v-card-title class="d-flex pb-0">
+                <span class="text-h3 font-weight-bold text-primary">Delivery Items</span>
+            </v-card-title>
+            <v-card-text class="mt-4">
+                <v-table class="mt-4">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Material</th>
+                            <th>Description</th>
+                            <th class="text-center">Delivery Quantity</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in selectedDelivery.items" :key="index">
+                            <td>{{ item.item_number }}</td>
+                            <td>{{ item.material }}</td>
+                            <td>{{ item.material_desc }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td>{{ item.sales_unit }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </v-card-text>
+            <v-card-actions class=" mt-2">
+                <v-btn class="text-none px-8" color="secondary" variant="flat"  @click="deliveryItemsModalOpen = false">
+                    Close
+                </v-btn>
+                <!-- Allow batch picking if not yet fully picked -->
+                <v-btn @click="proceedBatchPicking(selectedDelivery)" v-if="selectedDelivery.sap_delivery?.picking_status !== 'C'" color="primary" variant="flat" class="px-8">
+                    Batch Picking
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 

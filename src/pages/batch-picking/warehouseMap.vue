@@ -226,11 +226,14 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                     selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
                                     layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
                                 ]"
-                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))"
+                                :disabled="Boolean(layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) 
+                                    || layer.assigned_inventory.is_reserved || layer.assigned_inventory.quantity === 0))"
                             >
                                 <template v-if="layer.assigned_inventory">
                                     <VListItem :class="[layer.layer_class,
-                                    (selectedLayerIndex === index) ? 'highlighted-item' : '']">
+                                    (selectedLayerIndex === index) ? 'highlighted-item' : '',
+                                    layer.assigned_inventory.is_reserved ? 'bg-warning' : ''
+                                    ]">
                                         <VListItemTitle>
                                             <div class="assigned-info text-h5 text-grey-800 ">
                                                 <div class="assigned-row">
@@ -249,7 +252,10 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                         </VListItemTitle>
                                         <template #append>
                                             <div class="d-flex gap-1">
-                                                <v-btn
+                                                <div class="align-center justify-center mt-3 mr-3" v-if="layer.assigned_inventory.is_reserved">
+                                                    <p>Reserved</p>
+                                                </div>
+                                                <v-btn v-else
                                                     @click="assignPallet(layer.assigned_inventory)"
                                                     :color="isSelected(layer.assigned_inventory) ? 'warning' : 'primary'"
                                                 >

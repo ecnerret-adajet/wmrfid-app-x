@@ -49,7 +49,7 @@ onMounted(() => {
 
     // Create private channels for each event type
     const channelNameBase = `shipment.${readerId}.${bay}`;
-    
+ 
     picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
     picklistRefreshChannel = echo.channel(`${channelNameBase}.picklist-refresh`);
     driverTapOutChannel = echo.channel(`${channelNameBase}.driver-tap-out`);
@@ -74,7 +74,7 @@ onUnmounted(() => {
 })
 
 const onPicklistRefreshEvent = (data) => {
-    console.log(data);
+  
     if (data.picklistRefresh === true) {
         fetchShipmentDetails(shipment.value?.shipment_number);
     }
@@ -82,7 +82,7 @@ const onPicklistRefreshEvent = (data) => {
 
 const processedEpcs = ref({});
 const onPicklistLogsEvent = (data) => {
-    console.log(data)
+  
     if (data.picklistLog?.current_shipment_number == shipmentData.shipment?.shipment) {
         // Find the delivery with matching batch and increment loaded_qty
         const batch = data.picklistLog.inventory?.batch;
@@ -93,7 +93,7 @@ const onPicklistLogsEvent = (data) => {
         // Compose a unique key for this shipment, bay, and epc
         const key = `${shipmentNumber}_${bay}_${epc}`;
         if (!epc || !shipmentNumber || !bay) return;
-        console.log(key);
+   
         // Prevent double increment: skip if already processed
         if (processedEpcs.value[key]) return;
         processedEpcs.value[key] = true;
@@ -132,13 +132,44 @@ const refreshData = () => {
     //         window.location.reload();
     //         console.log(response);
     //     })
+
+    // ApiService.get(`picklist/load-end/${shipment.value.shipment_number}`)
+    //     .then(response => {
+    //         window.location.reload();
+    //     })
+    //     .catch(error => {
+    //         console.error(error);
+    //         window.location.reload();
+    //     });
+
+    // ApiService.get(`picklist/load-end/${shipment.value.shipment_number}`)
+    //     .then(response => {
+    //         const data = response?.data || {};
+
+    //         if (data.result === 'F') {
+    //             errorMessage.value = response.data.message;
+    //             dialogVisible.value = true;
+    //             // wait for 10 seconds before reload
+    //             setTimeout(() => {
+    //                 window.location.reload();
+    //             }, 10000);
+    //         } else {
+    //             window.location.reload();
+    //         }
+           
+    //     })
+    //     .catch(error => {
+    //         console.error(error);
+    //         window.location.reload();
+    //     });
+    
 }
 
 const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000150707`);
+        // const response = await ApiService.get(`test-loading-entry/0000168180`);
 
         shipment.value = response.data
 
@@ -171,9 +202,21 @@ const sapLoadEnd = async (shipmentNumber) => {
     //         window.location.reload();
     //         console.log(response);
     //     })
-    ApiService.get(`picklist/load-end/${shipmentNumber}`)
+    ApiService.get(`picklist/load-end/${shipment.value.shipment_number}`)
         .then(response => {
-            window.location.reload();
+            const data = response?.data || {};
+
+            if (data.result === 'F') {
+                errorMessage.value = response.data.message;
+                dialogVisible.value = true;
+                // wait for 10 seconds before reload
+                setTimeout(() => {
+                    window.location.reload();
+                }, 10000);
+            } else {
+                window.location.reload();
+            }
+           
         })
         .catch(error => {
             console.error(error);

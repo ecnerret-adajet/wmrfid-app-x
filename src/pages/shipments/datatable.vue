@@ -43,12 +43,12 @@ const headers = [
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'Details',
-        key: 'details',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'Details',
+    //     key: 'details',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'SHIPMENT NUMBER',
         key: 'shipment_number',
@@ -67,10 +67,10 @@ const headers = [
         title: 'DRIVER',
         key: 'driver_name',
     },
-    // {
-    //     title: 'LOAD START',
-    //     key: 'load_start_date',
-    // },
+    {
+        title: 'PLATE NUMBER',
+        key: 'plate_number',
+    },
     // {
     //     title: 'LOAD END',
     //     key: 'load_end_date',
@@ -165,7 +165,8 @@ const handleViewPicklist = (shipment) => {
 
 const actionList = [
     // { title: 'Service Request', key: 'service_request' },
-    { title: 'View Reserved Pallets', key: 'view_reserved_pallets' },
+    { title: 'View Details', key: 'view_details' },
+    { title: 'View Checker Screen', key: 'view_checker_screen' },
 ]
 
 const handleAction = (shipment, action) => {
@@ -173,9 +174,24 @@ const handleAction = (shipment, action) => {
     
     if(action.key == 'service_request') {
         showShipmentServiceModal.value = true;
-    } else if (action.key == 'view_reserved_pallets') {
-        window.open(`/shipment-reserved-pallets/${shipment.shipment_number}`, '_blank', 'noopener');
+    } else if (action.key == 'view_checker_screen') {
+        const params = new URLSearchParams();
+        if (shipment.reader_id !== undefined && shipment.reader_id !== null) {
+            params.append('reader_id', shipment.reader_id);
+        }
+        if (shipment.bay_no !== undefined && shipment.bay_no !== null) {
+            params.append('bay_no', shipment.bay_no);
+        }
+
+        const qs = params.toString();
+        const url = `/shipment-picklist/${encodeURIComponent(shipment.shipment_number)}${qs ? `?${qs}` : ''}`;
+
+        window.open(url, '_blank', 'noopener');
+        return;
+    } else if (action.key == 'view_details') {
+        window.open(`/shipments/${shipment.shipment_number}`, '_blank', 'noopener');
     }
+
 }
 
 const closeModal = () => {
@@ -231,6 +247,8 @@ defineExpose({
     loadItems,
     applyFilters
 })
+
+
 </script>
 
 <template>
@@ -238,20 +256,6 @@ defineExpose({
     <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
-
-        <!-- <template #item.action="{ item }">
-            <v-btn :to="{
-                        path: `/shipment-picklist/${item.shipment_number}`,
-                        query: { reader_id: item.reader_id, bay_no: item.bay_no  }
-                    }"
-                    color="primary"
-                    variant="outlined"
-                    :disabled="item.load_end_date ? true: false"
-                    size="small"
-                >
-                    View Picklist
-            </v-btn>
-        </template> -->
 
          <!-- Actions -->
          <template #item.action="{ item }">
@@ -274,7 +278,7 @@ defineExpose({
             </div>
         </template>
 
-        <template #item.details="{ item }">
+        <!-- <template #item.details="{ item }">
             <v-btn v-if="item.load_end_date === null" :to="{
                         path: `/shipment-picklist/${item.shipment_number}`,
                         query: { reader_id: item.reader_id, bay_no: item.bay_no  }
@@ -295,11 +299,15 @@ defineExpose({
                 >
                     View Details
             </v-btn>
-        </template>
+        </template> -->
         
 
         <template #item.shipment_number="{ item }">
             {{ item.shipment_number }}
+        </template>
+
+         <template #item.plate_number="{ item }">
+            {{ item.plate_number_1 || item.plate_number_2 || item.plate_number_3 || ''  }}
         </template>
 
         <template #item.bay_no="{ item }">
