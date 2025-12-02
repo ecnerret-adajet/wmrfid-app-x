@@ -46,17 +46,6 @@ const filters = reactive({
     plant_id: null
 })
 
-// Fumigation variables
-const fumigateModal = ref(false)
-const fumigateLoading = ref(false)
-const fumigateForm = reactive({
-    remarks: null,
-    startDate: null,
-    endDate: null,
-    batch: null,
-    items: []
-})
-
 const headers = [
     {
         title: 'PHYSICAL ID',
@@ -284,65 +273,6 @@ const handleChangeBatch = async () => {
     }
 }
 
-const fumigate = () => {
-    selectedItems.value // check all under_fumigation column, if atleast 1 is true, dont allow
-    const hasUnderFumigation = selectedItems.value.some(item => item.under_fumigation);
-    if (hasUnderFumigation) {
-        toast.value.message = 'Some selected items are already under fumigation. Please deselect them before proceeding.'
-        toast.value.color = 'warning'
-        toast.value.show = true;
-        return;
-    }
-
-    fumigateModal.value = true;
-}
-
-const handleFumigate = async () => {
-    fumigateLoading.value = true;
-    toast.value.show = false;
-    fumigateForm.items = selectedItems.value
-    fumigateForm.batch = props.productionRun?.COMMODITY
-
-    if (!fumigateForm.startDate || !fumigateForm.endDate || !fumigateForm.remarks) {
-        errorMessage.value = 'Start Date, End Date, and Remarks are required.';
-        fumigateLoading.value = false;
-        return;
-    }
-
-    try {
-        const response = await ApiService.post('production-runs/fumigate', fumigateForm)
-        fumigateLoading.value = false;
-        toast.value.message = 'Fumigation request created successfully'
-        toast.value.show = true;
-        clearFumigateForm();
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{ key: 'updated_at', order: 'desc' }],
-            search: searchValue.value
-        });
-        fumigateModal.value = false;
-        errorMessage.value = null;
-    } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        console.error('Error submitting:', error);
-        fumigateLoading.value = false;
-    }
-}
-
-const cancelFumigate = () => {
-    clearFumigateForm()
-    fumigateModal.value = false;
-}
-
-const clearFumigateForm = () => {
-    fumigateForm.remarks = null;
-    fumigateForm.startDate = null;
-    fumigateForm.endDate = null;
-    fumigateForm.batch = null;
-    fumigateForm.items = [];
-}
-
 const toast = ref({
     message: 'Batch updated successfully!',
     color: 'success',
@@ -500,7 +430,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
-                                    }}</span>
+                                }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -512,7 +442,7 @@ const handleWrongPallet = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.material?.description
-                                    }}</span>
+                                }}</span>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -653,12 +583,6 @@ const handleWrongPallet = async () => {
                                 type="button" color="primary-light">
                                 Change Batch
                             </v-btn>
-
-                            <v-btn v-if="authUserCan('create.fumigation.requests')" @click="fumigate"
-                                :disabled="selectedItems.length === 0" class="px-5 ml-2" type="button"
-                                color="primary-light">
-                                Fumigate
-                            </v-btn>
                         </div>
 
                         <div class="mb-2" v-if="selectedItems.length > 0">
@@ -792,54 +716,6 @@ const handleWrongPallet = async () => {
         </template>
     </EditingModal>
 
-    <EditingModal @close="fumigateModal = false" max-width="900px" :show="fumigateModal"
-        :dialog-title="`Fumigation Request`">
-        <template #default>
-            <v-form @submit.prevent="handleFumigate">
-                <v-row>
-                    <v-col cols="12" md="6">
-                        <DatePicker v-model="fumigateForm.startDate" placeholder="Select Start Date" />
-                    </v-col>
-                    <v-col cols="12" md="6">
-                        <DatePicker v-model="fumigateForm.endDate" placeholder="Select End Date" />
-                    </v-col>
-                </v-row>
-                <v-textarea class="mt-4" clear-icon="ri-close-line" label="Remarks" v-model="fumigateForm.remarks"
-                    clearable></v-textarea>
-            </v-form>
-            <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
-                {{ errorMessage }}
-            </VAlert>
-            <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>RFID Code</th>
-                        <th>Physical ID</th>
-                        <th>Material</th>
-                        <th>Receipt Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in selectedItems" :key="index">
-                        <td>{{ item.rfid_code }}</td>
-                        <td>{{ item.rfid?.name }}</td>
-                        <td>{{ item.material?.description ?? 'N/A' }}</td>
-                        <td>
-                            {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
-                        </td>
-                    </tr>
-                </tbody>
-            </v-table>
-            <div class="d-flex justify-end align-center mt-4">
-                <v-btn color="secondary" variant="outlined" @click="cancelFumigate" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleFumigate" color="primary" class="px-12" type="submit"
-                    :loading="fumigateLoading">
-                    Update
-                </PrimaryButton>
-            </div>
-        </template>
-    </EditingModal>
-
     <EditingModal v-if="selectedItem" @close="editDialog = false" :show="editDialog"
         :dialog-title="`Update ${selectedItem.rfid?.name}`">
         <template #default>
@@ -857,14 +733,13 @@ const handleWrongPallet = async () => {
         </template>
     </EditingModal>
 
-
     <EditingModal @close="showWrongPalletModal = false" max-width="900px" :show="showWrongPalletModal"
         :dialog-title="`Remove Batch on Pallets`">
         <template #default>
             <div class="mx-4">
                 <span class="text-h5 text-high-emphasis">
                     Do you want to remove the attached batch <span class="text-primary">{{ productionRun.COMMODITY
-                        }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
+                    }}</span> from the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }}?
                 </span>
             </div>
             <v-table class="mt-4">
