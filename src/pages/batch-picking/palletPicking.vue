@@ -152,7 +152,6 @@ const proceedReserve = async () => {
             }
         );
         if (!data.success) {
-            console.log(data.errors)
             // Handle validation errors
             // const errorMsg = data.errors?.customer_approval_document?.[0] 
             const batchPickError = data.errors?.length > 0 ? data.errors?.[0] : null

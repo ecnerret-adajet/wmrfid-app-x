@@ -57,7 +57,6 @@ const fetchShipmentReservedPallets = async () => {
     mapLoading.value = true;
     try {
         const response = await axios.get(`shipments/get-reserved-pallets/${shipment_number}`);
-        console.log(response.data)
         state.layout = response.data?.warehouse_data?.blocks?.map((item, index) => ({
             i: String(index),
             x: item.x || 0, // Default to 0 if x is not provided
@@ -67,23 +66,22 @@ const fetchShipmentReservedPallets = async () => {
             label: item.label || 'Unnamed', // Use name from API
             type: item.type || 'unknown',
             isResizable: item.is_resizable || item.is_resizable == 1 ? true : false,
-            is_reserved: item.is_reserved || item.is_reserved == 1 ? true : false,
             inventories: item.inventories || null,
             inventoriesCount: item.inventories_count || 0,
             layers: (item.layers || []).map(l => ({
                 ...l,
                 // if backend provides is_reserved on layer use it, otherwise infer from assigned_inventory
-                is_reserved: (typeof l.is_reserved !== 'undefined') 
-                    ? !!l.is_reserved 
-                    : !!(l.assigned_inventory && (l.assigned_inventory.is_reserved || l.assigned_inventory.is_reserved == 1))
+                is_reserved: (l.assigned_inventory && (l.assigned_inventory?.is_reserved || l.assigned_inventory?.is_reserved == 1)) ? true : false,
+                test: l.assigned_inventory?.is_reserved
             })),
+            is_reserved: // true if atleast one layer is reserved
+                (item.layers || []).some(l => (l.assigned_inventory && (l.assigned_inventory?.is_reserved || l.assigned_inventory?.is_reserved == 1)) ? true : false),
             lot: item.lot || null,
             id: item.id || null,
             under_fumigation: item.under_fumigation,
             max_layer_count: item.max_layer_count || 3,
             legend_only: item.legend_only == 1 ? true : false,
         }));
-
         state.index = state.layout.length;
     } catch (error) {
         console.error('Error fetching data:', error);

@@ -28,10 +28,10 @@ onMounted(async () => {
                 do_number,
             },
         });
-   
+        
         store.setAuth(response.data);
         store.verifyAuth();
-        router.push({ name: 'batch-picking', params: { do_number } });
+        router.push({ name: 'batch-picking', params: { do_number: do_number, shipment_number: response.data?.shipment_number } });
     } catch (error) {
         console.log(error);
         if (error.response.data.success == false) {

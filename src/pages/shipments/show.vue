@@ -14,42 +14,11 @@ const pageLoading = ref(false);
 const shipmentNumber = route.params.shipmentNumber; // Get the shipment number from URL
 
 // Delivery table variables
-const serverItems = ref([]);
-const loading = ref(true);
-const totalItems = ref(0);
-const itemsPerPage = ref(10);
-const page = ref(1);
-const sortQuery = ref('-updated_at'); // Default sort
+const deliveryData = ref([]);
 const deliveryItemsModalOpen = ref(false);
 const selectedDelivery = ref(null);
 const searchValue = ref('');
 
-const headers = [
-    {
-        title: 'DELIVERY DOCUMENT',
-        key: 'delivery_document',
-        sortable: false
-    },
-    {
-        title: 'DO NUMBER',
-        key: 'do_number',
-        sortable: false
-    },
-    {
-        title: 'PLANT',
-        key: 'plant_id',
-        sortable: false
-    },
-    {
-        title: 'PICKING STATUS',
-        key: 'picking_status',
-        align: 'center',
-        sortable: false
-    },
-]
-
-const lastOptions = ref({});
-const currentOptions = ref({});
 
 const toast = ref({
     message: '',
@@ -57,50 +26,22 @@ const toast = ref({
     show: false
 });
 
-// TODO:: Consider separating the API for calling the header and for the datatable
-// to avoid loading the header if next/prev page 
-const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
-    const options = { page, itemsPerPage, sortBy, search: searchValue.value };
-
-    // Check if the options are the same as the last call
-    const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options);
-    if (isSame) return;
-
-    // Store the current options
-    lastOptions.value = options;
-    currentOptions.value = options;
-
-    pageLoading.value = true
-    if (sortBy && sortBy.length > 0) {
-        const sort = sortBy[0];  // Assuming single sort field
-        sortQuery.value = `${sort.key}`;  // Default ascending order
-        if (sort.order === 'desc') {
-            sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
-        }
-    } else {
-        sortQuery.value = '-updated_at';
-    }
-
+const loadDetails = async () => {
+    pageLoading.value = true;
     try {
         const token = JwtService.getToken();
 
         const response = await axios.get(`/shipments/${shipmentNumber}`, {
-            params: {
-                page,
-                itemsPerPage,
-                sort: sortQuery.value,
-                search: searchValue.value
-            },
             headers: {
                 Authorization: `Bearer ${token}`
             }
         });
 
-        const { shipment, deliveries_table } = response.data;
-        
-        shipmentData.value = shipment
-        totalItems.value = deliveries_table.total;
-        serverItems.value = deliveries_table.data;
+        const { shipment, deliveries } = response.data;
+        console.log(deliveries);
+
+        shipmentData.value = response.data.shipment;
+        deliveryData.value = response.data.deliveries;
 
     } catch (error) {
         console.log(error);
@@ -109,7 +50,9 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     }
 }
 
-onMounted(async () => {
+onMounted(() => {
+    console.log('Mounted shipment details page');
+    loadDetails();
 });
 
 const displayPlateNumber = computed(() => {
@@ -168,6 +111,68 @@ const proceedBatchPicking = (delivery) => {
 const viewReservedOnMap = () => {
     window.open(`/shipment-reserved-pallets/${shipmentData.value?.shipment?.shipment_number}`, '_blank', 'noopener');
 }
+const cancelConfirmationModal = ref(false);
+const handleCancelProposal = () => {
+    cancelConfirmationModal.value = true;
+}
+const cancelProposalLoading = ref(false);
+const cancelProposal = async () => {
+    // try {
+    //     cancelProposalLoading.value = true;
+    //     const token = JwtService.getToken();
+
+    //     const { data } = await axios.post(
+    //         `deliveries/delivery-order-remove`,
+    //         {
+    //             delivery_id: batchPickingStore.selectedDeliveryItem?.delivery_reserved_orders?.[0]?.delivery_id,
+    //             delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
+    //             delivery_item_number: batchPickingStore.selectedDeliveryItem?.item_number,
+    //             plant: batchPickingStore.selectedDeliveryItem?.plant,
+    //             storage_location: batchPickingStore.selectedDeliveryItem?.storage_location,
+    //             do_number: do_number
+    //         },
+    //         {
+    //             headers: {
+    //                 'Authorization': `Bearer ${token}`,
+    //                 'Content-Type': 'application/json'
+    //             }
+    //         }
+    //     );
+
+    //     if (!data.success) {
+    //         // Handle validation errors
+    //         const cancelBatchError = data.errors?.length > 0 ? data.errors?.[0] : null
+
+    //         if (cancelBatchError) {
+    //             toast.value.color = 'error';
+    //             toast.value.message = cancelBatchError;
+    //             toast.value.show = true;
+    //         }
+    //     }
+
+    //     // Proceed normally if successful
+    //     if (data.success) {
+
+    //         await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
+    //         cancelConfirmationModal.value = false
+    //         viewReservedPallets.value = false
+
+    //         toast.value.color = 'success';
+    //         toast.value.message = "Successfully cancelled reserved pallets";
+    //         toast.value.show = true;
+    //         // closeModal()
+    //     }
+
+    // } catch (response) {
+    //     console.log(response);
+    // } finally {
+    //     cancelProposalLoading.value = false;
+    //     cancelConfirmationModal.value = false
+    //     batchPickingStore.customerApprovalFile = null;
+    //     batchPickingStore.customerApprovalRemarks = null;
+    // }
+}
+
 
 </script>
 
@@ -178,10 +183,10 @@ const viewReservedOnMap = () => {
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
-                    <v-badge v-if="shipmentData?.shipment?.load_end_date === null"  class="ml-3" color="warning" content="Pending"
+                    <v-badge v-if="shipmentData?.shipment?.load_end_date !== null"  class="ml-3" color="success" content="Completed"
                         inline>
                     </v-badge>
-                    <v-badge v-else class="ml-3" color="success" content="Completed"
+                    <v-badge v-else class="ml-3" color="warning" content="Pending"
                         inline>
                     </v-badge>
                     <v-spacer></v-spacer>
@@ -319,15 +324,40 @@ const viewReservedOnMap = () => {
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
                     <div class="mt-2">
-                        <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
-                            :items-length="totalItems" :loading="pageLoading" item-value="id" :search="searchValue"
-                            @update:options="loadItems" class="text-no-wrap">
-
-                            <template #item="{ item }">
-                                <tr @click="handleViewDelivery(item)" class="clickable-row">
+                        <v-table>
+                            <thead>
+                                <tr>
+                                    <th class="text-left">
+                                        DELIVERY DOCUMENT
+                                    </th>
+                                    <th class="text-left">
+                                        DO NUMBER
+                                    </th>
+                                    <th class="text-left">
+                                        PLANT
+                                    </th>
+                                    <th class="text-center">
+                                        BATCH RESERVE STATUS
+                                    </th>
+                                    <th class="text-center">
+                                        PICKING STATUS
+                                    </th>
+                            
+                                </tr>
+                            </thead>
+                            <tbody>
+                                 <tr v-if="deliveryData" v-for="item in deliveryData" @click="handleViewDelivery(item)" class="clickable-row">
                                     <td>{{ item.delivery_document }}</td>
                                     <td>{{ item.sap_delivery?.servicio_delivery?.do_number }}</td>
                                     <td>{{ item.plant?.name }}</td>
+                                    <td class="text-center">
+                                        <v-badge v-if="item.fully_reserved" color="success" content="Fully Reserved"
+                                            inline>
+                                        </v-badge>
+                                        <v-badge v-else color="warning" content="Not Fully Reserved"
+                                            inline>
+                                        </v-badge>
+                                    </td>
                                     <td class="text-center">
                                         <v-badge v-if="item.sap_delivery?.picking_status === 'A'" color="warning" content="A - NOT YET PICKED"
                                             inline>
@@ -340,20 +370,12 @@ const viewReservedOnMap = () => {
                                         </v-badge>
                                     </td>
                                 </tr>
-                            </template>
-
-                        </VDataTableServer>
+                            </tbody>
+                        </v-table>
+                    
                     </div>
                 </v-card-text>
             </v-card>
-            <!-- <v-card class="mt-2">
-                <v-card-text class="mx-2">
-                    <h4 class="text-h4 font-weight-black text-primary">Reserved Orders</h4>
-                    <div class="mt-2">
-                        <reserved-orders-data-table />
-                    </div>
-                </v-card-text>
-            </v-card> -->
         </div>
 
         <div>
@@ -389,7 +411,7 @@ const viewReservedOnMap = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="item in shipmentData?.shipment?.reserved_pallets" :key="item.id">
+                                <tr v-if="shipmentData?.shipment?.reserved_pallets.length > 0" v-for="item in shipmentData?.shipment?.reserved_pallets" :key="item.id">
                                     <td>{{ item.pallet_physical_id }}</td>
                                     <td>{{ item.commodity_batch_code }}</td>
                                     <td>
@@ -405,6 +427,11 @@ const viewReservedOnMap = () => {
                                         <v-chip v-else color="primary">
                                             Loaded
                                         </v-chip>
+                                    </td>
+                                </tr>
+                                <tr v-else>
+                                    <td colspan="6" class="text-center text-medium-emphasis">
+                                        No reserved pallets found. Select a DO on delivery details section to reserve batch.
                                     </td>
                                 </tr>
                             </tbody>
@@ -449,13 +476,31 @@ const viewReservedOnMap = () => {
                     Close
                 </v-btn>
                 <!-- Allow batch picking if not yet fully picked -->
-                <v-btn @click="proceedBatchPicking(selectedDelivery)" v-if="selectedDelivery.sap_delivery?.picking_status !== 'C'" color="primary" variant="flat" class="px-8">
+                <v-btn @click="proceedBatchPicking(selectedDelivery)" v-if="selectedDelivery.sap_delivery?.picking_status !== 'C' && !selectedDelivery.fully_reserved" color="primary" variant="flat" class="px-8">
                     Batch Picking
                 </v-btn>
+
+                <!-- <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
+                        Reservation
+                </v-btn> -->
             </v-card-actions>
         </v-card>
     </v-dialog>
 
+     <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+        <v-card class="pa-4">
+            <div class="text-center">
+                <v-icon class="mb-5" color="error" icon="ri-close-circle-line" size="112"></v-icon>
+                <p class="mb-6 text-h5">Are you sure you want to cancel reserved pallets?</p>
+                <div class="d-flex justify-end align-center mt-8">
+                    <v-btn color="secondary" variant="outlined" @click="cancelConfirmationModal = false"
+                        class="px-8 mr-3">Cancel</v-btn>
+                    <v-btn color="primary" @click="cancelProposal" :loading="cancelProposalLoading"
+                        class="px-8">Proceed</v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>

@@ -175,6 +175,14 @@ const handleAction = (shipment, action) => {
     if(action.key == 'service_request') {
         showShipmentServiceModal.value = true;
     } else if (action.key == 'view_checker_screen') {
+
+        if (shipment.bay_no == null) {
+            toast.value.color = 'error';
+            toast.value.message = 'Shipment not yet tapped to loading bay.';
+            toast.value.show = true;
+            return;
+        }
+
         const params = new URLSearchParams();
         if (shipment.reader_id !== undefined && shipment.reader_id !== null) {
             params.append('reader_id', shipment.reader_id);
@@ -366,7 +374,7 @@ defineExpose({
         </template>
     </DefaultModal>
 
-    <Toast :show="toast.show" :message="toast.message" />
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     <UnauthorizedPage :show="unauthorizedFlag" @close="unauthorizedFlag = false" />
 </template>
 
