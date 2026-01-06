@@ -76,16 +76,16 @@ const updateForm = reactive({
     rfid: null
 })
 
-const hasWrappingArea = computed(() => 
-    authStore.user?.is_super_admin || 
-    (authStore.user?.plants || []).some(plant => 
+const hasWrappingArea = computed(() =>
+    authStore.user?.is_super_admin ||
+    (authStore.user?.plants || []).some(plant =>
         plant.configuration?.has_wrapping_area
     )
 );
 
-const hasEmptyArea = computed(() => 
-    authStore.user?.is_super_admin || 
-    (authStore.user?.plants || []).some(plant => 
+const hasEmptyArea = computed(() =>
+    authStore.user?.is_super_admin ||
+    (authStore.user?.plants || []).some(plant =>
         plant.configuration?.has_empty_area
     )
 );
@@ -124,7 +124,7 @@ const headers = computed(() => {
         // });
     }
 
-  return baseHeaders;
+    return baseHeaders;
 });
 
 const filterModalVisible = ref(false);
@@ -680,13 +680,15 @@ const bayOptions = [
                 Export
             </v-btn>
 
-            <v-btn @click="manualBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
+            <v-btn @click="manualBatch"
+                v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
                 :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch !== null)" class="px-5"
                 type="button" color="primary-light">
                 Manual Batch
             </v-btn>
 
-            <v-btn @click="changeBatch" v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
+            <v-btn @click="changeBatch"
+                v-if="authStore.user.is_super_admin || authStore.user.is_warehouse_admin || authUserCan('update.batch')"
                 :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
                 type="button" color="primary-light">
                 Update Batch
@@ -712,7 +714,7 @@ const bayOptions = [
         <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
             return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
             @update:options="loadItems" class="text-no-wrap">
-           
+
 
             <template #item.physical_id="{ item }">
                 <div class="d-flex flex-column">
@@ -721,7 +723,8 @@ const bayOptions = [
                         <span v-if="item.is_weak_signal">
                             <v-tooltip location="top">
                                 <template #activator="{ props }">
-                                    <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name }}</span>
+                                    <span v-bind="props" class="font-weight-bold cursor-pointer text-error">{{ item.name
+                                    }}</span>
                                 </template>
                                 <span>Weak Signal</span>
                             </v-tooltip>
@@ -741,8 +744,12 @@ const bayOptions = [
 
             <template #item.last_loaded="{ item }">
                 <div class="d-flex flex-column">
-                    <div v-if="item.last_log_updated_at" class="text-h6">{{ Moment(item.last_log_updated_at).format('MMM D, YYYY h:mm A') }}</div>
-                    <div v-if="item.last_log_bay_no" class="text-caption text-grey-600">Bay {{ item.last_log_bay_no }}</div>
+                    <div v-if="item.last_loaded_at" class="text-h6">
+                        {{ Moment(item.last_loaded_at).format('MMM D, YYYY h:mm A') }}
+                    </div>
+                    <div v-if="item.last_loaded_bay_no" class="text-caption text-grey-600">
+                        Bay {{ item.last_loaded_bay_no }}
+                    </div>
                 </div>
             </template>
 
@@ -760,7 +767,7 @@ const bayOptions = [
             </template>
 
             <template #item.batch="{ item }">
-                <span class="font-weight-bold">{{ item.batch }}</span><br/>
+                <span class="font-weight-bold">{{ item.batch }}</span><br />
                 <span v-if="item.material_name" class="text-subtitle-1">{{ item.material_name }}</span>
             </template>
 
@@ -962,7 +969,8 @@ const bayOptions = [
                             :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
                     <v-col cols="12" md="6">
-                        <DateTimePicker v-model="manualBatchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
+                        <DateTimePicker v-model="manualBatchUpdateForm.mfg_date"
+                            placeholder="Select Manufacturing Date" />
                     </v-col>
                 </v-row>
 
@@ -1043,18 +1051,10 @@ const bayOptions = [
                         </span>
                     </v-col>
                     <v-col cols="12" md="5">
-                        <v-autocomplete
-                            class="mb-4"
-                            label="Tag also as Loaded?"
-                            placeholder="Select Bay"
-                            density="compact"
-                            item-title="title"
-                            item-value="value"
-                            :items="bayOptions"
-                            v-model="tagUpdateForm.bay_no"
-                            persistent-hint
-                            hint="Selecting a bay will also tag the pallet(s) as loaded and assign them to the bay's current shipment."
-                        />
+                        <v-autocomplete class="mb-4" label="Tag also as Loaded?" placeholder="Select Bay"
+                            density="compact" item-title="title" item-value="value" :items="bayOptions"
+                            v-model="tagUpdateForm.bay_no" persistent-hint
+                            hint="Selecting a bay will also tag the pallet(s) as loaded and assign them to the bay's current shipment." />
                     </v-col>
                 </v-row>
             </div>
