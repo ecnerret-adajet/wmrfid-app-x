@@ -638,6 +638,57 @@ const bayOptions = [
     { title: 'Bay 4', value: 4 },
 ];
 
+const showUnloadPalletModal = ref(false);
+
+const showUnloadPallet = () => {
+    showUnloadPalletModal.value = true;
+}
+
+const unloadPalletLoading = ref(false);
+const handleUnloadPallet = async () => {
+    unloadPalletLoading.value = true;
+    toast.value.show = false;
+    try {
+        
+        const response = await ApiService.post('rfid/unload-pallet', {
+            selectedRfid: selectedItems.value
+        });
+
+        // Update serverItems with the updated selectedRfid data
+        if (response.data.updatedItems && response.data.updatedItems.length > 0) {
+            response.data.updatedItems.forEach(updatedItem => {
+                const index = serverItems.value.findIndex(
+                    item => item.inventory_id === updatedItem.inventory_id
+                );
+                
+                if (index !== -1) {
+                    serverItems.value[index] = {
+                        ...serverItems.value[index],
+                        ...updatedItem
+                    };
+                }
+            });
+            
+            // Trigger reactivity
+            serverItems.value = [...serverItems.value];
+        }
+
+        // Clear selected items
+        selectedItems.value = [];
+
+        unloadPalletLoading.value = false;
+        toast.value.message = 'Pallet reset successful!';
+        toast.value.color = 'success';
+        toast.value.show = true;
+  
+    } catch (error) {
+        console.error('Error updating:', error);
+    } finally {
+        unloadPalletLoading.value = false;
+        showUnloadPalletModal.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -701,6 +752,12 @@ const bayOptions = [
                 :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
                 type="button" color="warning">
                 Tag as Loose
+            </v-btn>
+
+             <v-btn v-if="authStore.user?.is_super_admin" @click="showUnloadPallet"
+                :disabled="selectedItems.length === 0 || selectedItems.every(item => item.batch === null)" class="px-5"
+                type="button" color="error">
+                Unload Pallet
             </v-btn>
         </div>
     </div>
@@ -1128,6 +1185,44 @@ const bayOptions = [
                     </PrimaryButton>
                 </div>
             </v-form>
+        </template>
+    </EditingModal>
+
+    <!-- Unload pallet modal  -->
+    <EditingModal @close="showUnloadPalletModal = false" max-width="1000px" :show="showUnloadPalletModal"
+        :dialog-title="`Reset Loaded Pallet`">
+        <template #default>
+            <div class="mx-4 font-">
+                <span class="text-h5 text-high-emphasis">
+                    Do you want to reset the following {{ selectedItems.length > 1 ? `pallets` : 'pallet' }} as unloaded? This will make the pallet available for loading again
+                </span>
+            </div>
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Physical ID</th>
+                        <th>Batch</th>
+                        <th>Plant</th>
+                        <th class="text-center">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in selectedItems" :key="index">
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.batch }}</td>
+                        <td>{{ item.plant_name }}</td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="showUnloadPalletModal = false"
+                    class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton @click="handleUnloadPallet" color="primary" class="px-12" type="submit"
+                    :loading="unloadPalletLoading">
+                    Confirm
+                </PrimaryButton>
+            </div>
         </template>
     </EditingModal>
 
