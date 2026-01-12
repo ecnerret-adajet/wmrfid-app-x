@@ -9,7 +9,7 @@ import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VTextarea } from 'vuetify/components';
 
@@ -160,9 +160,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             serverItems.value = table.data
 
             statisticsData.value = statistics
-            palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
-            labelStats.value = statisticsData.value.find(item => item.type === 'Label')
-            tonnerBagStats.value = statisticsData.value.find(item => item.type === 'Tonner Bag')
 
             tagTypesOption.value = [
                 { value: null, title: 'All' },
@@ -205,9 +202,6 @@ watch(selectedTagType, async (newVal) => {
         serverItems.value = table.data
 
         statisticsData.value = statistics
-        palletStats.value = statisticsData.value.find(item => item.type === 'Pallet')
-        labelStats.value = statisticsData.value.find(item => item.type === 'Label')
-        tonnerBagStats.value = statisticsData.value.find(item => item.type === 'Tonner Bag')
 
         pageLoading.value = false
     } catch (error) {
@@ -218,11 +212,6 @@ watch(selectedTagType, async (newVal) => {
     }
 });
 
-const getTotalQuantity = computed(() => {
-    if (statisticsData.value) {
-        return statisticsData.value.reduce((total, item) => total + (parseInt(item.total_quantity) || 0), 0);
-    }
-});
 
 const handleSearch = debounce((search) => {
     searchValue.value = search;
@@ -469,7 +458,7 @@ const handleWrongPallet = async () => {
                                     Total Count
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
-                                    {{ getTotalQuantity || 0 }}
+                                    {{ statisticsData?.total_quantity || 0 }}
                                 </div>
                             </div>
                         </div>
@@ -492,7 +481,7 @@ const handleWrongPallet = async () => {
                                     Pallet Count
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
-                                    {{ palletStats?.pallet_count || 0 }}
+                                    {{ statisticsData?.pallet_count || 0 }}
                                 </div>
                             </div>
                         </div>
@@ -516,7 +505,7 @@ const handleWrongPallet = async () => {
                                     Label Count
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
-                                    {{ labelStats?.label_count || 0 }}
+                                    {{ statisticsData?.label_count || 0 }}
                                 </div>
                             </div>
                         </div>
@@ -539,7 +528,7 @@ const handleWrongPallet = async () => {
                                     Tonner Bag
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
-                                    {{ tonnerBagStats?.tonner_bag_count || 0 }}
+                                    {{ statisticsData?.tonner_bag_count || 0 }}
                                 </div>
                             </div>
                         </div>
