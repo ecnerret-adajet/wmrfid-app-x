@@ -1,17 +1,18 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
 import JwtService from '@/services/JwtService';
+import { useBatchPickingStore } from '@/stores/batchPickingStore';
 import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 
 const route = useRoute();
 const router = useRouter();
 const shipmentData = ref(null);
 const pageLoading = ref(false);
 const shipmentNumber = route.params.shipmentNumber; // Get the shipment number from URL
+const batchPickingStore = useBatchPickingStore();
 
 // Delivery table variables
 const deliveryData = ref([]);
@@ -479,10 +480,9 @@ const cancelProposal = async () => {
                 <v-btn @click="proceedBatchPicking(selectedDelivery)" v-if="selectedDelivery.sap_delivery?.picking_status !== 'C' && !selectedDelivery.fully_reserved" color="primary" variant="flat" class="px-8">
                     Batch Picking
                 </v-btn>
-
-                <!-- <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
+                <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
                         Reservation
-                </v-btn> -->
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
