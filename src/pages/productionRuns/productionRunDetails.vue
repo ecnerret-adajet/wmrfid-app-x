@@ -150,7 +150,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             itemsPerPage,
             sort: sortQuery.value,
             search: searchValue.value,
-            filters: filters
+            filters: filters,
+            storage_location_id: props.productionRun?.storage_location_id || null
         }
     })
         .then((response) => {
