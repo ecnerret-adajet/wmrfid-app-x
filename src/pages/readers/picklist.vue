@@ -49,7 +49,7 @@ onMounted(() => {
 
     // Create private channels for each event type
     const channelNameBase = `shipment.${readerId}.${bay}`;
-    
+
     picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
     picklistRefreshChannel = echo.channel(`${channelNameBase}.picklist-refresh`);
     driverTapOutChannel = echo.channel(`${channelNameBase}.driver-tap-out`);
@@ -97,7 +97,7 @@ const onPicklistLogsEvent = (data) => {
         // Prevent double increment: skip if already processed
         if (processedEpcs.value[key]) return;
         processedEpcs.value[key] = true;
-    
+
         if (batch && (is_loaded == false || is_loaded == 0)) {
             const delivery = shipmentData.deliveries.find(d => d.batch === batch);
             if (delivery) {
@@ -112,7 +112,7 @@ const reloadPageChecker = () => {
         const isLoadingInProgress = shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null;
         const isWaitingForBatches = shipmentData.shipment?.no_batches_yet === true;
         const isNoInventory = shipmentData.shipment?.batch_no_inventory_yet === true && shipmentData.shipment?.no_batches_yet === false;
-        
+
         if (isLoadingInProgress && isWaitingForBatches === false && isNoInventory === false) {
             // Do not decrement timer or reload during loading
             return;
@@ -329,16 +329,16 @@ const onDriverTapOutEvent = (data) => {
     console.log(data);
 
     // Attempt to find driver tap out only if picklist satisfied
-    if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
-        if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
-            if (data.driverTapOut?.is_tap_out_found === true) {
-                is_tapping_load_end_found.value = true;
-            } else {
-                // errorMessage.value = 'No tap out found. Please tap out again';
-                // dialogVisible.value = true;
-            }
+    // if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
+    if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
+        if (data.driverTapOut?.is_tap_out_found === true) {
+            is_tapping_load_end_found.value = true;
+        } else {
+            // errorMessage.value = 'No tap out found. Please tap out again';
+            // dialogVisible.value = true;
         }
     }
+    // }
 }
 
 // Stop listening to event once found
@@ -381,7 +381,8 @@ const progressPercentage = computed(() => {
     <div v-else class="py-2 px-8 whiteBackground">
 
         <div>
-            <v-card v-if="shipmentData.shipment?.no_batches_yet === false && shipmentData.shipment?.wm_load_end_date === null && shipmentData.shipment?.batch_no_inventory_yet === true"
+            <v-card
+                v-if="shipmentData.shipment?.no_batches_yet === false && shipmentData.shipment?.wm_load_end_date === null && shipmentData.shipment?.batch_no_inventory_yet === true"
                 class="mb-4 pa-4 d-flex align-center" color="info" variant="tonal" elevation="3"
                 style="border-left: 6px solid #2196f3;">
                 <VRow class="w-100" align="center">
@@ -392,7 +393,8 @@ const progressPercentage = computed(() => {
                         </div>
                         <div class="text-body-1 mb-2">
                             There are currently no pallets available for loading on certain DO.<br>
-                            <span class="font-italic" style="color: #2196f3;">Please contact warehouse production or admin.</span>
+                            <span class="font-italic" style="color: #2196f3;">Please contact warehouse production or
+                                admin.</span>
                         </div>
                     </VCol>
                     <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
@@ -400,15 +402,15 @@ const progressPercentage = computed(() => {
                             No Inventory
                         </div>
                         <div style="color: #2196f3;" class="d-flex align-center justify-center">
-                            Reloading in <span class="text-h4 font-weight-black mx-2" style="color: #2196f3;">{{ refreshTimer }}</span>
+                            Reloading in <span class="text-h4 font-weight-black mx-2" style="color: #2196f3;">{{
+                                refreshTimer }}</span>
                             <span class="text-h5 font-weight-regular" style="color: #2196f3;">seconds</span>
                         </div>
                     </VCol>
                 </VRow>
             </v-card>
-            <v-card v-else-if="shipmentData.shipment?.no_batches_yet === true"
-                class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
-                style="border-left: 6px solid #ff9800;">
+            <v-card v-else-if="shipmentData.shipment?.no_batches_yet === true" class="mb-4 pa-4 d-flex align-center"
+                color="warning" variant="tonal" elevation="3" style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
                     <VCol cols="12" md="8" class="d-flex flex-column justify-center">
                         <div class="text-h6 font-weight-bold mb-1" style="color: #e65100;">
@@ -417,7 +419,8 @@ const progressPercentage = computed(() => {
                         </div>
                         <div class="text-body-1 mb-2">
                             No batches found for this shipment yet<br>
-                            <span class="font-italic" style="color: #ff9800;">Please wait for batches to be picked.</span>
+                            <span class="font-italic" style="color: #ff9800;">Please wait for batches to be
+                                picked.</span>
                         </div>
                     </VCol>
                     <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
@@ -425,14 +428,16 @@ const progressPercentage = computed(() => {
                             No Available Batches Yet
                         </div>
                         <div style="color: #e65100;" class="d-flex align-center justify-center">
-                            Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer }}</span>
+                            Reloading in <span class="text-h4 font-weight-black text-warning mx-2">{{ refreshTimer
+                                }}</span>
                             <span class="text-h5 font-weight-regular" style="color: #e65100;">seconds</span>
                         </div>
                     </VCol>
                 </VRow>
             </v-card>
 
-            <v-card v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
+            <v-card
+                v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -446,18 +451,16 @@ const progressPercentage = computed(() => {
                             <span class="font-italic" style="color: #ff9800;">Do not proceed until loading is
                                 finished.</span>
                         </div>
-                        <v-progress-linear
-                            :model-value="progressPercentage"
-                            color="warning" height="14" rounded
+                        <v-progress-linear :model-value="progressPercentage" color="warning" height="14" rounded
                             :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
                                     {{ Math.min(totalLoadedQty, shipmentData.shipment?.total_pallet_to_load || 0) }}
                                     out of
                                     {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                    ({{ progressPercentage }}%)
-                                </span>
+                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                        ({{ progressPercentage }}%)
+                                    </span>
                                 </span>
                             </template>
                         </v-progress-linear>
@@ -471,7 +474,8 @@ const progressPercentage = computed(() => {
                 </VRow>
             </v-card>
 
-            <v-card v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
+            <v-card
+                v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
                 class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
                 style="border-left: 6px solid #4caf50;">
                 <VRow class="w-100" align="center">
@@ -482,7 +486,8 @@ const progressPercentage = computed(() => {
                         </div>
                         <div class="text-body-1 mb-2">
                             We are currently awaiting the driver to tap out.<br>
-                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap out.</span>
+                            <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap
+                                out.</span>
                         </div>
                         <v-progress-linear
                             :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
@@ -617,7 +622,7 @@ const progressPercentage = computed(() => {
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold">{{ shipmentData.shipment?.driver_name
-                                            }}</span>
+                                                }}</span>
                                         </VCol>
                                     </VRow>
                                 </VCol>
