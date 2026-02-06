@@ -118,6 +118,18 @@ const wrongPalletForm = reactive({
     selectedRfid: [],
 })
 
+const addPalletForm = reactive({
+    selectedPallets: [],
+    batch: null
+})
+
+const showAddPalletModal = ref(false)
+const showAddPalletConfirmModal = ref(false)
+const addPalletLoading = ref(false)
+const availableRfidPallets = ref([])
+const selectedNewPallet = ref(null)
+const loadingPallets = ref(false)
+
 const router = useRouter();
 
 const lastOptions = ref({});
@@ -373,6 +385,119 @@ const handleWrongPallet = async () => {
     }
 }
 
+const openAddPalletModal = () => {
+    addPalletForm.selectedPallets = [];
+    selectedNewPallet.value = null;
+    showAddPalletModal.value = true;
+    fetchAvailablePallets();
+}
+
+const closeAddPalletModal = () => {
+    showAddPalletModal.value = false;
+    addPalletForm.selectedPallets = [];
+    selectedNewPallet.value = null;
+}
+
+
+
+const fetchAvailablePallets = async (search = '') => {
+    loadingPallets.value = true;
+    try {
+        const response = await ApiService.query(`production-runs/get-pallets/${props.productionRun?.plant?.plant_code}`, {
+            params: {
+                search: search,
+                itemsPerPage: 10,
+            }
+        });
+    
+        availableRfidPallets.value = response.data.data.map(item => ({
+            value: `${item.id}-${item.name}`,
+            rfid_id: item.id,
+            title: item.name,
+            physical_id: item.name,
+            material: item.material?.description || 'N/A',
+            quantity: item.quantity || 0,
+            type: 'Pallet'
+        }));
+    } catch (error) {
+        console.error('Error fetching pallets:', error);
+    } finally {
+        loadingPallets.value = false;
+    }
+}
+
+const addPalletToList = () => {
+    if (selectedNewPallet.value) {
+        const palletToAdd = availableRfidPallets.value.find(p => p.value === selectedNewPallet.value);
+        if (palletToAdd && !addPalletForm.selectedPallets.find(p => p.value === palletToAdd.value)) {
+            addPalletForm.selectedPallets.push({
+                ...palletToAdd,
+                quantity: props.productionRun.material?.default_pallet_quantity || palletToAdd.quantity || 0
+            });
+        }
+        selectedNewPallet.value = null;
+    }
+}
+
+const removePalletFromList = (index) => {
+    addPalletForm.selectedPallets.splice(index, 1);
+}
+
+const confirmAddPallet = () => {
+    if (addPalletForm.selectedPallets.length > 0) {
+        showAddPalletConfirmModal.value = true;
+    }
+}
+
+const handleAddPallet = async () => {
+    addPalletLoading.value = true;
+    toast.value.show = false;
+    
+    const palletData = addPalletForm.selectedPallets.map(p => ({
+        physical_id: p.physical_id,
+        quantity: p.quantity
+    }));
+    const payload = {
+        pallets: palletData,
+        production_run_id: props.productionRun.ID ?? props.productionRun.OrderID,
+        batch: props.productionRun.COMMODITY,
+        material_id: props.productionRun.material?.id,
+        storage_location_id: props.productionRun?.storage_location_id
+    };
+    
+    try {
+        const response = await ApiService.post('production-runs/add-batch-to-pallets', payload);
+        if (response.status !== 200) {
+            throw new Error('Failed to add pallets to batch');
+        }
+        addPalletLoading.value = false;
+        toast.value.message = 'Successfully added pallets to batch!';
+        toast.value.color = 'success';
+        toast.value.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        emits('update-success');
+        addPalletForm.selectedPallets = [];
+    } catch (error) {
+        console.error('Error adding pallets:', error);
+        toast.value.message = error.response?.data?.message || 'Failed to add pallets to batch';
+        toast.value.color = 'error';
+        toast.value.show = true;
+    } finally {
+        addPalletLoading.value = false;
+        showAddPalletConfirmModal.value = false;
+        showAddPalletModal.value = false;
+    }
+}
+
+const searchPallets = debounce((search) => {
+    fetchAvailablePallets(search);
+}, 500);
+
 
 </script>
 
@@ -569,6 +694,11 @@ const handleWrongPallet = async () => {
                                 Remove Batch
                             </v-btn>
 
+                            <v-btn @click="openAddPalletModal" class="px-5 ml-2"
+                                type="button" color="primary">
+                                Add Pallet
+                            </v-btn>
+
                             <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5 ml-2"
                                 type="button" color="primary-light">
                                 Change Batch
@@ -744,7 +874,7 @@ const handleWrongPallet = async () => {
                     <tr v-for="(item, index) in selectedItems" :key="index">
                         <td>{{ productionRun.plant?.name }}</td>
                         <td class="text-uppercase">{{ item.type }}</td>
-                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.physical_id }}</td>
                     </tr>
                 </tbody>
             </v-table>
@@ -758,5 +888,141 @@ const handleWrongPallet = async () => {
             </div>
         </template>
     </EditingModal>
+
+    <EditingModal @close="closeAddPalletModal" max-width="900px" :show="showAddPalletModal"
+        :dialog-title="`Add Pallets to Batch`">
+        <template #default>
+            <div class="mx-4">
+                <span class="text-h6 text-high-emphasis">
+                    Select RFID pallets to add to batch <span class="text-primary">{{ productionRun.COMMODITY }}</span>
+                </span>
+            </div>
+
+            <v-row class="mt-4">
+                <v-col cols="10">
+                    <v-autocomplete
+                        label="Select RFID Pallet"
+                        density="compact"
+                        item-title="title"
+                        item-value="value"
+                        :items="availableRfidPallets"
+                        v-model="selectedNewPallet"
+                        :loading="loadingPallets"
+                        @update:search="searchPallets"
+                        clearable
+                    />
+                </v-col>
+                <v-col cols="2" class="d-flex align-center">
+                    <v-btn
+                        @click="addPalletToList"
+                        :disabled="!selectedNewPallet"
+                        color="primary"
+                        block
+                    >
+                        Add
+                    </v-btn>
+                </v-col>
+            </v-row>
+
+            <div v-if="addPalletForm.selectedPallets.length > 0" class="mt-4">
+                <span class="text-subtitle-1 font-weight-medium">
+                    Selected Pallets ({{ addPalletForm.selectedPallets.length }})
+                </span>
+                <v-table class="mt-2">
+                    <thead>
+                        <tr>
+                            <th>Physical ID</th>
+                            <th class="text-center">Quantity</th>
+                            <th>Type</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(pallet, index) in addPalletForm.selectedPallets" :key="index">
+                            <td>{{ pallet.physical_id }}</td>
+                            <td class="text-center">
+                                <v-text-field
+                                    v-model.number="pallet.quantity"
+                                    type="number"
+                                    density="compact"
+                                    variant="outlined"
+                                    class="quantity-input"
+                                />
+                            </td>
+                            <td>{{ pallet.type }}</td>
+                            <td>
+                                <v-btn
+                                    @click="removePalletFromList(index)"
+                                    icon="ri-delete-bin-line"
+                                    size="small"
+                                    variant="text"
+                                    color="error"
+                                ></v-btn>
+                            </td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </div>
+
+            <div v-else class="mt-4 text-center text-medium-emphasis">
+                <v-icon size="48">ri-inbox-line</v-icon>
+                <p class="mt-2">No pallets selected yet</p>
+            </div>
+
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="closeAddPalletModal" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton
+                    @click="confirmAddPallet"
+                    :disabled="addPalletForm.selectedPallets.length === 0"
+                    color="primary"
+                    class="px-12"
+                    type="button"
+                >
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
+    <EditingModal @close="showAddPalletConfirmModal = false" max-width="700px" :show="showAddPalletConfirmModal"
+        :dialog-title="`Confirm Add Pallets`">
+        <template #default>
+            <div class="mx-4">
+                <span class="text-h6 text-high-emphasis">
+                    Are you sure you want to add {{ addPalletForm.selectedPallets.length }} pallet(s) to batch
+                    <span class="text-primary">{{ productionRun.COMMODITY }}</span>?
+                </span>
+            </div>
+
+            <v-table class="mt-4">
+                <thead>
+                    <tr>
+                        <th>Physical ID</th>
+                        <th class="text-center">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(pallet, index) in addPalletForm.selectedPallets" :key="index">
+                        <td>{{ pallet.physical_id }}</td>
+                        <td class="text-center">{{ pallet.quantity }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" @click="showAddPalletConfirmModal = false" class="px-12 mr-3">Cancel</v-btn>
+                <PrimaryButton
+                    @click="handleAddPallet"
+                    color="primary"
+                    class="px-12"
+                    type="button"
+                    :loading="addPalletLoading"
+                >
+                    Confirm
+                </PrimaryButton>
+            </div>
+        </template>
+    </EditingModal>
+
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
