@@ -153,10 +153,15 @@ const formatDateTime = (date, time) => {
     return Moment(`${formattedDate} ${time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
-defineExpose({
-    loadItems,
-    applyFilters
-})
+
+    const handleViewDetails = (item) => {
+        router.push({ name: 'goods-receipt.show', params: { id: item.id } });
+    }
+
+    defineExpose({
+        loadItems,
+        applyFilters
+    })
 </script>
 
 <template>
@@ -164,6 +169,12 @@ defineExpose({
     <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
+
+        <template #item.stock_transfer_code="{ item }">
+            <span class="text-primary font-weight-bold cursor-pointer" @click="handleViewDetails(item)">
+                {{ item.stock_transfer_code }}
+            </span>
+        </template>
         
         <template #item.posting_date="{ item }">
             {{ item.posting_date ? Moment(item.posting_date).format('MMMM D, YYYY') : '' }}
