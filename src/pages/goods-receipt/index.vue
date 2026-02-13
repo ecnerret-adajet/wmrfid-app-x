@@ -30,11 +30,13 @@ const filterModalOpen = () => {
 const filters = reactive({
     created_at: null,
     updated_at: null,
+    posting_date: null,
 });
 
 const isFiltersEmpty = computed(() => {
     return !filters.created_at && 
-           !filters.updated_at 
+           !filters.updated_at &&
+           !filters.posting_date
 });
 
 const applyFilter = () => {
@@ -55,6 +57,7 @@ const resetFilter = () => {
 const clearFilters = () => {
     filters.created_at = null;
     filters.updated_at = null;
+    filters.posting_date = null;
 };
 
 const handleSearch = debounce((search) => {
@@ -102,6 +105,11 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Updated</label>
                     <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
+                </div>
+
+                <div class="mt-4">
+                    <label class="font-weight-bold">Posting Date</label>
+                    <DateRangePicker class="mt-1" v-model="filters.posting_date" placeholder="Select Posting Date"/>
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
