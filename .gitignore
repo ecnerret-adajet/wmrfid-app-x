@@ -42,3 +42,5 @@ public/mockServiceWorker.js
 .env*
 !.env.example
 .qodo
+
+GEMINI.md

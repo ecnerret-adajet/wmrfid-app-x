@@ -129,6 +129,17 @@ export const routes = [
             },
         },
         {
+            path: 'goods-receipt',
+            name: 'goods-receipt',
+            component: () => import('@/pages/goods-receipt/index.vue'),
+            meta: {
+              pageTitle: "Good Receipt List",
+              breadcrumbs: [
+                  { label: "Good Receipt List", link: "/goods-receipt" },
+              ],
+            },
+        },
+        {
             path: 'shipments/:shipmentNumber',
             name: 'shipments.show',
             component: () => import('@/pages/shipments/show.vue'),
