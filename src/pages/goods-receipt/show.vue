@@ -6,6 +6,8 @@ import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 
+import PalletAssignModal from '@/components/PalletAssignModal.vue';
+
 const route = useRoute();
 const router = useRouter();
 const goodsReceiptData = ref(null); // Renamed from shipmentData
@@ -22,6 +24,9 @@ const deliveryItemsModalOpen = ref(false);
 const selectedDelivery = ref(null);
 const searchValue = ref('');
 
+const palletModalOpen = ref(false);
+const selectedItemForPallet = ref(null);
+
 const headers = [
     { title: 'Line', key: 'MATDOC_ITM' },
     { title: 'Material', key: 'MATERIAL' },
@@ -35,6 +40,7 @@ const headers = [
     { title: 'Storage Location', key: 'STGE_LOC' },
     { title: 'Batch', key: 'BATCH' },
     { title: 'Movement Type', key: 'MOVE_TYPE' },
+    { title: 'Actions', key: 'actions', sortable: false },
 ]
 
 const toast = ref({
@@ -43,7 +49,30 @@ const toast = ref({
     show: false
 });
 
+const formatNumber = (value) => {
+    if (!value) return '0';
+    return new Intl.NumberFormat('en-US').format(value);
+};
 
+const openPalletModal = (item) => {
+    selectedItemForPallet.value = item;
+    palletModalOpen.value = true;
+};
+
+const closePalletModal = () => {
+    palletModalOpen.value = false;
+    selectedItemForPallet.value = null;
+};
+
+const savePalletAssignment = (pallets) => {
+    console.log('Saving pallets for', selectedItemForPallet.value, pallets);
+    toast.value = {
+        message: 'Pallets assigned successfully (Mock)',
+        color: 'success',
+        show: true
+    };
+    closePalletModal();
+};
 
 const fetchStockTransferDetails = async () => {
     pageLoading.value = true;
@@ -188,13 +217,23 @@ const closeModal = () => {
                                     <td>{{ item.PO_NUMBER }}</td>
                                     <td>{{ item.PO_ITEM }}</td>
                                     <td>{{ item.REF_DOC_NO }}</td>
-                                    <td>{{ item.ENTRY_QNT || '1' }}</td>
+                                    <td>{{ formatNumber(item.ENTRY_QNT) }}</td>
                                     <td>{{ item.ENTRY_UOM }}</td>
                                     <td>{{ item.ITEM_TEXT }}</td>
                                     <td>{{ item.PLANT || '2115' }}</td>
                                     <td>{{ item.STGE_LOC || 'W105' }}</td>
                                     <td>{{ item.BATCH }}</td>
                                     <td>{{ item.MOVE_TYPE || '313' }}</td>
+                                    <td>
+                                        <v-btn
+                                            v-if="item.ENTRY_QNT > 0"
+                                            color="primary"
+                                            size="small"
+                                            @click.stop="openPalletModal(item)"
+                                        >
+                                            Add Pallet
+                                        </v-btn>
+                                    </td>
                                 </tr>
                             </template>
 
@@ -208,6 +247,14 @@ const closeModal = () => {
     <DefaultModal :dialog-title="'Item Details'" :show="deliveryItemsModalOpen" @close="closeModal">
         <!-- Content for modal if needed -->
     </DefaultModal>
+
+    <PalletAssignModal 
+        :show="palletModalOpen" 
+        :item="selectedItemForPallet"
+        @close="closePalletModal"
+        @save="savePalletAssignment"
+    />
+
 <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 
