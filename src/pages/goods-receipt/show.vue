@@ -64,8 +64,15 @@ const closePalletModal = () => {
     selectedItemForPallet.value = null;
 };
 
-const savePalletAssignment = (pallets) => {
-    console.log('Saving pallets for', selectedItemForPallet.value, pallets);
+const savePalletAssignment = async ({ pallets, block_id }) => {
+    console.log('Saving pallets for', selectedItemForPallet.value);
+    console.log('Payload:', { pallets, block_id });
+    
+    // TODO: Implement actual API call here
+    // await ApiService.post('/stock-transfers/assign-pallets', {
+    //     ...
+    // });
+
     toast.value = {
         message: 'Pallets assigned successfully (Mock)',
         color: 'success',

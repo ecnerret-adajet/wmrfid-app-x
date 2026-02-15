@@ -1,4 +1,6 @@
 <script setup>
+import ApiService from '@/services/ApiService';
+import { debounce } from 'lodash';
 import { ref, watch } from 'vue';
 
 const props = defineProps({
@@ -17,21 +19,57 @@ const emit = defineEmits(['close', 'save']);
 const dialogVisible = ref(props.show);
 const selectedPallet = ref(null);
 const addedPallets = ref([]);
-
-// Dummy data for dropdown search
-const availablePallets = ref([
-    { id: 1, code: 'PLT-001', type: 'Standard' },
-    { id: 2, code: 'PLT-002', type: 'Standard' },
-    { id: 3, code: 'PLT-003', type: 'Euro' },
-    { id: 4, code: 'PLT-004', type: 'Plastic' },
-    { id: 5, code: 'PLT-005', type: 'Standard' },
-]);
+const availableBlocks = ref([]);
+const selectedBlock = ref(null);
+const isLoadingBlocks = ref(false);
+const availablePallets = ref([]);
+const isLoading = ref(false);
+const search = ref('');
 
 const headers = [
-    { title: 'Pallet Code', key: 'code' },
-    { title: 'Type', key: 'type' },
+    { title: 'Pallet Code', key: 'pallet_code' },
+    { title: 'Type', key: 'name' },
     { title: 'Actions', key: 'actions', sortable: false }
 ];
+
+const fetchBlocks = async () => {
+    if (!props.item?.STGE_LOC) return;
+    
+    isLoadingBlocks.value = true;
+    try {
+        const payload = {
+            storage_location: props.item.STGE_LOC,
+            plant_code: props.item.PLANT || '2155'
+        };
+        const response = await ApiService.post('/stock-transfers/get-blocks', payload);
+        availableBlocks.value = response.data; // Assuming response is array of objects { id, label, ... }
+    } catch (error) {
+        console.error('Failed to fetch blocks:', error);
+    } finally {
+        isLoadingBlocks.value = false;
+    }
+};
+
+const fetchPallets = async (query = '') => {
+    isLoading.value = true;
+    try {
+        const payload = {
+            name: query, 
+            page: 1,
+            per_page: 20
+        };
+        const response = await ApiService.post('/stock-transfers/pallet-list', payload);
+        availablePallets.value = response.data.data;
+    } catch (error) {
+        console.error('Failed to fetch pallets:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const debouncedFetchPallets = debounce((query) => {
+    fetchPallets(query);
+}, 500);
 
 watch(() => props.show, (newVal) => {
     dialogVisible.value = newVal;
@@ -39,12 +77,22 @@ watch(() => props.show, (newVal) => {
         // Reset state when opening
         selectedPallet.value = null;
         addedPallets.value = []; 
+        search.value = '';
+        selectedBlock.value = null; // Reset block selection
+        fetchPallets(); // Load initial data
+        fetchBlocks(); // Fetch blocks
     }
 });
 
 watch(() => dialogVisible.value, (newVal) => {
     if (!newVal) {
         emit('close');
+    }
+});
+
+watch(search, (newVal) => {
+    if (newVal !== selectedPallet.value?.pallet_code) { // Avoid refetching when selecting an item
+         debouncedFetchPallets(newVal);
     }
 });
 
@@ -55,6 +103,7 @@ const addPallet = () => {
         if (!exists) {
             addedPallets.value.push(selectedPallet.value);
             selectedPallet.value = null; // Reset selection
+            search.value = ''; // Reset search
         }
     }
 };
@@ -64,7 +113,11 @@ const removePallet = (item) => {
 };
 
 const handleSave = () => {
-    emit('save', addedPallets.value);
+    emit('save', {
+        pallets: addedPallets.value,
+        block_id: selectedBlock.value?.id,
+        storage_location_id: selectedBlock.value?.storage_location_id // Optional if available in block data
+    });
     dialogVisible.value = false;
 };
 
@@ -89,12 +142,32 @@ const handleSave = () => {
                    </div>
                 </div>
 
+                <v-row>
+                    <v-col cols="12">
+                        <v-autocomplete
+                            v-model="selectedBlock"
+                            :items="availableBlocks"
+                            :loading="isLoadingBlocks"
+                            item-title="label"
+                            item-value="id"
+                            label="Target Bin / Block"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            placeholder="Select Target Bin / Block"
+                            return-object
+                        ></v-autocomplete>
+                    </v-col>
+                </v-row>
+
                 <v-row align="center" class="mb-2">
                     <v-col cols="12" md="8">
                         <v-autocomplete
                             v-model="selectedPallet"
+                            v-model:search="search"
                             :items="availablePallets"
-                            item-title="code"
+                            :loading="isLoading"
+                            item-title="pallet_code"
                             item-value="id"
                             label="Search Pallet"
                             return-object
@@ -102,7 +175,16 @@ const handleSave = () => {
                             density="compact"
                             hide-details
                             placeholder="Type to search..."
-                        ></v-autocomplete>
+                            no-filter
+                        >
+                            <template #item="{ props, item }">
+                                <v-list-item
+                                    v-bind="props"
+                                    :title="item.raw.pallet_code"
+                                    :subtitle="item.raw.name"
+                                ></v-list-item>
+                            </template>
+                        </v-autocomplete>
                     </v-col>
                     <v-col cols="12" md="4">
                         <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet">
