@@ -64,21 +64,37 @@ const closePalletModal = () => {
     selectedItemForPallet.value = null;
 };
 
-const savePalletAssignment = async ({ pallets, block_id }) => {
-    console.log('Saving pallets for', selectedItemForPallet.value);
-    console.log('Payload:', { pallets, block_id });
-    
-    // TODO: Implement actual API call here
-    // await ApiService.post('/stock-transfers/assign-pallets', {
-    //     ...
-    // });
+const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) => {
+    if (!selectedItemForPallet.value) return;
 
-    toast.value = {
-        message: 'Pallets assigned successfully (Mock)',
-        color: 'success',
-        show: true
+    // Construct Payload
+    const payload = {
+        pallets: pallets.map(p => ({ id: p.id })),
+        material_code: parseInt(selectedItemForPallet.value.MATERIAL),
+        batch: selectedItemForPallet.value.BATCH,
+        quantity: parseFloat(selectedItemForPallet.value.ENTRY_QNT),
+        storage_location_id: storage_location_id,
+        block_id: block_id
     };
-    closePalletModal();
+    
+    try {
+        await ApiService.post('/stock-transfers/assign-pallets', payload);
+
+        toast.value = {
+            message: 'Pallets assigned successfully',
+            color: 'success',
+            show: true
+        };
+        closePalletModal();
+        await fetchStockTransferDetails(); // Refresh to update UI if necessary
+    } catch (error) {
+        console.error(error);
+        toast.value = {
+            message: error.response?.data?.message || 'Failed to assign pallets',
+            color: 'error',
+            show: true
+        };
+    }
 };
 
 const fetchStockTransferDetails = async () => {

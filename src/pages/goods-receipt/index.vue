@@ -4,9 +4,15 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
+import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
-import { computed, reactive, ref } from 'vue';
+import { storeToRefs } from 'pinia'; // If needed, but we can access directly
+import { computed, onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
+
+const goodsReceiptStore = useGoodsReceiptStore();
+const { filters } = storeToRefs(goodsReceiptStore);
 
 const searchValue = ref('');
 const datatableRef = ref(null);
@@ -21,44 +27,87 @@ const toast = ref({
 });
 const filterModalVisible = ref(false);
 
+const plantsOption = ref([]);
+const storageLocationsOption = ref([]);
+
 const filterModalOpen = () => {
     if (!filterModalVisible.value) {
         filterModalVisible.value = true;
     }
 };
 
-const filters = reactive({
-    created_at: null,
-    updated_at: null,
-    posting_date: null,
+onMounted(() => {
+    fetchDataDropdown();
 });
 
+const fetchDataDropdown = async () => {
+    try {
+        const response = await ApiService.get('/users/get-data-dropdown');
+        const { plants } = response.data;
+        plantsOption.value = plants;
+        
+        // Restore storage locations if plant is already selected (from persistence)
+        if (filters.value.plant) {
+             const selectedPlant = plantsOption.value.find(p => p.id === filters.value.plant.id);
+             storageLocationsOption.value = selectedPlant ? selectedPlant.storage_locations : [];
+        }
+
+    } catch (error) {
+        console.error('Error fetching dropdown data:', error);
+    }
+};
+
+// Watch for plant changes to update storage locations list
+watch(
+    () => filters.value.plant,
+    (newPlant) => {
+        // If plant changes, clear sloc unless it matches the new plant (unlikely in dropdown)
+        // Check if the ID changed to avoid unnecessary clears if object reference changes but ID is same
+        // But for v-select return-object, it replaces the object.
+        
+        // We only want to reset sloc if the user *changed* the plant, not on initial load if persisted.
+        // However, on change, we should update options.
+        
+        if (newPlant) {
+             const selectedPlant = plantsOption.value.find(p => p.id === newPlant.id);
+             storageLocationsOption.value = selectedPlant ? selectedPlant.storage_locations : [];
+             
+             // If the current sloc doesn't belong to the new plant, clear it
+             if (filters.value.storageLocation && (!selectedPlant?.storage_locations.find(sl => sl.id === filters.value.storageLocation.id))) {
+                 filters.value.storageLocation = null;
+             }
+        } else {
+            storageLocationsOption.value = [];
+            filters.value.storageLocation = null;
+        }
+    }
+);
+
 const isFiltersEmpty = computed(() => {
-    return !filters.created_at && 
-           !filters.updated_at &&
-           !filters.posting_date
+    return !filters.value.posting_date &&
+           !filters.value.plant &&
+           !filters.value.storageLocation
 });
 
 const applyFilter = () => {
     if(datatableRef.value) {
-        datatableRef.value.applyFilters(filters);
+        // Pass IDs to datatable as it expects
+        datatableRef.value.applyFilters({
+            posting_date: filters.value.posting_date,
+            plant_id: filters.value.plant?.id,
+            storage_location_id: filters.value.storageLocation?.id
+        });
     }
     filterModalVisible.value = false;
 }
 
 const resetFilter = () => {
-    clearFilters();
+    goodsReceiptStore.clearFilters();
     if(datatableRef.value) {
         datatableRef.value.applyFilters([]);
     }
     filterModalVisible.value = false;
 }
-
-const clearFilters = () => {
-    filters.created_at = null;
-    filters.updated_at = null;
-    filters.posting_date = null;
-};
 
 const handleSearch = debounce((search) => {
     searchValue.value = search;
@@ -98,13 +147,32 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         <template #default>
             <v-form>
                 <div class="mt-4">
-                    <label class="font-weight-bold">Date Created</label>
-                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
+                    <v-select
+                        label="Plant"
+                        density="compact"
+                        :items="plantsOption"
+                        item-title="title"
+                        item-value="id"
+                        v-model="filters.plant"
+                        clearable
+                        variant="outlined"
+                        return-object
+                    ></v-select>
                 </div>
-                 
+
                 <div class="mt-4">
-                    <label class="font-weight-bold">Date Updated</label>
-                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
+                    <v-select
+                        label="Storage Location"
+                        density="compact"
+                        :items="storageLocationsOption"
+                        item-title="name"
+                        item-value="id"
+                        v-model="filters.storageLocation"
+                        clearable
+                        variant="outlined"
+                        :disabled="!filters.plant"
+                        return-object
+                    ></v-select>
                 </div>
 
                 <div class="mt-4">

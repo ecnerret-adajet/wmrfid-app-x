@@ -1,7 +1,12 @@
 <script setup>
 import ApiService from '@/services/ApiService';
+import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
+import { storeToRefs } from 'pinia';
 import { ref, watch } from 'vue';
+
+const goodsReceiptStore = useGoodsReceiptStore();
+const { filters } = storeToRefs(goodsReceiptStore);
 
 const props = defineProps({
     show: {
@@ -33,13 +38,16 @@ const headers = [
 ];
 
 const fetchBlocks = async () => {
-    if (!props.item?.STGE_LOC) return;
+    // Prioritize filter values, fallback to item props
+    const sloc = filters.value.storageLocation?.code || props.item?.STGE_LOC;
+    
+    if (!sloc) return;
     
     isLoadingBlocks.value = true;
     try {
         const payload = {
-            storage_location: props.item.STGE_LOC,
-            plant_code: props.item.PLANT || '2155'
+            storage_location: sloc,
+            plant_code: filters.value.plant?.plant_code || props.item?.PLANT || '2155'
         };
         const response = await ApiService.post('/stock-transfers/get-blocks', payload);
         availableBlocks.value = response.data; // Assuming response is array of objects { id, label, ... }
@@ -56,7 +64,8 @@ const fetchPallets = async (query = '') => {
         const payload = {
             name: query, 
             page: 1,
-            per_page: 20
+            per_page: 20,
+            plant_code: filters.value.plant?.plant_code || props.item?.PLANT || '2155'
         };
         const response = await ApiService.post('/stock-transfers/pallet-list', payload);
         availablePallets.value = response.data.data;

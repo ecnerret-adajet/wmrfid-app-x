@@ -41,13 +41,13 @@ const headers = [
         title: 'Material Document',
         key: 'material_document',
     },
-    {
-        title: 'Year',
-        key: 'mat_document_year',
-    },
+    // {
+    //     title: 'Year',
+    //     key: 'mat_document_year',
+    // },
     {
         title: 'Movement type',
-        key: 'movement_type.name',
+        key: 'movement_type.code',
     },
     // {
     //     title: 'Movement Reason',
@@ -60,6 +60,10 @@ const headers = [
     {
         title: 'Doc. Header',
         key: 'document_header_text',
+    },
+    {
+        title: 'GR Slip No.',
+        key: 'gr_gi_slip_number',
     },
     // {
     //     title: 'Type',
@@ -84,6 +88,10 @@ const headers = [
     {
         title: 'Items',
         key: 'stock_transfer_items_count',
+    },
+    {
+        title: 'Pallet Status',
+        key: 'pallet_assignment_log',
     },
 ]
 
@@ -186,6 +194,12 @@ const formatDateTime = (date, time) => {
 
         <template #item.deleted_at="{ item }">
             {{ item.deleted_at ? Moment(item.deleted_at).format('MMMM D, YYYY hh:mm A') : '' }}
+        </template>
+
+        <template #item.pallet_assignment_log="{ item }">
+            <span :class="item.pallet_assignment_log ? 'text-success' : 'text-warning'">
+                {{ item.pallet_assignment_log ? 'Assigned Pallet' : 'Not Assigned' }}
+            </span>
         </template>
         
     </VDataTableServer>
