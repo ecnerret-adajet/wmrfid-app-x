@@ -5,9 +5,10 @@ import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import Moment from "moment";
-import { ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 const authStore = useAuthStore();
+const canViewProductionRuns = computed(() => Array.isArray(authStore.user?.permissions) && authStore.user.permissions.includes('view.production.runs'));
 const storageLocations = ref([]);
 const plantsOption = ref([]);
 const totalItems = ref(0);
@@ -95,8 +96,10 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 
         const { table, statistics, storage_locations, plants } = response.data;
 
-        totalItems.value = table.total;
-        serverItems.value = table.data;
+        if (table !== null) {
+            totalItems.value = table.total;
+            serverItems.value = table.data;
+        }
 
         statisticsData.value = statistics;
 
@@ -152,8 +155,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
             </v-card>
         </v-col>
 
-
-        <v-col cols="12" sm="12" md="3">
+        <v-col v-if="canViewProductionRuns" cols="12" sm="12" md="3">
             <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
                 <div class="d-flex align-center">
@@ -176,7 +178,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
                 </div>
             </v-card>
         </v-col>
-        <v-col cols="12" sm="12" md="3">
+        <v-col v-if="canViewProductionRuns" cols="12" sm="12" md="3">
             <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
                 <div class="d-flex align-center">
@@ -238,7 +240,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 
     </VRow>
 
-    <v-card class="mx-4 mt-4" elevation="2">
+    <v-card v-show="canViewProductionRuns" class="mx-4 mt-4" elevation="2">
         <v-card-title class="text-h5 font-weight-bold mt-4 mx-4">
             Today's Production Runs
         </v-card-title>
