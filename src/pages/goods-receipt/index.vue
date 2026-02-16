@@ -30,6 +30,11 @@ const toast = ref({
 const plantsOption = ref([]);
 const storageLocationsOption = ref([]);
 
+const palletStatusOption = ref([
+    { name: 'Not Assigned', value: "not-assigned" },
+    { name: 'Pallet Assigned', value: "assigned" }
+]);
+
 
 
 onMounted(() => {
@@ -82,7 +87,8 @@ watch(
 const isFiltersEmpty = computed(() => {
     return !filters.value.posting_date &&
            !filters.value.plant &&
-           !filters.value.storageLocation
+           !filters.value.storageLocation && 
+           !filters.value.pallet_status
 });
 
 const applyFilter = () => {
@@ -91,7 +97,8 @@ const applyFilter = () => {
         datatableRef.value.applyFilters({
             posting_date: filters.value.posting_date,
             plant_id: filters.value.plant?.id,
-            storage_location_id: filters.value.storageLocation?.id
+            storage_location_id: filters.value.storageLocation?.id,
+            pallet_status: filters.value.pallet_status
         });
     }
 }
@@ -135,7 +142,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="2" cols="12">
+        <VCol md="1" cols="12">
             <v-select
                 label="Storage Location"
                 density="compact"
@@ -150,10 +157,23 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="3" cols="12">
+        <VCol md="2" cols="12">
+            <v-select
+                label="Pallet Status"
+                density="compact"
+                :items="palletStatusOption"
+                item-title="name"
+                item-value="value"
+                v-model="filters.pallet_status"
+                clearable
+                variant="outlined"
+                hide-details
+            ></v-select>
+        </VCol>
+        <VCol md="2" cols="12">
             <DateRangePicker v-model="filters.posting_date" placeholder="Select Posting Date"/>
         </VCol>
-        <VCol md="3" cols="12" class="d-flex align-center">
+        <VCol md="2" cols="12" class="d-flex align-center">
             <PrimaryButton class="flex-grow-1 mr-2" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
                 Apply Filter
             </PrimaryButton>
