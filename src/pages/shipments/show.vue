@@ -106,7 +106,7 @@ const syncStatus = async () => {
 }
 
 const proceedBatchPicking = (delivery) => {
-    router.push({ name: 'batch-picking', params: {  do_number: delivery.sap_delivery?.servicio_delivery?.do_number, shipment_number: delivery.shipment_number } });
+    router.push({ name: 'batch-picking', params: { do_number: delivery.sap_delivery?.servicio_delivery?.do_number, shipment_number: delivery.shipment_number } });
 }
 
 const viewReservedOnMap = () => {
@@ -184,11 +184,10 @@ const cancelProposal = async () => {
             <v-card-title>
                 <div class="d-flex justify-space-between align-center px-4 mt-4">
                     <h4 class="text-h4 font-weight-black text-primary">Shipment Details</h4>
-                    <v-badge v-if="shipmentData?.shipment?.load_end_date !== null"  class="ml-3" color="success" content="Completed"
-                        inline>
+                    <v-badge v-if="shipmentData?.shipment?.load_end_date !== null" class="ml-3" color="success"
+                        content="Completed" inline>
                     </v-badge>
-                    <v-badge v-else class="ml-3" color="warning" content="Pending"
-                        inline>
+                    <v-badge v-else class="ml-3" color="warning" content="Pending" inline>
                     </v-badge>
                     <v-spacer></v-spacer>
                     <v-btn :loading="syncingLoading" @click="syncStatus" v-if="isStatusMatched === false &&
@@ -212,7 +211,7 @@ const cancelProposal = async () => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-medium-emphasis">{{
                                             shipmentData?.shipment?.shipment_number }}</span>
-                                          
+
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -343,11 +342,12 @@ const cancelProposal = async () => {
                                     <th class="text-center">
                                         PICKING STATUS
                                     </th>
-                            
+
                                 </tr>
                             </thead>
                             <tbody>
-                                 <tr v-if="deliveryData" v-for="item in deliveryData" @click="handleViewDelivery(item)" class="clickable-row">
+                                <tr v-if="deliveryData" v-for="item in deliveryData" @click="handleViewDelivery(item)"
+                                    class="clickable-row">
                                     <td>{{ item.delivery_document }}</td>
                                     <td>{{ item.sap_delivery?.servicio_delivery?.do_number }}</td>
                                     <td>{{ item.plant?.name }}</td>
@@ -355,25 +355,24 @@ const cancelProposal = async () => {
                                         <v-badge v-if="item.fully_reserved" color="success" content="Fully Reserved"
                                             inline>
                                         </v-badge>
-                                        <v-badge v-else color="warning" content="Not Fully Reserved"
-                                            inline>
+                                        <v-badge v-else color="warning" content="Not Fully Reserved" inline>
                                         </v-badge>
                                     </td>
                                     <td class="text-center">
-                                        <v-badge v-if="item.sap_delivery?.picking_status === 'A'" color="warning" content="A - NOT YET PICKED"
-                                            inline>
+                                        <v-badge v-if="item.sap_delivery?.picking_status === 'A'" color="warning"
+                                            content="A - NOT YET PICKED" inline>
                                         </v-badge>
-                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'B'" color="primary-light" content="B - PARTIALLY PICKED"
-                                            inline>
+                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'B'"
+                                            color="primary-light" content="B - PARTIALLY PICKED" inline>
                                         </v-badge>
-                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'C'" color="success" content="C - FULLY PICKED"
-                                            inline>
+                                        <v-badge v-else-if="item.sap_delivery?.picking_status === 'C'" color="success"
+                                            content="C - FULLY PICKED" inline>
                                         </v-badge>
                                     </td>
                                 </tr>
                             </tbody>
                         </v-table>
-                    
+
                     </div>
                 </v-card-text>
             </v-card>
@@ -384,7 +383,9 @@ const cancelProposal = async () => {
                 <v-card-text class="mx-2">
                     <div class="d-flex justify-space-between align-center px-4 mt-4">
                         <h4 class="text-h4 font-weight-black text-primary">Reserved Pallets</h4>
-                        <v-btn v-if="shipmentData?.shipment?.reserved_pallets?.length > 0 && shipmentData?.shipment?.load_end_date === null" color="primary" @click="viewReservedOnMap" density="compact">View on Map</v-btn>
+                        <v-btn
+                            v-if="shipmentData?.shipment?.reserved_pallets?.length > 0 && shipmentData?.shipment?.load_end_date === null"
+                            color="primary" @click="viewReservedOnMap" density="compact">View on Map</v-btn>
                     </div>
                     <div class="mt-2">
                         <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
@@ -412,12 +413,14 @@ const cancelProposal = async () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-if="shipmentData?.shipment?.reserved_pallets.length > 0" v-for="item in shipmentData?.shipment?.reserved_pallets" :key="item.id">
+                                <tr v-if="shipmentData?.shipment?.reserved_pallets.length > 0"
+                                    v-for="item in shipmentData?.shipment?.reserved_pallets" :key="item.id">
                                     <td>{{ item.pallet_physical_id }}</td>
                                     <td>{{ item.commodity_batch_code }}</td>
                                     <td>
-                                        <span class="font-weight-bold">{{ item.material_code }}</span><br/>
-                                        <span v-if="item.material_description" class="text-subtitle-1">{{ item.material_description }}</span>
+                                        <span class="font-weight-bold">{{ item.material_code }}</span><br />
+                                        <span v-if="item.material_description" class="text-subtitle-1">{{
+                                            item.material_description }}</span>
                                     </td>
                                     <td class="text-center">{{ item.delivery_document }}</td>
                                     <td class="text-center">{{ item.delivery_item_number }}</td>
@@ -432,7 +435,8 @@ const cancelProposal = async () => {
                                 </tr>
                                 <tr v-else>
                                     <td colspan="6" class="text-center text-medium-emphasis">
-                                        No reserved pallets found. Select a DO on delivery details section to reserve batch.
+                                        No reserved pallets found. Select a DO on delivery details section to reserve
+                                        batch.
                                     </td>
                                 </tr>
                             </tbody>
@@ -443,7 +447,7 @@ const cancelProposal = async () => {
         </div>
     </div>
 
-      
+
 
     <v-dialog v-model="deliveryItemsModalOpen" max-width="1000" transition="dialog-bottom-transition">
         <v-card class="pa-4 rounded-lg">
@@ -473,21 +477,24 @@ const cancelProposal = async () => {
                 </v-table>
             </v-card-text>
             <v-card-actions class=" mt-2">
-                <v-btn class="text-none px-8" color="secondary" variant="flat"  @click="deliveryItemsModalOpen = false">
+                <v-btn class="text-none px-8" color="secondary" variant="flat" @click="deliveryItemsModalOpen = false">
                     Close
                 </v-btn>
                 <!-- Allow batch picking if not yet fully picked -->
-                <v-btn @click="proceedBatchPicking(selectedDelivery)" v-if="selectedDelivery.sap_delivery?.picking_status !== 'C' && !selectedDelivery.fully_reserved" color="primary" variant="flat" class="px-8">
+                <v-btn @click="proceedBatchPicking(selectedDelivery)"
+                    v-if="selectedDelivery.sap_delivery?.picking_status !== 'C' && !selectedDelivery.fully_reserved"
+                    color="primary" variant="flat" class="px-8">
                     Batch Picking
                 </v-btn>
-                <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
-                        Reservation
+                <v-btn v-if="!batchPickingStore.deliveryDetails?.customer_delivery?.shipment?.loadstart" color="error"
+                    class="ml-3" @click="handleCancelProposal" type="button">
+                    Cancel Reservation
                 </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 
-     <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+    <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
         <v-card class="pa-4">
             <div class="text-center">
                 <v-icon class="mb-5" color="error" icon="ri-close-circle-line" size="112"></v-icon>
