@@ -119,9 +119,6 @@ const processTags = async () => {
         const result = await checkIfExists(tag.epc, tag.tid, tagType)
         if (result?.found) {
             tag.status = result.name
-            tag.group_no = result.group_no
-        } else if (result?.epc_exists) {
-            tag.status = 'Unregistered TID'
         } else {
             tag.status = 'Unregistered'
         }
@@ -129,20 +126,13 @@ const processTags = async () => {
 
     // Step 3: Split into registered / unregistered categories
     registeredTags.value = uniqueTags.value.filter(
-        t => t.status !== 'Unregistered' && t.status !== 'Unregistered TID'
+        t => t.status !== 'Unregistered'
     )
     unregisteredTags.value = uniqueTags.value.filter(
         t => t.status === 'Unregistered'
     )
-    unregisteredIdTags.value = uniqueTags.value.filter(
-        t => t.status === 'Unregistered TID'
-    )
-
-    if (registeredTags.value.length > 0) {
-        form.name = registeredTags.value[0].status;
-        form.epc_exists = true; // To disable typing in physical ID
-        form.group_no = registeredTags.value[0].group_no;
-    }
+    // Clear unregisteredIdTags as we're no longer checking for them
+    unregisteredIdTags.value = []
 }
 
 const addHandheldTag = async () => {
@@ -179,8 +169,6 @@ const addHandheldTag = async () => {
     const result = await checkIfExists(newTag.epc, newTag.tid, tagType);
     if (result?.found) {
         newTag.status = result.name;
-    } else if (result?.epc_exists) {
-        newTag.status = 'Unregistered TID';
     } else {
         newTag.status = 'Unregistered';
     }
@@ -192,14 +180,13 @@ const addHandheldTag = async () => {
 const updateTagArrays = () => {
     // Update registered/unregistered tag arrays based on handheldTags
     registeredTags.value = handheldTags.value.filter(
-        t => t.status !== 'Unregistered' && t.status !== 'Unregistered TID'
+        t => t.status !== 'Unregistered'
     );
     unregisteredTags.value = handheldTags.value.filter(
         t => t.status === 'Unregistered'
     );
-    unregisteredIdTags.value = handheldTags.value.filter(
-        t => t.status === 'Unregistered TID'
-    );
+    // Clear unregisteredIdTags as we're no longer checking for them
+    unregisteredIdTags.value = [];
 }
 
 const processHandheldTags = async () => {
@@ -214,8 +201,6 @@ const processHandheldTags = async () => {
         const result = await checkIfExists(tag.epc, tag.tid, tagType)
         if (result?.found) {
             tag.status = result.name
-        } else if (result?.epc_exists) {
-            tag.status = 'Unregistered TID'
         } else {
             tag.status = 'Unregistered'
         }
@@ -306,7 +291,7 @@ const submit = async () => {
             responseMessage.value = 'Tags seems to be empty. Please try again'
             responseModal.value = true
         } else {
-            form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
+            form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered')
             form.storage_location = storageLocation;
             form.tag_type = tagType
             form.plant_code = plantCode;
@@ -331,9 +316,9 @@ const submit = async () => {
 }
 
 const handleAddExisting = () => {
-    // const filteredTags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID');
-    // // Check for duplicate EPC values by using a Set
-    // const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
+    const filteredTags = uniqueTags.value.filter(tag => tag.status === 'Unregistered');
+    // Check for duplicate EPC values by using a Set
+    const uniqueEpcs = new Set(filteredTags.map(tag => tag.epc));
 
     // // // If the size of the Set is different from the length of the combined array, open the modal
     // if (uniqueEpcs.size > 1) {
@@ -350,7 +335,7 @@ const cancelAdd = () => {
 }
 
 const addToExistingTag = async () => {
-    form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered' || tag.status === 'Unregistered TID')
+    form.to_be_added_tags = uniqueTags.value.filter(tag => tag.status === 'Unregistered')
     form.storage_location = storageLocation;
     form.tag_type = tagType
     form.plant_code = plantCode
@@ -387,7 +372,6 @@ const handleClear = () => {
     // Clear tags and re-fetch
     uniqueTags.value = []
     seenKeys.clear();
-    unregisteredIdTags.value = []
     unregisteredTags.value = []
     registeredTags.value = []
 
@@ -427,7 +411,7 @@ const commonEpc = computed(() => {
                 </VCol>
                 <VCol cols="2" class="d-flex align-center">
                     <PrimaryButton block form="registerForm"
-                        :disabled="form.epc_exists || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)"
+                        :disabled="form.epc_exists || unregisteredTags.length === 0"
                         type="submit" :loading="isLoading">
                         Submit
                     </PrimaryButton>
@@ -517,7 +501,7 @@ const commonEpc = computed(() => {
             </VCol>
             <VCol cols="2" offset="6">
                 <!-- Enable add to existing if there's atleast 1 registered tag  -->
-                <v-btn block color="primary-2" :disabled="registeredTags.length === 0 || (unregisteredIdTags.length === 0 && unregisteredTags.length === 0)" @click="handleAddExisting"
+                <v-btn block color="primary-2" :disabled="unregisteredTags.length === 0" @click="handleAddExisting"
                     style="color: #fefaeb !important;">
                     Add To Existing
                 </v-btn>
@@ -552,7 +536,8 @@ const commonEpc = computed(() => {
                     <td colspan="7" class="text-center">No data available</td>
                 </tr>
                 <tr v-for="(item, index) in uniqueTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID'
+                    'light-green': item.status !== 'Unregistered',
+                    'error-epc': commonEpc === null && item.epc !== uniqueTags.value[0]?.epc
                 }">
                     <td>{{ item.epc }}</td>
                     <td>{{ item.tid }}</td>
@@ -560,18 +545,13 @@ const commonEpc = computed(() => {
                     <td>{{ form.reader_name }}</td>
                     <td class="text-center">{{ item.antennaPort }}</td>
                     <td class="text-center">
-                        <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
+                        <v-btn v-if="item.status == 'Unregistered'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
                     </td>
                     <td class="text-center">
                         <template v-if="item.status === 'Unregistered'">
                             <v-chip color="primary-2" variant="flat" class="text-uppercase text-grey-100">
                                 <span class="px-5 font-weight-bold">{{ item.status }}</span>
-                            </v-chip>
-                        </template>
-                        <template v-else-if="item.status === 'Unregistered TID'">
-                            <v-chip :color="'#af922b'" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-1 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
                         <template v-else>
@@ -602,22 +582,18 @@ const commonEpc = computed(() => {
                     <td colspan="3" class="text-center">No data available</td>
                 </tr>
                 <tr v-for="(item, index) in handheldTags" :key="item.tid" :class="{
-                    'light-green': item.status !== 'Unregistered' && item.status !== 'Unregistered TID'
+                    'light-green': item.status !== 'Unregistered',
+                    'error-epc': commonEpc === null && item.epc !== handheldTags.value[0]?.epc
                 }">
                     <td>{{ item.epc }}</td>
                     <td class="text-center">
-                        <v-btn v-if="item.status == 'Unregistered' || item.status == 'Unregistered TID'" class="ma-2"
+                        <v-btn v-if="item.status == 'Unregistered'" class="ma-2"
                             color="error" @click="removeItem(index)" icon="ri-delete-bin-6-line"></v-btn>
                     </td>
                     <td class="text-center">
                         <template v-if="item.status === 'Unregistered'">
                             <v-chip color="primary-2" variant="flat" class="text-uppercase text-grey-100">
                                 <span class="px-5 font-weight-bold">{{ item.status }}</span>
-                            </v-chip>
-                        </template>
-                        <template v-else-if="item.status === 'Unregistered TID'">
-                            <v-chip :color="'#af922b'" variant="flat" class="text-uppercase text-grey-100">
-                                <span class="px-1 font-weight-bold">{{ item.status }}</span>
                             </v-chip>
                         </template>
                         <template v-else>

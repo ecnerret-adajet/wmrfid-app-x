@@ -27,6 +27,7 @@ declare module 'vue' {
     MapBlockAssignModal: typeof import('./src/components/MapBlockAssignModal.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
+    PalletAssignModal: typeof import('./src/components/PalletAssignModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
     RecentProductionRuns: typeof import('./src/components/dashboard/RecentProductionRuns.vue')['default']
     ResponseModal: typeof import('./src/components/ResponseModal.vue')['default']

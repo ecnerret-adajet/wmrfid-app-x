@@ -129,6 +129,29 @@ export const routes = [
             },
         },
         {
+            path: 'goods-receipt',
+            name: 'goods-receipt',
+            component: () => import('@/pages/goods-receipt/index.vue'),
+            meta: {
+              pageTitle: "Good Receipt List",
+              breadcrumbs: [
+                  { label: "Good Receipt List", link: "/goods-receipt" },
+              ],
+            },
+        },
+        {
+            path: 'goods-receipt/:id',
+            name: 'goods-receipt.show',
+            component: () => import('@/pages/goods-receipt/show.vue'),
+            meta: {
+                pageTitle: "Goods Receipt Details",
+                breadcrumbs: (route) => [
+                    { label: "Good Receipt List", link: "/goods-receipt" },
+                    { label: `${route.params.id}`, link: `/goods-receipt/${route.params.id}` }
+                ],
+            },
+        },
+        {
             path: 'shipments/:shipmentNumber',
             name: 'shipments.show',
             component: () => import('@/pages/shipments/show.vue'),
