@@ -1,6 +1,6 @@
 <script setup>
 import DateRangePicker from '@/components/DateRangePicker.vue';
-import FilteringModal from '@/components/FilteringModal.vue';
+
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
@@ -25,16 +25,12 @@ const toast = ref({
     color: 'success',
     show: false
 });
-const filterModalVisible = ref(false);
+
 
 const plantsOption = ref([]);
 const storageLocationsOption = ref([]);
 
-const filterModalOpen = () => {
-    if (!filterModalVisible.value) {
-        filterModalVisible.value = true;
-    }
-};
+
 
 onMounted(() => {
     fetchDataDropdown();
@@ -98,7 +94,6 @@ const applyFilter = () => {
             storage_location_id: filters.value.storageLocation?.id
         });
     }
-    filterModalVisible.value = false;
 }
 
 const resetFilter = () => {
@@ -106,7 +101,6 @@ const resetFilter = () => {
     if(datatableRef.value) {
         datatableRef.value.applyFilters([]);
     }
-    filterModalVisible.value = false;
 }
 
 const handleSearch = debounce((search) => {
@@ -123,17 +117,47 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="10">
-            <SearchInput @update:search="handleSearch"/>
+    <VRow align="center">
+        <VCol md="2" cols="12">
+            <SearchInput placeholder="Material Document" @update:search="handleSearch"/>
         </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                    <template v-slot:prepend>
-                        <v-icon color="white"></v-icon>
-                    </template>
-                    Filter
-                </v-btn>
+        <VCol md="2" cols="12">
+            <v-select
+                label="Plant"
+                density="compact"
+                :items="plantsOption"
+                item-title="title"
+                item-value="id"
+                v-model="filters.plant"
+                clearable
+                variant="outlined"
+                return-object
+                hide-details
+            ></v-select>
+        </VCol>
+        <VCol md="2" cols="12">
+            <v-select
+                label="Storage Location"
+                density="compact"
+                :items="storageLocationsOption"
+                item-title="name"
+                item-value="id"
+                v-model="filters.storageLocation"
+                clearable
+                variant="outlined"
+                :disabled="!filters.plant"
+                return-object
+                hide-details
+            ></v-select>
+        </VCol>
+        <VCol md="3" cols="12">
+            <DateRangePicker v-model="filters.posting_date" placeholder="Select Posting Date"/>
+        </VCol>
+        <VCol md="3" cols="12" class="d-flex align-center">
+            <PrimaryButton class="flex-grow-1 mr-2" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
+                Apply Filter
+            </PrimaryButton>
+            <v-btn class="flex-grow-1" color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter">Reset Filter</v-btn>
         </VCol>
     </VRow>
 
@@ -143,52 +167,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         />
     </VCard>
 
-    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Goods Receipt'">
-        <template #default>
-            <v-form>
-                <div class="mt-4">
-                    <v-select
-                        label="Plant"
-                        density="compact"
-                        :items="plantsOption"
-                        item-title="title"
-                        item-value="id"
-                        v-model="filters.plant"
-                        clearable
-                        variant="outlined"
-                        return-object
-                    ></v-select>
-                </div>
 
-                <div class="mt-4">
-                    <v-select
-                        label="Storage Location"
-                        density="compact"
-                        :items="storageLocationsOption"
-                        item-title="name"
-                        item-value="id"
-                        v-model="filters.storageLocation"
-                        clearable
-                        variant="outlined"
-                        :disabled="!filters.plant"
-                        return-object
-                    ></v-select>
-                </div>
-
-                <div class="mt-4">
-                    <label class="font-weight-bold">Posting Date</label>
-                    <DateRangePicker class="mt-1" v-model="filters.posting_date" placeholder="Select Posting Date"/>
-                </div>
-
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
-                        Apply Filter
-                    </PrimaryButton>
-                </div>
-            </v-form>
-        </template>
-    </FilteringModal>
 
     <Toast :show="toast.show" :message="toast.message"/>
 </template>

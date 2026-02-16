@@ -46,7 +46,7 @@ const headers = [
     //     key: 'mat_document_year',
     // },
     {
-        title: 'Movement type',
+        title: 'MVT type',
         key: 'movement_type.code',
     },
     // {
@@ -185,7 +185,7 @@ const formatDateTime = (date, time) => {
         </template>
         
         <template #item.posting_date="{ item }">
-            {{ item.posting_date ? Moment(item.posting_date).format('MMMM D, YYYY') : '' }}
+            {{ item.posting_date ? Moment(item.posting_date).format('MM/DD/YYYY') : '' }}
         </template>
         
         <template #item.updated_at="{ item }">

@@ -78,7 +78,13 @@ const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) 
         batch: selectedItemForPallet.value.BATCH,
         quantity: parseFloat(selectedItemForPallet.value.ENTRY_QNT),
         storage_location_id: storage_location_id,
-        block_id: block_id
+        block_id: block_id,
+        stock_transfer_id: id,
+        material_document: goodsReceiptData.value?.MAT_DOC || selectedItemForPallet.value.MAT_DOC,
+        plant: selectedItemForPallet.value.PLANT,
+        sloc: selectedItemForPallet.value.STGE_LOC,
+        line_item: selectedItemForPallet.value.MATDOC_ITM,
+        base_unit: selectedItemForPallet.value.ENTRY_UOM
     };
     
     try {
@@ -103,12 +109,38 @@ const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) 
     }
 };
 
+const checkPalletStatus = async () => {
+    if (!serverItems.value.length) return;
+
+    await Promise.all(serverItems.value.map(async (item) => {
+        try {
+            const payload = {
+                stock_transfer_id: id, // Ensure 'id' is available in scope (it is from route.params.id)
+                material_document: goodsReceiptData.value?.MAT_DOC || item.MAT_DOC, // Fallback
+                line_item: item.MATDOC_ITM
+            };
+            
+            const response = await ApiService.post('stock-transfers/check-pallet-assignment', payload);
+            
+            // The API returns 1 (true) or 0 (false) directly as the response body.
+            // Adjusting to check response.data directly.
+            // Also keeping fallback to .assigned just in case it changes later or is inconsistent.
+            item.is_assigned = response.data === 1 || response.data === true || response.data?.assigned === true; 
+        } catch (error) {
+            console.error(`Failed to check pallet status for line ${item.MATDOC_ITM}`, error);
+        }
+    }));
+};
+
 const fetchStockTransferDetails = async () => {
     pageLoading.value = true;
     try {
         const response = await ApiService.get('stock-transfers', id);
         goodsReceiptData.value = response.data.header;
         serverItems.value = response.data.items;
+        
+        // Check pallet status after loading items
+        await checkPalletStatus();
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -254,14 +286,24 @@ const closeModal = () => {
                                     <td>{{ item.BATCH }}</td>
                                     <td>{{ item.MOVE_TYPE || '313' }}</td>
                                     <td>
-                                        <v-btn
-                                            v-if="item.ENTRY_QNT > 0"
-                                            color="primary"
-                                            size="small"
-                                            @click.stop="openPalletModal(item)"
-                                        >
-                                            Add Pallet
-                                        </v-btn>
+                                        <div class="d-flex align-center gap-2">
+                                            <v-btn
+                                                v-if="!item.is_assigned && item.ENTRY_QNT > 0"
+                                                color="primary"
+                                                size="small"
+                                                @click.stop="openPalletModal(item)"
+                                            >
+                                                Add Pallet
+                                            </v-btn>
+                                            <v-btn
+                                                v-else-if="item.is_assigned"
+                                                color="success"
+                                                size="small"
+                                                disabled
+                                            >
+                                                Pallet Assigned
+                                            </v-btn>
+                                        </div>
                                     </td>
                                 </tr>
                             </template>

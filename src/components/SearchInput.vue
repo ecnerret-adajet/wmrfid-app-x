@@ -23,7 +23,7 @@ watch(search, (newValue) => {
     <VCardText>
         <VTextField
             v-model="search"
-            label="Search"
+            persistent-placeholder
             :placeholder="placeholder"
             append-inner-icon="ri-search-line"
             single-line
