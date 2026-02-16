@@ -20,6 +20,10 @@ const props = defineProps({
     loading: {
         type: Boolean,
         default: false
+    },
+    stockTransferId: {
+        type: [String, Number],
+        default: null
     }
 });
 
@@ -107,6 +111,32 @@ const fetchPallets = async (query = '') => {
     }
 };
 
+const fetchAssignedPallets = async () => {
+    if (!props.item || !props.stockTransferId) return;
+
+    try {
+        const payload = {
+            stock_transfer_id: props.stockTransferId,
+            material_document: props.item.MAT_DOC,
+            line_item: props.item.MATDOC_ITM
+        };
+        const response = await ApiService.post('stock-transfers/get-assigned-pallets', payload);
+        
+        if (response.data && Array.isArray(response.data)) {
+            addedPallets.value = response.data.map(log => {
+                return {
+                    id: log.rfid_pallet?.id,
+                    pallet_code: log.rfid_pallet?.pallet_code,
+                    name: log.rfid_pallet?.name,
+                    // Keep original log data if needed, but for table display this is enough
+                };
+            }).filter(p => p.id); // Filter out any undefined pallets
+        }
+    } catch (error) {
+        console.error("Failed to fetch assigned pallets", error);
+    }
+};
+
 const debouncedFetchPallets = debounce((query) => {
     fetchPallets(query);
 }, 500);
@@ -123,6 +153,7 @@ watch(() => props.show, (newVal) => {
         fetchPallets(); // Load initial data
         fetchBlocks(); // Fetch blocks
         fetchMaterialConversion(); // Fetch conversion
+        fetchAssignedPallets(); // Fetch existing assignments
     }
 });
 

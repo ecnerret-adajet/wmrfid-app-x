@@ -299,7 +299,7 @@ const closeModal = () => {
                                                 v-else-if="item.is_assigned"
                                                 color="success"
                                                 size="small"
-                                                disabled
+                                                @click.stop="openPalletModal(item)"
                                             >
                                                 Pallet Assigned
                                             </v-btn>
@@ -323,6 +323,7 @@ const closeModal = () => {
         :show="palletModalOpen" 
         :item="selectedItemForPallet"
         :loading="isSaving"
+        :stock-transfer-id="id"
         @close="closePalletModal"
         @save="savePalletAssignment"
     />
