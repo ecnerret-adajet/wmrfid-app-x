@@ -16,6 +16,10 @@ const props = defineProps({
     item: {
         type: Object,
         default: null
+    },
+    loading: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -33,9 +37,36 @@ const search = ref('');
 
 const headers = [
     { title: 'Pallet Code', key: 'pallet_code' },
-    { title: 'Type', key: 'name' },
+    { title: 'Physical ID', key: 'name' },
     { title: 'Actions', key: 'actions', sortable: false }
 ];
+
+const maxPallets = ref(0);
+const materialConversionLoading = ref(false);
+
+const fetchMaterialConversion = async () => {
+    if (!props.item) return;
+    
+    materialConversionLoading.value = true;
+    try {
+        const payload = {
+            material_code: props.item.MATERIAL,
+            code: props.item.BATCH,
+            quantity: props.item.ENTRY_QNT
+        };
+        const response = await ApiService.post('/stock-transfers/get-material-conversion', payload);
+        if (response.data && response.data.quantity) {
+             maxPallets.value = response.data.quantity;
+        } else {
+             maxPallets.value = 0; // Or some default
+        }
+    } catch (error) {
+        console.error('Failed to fetch material conversion:', error);
+        maxPallets.value = 0;
+    } finally {
+        materialConversionLoading.value = false;
+    }
+};
 
 const fetchBlocks = async () => {
     // Prioritize filter values, fallback to item props
@@ -88,8 +119,10 @@ watch(() => props.show, (newVal) => {
         addedPallets.value = []; 
         search.value = '';
         selectedBlock.value = null; // Reset block selection
+        maxPallets.value = 0; // Reset max pallets
         fetchPallets(); // Load initial data
         fetchBlocks(); // Fetch blocks
+        fetchMaterialConversion(); // Fetch conversion
     }
 });
 
@@ -107,6 +140,12 @@ watch(search, (newVal) => {
 
 const addPallet = () => {
     if (selectedPallet.value) {
+        // Check limit
+        if (maxPallets.value > 0 && addedPallets.value.length >= maxPallets.value) {
+            // Optional: User feedback, though button should be disabled
+            return; 
+        }
+
         // Check if already added
         const exists = addedPallets.value.find(p => p.id === selectedPallet.value.id);
         if (!exists) {
@@ -127,7 +166,6 @@ const handleSave = () => {
         block_id: selectedBlock.value?.id,
         storage_location_id: selectedBlock.value?.storage_location_id // Optional if available in block data
     });
-    dialogVisible.value = false;
 };
 
 </script>
@@ -144,10 +182,21 @@ const handleSave = () => {
 
             <v-card-text class="flex-grow-1 overflow-y-auto">
                 <div v-if="item" class="mb-4 pa-3 bg-grey-lighten-4 rounded">
-                   <div class="d-flex justify-space-between">
-                        <div><strong>Material:</strong> {{ item.MATERIAL }}</div>
-                        <div><strong>Batch:</strong> {{ item.BATCH }}</div>
-                        <div><strong>Qty:</strong> {{ item.ENTRY_QNT }} {{ item.ENTRY_UOM }}</div>
+                   <div class="d-flex justify-space-between align-center">
+                        <div>
+                            <div><strong>Material:</strong> {{ item.MATERIAL }}</div>
+                            <div><strong>Batch:</strong> {{ item.BATCH }}</div>
+                            <div><strong>Qty:</strong> {{ item.ENTRY_QNT }} {{ item.ENTRY_UOM }}</div>
+                        </div>
+                        <div v-if="materialConversionLoading">
+                           <v-progress-circular indeterminate size="20" width="2" color="primary"></v-progress-circular> Calculating limit...
+                        </div>
+                        <div v-else class="text-right">
+                             <div class="text-caption text-grey">Pallet Limit</div>
+                             <div class="text-h6" :class="{'text-error': addedPallets.length >= maxPallets && maxPallets > 0, 'text-success': addedPallets.length < maxPallets}">
+                                {{ addedPallets.length }} / {{ maxPallets > 0 ? maxPallets : '∞' }}
+                             </div>
+                        </div>
                    </div>
                 </div>
 
@@ -185,6 +234,7 @@ const handleSave = () => {
                             hide-details
                             placeholder="Type to search..."
                             no-filter
+                            :disabled="maxPallets > 0 && addedPallets.length >= maxPallets"
                         >
                             <template #item="{ props, item }">
                                 <v-list-item
@@ -196,7 +246,7 @@ const handleSave = () => {
                         </v-autocomplete>
                     </v-col>
                     <v-col cols="12" md="4">
-                        <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet">
+                        <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet || (maxPallets > 0 && addedPallets.length >= maxPallets)">
                             Add Pallet
                         </v-btn>
                     </v-col>
@@ -230,7 +280,7 @@ const handleSave = () => {
             <v-card-actions class="pa-4">
                 <v-spacer></v-spacer>
                 <v-btn variant="outlined" @click="dialogVisible = false">Cancel</v-btn>
-                <v-btn color="primary" variant="elevated" @click="handleSave">Save Changes</v-btn>
+                <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading">Save Changes</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>

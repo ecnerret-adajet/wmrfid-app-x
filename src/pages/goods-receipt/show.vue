@@ -54,6 +54,8 @@ const formatNumber = (value) => {
     return new Intl.NumberFormat('en-US').format(value);
 };
 
+const isSaving = ref(false);
+
 const openPalletModal = (item) => {
     selectedItemForPallet.value = item;
     palletModalOpen.value = true;
@@ -66,6 +68,8 @@ const closePalletModal = () => {
 
 const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) => {
     if (!selectedItemForPallet.value) return;
+
+    isSaving.value = true;
 
     // Construct Payload
     const payload = {
@@ -94,6 +98,8 @@ const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) 
             color: 'error',
             show: true
         };
+    } finally {
+        isSaving.value = false;
     }
 };
 
@@ -274,6 +280,7 @@ const closeModal = () => {
     <PalletAssignModal 
         :show="palletModalOpen" 
         :item="selectedItemForPallet"
+        :loading="isSaving"
         @close="closePalletModal"
         @save="savePalletAssignment"
     />
