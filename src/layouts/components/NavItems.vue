@@ -74,7 +74,7 @@ const proceedMapping = () => {
 </script>
 
 <template>
- 
+
 
     <VerticalNavLink :item="{ title: 'Dashboard', icon: 'ri-dashboard-line', to: '/dashboard' }" />
     <!-- Warehouse Section  -->
@@ -98,19 +98,19 @@ const proceedMapping = () => {
         authUserCan('view.sto.inbound')" :item="{ heading: 'Transactions' }" />
     <VerticalNavLink v-if="authUserCan('view.shipments')"
         :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments' }" />
-    <VerticalNavLink 
-        :item="{ title: 'Good Receipt List', icon: 'ri-file-list-line', to: '/goods-receipt' }" />
+    <VerticalNavLink :item="{ title: 'Good Receipt List', icon: 'ri-file-list-line', to: '/goods-receipt' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.sto')"
         :item="{ title: 'Transfer Orders', icon: 'ri-shuffle-line', to: '/transfer-orders' }" />
-    <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
+    <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"
-        :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound' }" />
+        :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound' }" /> -->
     <VerticalNavLink v-if="authUserCan('view.fumigation.requests')"
         :item="{ title: 'Fumigations', icon: 'ri-shield-check-line', to: '/fumigations' }" />
-    <VerticalNavLink :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" />
+    <VerticalNavLink
+        :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" />
 
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
@@ -128,78 +128,66 @@ const proceedMapping = () => {
         :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines' }" />
 
     <!-- RFID Components Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.rfid') || authUserCan('view.readers') || authUserCan('view.rfid.monitoring')"
+    <VerticalNavSectionTitle
+        v-if="authUserCan('view.rfid') || authUserCan('view.readers') || authUserCan('view.rfid.monitoring')"
         :item="{ heading: 'RFID Components' }" />
 
-    <VerticalNavGroup v-if="authUserCan('view.rfid')" :item="{title: 'RFID Master', icon: 'ri-database-2-line'}">
-        <VerticalNavLink v-if="authUserCan('view.rfid')"
-            :item="{
-                title: 'Pallets',
-                href: '/rfid/pallets',
-                to: '/rfid/pallets',
-            }"
-        />
-        <VerticalNavLink v-if="authUserCan('view.rfid.tonner.bags')"
-            :item="{
-                title: 'Tonner Bags',
-                href: '/rfid/tonner-bags',
-                to: '/rfid/tonner-bags',
-            }"
-        />
+    <VerticalNavGroup v-if="authUserCan('view.rfid')" :item="{ title: 'RFID Master', icon: 'ri-database-2-line' }">
+        <VerticalNavLink v-if="authUserCan('view.rfid')" :item="{
+            title: 'Pallets',
+            href: '/rfid/pallets',
+            to: '/rfid/pallets',
+        }" />
+        <VerticalNavLink v-if="authUserCan('view.rfid.tonner.bags')" :item="{
+            title: 'Tonner Bags',
+            href: '/rfid/tonner-bags',
+            to: '/rfid/tonner-bags',
+        }" />
     </VerticalNavGroup>
 
-    <VerticalNavGroup v-if="authUserCan('monitor.rfid.pallets') || authUserCan('monitor.rfid.tonner.bags')" :item="{title: 'RFID Monitoring', icon: 'ri-stacked-view'}">
-        <VerticalNavLink v-if="authUserCan('monitor.rfid.pallets')"
-            :item="{
-                title: 'Pallets',
-                href: '/monitoring/pallets',
-                to: '/monitoring/pallets',
-            }"
-        />
-        <VerticalNavLink v-if="authUserCan('monitor.rfid.tonner.bags')"
-            :item="{
-                title: 'Tonner Bags',
-                href: '/monitoring/tonner-bags',
-                to: '/monitoring/tonner-bags',
-            }"
-        />
+    <VerticalNavGroup v-if="authUserCan('monitor.rfid.pallets') || authUserCan('monitor.rfid.tonner.bags')"
+        :item="{ title: 'RFID Monitoring', icon: 'ri-stacked-view' }">
+        <VerticalNavLink v-if="authUserCan('monitor.rfid.pallets')" :item="{
+            title: 'Pallets',
+            href: '/monitoring/pallets',
+            to: '/monitoring/pallets',
+        }" />
+        <VerticalNavLink v-if="authUserCan('monitor.rfid.tonner.bags')" :item="{
+            title: 'Tonner Bags',
+            href: '/monitoring/tonner-bags',
+            to: '/monitoring/tonner-bags',
+        }" />
     </VerticalNavGroup>
 
     <VerticalNavLink v-if="authUserCan('view.readers')"
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
 
-    <VerticalNavGroup v-if="authUserCan('view.pallet.inverter')" :item="{title: 'Pallet Inverter', icon: 'ri-clockwise-line'}">
-        <VerticalNavLink
-            :item="{
-                title: 'View Inversions',
-                href: '/view-inversions',
-            }"
-        />
-        <VerticalNavLink
-            :item="{
-                title: 'New Inversion',
-                href: '/new-inversion',
-            }"
-        />
+    <VerticalNavGroup v-if="authUserCan('view.pallet.inverter')"
+        :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line' }">
+        <VerticalNavLink :item="{
+            title: 'View Inversions',
+            href: '/view-inversions',
+        }" />
+        <VerticalNavLink :item="{
+            title: 'New Inversion',
+            href: '/new-inversion',
+        }" />
     </VerticalNavGroup>
 
-    <VerticalNavGroup v-if="authUserCan('view.weak.pallets') || authUserCan('view.readers.report')" :item="{title: 'RFID Reports', icon: 'ri-file-chart-line'}">
-        <VerticalNavLink v-if="authUserCan('view.weak.pallets')"
-            :item="{
-                title: 'Weak Pallets',
-                href: '/reports/weak-pallets',
-                to: '/reports/weak-pallets',
-            }"
-        />
-        <VerticalNavLink v-if="authUserCan('view.readers.report')"
-            :item="{
-                title: 'Readers Report',
-                href: '/reports/readers-report',
-                to: '/reports/readers-report',
-            }"
-        />
+    <VerticalNavGroup v-if="authUserCan('view.weak.pallets') || authUserCan('view.readers.report')"
+        :item="{ title: 'RFID Reports', icon: 'ri-file-chart-line' }">
+        <VerticalNavLink v-if="authUserCan('view.weak.pallets')" :item="{
+            title: 'Weak Pallets',
+            href: '/reports/weak-pallets',
+            to: '/reports/weak-pallets',
+        }" />
+        <VerticalNavLink v-if="authUserCan('view.readers.report')" :item="{
+            title: 'Readers Report',
+            href: '/reports/readers-report',
+            to: '/reports/readers-report',
+        }" />
     </VerticalNavGroup>
-    
+
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
