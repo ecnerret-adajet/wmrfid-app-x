@@ -1,4 +1,5 @@
 <script setup>
+import Toast from '@/components/Toast.vue'; // Import Toast
 import ApiService from '@/services/ApiService';
 import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
@@ -38,6 +39,12 @@ const isLoadingBlocks = ref(false);
 const availablePallets = ref([]);
 const isLoading = ref(false);
 const search = ref('');
+
+const toast = ref({
+    message: '',
+    color: 'success',
+    show: false
+});
 
 const headers = [
     { title: 'Pallet Code', key: 'pallet_code' },
@@ -128,7 +135,8 @@ const fetchAssignedPallets = async () => {
                     id: log.rfid_pallet?.id,
                     pallet_code: log.rfid_pallet?.pallet_code,
                     name: log.rfid_pallet?.name,
-                    // Keep original log data if needed, but for table display this is enough
+                    log_id: log.id,
+                    is_assigned: true
                 };
             }).filter(p => p.id); // Filter out any undefined pallets
         }
@@ -180,20 +188,52 @@ const addPallet = () => {
         // Check if already added
         const exists = addedPallets.value.find(p => p.id === selectedPallet.value.id);
         if (!exists) {
-            addedPallets.value.push(selectedPallet.value);
+            addedPallets.value.push({
+                ...selectedPallet.value,
+                is_assigned: false
+            });
             selectedPallet.value = null; // Reset selection
             search.value = ''; // Reset search
         }
     }
 };
 
-const removePallet = (item) => {
-    addedPallets.value = addedPallets.value.filter(p => p.id !== item.id);
+const removePallet = async (item) => {
+    if (item.is_assigned) {
+        if (!confirm('Are you sure you want to remove this assigned pallet? This action cannot be undone.')) return;
+
+        try {
+            const response = await ApiService.post('stock-transfers/remove-assigned-pallet', { 
+                pallet_assignment_log_id: item.log_id 
+            });
+            
+            toast.value = {
+                message: response.data?.message || 'Successfully unassigned pallet',
+                color: 'success',
+                show: true
+            };
+            
+            // Remove from list
+            addedPallets.value = addedPallets.value.filter(p => p.id !== item.id);
+        } catch (error) {
+            console.error('Failed to remove assigned pallet:', error);
+            toast.value = {
+                message: error.response?.data?.message || 'Failed to remove pallet',
+                color: 'error',
+                show: true
+            };
+        }
+    } else {
+        addedPallets.value = addedPallets.value.filter(p => p.id !== item.id);
+    }
 };
 
 const handleSave = () => {
+    // Only save new pallets
+    const newPallets = addedPallets.value.filter(p => !p.is_assigned);
+    
     emit('save', {
-        pallets: addedPallets.value,
+        pallets: newPallets,
         block_id: selectedBlock.value?.id,
         storage_location_id: selectedBlock.value?.storage_location_id // Optional if available in block data
     });
@@ -293,8 +333,9 @@ const handleSave = () => {
                         <v-btn 
                             icon="ri-delete-bin-line" 
                             size="small" 
-                            color="error" 
+                            :color="item.is_assigned ? 'error' : 'warning'" 
                             variant="text" 
+                            :title="item.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
                             @click="removePallet(item)"
                         ></v-btn>
                     </template>
@@ -314,6 +355,7 @@ const handleSave = () => {
                 <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading">Save Changes</v-btn>
             </v-card-actions>
         </v-card>
+        <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     </v-dialog>
 </template>
 
