@@ -45,6 +45,22 @@ const onPicklistLogsEvent = (data) => {
     console.log(data);
     // Only process if the event is for the current bay
     if (data.picklistLog?.antenna_log?.bay_no == bay && reader == data.picklistLog?.reader_id) {
+        const readingStatus = data.picklistLog?.antenna_log?.reading_status;
+        const isBatchNotExists = readingStatus === 'batch-not-exists';
+        const isOverscanningDetected = readingStatus === 'overscanning-detected';
+        const isInvalidReadingStatus = isBatchNotExists || isOverscanningDetected;
+
+        if (isBatchNotExists) {
+            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} does not match any batch in this shipment.`;
+            response.type = 'error';
+            response.color = 'error';
+            snackbarVisible.value = true
+        } else if (isOverscanningDetected) {
+            response.message = `Unable to scan Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch}. Maximum pallets for this batch has been reached.`;
+            response.type = 'error';
+            response.color = 'error';
+            snackbarVisible.value = true
+        }
 
         if (data.picklistLog.error == true) {
             errorMessage.value = data.picklistLog.message || 'An unexpected error occurred.';
@@ -53,8 +69,8 @@ const onPicklistLogsEvent = (data) => {
             const epc = data.picklistLog.epc;
 
             // If pallet is already tagged as loaded
-            if (data.picklistLog.inventory?.is_loaded === true || data.picklistLog.inventory?.is_loaded === 1) {
-                response.message = 'This pallet has already been loaded';
+            if (!isInvalidReadingStatus && (data.picklistLog.inventory?.is_loaded === true || data.picklistLog.inventory?.is_loaded === 1)) {
+                response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} has already been loaded.`;
                 response.type = 'error';
                 response.color = 'error';
                 snackbarVisible.value = true
@@ -79,10 +95,12 @@ const onPicklistLogsEvent = (data) => {
                 return;
             }
 
-            response.message = 'New pallet detected and ready to load';
-            response.type = 'success';
-            response.color = 'success';
-            snackbarVisible.value = true
+            if (!isInvalidReadingStatus) {
+                response.message = 'New pallet detected and ready to load';
+                response.type = 'success';
+                response.color = 'success';
+                snackbarVisible.value = true
+            }
 
         } else {
             errorMessage.value = 'An unexpected error occurred.';
@@ -166,17 +184,17 @@ watch(
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
                     Physical ID
                 </VCol>
-                <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
-                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                    epc
-                </VCol>
                 <VCol md="2" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
-                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
                 <VCol md="1" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
                     style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     QTY
+                </VCol>
+                <VCol md="3" class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100"
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    Status
                 </VCol>
                 <VCol md="3" style="font-size: 22px; background-color: #329b62"
                     class="text-uppercase px-3 py-2 text-center font-weight-black text-grey-100">
@@ -196,14 +214,10 @@ watch(
                             </span>
                         </div>
                     </VCol>
-                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
-                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black text-h4">{{ lastRead?.epc }}</span>
-                    </VCol>
                     <VCol
                         md="2"
                         class="text-center rightBorderedGreen d-flex flex-column justify-center align-center"
-                        style="border-right: 1px solid #fff;"
+                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;"
                     >
                         <span v-if="lastRead?.inventory" class="font-weight-black text-h3">
                             {{ lastRead?.inventory?.batch }}
@@ -223,6 +237,13 @@ watch(
                         }}</span>
                         <span v-else class="font-weight-black text-error text-h3">N/A</span>
                     </VCol>
+                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
+                        <span class="font-weight-black text-h4"
+                            :class="['batch-not-exists', 'overscanning-detected'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                        </span>
+                    </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div v-if="lastRead?.name === 'unregistered'">
@@ -235,13 +256,28 @@ watch(
                                 </p>
                             </div>
                             <div v-else>
-                                <span class="text-uppercase text-h4 font-weight-black">
-                                    {{ lastRead?.antenna_log?.updated_at ? lastRead.antenna_log?.updated_date  : '' }}
-                                </span>
-                                <br>
-                                <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ lastRead?.antenna_log?.updated_at ? lastRead.antenna_log?.updated_time : '' }}
-                                </p>
+                                <template v-if="lastRead?.antenna_log">
+                                    <span class="text-uppercase text-h4 font-weight-black">
+                                        {{
+                                            lastRead?.antenna_log?.updated_at ? Moment(lastRead.antenna_log?.updated_at).format('MMMM D, YYYY') : ''
+                                        }}
+                                    </span>
+                                    <br>
+                                    <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
+                                        {{ 
+                                            lastRead?.antenna_log?.updated_at ? Moment(lastRead.antenna_log?.updated_at).format('h:mm A') : ''
+                                        }}
+                                    </p>
+                                </template>
+                                <template v-else>
+                                    <span class="text-uppercase text-h4 font-weight-black">
+                                        {{ lastRead?.updated_at ? lastRead?.updated_date : '' }}
+                                    </span>
+                                    <br>
+                                    <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
+                                        {{ lastRead?.updated_at ? lastRead?.updated_time : '' }}
+                                    </p>
+                                </template>
                             </div>
                         </div>
                     </VCol>
@@ -270,17 +306,17 @@ watch(
                     class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
                     Physical ID
                 </VCol>
-                <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
-                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                    epc
-                </VCol>
                 <VCol md="2" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
-                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    style="background-color: #329b62; font-size: 22px; border-left: 1px solid #fff; border-right: 1px solid #fff;">
                     Batch
                 </VCol>
                 <VCol md="1" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
                     style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
                     QTY
+                </VCol>
+                <VCol md="3" class="text-uppercase text-grey-100 py-2 text-center font-weight-black"
+                    style="background-color: #329b62; font-size: 22px; border-right: 1px solid #fff;">
+                    Status
                 </VCol>
                 <VCol md="3" style="font-size: 22px; background-color: #329b62;"
                     class="text-uppercase text-grey-100 py-2 text-center font-weight-black">
@@ -302,14 +338,10 @@ watch(
                             </span>
                         </div>
                     </VCol>
-                    <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
-                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
-                        <span class="font-weight-black text-h4">{{ log?.epc || '' }}</span>
-                    </VCol>
                     <VCol
                         md="2"
                         class="text-center rightBorderedGreen d-flex flex-column justify-center align-center"
-                        style="border-right: 1px solid #fff;"
+                        style="border-left: 1px solid #fff; border-right: 1px solid #fff;"
                     >
                         <span v-if="log?.inventory" class="font-weight-black text-h3">
                             {{ log?.inventory?.batch }}
@@ -328,6 +360,13 @@ watch(
                             }}</span>
                         <span v-else class="font-weight-black text-error text-h3">N/A</span>
                     </VCol>
+                    <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
+                        style="border-right: 1px solid #fff;">
+                        <span class="font-weight-black text-h4"
+                            :class="['batch-not-exists', 'overscanning-detected'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                        </span>
+                    </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
                         <div class="text-center">
                             <div v-if="log?.name === 'unregistered'">
@@ -342,14 +381,21 @@ watch(
                             <div v-else>
                                 <span class="text-uppercase text-h4 font-weight-black">
                                     {{
-                                        log.antenna_log?.updated_at ? log.antenna_log?.updated_date : ''
+                                        log?.antenna_log?.updated_at
+                                            ? Moment(log.antenna_log?.updated_at).format('MMMM D, YYYY')
+                                            : (log?.updated_at ? Moment(log?.updated_at).format('MMMM D, YYYY') : '')
                                     }}
                                 </span>
                                 <br>
                                 <p style="margin-bottom: 0px !important;" class="font-weight-semibold text-h5">
-                                    {{ log.antenna_log?.updated_at ? log.antenna_log?.updated_time : '' }}
+                                    {{
+                                        log?.antenna_log?.updated_at
+                                            ? Moment(log.antenna_log?.updated_at).format('h:mm A')
+                                            : (log?.updated_at ? Moment(log?.updated_at).format('h:mm A') : '')
+                                    }}
                                 </p>
                             </div>
+                            
                         </div>
                     </VCol>
                 </VRow>

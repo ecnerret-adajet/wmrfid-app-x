@@ -99,8 +99,24 @@ const onPicklistLogsEvent = (data) => {
         processedEpcs.value[key] = true;
 
         if (batch && (is_loaded == false || is_loaded == 0)) {
-            const delivery = shipmentData.deliveries.find(d => d.batch === batch);
-            if (delivery) {
+            const normalizedBatch = String(batch).trim();
+
+            const delivery = shipmentData.deliveries.find(d => String(d.batch).trim() === normalizedBatch);
+
+            if (!delivery) {
+                errorMessage.value = `Batch ${normalizedBatch} does not match any batch in this shipment.`;
+                dialogVisible.value = true;
+                return;
+            }
+
+            const sapExpected = Number(delivery.required_qty) || 0;
+            const wmrfidExpected = Array.isArray(delivery.inventory) ? delivery.inventory.length : null;
+            const maxAllowedLoadedQty = wmrfidExpected === null
+                ? sapExpected
+                : Math.min(sapExpected, wmrfidExpected);
+
+            const currentLoadedQty = Number(delivery.loaded_qty) || 0;
+            if (currentLoadedQty < maxAllowedLoadedQty) {
                 delivery.loaded_qty += 1;
             }
         }
@@ -138,7 +154,7 @@ const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000150707`);
+        // const response = await ApiService.get(`test-loading-entry/0000196891`);
 
         shipment.value = response.data
 
@@ -324,12 +340,27 @@ const totalLoadedQty = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
 );
 
-const onDriverTapOutEvent = (data) => {
-    // Ensure to end only the shipment passed
-    console.log(data);
+const totalRequiredQtyByBatch = computed(() =>
+    shipmentData.deliveries?.reduce((sum, item) => sum + (Number(item.required_qty) || 0), 0)
+);
 
+const isLoadedQtySatisfiedPerBatch = computed(() => {
+    if (!shipmentData.deliveries?.length) return false;
+
+    return shipmentData.deliveries.every(item => {
+        const requiredQty = Number(item.required_qty) || 0;
+        const loadedQty = Number(item.loaded_qty) || 0;
+
+        return parseInt(loadedQty) === parseInt(requiredQty);
+    });
+});
+
+const isBatchMismatchErrorShown = ref(false);
+
+const onDriverTapOutEvent = (data) => {
     // Attempt to find driver tap out only if picklist satisfied
     // if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
+    console.log(data);
     if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
         if (data.driverTapOut?.is_tap_out_found === true) {
             is_tapping_load_end_found.value = true;
@@ -352,14 +383,9 @@ const onDriverTapOutEvent = (data) => {
 // });
 
 watch(
-    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],
-    ([newLoadedQty, totalPallets, tappingLoadEndFound]) => {
-        if (
-            totalPallets > 0 &&
-            newLoadedQty > 0 &&
-            newLoadedQty >= totalPallets &&
-            tappingLoadEndFound === true // Use the watched value here
-        ) {
+    [isLoadedQtySatisfiedPerBatch, () => is_tapping_load_end_found.value],
+    ([isSatisfiedPerBatch, tappingLoadEndFound]) => {
+        if (tappingLoadEndFound === true && isSatisfiedPerBatch) {
             sapLoadEnd(shipmentData.shipment.shipment);
         }
     },
@@ -367,7 +393,7 @@ watch(
 );
 
 const progressPercentage = computed(() => {
-    const total = shipmentData.shipment?.total_pallet_to_load || 0;
+    const total = totalRequiredQtyByBatch.value || 0;
     if (total === 0) return 0;
 
     return Math.min(Math.round((totalLoadedQty.value / total) * 100), 100);
@@ -437,7 +463,7 @@ const progressPercentage = computed(() => {
             </v-card>
 
             <v-card
-                v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
+                v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && !isLoadedQtySatisfiedPerBatch"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -452,13 +478,13 @@ const progressPercentage = computed(() => {
                                 finished.</span>
                         </div>
                         <v-progress-linear :model-value="progressPercentage" color="warning" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                            :indeterminate="!totalRequiredQtyByBatch">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ Math.min(totalLoadedQty, shipmentData.shipment?.total_pallet_to_load || 0) }}
+                                    {{ Math.min(totalLoadedQty, totalRequiredQtyByBatch || 0) }}
                                     out of
-                                    {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                    {{ totalRequiredQtyByBatch || 0 }}
+                                    <span v-if="totalRequiredQtyByBatch">
                                         ({{ progressPercentage }}%)
                                     </span>
                                 </span>
@@ -475,7 +501,7 @@ const progressPercentage = computed(() => {
             </v-card>
 
             <v-card
-                v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
+                v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && isLoadedQtySatisfiedPerBatch"
                 class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
                 style="border-left: 6px solid #4caf50;">
                 <VRow class="w-100" align="center">
@@ -489,16 +515,14 @@ const progressPercentage = computed(() => {
                             <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap
                                 out.</span>
                         </div>
-                        <v-progress-linear
-                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
-                            color="success" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                        <v-progress-linear :model-value="progressPercentage" color="success" height="14" rounded
+                            :indeterminate="!totalRequiredQtyByBatch">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment?.total_pallet_to_load) *
-                                            100) }}%)
+                                    {{ Math.min(totalLoadedQty, totalRequiredQtyByBatch || 0) }} out of {{
+                                        totalRequiredQtyByBatch || 0 }}
+                                    <span v-if="totalRequiredQtyByBatch">
+                                        ({{ progressPercentage }}%)
                                     </span>
                                 </span>
                             </template>
@@ -677,8 +701,8 @@ const progressPercentage = computed(() => {
                         </div>
                         <div>
                             <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">
-                                {{
-                                    shipmentData.shipment?.total_pallet_to_load }}</h2>
+                                <span>{{ totalLoadedQty }}</span> / {{ shipmentData.shipment?.total_pallet_to_load }}
+                            </h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
                             <div class="text-h4 text-white font-weight-bold">
@@ -817,9 +841,9 @@ const progressPercentage = computed(() => {
             <v-divider class="mb-4"></v-divider>
 
             <div class="text-end">
-                <v-btn class="text-none" color="success" variant="flat" width="90" @click="close">
+                <!-- <v-btn class="text-none" color="success" variant="flat" width="90" @click="close">
                     Okay
-                </v-btn>
+                </v-btn> -->
             </div>
         </v-sheet>
     </v-dialog>

@@ -4,7 +4,7 @@ import JwtService from '@/services/JwtService';
 import { echo } from '@/utils/echo';
 import axios from 'axios';
 import Moment from 'moment';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -26,11 +26,20 @@ const toast = ref({
     show: false
 });
 
+let picklistLogsChannel = null;
 
 onMounted(() => {
     fetchShipmentDetails(props.shipmentNumber);
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+
+    const channelNameBase = `shipment.${props.readerId}.${props.bayNo}`;
+    picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
+    picklistLogsChannel.listen('PicklistLogsEvent', onPicklistLogsEvent);
+});
+
+onUnmounted(() => {
+    if (picklistLogsChannel?.name) {
+        echo.leaveChannel(picklistLogsChannel.name);
+    }
 });
 
 const onPicklistLogsEvent = (data) => {
@@ -101,7 +110,7 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                             name: item.physical_id || '',
                             current_quantity: item.quantity,
                             mfg_date: item.mfg_date || null,
-                            loaded_date: item.loaded_datetime,
+                            loaded_date: item.loaded_datetime || null,
                             loose_pallet: item.is_loose,
                             is_loose: item.is_loose,
                             rfid_id: item.rfid_id,
