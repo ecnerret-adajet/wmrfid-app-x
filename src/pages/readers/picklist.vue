@@ -335,6 +335,27 @@ const deliveryChunks = computed(() => chunkArray(shipmentData.deliveries || [], 
 
 const carouselIndex = ref(0)
 
+const carouselPageIndicator = computed(() => {
+    const totalPages = deliveryChunks.value.length || 0;
+    if (totalPages === 0) return 'Page 0 of 0';
+
+    return `Page ${carouselIndex.value + 1} of ${totalPages}`;
+})
+
+const goToPrevCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value - 1 + totalPages) % totalPages;
+}
+
+const goToNextCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value + 1) % totalPages;
+}
+
 watch(
     () => dialogVisible.value,
     (val) => {
@@ -757,7 +778,7 @@ const progressPercentage = computed(() => {
                                 class="d-flex justify-center align-center border">
                                 <span class="text-h4 text-error">No delivery found</span>
                             </div>
-                            <v-carousel v-else height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                            <v-carousel v-else height="450" hide-delimiters :show-arrows="false" v-model="carouselIndex"
                                 :cycle="deliveryChunks.length > 1" :interval="10000">
                                 <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
                                     <v-sheet height="100%">
@@ -830,6 +851,20 @@ const progressPercentage = computed(() => {
                                     </v-sheet>
                                 </v-carousel-item>
                             </v-carousel>
+
+                            <div v-if="deliveryChunks.length > 1" class="d-flex align-center justify-center mt-3" style="gap: 12px;">
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToPrevCarouselPage">
+                                    Prev
+                                </v-btn>
+
+                                <v-chip color="primary" label size="large">
+                                    {{ carouselPageIndicator }}
+                                </v-chip>
+
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToNextCarouselPage">
+                                    Next
+                                </v-btn>
+                            </div>
 
 
                         </div>
