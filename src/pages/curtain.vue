@@ -48,7 +48,8 @@ const onPicklistLogsEvent = (data) => {
         const readingStatus = data.picklistLog?.antenna_log?.reading_status;
         const isBatchNotExists = readingStatus === 'batch-not-exists';
         const isOverscanningDetected = readingStatus === 'overscanning-detected';
-        const isInvalidReadingStatus = isBatchNotExists || isOverscanningDetected;
+        const isUnregistered = readingStatus === 'unregistered';
+        const isInvalidReadingStatus = isBatchNotExists || isOverscanningDetected || isUnregistered;
 
         if (isBatchNotExists) {
             response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} does not match any batch in this shipment.`;
@@ -240,8 +241,8 @@ watch(
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
@@ -363,8 +364,8 @@ watch(
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
