@@ -334,9 +334,14 @@ const viewRequiredPallets = ref(false);
                             <span class="font-weight-bold">DO Number:</span>
                             <span class="ms-2">{{ delivery.delivery }}</span>
                         </v-col>
-                        <v-col cols="12" md="6">
+                        <v-col cols="12" md="6" class="d-flex">
                             <span class="font-weight-bold">Material:</span>
-                            <span class="ms-2">{{ delivery.material }}</span>
+                            <div>
+                                <span class="ms-2">{{ delivery.material }}</span>
+                                <div class="text-caption text-medium-emphasis ms-2">
+                                    {{ delivery.material_desc }}
+                                </div>
+                            </div>
                         </v-col>
                         <v-col cols="12" md="6">
                             <span class="font-weight-bold">Required Quantity:</span>

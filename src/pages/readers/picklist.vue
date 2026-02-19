@@ -278,6 +278,17 @@ const displayPlateNumber = computed(() => {
         ""; // Default value if none exist
 });
 
+const displayHaulerName = computed(() => {
+    const shipmentInfo = shipmentData.shipment || {};
+    const isUsingPlateNumber2 = !shipmentInfo.plate_number_1 && !!shipmentInfo.plate_number_2;
+
+    if (isUsingPlateNumber2) {
+        return 'PICK-UP';
+    }
+
+    return shipmentInfo.hauler_name || '';
+});
+
 const formatDateTime = (date, time) => {
     // Remove time if it's '000000'
     if (time === '00:00:00' || time === '000000' || !time) return '';
@@ -285,7 +296,7 @@ const formatDateTime = (date, time) => {
 
     // Pad time to 6 digits if needed (for 'HHmmss' format)
     const paddedTime = time.toString().padStart(6, '0');
-    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
+    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMM D, YYYY hh:mm:ss A');
 };
 
 const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
@@ -586,7 +597,7 @@ const progressPercentage = computed(() => {
                                                 style="margin-top: 1px;">Gate in</span>
                                         </VCol>
                                         <VCol md="4" class="d-inline-flex align-center">
-                                            <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
+                                            <span class="font-weight-bold"> {{shipmentData.shipment?.gate_in ? Moment(shipmentData.shipment?.gate_in).format('MMM D, YYYY hh:mm A') : ''}}</span>
                                         </VCol>
                                         <VCol md="1" class="d-inline-flex align-center">
                                             <VTooltip location="top">
@@ -678,7 +689,7 @@ const progressPercentage = computed(() => {
                                                 Name</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <div class="font-weight-bold">{{ shipmentData.shipment?.hauler_name }}</div>
+                                            <div class="font-weight-bold">{{ displayHaulerName }}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
