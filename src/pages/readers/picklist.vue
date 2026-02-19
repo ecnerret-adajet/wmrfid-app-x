@@ -110,7 +110,7 @@ const onPicklistLogsEvent = (data) => {
             }
 
             const sapExpected = Number(delivery.required_qty) || 0;
-            const wmrfidExpected = Array.isArray(delivery.inventory) ? delivery.inventory.length : null;
+            const wmrfidExpected = Number(delivery.required_qty) || 0;
             const maxAllowedLoadedQty = wmrfidExpected === null
                 ? sapExpected
                 : Math.min(sapExpected, wmrfidExpected);
@@ -815,22 +815,46 @@ const progressPercentage = computed(() => {
                                                     <div class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         <span
-                                                            v-if="delivery.quantity_all !== null || !delivery.quantity_all">
-                                                            <span
-                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0 && shipmentData.shipment?.wm_load_end_date === null"
+                                                            v-if="delivery.quantity_all !== null && delivery.quantity_all !== undefined">
+                                                            <span v-if="delivery.available_inventories_count > 0 && delivery.required_qty > delivery.wm_required_qty 
+                                                                && shipmentData.shipment?.wm_load_end_date === null
+                                                                && delivery.loaded_qty !== delivery.required_qty"
                                                                 :class="{
-                                                                    'text-error': delivery.required_qty > delivery.inventory.length,
+                                                                    'text-error': delivery.required_qty > delivery.wm_required_qty,
+                                                                    'font-weight-black': true
+                                                                }"
+                                                            >
+                                                                {{ delivery.required_qty > delivery.wm_required_qty ? delivery.wm_required_qty : delivery.required_qty }}
+                                                            </span>
+                                                            <span v-else-if="delivery.available_inventories_count === 0 && delivery.loaded_qty === 0 && shipmentData.shipment?.wm_load_end_date === null"
+                                                                class="text-error text-h4 font-weight-black">
+                                                                NO STOCK
+                                                            </span>
+                                                            <span v-else-if="delivery.wm_required_qty >= delivery.available_inventories_count && delivery.available_inventories_count > 0 && shipmentData.shipment?.wm_load_end_date === null">
+                                                                {{ delivery.loaded_qty === delivery.required_qty ? delivery.loaded_qty : delivery.wm_required_qty }}
+                                                            </span>
+                                                          
+                                                            <span v-else>
+                                                                {{ delivery.loaded_qty === delivery.required_qty ? delivery.loaded_qty : delivery.wm_required_qty }}
+                                                            </span>
+
+                                                            <!-- {{ delivery.required_qty }} / {{  delivery.available_inventories_count }} -->
+                                                            <!-- <span
+                                                                v-if="delivery.required_qty >= delivery.available_inventories_count && shipmentData.shipment?.wm_load_end_date === null"
+                                                                :class="{
+                                                                    'text-error': delivery.required_qty > delivery.available_inventories_count,
                                                                     'font-weight-black': true
                                                                 }">
-                                                                {{ delivery.inventory.length }}
+                                                                {{ delivery.required_qty  }} /
+                                                                {{ delivery.available_inventories_count }}test
                                                             </span>
                                                             <span class="font-weight-black"
                                                                 v-else-if="shipmentData.shipment.wm_load_end_date">
-                                                                {{ delivery.required_qty }}
+                                                                {{ delivery.required_qty  }}
                                                             </span>
                                                             <span v-else class="text-error text-h4 font-weight-black">
                                                                 NO STOCK
-                                                            </span>
+                                                            </span> -->
                                                         </span>
                                                         <span v-else class="display-3">
                                                             {{ palletCalculation(delivery.sales_unit,
