@@ -313,13 +313,13 @@ const viewRequiredPallets = ref(false);
             <v-card-title class="d-flex justify-space-between align-center">
                 <div class="text-h6 font-weight-bold text-primary">Picklists</div>
 
-                <v-btn class="ml-2" prepend-icon="ri-eye-line" color="primary" outlined small
+                <!-- <v-btn class="ml-2" prepend-icon="ri-eye-line" color="primary" outlined small
                     @click="viewRequiredPallets = true" aria-label="View Required Pallets">
                     <template #prepend>
                         <v-icon color="white"></v-icon>
                     </template>
                     View Required Pallets
-                </v-btn>
+                </v-btn> -->
             </v-card-title>
 
 
