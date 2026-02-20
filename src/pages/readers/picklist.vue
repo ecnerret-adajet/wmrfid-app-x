@@ -110,7 +110,7 @@ const onPicklistLogsEvent = (data) => {
             }
 
             const sapExpected = Number(delivery.required_qty) || 0;
-            const wmrfidExpected = Array.isArray(delivery.inventory) ? delivery.inventory.length : null;
+            const wmrfidExpected = Number(delivery.required_pallets) || 0;
             const maxAllowedLoadedQty = wmrfidExpected === null
                 ? sapExpected
                 : Math.min(sapExpected, wmrfidExpected);
@@ -359,7 +359,7 @@ const isLoadedQtySatisfiedPerBatch = computed(() => {
     if (!shipmentData.deliveries?.length) return false;
 
     return shipmentData.deliveries.every(item => {
-        const requiredQty = Number(item.required_qty) || 0;
+        const requiredQty = Number(item.required_pallets) || 0;
         const loadedQty = Number(item.loaded_qty) || 0;
 
         return parseInt(loadedQty) === parseInt(requiredQty);
@@ -410,6 +410,26 @@ const progressPercentage = computed(() => {
     return Math.min(Math.round((totalLoadedQty.value / total) * 100), 100);
 });
 
+const carouselPageIndicator = computed(() => {
+    const totalPages = deliveryChunks.value.length || 0;
+    if (totalPages === 0) return 'Page 0 of 0';
+
+    return `Page ${carouselIndex.value + 1} of ${totalPages}`;
+})
+
+const goToPrevCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value - 1 + totalPages) % totalPages;
+}
+
+const goToNextCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value + 1) % totalPages;
+}
 
 </script>
 <template>
@@ -757,7 +777,7 @@ const progressPercentage = computed(() => {
                                 class="d-flex justify-center align-center border">
                                 <span class="text-h4 text-error">No delivery found</span>
                             </div>
-                            <v-carousel v-else height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                            <v-carousel v-else height="450" hide-delimiters :show-arrows="false" v-model="carouselIndex"
                                 :cycle="deliveryChunks.length > 1" :interval="10000">
                                 <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
                                     <v-sheet height="100%">
@@ -786,36 +806,15 @@ const progressPercentage = computed(() => {
                                                     style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        {{ delivery.required_qty }}
+                                                        {{ delivery.required_pallets }}
                                                     </span>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 text-center rightBorderedGreen"
                                                     style="border-right: 1px solid #fff;">
                                                     <div class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        <span
-                                                            v-if="delivery.quantity_all !== null || !delivery.quantity_all">
-                                                            <span
-                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0 && shipmentData.shipment?.wm_load_end_date === null"
-                                                                :class="{
-                                                                    'text-error': delivery.required_qty > delivery.inventory.length,
-                                                                    'font-weight-black': true
-                                                                }">
-                                                                {{ delivery.inventory.length }}
-                                                            </span>
-                                                            <span class="font-weight-black"
-                                                                v-else-if="shipmentData.shipment.wm_load_end_date">
-                                                                {{ delivery.required_qty }}
-                                                            </span>
-                                                            <span v-else class="text-error text-h4 font-weight-black">
-                                                                NO STOCK
-                                                            </span>
-                                                        </span>
-                                                        <span v-else class="display-3">
-                                                            {{ palletCalculation(delivery.sales_unit,
-                                                                delivery.quantity_all,
-                                                                delivery.numerator, delivery.denominator,
-                                                                delivery.default_pallet_capacity) }}
+                                                        <span>
+                                                            {{ delivery.required_pallets }}
                                                         </span>
                                                     </div>
                                                 </VCol>
@@ -830,6 +829,20 @@ const progressPercentage = computed(() => {
                                     </v-sheet>
                                 </v-carousel-item>
                             </v-carousel>
+
+                            <div v-if="deliveryChunks.length > 1" class="d-flex align-center justify-center mt-3" style="gap: 12px;">
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToPrevCarouselPage">
+                                    Prev
+                                </v-btn>
+
+                                <v-chip color="primary" label size="large">
+                                    {{ carouselPageIndicator }}
+                                </v-chip>
+
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToNextCarouselPage">
+                                    Next
+                                </v-btn>
+                            </div>
 
 
                         </div>
