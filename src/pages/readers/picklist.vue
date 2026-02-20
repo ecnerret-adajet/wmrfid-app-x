@@ -110,7 +110,7 @@ const onPicklistLogsEvent = (data) => {
             }
 
             const sapExpected = Number(delivery.required_qty) || 0;
-            const wmrfidExpected = Number(delivery.required_qty) || 0;
+            const wmrfidExpected = Array.isArray(delivery.inventory) ? delivery.inventory.length : null;
             const maxAllowedLoadedQty = wmrfidExpected === null
                 ? sapExpected
                 : Math.min(sapExpected, wmrfidExpected);
@@ -334,27 +334,6 @@ const chunkArray = (arr, size) => {
 const deliveryChunks = computed(() => chunkArray(shipmentData.deliveries || [], 5))
 
 const carouselIndex = ref(0)
-
-const carouselPageIndicator = computed(() => {
-    const totalPages = deliveryChunks.value.length || 0;
-    if (totalPages === 0) return 'Page 0 of 0';
-
-    return `Page ${carouselIndex.value + 1} of ${totalPages}`;
-})
-
-const goToPrevCarouselPage = () => {
-    const totalPages = deliveryChunks.value.length;
-    if (totalPages <= 1) return;
-
-    carouselIndex.value = (carouselIndex.value - 1 + totalPages) % totalPages;
-}
-
-const goToNextCarouselPage = () => {
-    const totalPages = deliveryChunks.value.length;
-    if (totalPages <= 1) return;
-
-    carouselIndex.value = (carouselIndex.value + 1) % totalPages;
-}
 
 watch(
     () => dialogVisible.value,
@@ -778,7 +757,7 @@ const progressPercentage = computed(() => {
                                 class="d-flex justify-center align-center border">
                                 <span class="text-h4 text-error">No delivery found</span>
                             </div>
-                            <v-carousel v-else height="450" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                            <v-carousel v-else height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
                                 :cycle="deliveryChunks.length > 1" :interval="10000">
                                 <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
                                     <v-sheet height="100%">
@@ -815,46 +794,22 @@ const progressPercentage = computed(() => {
                                                     <div class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
                                                         <span
-                                                            v-if="delivery.quantity_all !== null && delivery.quantity_all !== undefined">
-                                                            <span v-if="delivery.available_inventories_count > 0 && delivery.required_qty > delivery.wm_required_qty 
-                                                                && shipmentData.shipment?.wm_load_end_date === null
-                                                                && delivery.loaded_qty !== delivery.required_qty"
+                                                            v-if="delivery.quantity_all !== null || !delivery.quantity_all">
+                                                            <span
+                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0 && shipmentData.shipment?.wm_load_end_date === null"
                                                                 :class="{
-                                                                    'text-error': delivery.required_qty > delivery.wm_required_qty,
-                                                                    'font-weight-black': true
-                                                                }"
-                                                            >
-                                                                {{ delivery.required_qty > delivery.wm_required_qty ? delivery.wm_required_qty : delivery.required_qty }}
-                                                            </span>
-                                                            <span v-else-if="delivery.available_inventories_count === 0 && delivery.loaded_qty === 0 && shipmentData.shipment?.wm_load_end_date === null"
-                                                                class="text-error text-h4 font-weight-black">
-                                                                NO STOCK
-                                                            </span>
-                                                            <span v-else-if="delivery.wm_required_qty >= delivery.available_inventories_count && delivery.available_inventories_count > 0 && shipmentData.shipment?.wm_load_end_date === null">
-                                                                {{ delivery.loaded_qty === delivery.required_qty ? delivery.loaded_qty : delivery.wm_required_qty }}
-                                                            </span>
-                                                          
-                                                            <span v-else>
-                                                                {{ delivery.loaded_qty === delivery.required_qty ? delivery.loaded_qty : delivery.wm_required_qty }}
-                                                            </span>
-
-                                                            <!-- {{ delivery.required_qty }} / {{  delivery.available_inventories_count }} -->
-                                                            <!-- <span
-                                                                v-if="delivery.required_qty >= delivery.available_inventories_count && shipmentData.shipment?.wm_load_end_date === null"
-                                                                :class="{
-                                                                    'text-error': delivery.required_qty > delivery.available_inventories_count,
+                                                                    'text-error': delivery.required_qty > delivery.inventory.length,
                                                                     'font-weight-black': true
                                                                 }">
-                                                                {{ delivery.required_qty  }} /
-                                                                {{ delivery.available_inventories_count }}test
+                                                                {{ delivery.inventory.length }}
                                                             </span>
                                                             <span class="font-weight-black"
                                                                 v-else-if="shipmentData.shipment.wm_load_end_date">
-                                                                {{ delivery.required_qty  }}
+                                                                {{ delivery.required_qty }}
                                                             </span>
                                                             <span v-else class="text-error text-h4 font-weight-black">
                                                                 NO STOCK
-                                                            </span> -->
+                                                            </span>
                                                         </span>
                                                         <span v-else class="display-3">
                                                             {{ palletCalculation(delivery.sales_unit,
@@ -875,20 +830,6 @@ const progressPercentage = computed(() => {
                                     </v-sheet>
                                 </v-carousel-item>
                             </v-carousel>
-
-                            <div v-if="deliveryChunks.length > 1" class="d-flex align-center justify-center mt-3" style="gap: 12px;">
-                                <v-btn size="large" variant="outlined" color="primary" @click="goToPrevCarouselPage">
-                                    Prev
-                                </v-btn>
-
-                                <v-chip color="primary" label size="large">
-                                    {{ carouselPageIndicator }}
-                                </v-chip>
-
-                                <v-btn size="large" variant="outlined" color="primary" @click="goToNextCarouselPage">
-                                    Next
-                                </v-btn>
-                            </div>
 
 
                         </div>
