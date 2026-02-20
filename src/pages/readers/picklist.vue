@@ -352,7 +352,7 @@ const totalLoadedQty = computed(() =>
 );
 
 const totalRequiredQtyByBatch = computed(() =>
-    shipmentData.deliveries?.reduce((sum, item) => sum + (Number(item.required_qty) || 0), 0)
+    shipmentData.deliveries?.reduce((sum, item) => sum + (Number(item.required_pallets) || 0), 0)
 );
 
 const isLoadedQtySatisfiedPerBatch = computed(() => {
