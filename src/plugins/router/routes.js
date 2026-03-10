@@ -439,6 +439,13 @@ export const routes = [
         },
     },
     {
+        path: '/reader/non-pallet-picklist/:reader/:bay',
+        component: () => import('@/pages/readers/nonPalletPicklist.vue'), 
+        meta: {
+            pageTitle: "Non-Pallet Picklist"
+        },
+    },
+    {
         path: '/rfid-registration/:type/:plant/:location?',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {
