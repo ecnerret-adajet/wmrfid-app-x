@@ -446,6 +446,13 @@ export const routes = [
         },
     },
     {
+        path: '/loading-queue/:plant_code/:storage_location',
+        component: () => import('@/pages/loadingQueue.vue'), 
+        meta: {
+            pageTitle: "Loading Queue"
+        },
+    },
+    {
         path: '/rfid-registration/:type/:plant/:location?',
         component: () => import('@/pages/rfid-registration.vue'), 
         meta: {
