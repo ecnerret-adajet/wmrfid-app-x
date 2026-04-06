@@ -196,8 +196,11 @@ const getQueueStatus = row => {
 
 const displayedQueueRows = computed(() => {
     const rows = normalizedQueueRows.value.slice(0, 5).map(row => {
+        // If this is a placeholder row, keep its properties as is
+        if (row.isPlaceholder) {
+            return row;
+        }
         const queueStatus = getQueueStatus(row);
-
         return {
             ...row,
             statusLabel: queueStatus.label,
@@ -207,7 +210,12 @@ const displayedQueueRows = computed(() => {
     });
 
     while (rows.length < 5) {
-        rows.push(createPlaceholderRow(rows.length + 1));
+        const placeholder = createPlaceholderRow(rows.length + 1);
+        rows.push({
+            ...placeholder,
+            statusLabel: 'No queue yet',
+            statusClass: placeholder.statusClass,
+        });
     }
 
     return rows;
