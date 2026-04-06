@@ -68,8 +68,8 @@
                 </table>
             </div>
 
-            <footer class="notice-bar">
-                Please prepare documents before your queue is called
+            <footer v-if="banner_message" class="notice-bar">
+                {{ banner_message }}
             </footer>
         </section>
     </main>
@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
 
 const loading = ref(false);
 const queueRows = ref([]);
-
+const banner_message = ref([]);
 const createPlaceholderRow = (index) => ({
     queue_no: 'No queue yet',
     plate_no: 'No queue yet',
@@ -254,6 +254,7 @@ const fetchData = async () => {
         const response = await ApiService.get('loading-queue/get-data', `${plant_code}/${storage_location}`);
         if (response.data) {
             queueRows.value = response.data;
+            banner_message.value = response.data.banner_message;
         }
     } catch (error) {
         console.error('Error fetching loading queue data:', error);
