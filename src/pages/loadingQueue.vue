@@ -1,9 +1,12 @@
 <template>
     <main class="queue-screen">
-        <section class="board-card">
+        <marquee scrollamount="20" v-if="loading_banner_message && loading_banner_message.length" class="loading-banner-marquee">
+            {{ loading_banner_message.join(' | ') }}
+        </marquee>
+        <section class="board-card" :style="{ minHeight: loading_banner_message ? '92vh' : '100vh' }">
             <header class="board-header">
                 <div class="title-row">
-                    <h1 class="text-white font-bold">Loading Queue</h1>
+                    <h1 class="text-white font-bold">Warehouse Queue</h1>
                     <div class="header-timer" aria-label="30 second reload countdown">
                         <span class="header-timer-label">Reloading in</span>
                         <span class="header-timer-value">{{ refreshTimer }}</span>
@@ -139,6 +142,7 @@ onBeforeUnmount(() => {
 const loading = ref(false);
 const queueRows = ref([]);
 const banner_message = ref([]);
+const loading_banner_message = ref([]);
 const createPlaceholderRow = (index) => ({
     queue_no: 'No queue yet',
     plate_no: 'No queue yet',
@@ -264,6 +268,7 @@ const fetchData = async () => {
         if (response.data) {
             queueRows.value = response.data;
             banner_message.value = response.data.banner_message;
+            loading_banner_message.value = response.data.loading_banner_message;
         }
     } catch (error) {
         console.error('Error fetching loading queue data:', error);
@@ -302,7 +307,6 @@ const getDriverNameClass = (name) => {
 
 .board-card {
     width: 100%;
-    min-height: 100vh;
     border-radius: 0;
     overflow: hidden;
     box-shadow: none;
@@ -535,6 +539,20 @@ const getDriverNameClass = (name) => {
     padding: 14px 16px;
 }
 
+.loading-banner-marquee {
+    background: #257c02;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 19px 0;
+    font-size: 2.3rem;
+    width: 100%;
+    z-index: 10;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 @media (max-width: 768px) {
     .queue-screen {
         min-height: auto;
@@ -564,5 +582,20 @@ const getDriverNameClass = (name) => {
         padding: 10px 8px;
         font-size: 0.95rem;
     }
+
+    .loading-banner-marquee {
+        background: #257c02;
+        color: #ffffff;
+        font-weight: bold;
+        padding: 19px 0;
+        font-size: 1.4rem;
+        border-bottom: 1px solid #ffd700;
+        width: 100%;
+        z-index: 10;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
 }
 </style>
