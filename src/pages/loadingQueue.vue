@@ -37,6 +37,7 @@
                         <th>QUEUE NO.</th>
                         <th>PLATE NO.</th>
                         <th>DRIVER NAME</th>
+                        <th>SHIPMENT NO.</th>
                         <th>BAY</th>
                         <th>STATUS</th>
                     </tr>
@@ -50,6 +51,14 @@
                         <td>{{ row.queue_no }}</td>
                         <td>{{ row.plate_no }}</td>
                         <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
+                        <td>
+                            <template v-if="row.shipment_number && !row.isPlaceholder">
+                                {{ row.shipment_number }}
+                            </template>
+                            <template v-else>
+                                <span class="placeholder-text">No queue yet</span>
+                            </template>
+                        </td>
                         <td>
                             <template v-if="row.warehouse_bay">
                                 {{ row.warehouse_bay?.name }}
