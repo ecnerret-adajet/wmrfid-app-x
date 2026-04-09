@@ -99,8 +99,24 @@ const onPicklistLogsEvent = (data) => {
         processedEpcs.value[key] = true;
 
         if (batch && (is_loaded == false || is_loaded == 0)) {
-            const delivery = shipmentData.deliveries.find(d => d.batch === batch);
-            if (delivery) {
+            const normalizedBatch = String(batch).trim();
+
+            const delivery = shipmentData.deliveries.find(d => String(d.batch).trim() === normalizedBatch);
+
+            if (!delivery) {
+                errorMessage.value = `Batch ${normalizedBatch} does not match any batch in this shipment.`;
+                dialogVisible.value = true;
+                return;
+            }
+
+            const sapExpected = Number(delivery.required_qty) || 0;
+            const wmrfidExpected = Number(delivery.required_pallets) || 0;
+            const maxAllowedLoadedQty = wmrfidExpected === null
+                ? sapExpected
+                : Math.min(sapExpected, wmrfidExpected);
+
+            const currentLoadedQty = Number(delivery.loaded_qty) || 0;
+            if (currentLoadedQty < maxAllowedLoadedQty) {
                 delivery.loaded_qty += 1;
             }
         }
@@ -138,7 +154,7 @@ const fetchData = async () => {
     loading.value = true;
     try {
         const response = await ApiService.post(`loading-tapping/${readerId}/${bay}`);
-        // const response = await ApiService.get(`test-loading-entry/0000150707`);
+        // const response = await ApiService.get(`test-loading-entry/0000196891`);
 
         shipment.value = response.data
 
@@ -262,6 +278,17 @@ const displayPlateNumber = computed(() => {
         ""; // Default value if none exist
 });
 
+const displayHaulerName = computed(() => {
+    const shipmentInfo = shipmentData.shipment || {};
+    const isUsingPlateNumber2 = !shipmentInfo.plate_number_1 && !!shipmentInfo.plate_number_2;
+
+    if (isUsingPlateNumber2) {
+        return 'PICK-UP';
+    }
+
+    return shipmentInfo.hauler_name || '';
+});
+
 const formatDateTime = (date, time) => {
     // Remove time if it's '000000'
     if (time === '00:00:00' || time === '000000' || !time) return '';
@@ -269,7 +296,7 @@ const formatDateTime = (date, time) => {
 
     // Pad time to 6 digits if needed (for 'HHmmss' format)
     const paddedTime = time.toString().padStart(6, '0');
-    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMMM D, YYYY hh:mm:ss A');
+    return Moment(`${date} ${paddedTime}`, 'YYYYMMDD HHmmss').format('MMM D, YYYY hh:mm:ss A');
 };
 
 const palletCalculation = (uom, quantity, numerator = 1, denominator = 1, defaultPalletCapacity = 40) => {
@@ -324,12 +351,27 @@ const totalLoadedQty = computed(() =>
     shipmentData.deliveries?.reduce((sum, item) => sum + (item.loaded_qty || 0), 0)
 );
 
-const onDriverTapOutEvent = (data) => {
-    // Ensure to end only the shipment passed
-    console.log(data);
+const totalRequiredQtyByBatch = computed(() =>
+    shipmentData.deliveries?.reduce((sum, item) => sum + (Number(item.required_pallets) || 0), 0)
+);
 
+const isLoadedQtySatisfiedPerBatch = computed(() => {
+    if (!shipmentData.deliveries?.length) return false;
+
+    return shipmentData.deliveries.every(item => {
+        const requiredQty = Number(item.required_pallets) || 0;
+        const loadedQty = Number(item.loaded_qty) || 0;
+
+        return parseInt(loadedQty) === parseInt(requiredQty);
+    });
+});
+
+const isBatchMismatchErrorShown = ref(false);
+
+const onDriverTapOutEvent = (data) => {
     // Attempt to find driver tap out only if picklist satisfied
     // if (totalLoadedQty.value > 0 && totalLoadedQty.value >= shipmentData.shipment?.total_pallet_to_load) {
+    console.log(data);
     if (data.driverTapOut?.shipment_number == shipmentData.shipment?.shipment && data.driverTapOut?.load_end_date === null) {
         if (data.driverTapOut?.is_tap_out_found === true) {
             is_tapping_load_end_found.value = true;
@@ -352,14 +394,9 @@ const onDriverTapOutEvent = (data) => {
 // });
 
 watch(
-    [totalLoadedQty, () => shipmentData.shipment?.total_pallet_to_load, () => is_tapping_load_end_found.value],
-    ([newLoadedQty, totalPallets, tappingLoadEndFound]) => {
-        if (
-            totalPallets > 0 &&
-            newLoadedQty > 0 &&
-            newLoadedQty >= totalPallets &&
-            tappingLoadEndFound === true // Use the watched value here
-        ) {
+    [isLoadedQtySatisfiedPerBatch, () => is_tapping_load_end_found.value],
+    ([isSatisfiedPerBatch, tappingLoadEndFound]) => {
+        if (tappingLoadEndFound === true && isSatisfiedPerBatch) {
             sapLoadEnd(shipmentData.shipment.shipment);
         }
     },
@@ -367,12 +404,32 @@ watch(
 );
 
 const progressPercentage = computed(() => {
-    const total = shipmentData.shipment?.total_pallet_to_load || 0;
+    const total = totalRequiredQtyByBatch.value || 0;
     if (total === 0) return 0;
 
     return Math.min(Math.round((totalLoadedQty.value / total) * 100), 100);
 });
 
+const carouselPageIndicator = computed(() => {
+    const totalPages = deliveryChunks.value.length || 0;
+    if (totalPages === 0) return 'Page 0 of 0';
+
+    return `Page ${carouselIndex.value + 1} of ${totalPages}`;
+})
+
+const goToPrevCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value - 1 + totalPages) % totalPages;
+}
+
+const goToNextCarouselPage = () => {
+    const totalPages = deliveryChunks.value.length;
+    if (totalPages <= 1) return;
+
+    carouselIndex.value = (carouselIndex.value + 1) % totalPages;
+}
 
 </script>
 <template>
@@ -437,7 +494,7 @@ const progressPercentage = computed(() => {
             </v-card>
 
             <v-card
-                v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && (totalLoadedQty < shipmentData.shipment?.total_pallet_to_load)"
+                v-else-if="shipmentData.shipment.wm_load_start_date && shipmentData.shipment.wm_load_end_date === null && !isLoadedQtySatisfiedPerBatch"
                 class="mb-4 pa-4 d-flex align-center" color="warning" variant="tonal" elevation="3"
                 style="border-left: 6px solid #ff9800;">
                 <VRow class="w-100" align="center">
@@ -452,13 +509,13 @@ const progressPercentage = computed(() => {
                                 finished.</span>
                         </div>
                         <v-progress-linear :model-value="progressPercentage" color="warning" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                            :indeterminate="!totalRequiredQtyByBatch">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ Math.min(totalLoadedQty, shipmentData.shipment?.total_pallet_to_load || 0) }}
+                                    {{ Math.min(totalLoadedQty, totalRequiredQtyByBatch || 0) }}
                                     out of
-                                    {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
+                                    {{ totalRequiredQtyByBatch || 0 }}
+                                    <span v-if="totalRequiredQtyByBatch">
                                         ({{ progressPercentage }}%)
                                     </span>
                                 </span>
@@ -475,7 +532,7 @@ const progressPercentage = computed(() => {
             </v-card>
 
             <v-card
-                v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && (totalLoadedQty >= shipmentData.shipment?.total_pallet_to_load)"
+                v-else-if="shipmentData.shipment.wm_load_end_date === null && is_tapping_load_end_found === false && isLoadedQtySatisfiedPerBatch"
                 class="mb-4 pa-4 d-flex align-center" color="success" variant="tonal" elevation="3"
                 style="border-left: 6px solid #4caf50;">
                 <VRow class="w-100" align="center">
@@ -489,16 +546,14 @@ const progressPercentage = computed(() => {
                             <span class="font-italic" style="color: #4caf50;">Please wait up to 30 seconds after the tap
                                 out.</span>
                         </div>
-                        <v-progress-linear
-                            :model-value="(totalLoadedQty / (shipmentData.shipment?.total_pallet_to_load || 0)) * 100"
-                            color="success" height="14" rounded
-                            :indeterminate="!shipmentData.shipment?.total_pallet_to_load">
+                        <v-progress-linear :model-value="progressPercentage" color="success" height="14" rounded
+                            :indeterminate="!totalRequiredQtyByBatch">
                             <template #default>
                                 <span class="text-caption font-weight-bold">
-                                    {{ totalLoadedQty }} out of {{ shipmentData.shipment?.total_pallet_to_load || 0 }}
-                                    <span v-if="shipmentData.shipment?.total_pallet_to_load">
-                                        ({{ Math.round((totalLoadedQty / shipmentData.shipment?.total_pallet_to_load) *
-                                            100) }}%)
+                                    {{ Math.min(totalLoadedQty, totalRequiredQtyByBatch || 0) }} out of {{
+                                        totalRequiredQtyByBatch || 0 }}
+                                    <span v-if="totalRequiredQtyByBatch">
+                                        ({{ progressPercentage }}%)
                                     </span>
                                 </span>
                             </template>
@@ -562,7 +617,7 @@ const progressPercentage = computed(() => {
                                                 style="margin-top: 1px;">Gate in</span>
                                         </VCol>
                                         <VCol md="4" class="d-inline-flex align-center">
-                                            <!-- <span class="font-weight-bold"> {{Moment(new Date()).format('MMMM D, YYYY hh:mm A')}}</span> -->
+                                            <span class="font-weight-bold"> {{shipmentData.shipment?.gate_in ? Moment(shipmentData.shipment?.gate_in).format('MMM D, YYYY hh:mm A') : ''}}</span>
                                         </VCol>
                                         <VCol md="1" class="d-inline-flex align-center">
                                             <VTooltip location="top">
@@ -654,7 +709,7 @@ const progressPercentage = computed(() => {
                                                 Name</span>
                                         </VCol>
                                         <VCol md="6" class="d-inline-flex align-center">
-                                            <div class="font-weight-bold">{{ shipmentData.shipment?.hauler_name }}</div>
+                                            <div class="font-weight-bold">{{ displayHaulerName }}</div>
                                         </VCol>
                                     </VRow>
                                 </VCol>
@@ -677,8 +732,8 @@ const progressPercentage = computed(() => {
                         </div>
                         <div>
                             <h2 class="text-h4 font-weight-black mt-8" style="font-size: 5rem !important; color: #fff;">
-                                {{
-                                    shipmentData.shipment?.total_pallet_to_load }}</h2>
+                                <span>{{ totalLoadedQty }}</span> / {{ shipmentData.shipment?.total_pallet_to_load }}
+                            </h2>
                         </div>
                         <div class="d-flex justify-between align-center mt-auto">
                             <div class="text-h4 text-white font-weight-bold">
@@ -722,7 +777,7 @@ const progressPercentage = computed(() => {
                                 class="d-flex justify-center align-center border">
                                 <span class="text-h4 text-error">No delivery found</span>
                             </div>
-                            <v-carousel v-else height="600" hide-delimiters :show-arrows="false" v-model="carouselIndex"
+                            <v-carousel v-else height="450" hide-delimiters :show-arrows="false" v-model="carouselIndex"
                                 :cycle="deliveryChunks.length > 1" :interval="10000">
                                 <v-carousel-item v-for="(chunk, index) in deliveryChunks" :key="index">
                                     <v-sheet height="100%">
@@ -751,36 +806,15 @@ const progressPercentage = computed(() => {
                                                     style="border-left: 1px solid #fff; border-right: 1px solid #fff;">
                                                     <span class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        {{ delivery.required_qty }}
+                                                        {{ delivery.required_pallets }}
                                                     </span>
                                                 </VCol>
                                                 <VCol md="3" class="px-3 text-center rightBorderedGreen"
                                                     style="border-right: 1px solid #fff;">
                                                     <div class="font-weight-black"
                                                         style="font-size: 3rem; color: #3e3b3b !important;">
-                                                        <span
-                                                            v-if="delivery.quantity_all !== null || !delivery.quantity_all">
-                                                            <span
-                                                                v-if="delivery.quantity > 0 && delivery.inventory.length > 0 && shipmentData.shipment?.wm_load_end_date === null"
-                                                                :class="{
-                                                                    'text-error': delivery.required_qty > delivery.inventory.length,
-                                                                    'font-weight-black': true
-                                                                }">
-                                                                {{ delivery.inventory.length }}
-                                                            </span>
-                                                            <span class="font-weight-black"
-                                                                v-else-if="shipmentData.shipment.wm_load_end_date">
-                                                                {{ delivery.required_qty }}
-                                                            </span>
-                                                            <span v-else class="text-error text-h4 font-weight-black">
-                                                                NO STOCK
-                                                            </span>
-                                                        </span>
-                                                        <span v-else class="display-3">
-                                                            {{ palletCalculation(delivery.sales_unit,
-                                                                delivery.quantity_all,
-                                                                delivery.numerator, delivery.denominator,
-                                                                delivery.default_pallet_capacity) }}
+                                                        <span>
+                                                            {{ delivery.required_pallets }}
                                                         </span>
                                                     </div>
                                                 </VCol>
@@ -795,6 +829,20 @@ const progressPercentage = computed(() => {
                                     </v-sheet>
                                 </v-carousel-item>
                             </v-carousel>
+
+                            <div v-if="deliveryChunks.length > 1" class="d-flex align-center justify-center mt-3" style="gap: 12px;">
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToPrevCarouselPage">
+                                    Prev
+                                </v-btn>
+
+                                <v-chip color="primary" label size="large">
+                                    {{ carouselPageIndicator }}
+                                </v-chip>
+
+                                <v-btn size="large" variant="outlined" color="primary" @click="goToNextCarouselPage">
+                                    Next
+                                </v-btn>
+                            </div>
 
 
                         </div>
@@ -817,9 +865,9 @@ const progressPercentage = computed(() => {
             <v-divider class="mb-4"></v-divider>
 
             <div class="text-end">
-                <v-btn class="text-none" color="success" variant="flat" width="90" @click="close">
+                <!-- <v-btn class="text-none" color="success" variant="flat" width="90" @click="close">
                     Okay
-                </v-btn>
+                </v-btn> -->
             </div>
         </v-sheet>
     </v-dialog>

@@ -4,7 +4,7 @@ import JwtService from '@/services/JwtService';
 import { echo } from '@/utils/echo';
 import axios from 'axios';
 import Moment from 'moment';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -26,11 +26,20 @@ const toast = ref({
     show: false
 });
 
+let picklistLogsChannel = null;
 
 onMounted(() => {
     fetchShipmentDetails(props.shipmentNumber);
-    echo.channel('picklist-logs')
-        .listen('PicklistLogsEvent', onPicklistLogsEvent);
+
+    const channelNameBase = `shipment.${props.readerId}.${props.bayNo}`;
+    picklistLogsChannel = echo.channel(`${channelNameBase}.picklist-logs`);
+    picklistLogsChannel.listen('PicklistLogsEvent', onPicklistLogsEvent);
+});
+
+onUnmounted(() => {
+    if (picklistLogsChannel?.name) {
+        echo.leaveChannel(picklistLogsChannel.name);
+    }
 });
 
 const onPicklistLogsEvent = (data) => {
@@ -101,7 +110,7 @@ const fetchShipmentDetails = async (shipmentNumber) => {
                             name: item.physical_id || '',
                             current_quantity: item.quantity,
                             mfg_date: item.mfg_date || null,
-                            loaded_date: item.loaded_datetime,
+                            loaded_date: item.loaded_datetime || null,
                             loose_pallet: item.is_loose,
                             is_loose: item.is_loose,
                             rfid_id: item.rfid_id,
@@ -304,13 +313,13 @@ const viewRequiredPallets = ref(false);
             <v-card-title class="d-flex justify-space-between align-center">
                 <div class="text-h6 font-weight-bold text-primary">Picklists</div>
 
-                <v-btn class="ml-2" prepend-icon="ri-eye-line" color="primary" outlined small
+                <!-- <v-btn class="ml-2" prepend-icon="ri-eye-line" color="primary" outlined small
                     @click="viewRequiredPallets = true" aria-label="View Required Pallets">
                     <template #prepend>
                         <v-icon color="white"></v-icon>
                     </template>
                     View Required Pallets
-                </v-btn>
+                </v-btn> -->
             </v-card-title>
 
 
@@ -325,9 +334,14 @@ const viewRequiredPallets = ref(false);
                             <span class="font-weight-bold">DO Number:</span>
                             <span class="ms-2">{{ delivery.delivery }}</span>
                         </v-col>
-                        <v-col cols="12" md="6">
+                        <v-col cols="12" md="6" class="d-flex">
                             <span class="font-weight-bold">Material:</span>
-                            <span class="ms-2">{{ delivery.material }}</span>
+                            <div>
+                                <span class="ms-2">{{ delivery.material }}</span>
+                                <div class="text-caption text-medium-emphasis ms-2">
+                                    {{ delivery.material_desc }}
+                                </div>
+                            </div>
                         </v-col>
                         <v-col cols="12" md="6">
                             <span class="font-weight-bold">Required Quantity:</span>
