@@ -3,11 +3,11 @@ import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { ref, reactive, computed, onMounted } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
+import BlockQrCodeModal from './BlockQrCodeModal.vue';
 import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
 import Toast from './Toast.vue';
-import BlockQrCodeModal from './BlockQrCodeModal.vue';
 
 const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
 
@@ -413,7 +413,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
         <div class="d-flex justify-space-between align-center">
             <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
             <v-btn icon variant="text" :color="block.data.qr_code_path ? 'success' : 'primary'" @click="openQrModal">
-                <i class="ri-qr-code-line text-h3"></i>
+                <i class="ri-qr-code-line text-h3" :class="block.data.qr_code_path ? 'text-success' : 'text-grey-700'"></i>
             </v-btn>
         </div>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
