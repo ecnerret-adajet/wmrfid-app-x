@@ -1,6 +1,7 @@
 <template>
     <main class="queue-screen">
-        <marquee scrollamount="20" v-if="loading_banner_message && loading_banner_message.length" class="loading-banner-marquee">
+        <marquee scrollamount="20" v-if="loading_banner_message && loading_banner_message.length"
+            class="loading-banner-marquee">
             {{ loading_banner_message.join(' | ') }}
         </marquee>
         <section class="board-card" :style="{ minHeight: loading_banner_message ? '92vh' : '100vh' }">
@@ -20,10 +21,6 @@
                     <p class="label">On Queue</p>
                     <p class="value">{{ summaryCounts.onQueue }}</p>
                 </article>
-                <article class="summary-item waiting">
-                    <p class="label">Waiting</p>
-                    <p class="value">{{ summaryCounts.waiting }}</p>
-                </article>
                 <article class="summary-item active">
                     <p class="label">In Progress</p>
                     <p class="value">{{ summaryCounts.inProgress }}</p>
@@ -35,54 +32,51 @@
             </section>
             <div class="table-wrap">
                 <table class="queue-table">
-                <thead>
-                    <tr>
-                        <th>QUEUE NO.</th>
-                        <th>PLATE NO.</th>
-                        <th>DRIVER NAME</th>
-                        <th>SHIPMENT NO.</th>
-                        <th>BAY</th>
-                        <th>STATUS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="(row, index) in displayedQueueRows"
-                        :key="`${row.queue_no}-${index}`"
-                        :class="{ 'placeholder-row': row.isPlaceholder }"
-                    >
-                        <td>{{ row.queue_no }}</td>
-                        <td>{{ row.plate_no }}</td>
-                        <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
-                        <td>
-                            <template v-if="row.shipment_number && !row.isPlaceholder">
-                                {{ row.shipment_number }}
-                            </template>
-                            <template v-else>
-                                <span class="placeholder-text">No queue yet</span>
-                            </template>
-                        </td>
-                        <td>
-                            <template v-if="row.warehouse_bay">
-                                {{ row.warehouse_bay?.name }}
-                            </template>
-                            <template v-else>
-                                <span class="status" :class="'on-queue'">
-                                    ON QUEUE
-                                </span>
-                            </template>
-                        </td>
-                        <td>
-                            <span class="status" :class="row.statusClass">{{ row.statusLabel }}</span>
-                        </td>
-                    </tr>
-                </tbody>
+                    <thead>
+                        <tr>
+                            <th>QUEUE NO.</th>
+                            <th>PLATE NO.</th>
+                            <th>DRIVER NAME</th>
+                            <th>SHIPMENT NO.</th>
+                            <th>BAY</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(row, index) in displayedQueueRows" :key="`${row.queue_no}-${index}`"
+                            :class="{ 'placeholder-row': row.isPlaceholder }">
+                            <td>{{ row.queue_no }}</td>
+                            <td>{{ row.plate_no }}</td>
+                            <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
+                            <td>
+                                <template v-if="row.shipment_number && !row.isPlaceholder">
+                                    {{ row.shipment_number }}
+                                </template>
+                                <template v-else>
+                                    <span class="placeholder-text">No queue yet</span>
+                                </template>
+                            </td>
+                            <td>
+                                <template v-if="row.warehouse_bay">
+                                    {{ row.warehouse_bay?.name }}
+                                </template>
+                                <template v-else>
+                                    <span class="status" :class="'on-queue'">
+                                        ON QUEUE
+                                    </span>
+                                </template>
+                            </td>
+                            <td>
+                                <span class="status" :class="row.statusClass">{{ row.statusLabel }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
 
-            <footer v-if="banner_message" class="notice-bar">
+            <!-- <footer v-if="banner_message" class="notice-bar">
                 {{ banner_message }}
-            </footer>
+            </footer> -->
         </section>
     </main>
 </template>
@@ -116,7 +110,7 @@ const startCountdown = () => {
 
 onMounted(() => {
     void fetchData();
-
+    fetchSummary();
     startCountdown()
 
     // Prepare event in case we want to use real-time updates in the future, but for now we'll rely on the auto-refresh every 30 seconds
@@ -143,6 +137,11 @@ const loading = ref(false);
 const queueRows = ref([]);
 const banner_message = ref([]);
 const loading_banner_message = ref([]);
+const summaryData = ref({
+    waiting: 0,
+    in_progress: 0,
+    completed: 0,
+});
 const createPlaceholderRow = (index) => ({
     queue_no: 'No queue yet',
     plate_no: 'No queue yet',
@@ -234,35 +233,14 @@ const displayedQueueRows = computed(() => {
     return rows;
 });
 
-const summaryCounts = computed(() => normalizedQueueRows.value.reduce((counts, row) => {
-    const queueStatus = getQueueStatus(row);
-
-    if (queueStatus.className === 'on-queue') {
-        counts.onQueue += 1;
-    }
-
-    if (queueStatus.className === 'waiting-to-tap') {
-        counts.waiting += 1;
-    }
-
-    if (queueStatus.className === 'in-progress') {
-        counts.inProgress += 1;
-    }
-
-    if (queueStatus.className === 'complete') {
-        counts.completed += 1;
-    }
-
-    return counts;
-}, {
-    onQueue: 0,
-    waiting: 0,
-    inProgress: 0,
-    completed: 0,
+const summaryCounts = computed(() => ({
+    onQueue: Number(summaryData.value.waiting) || 0,
+    inProgress: Number(summaryData.value.in_progress) || 0,
+    completed: Number(summaryData.value.completed) || 0,
 }));
 
 const fetchData = async () => {
-  
+
     try {
         const response = await ApiService.get('loading-queue/get-data', `${plant_code}/${storage_location}`);
         if (response.data) {
@@ -276,6 +254,26 @@ const fetchData = async () => {
         loading.value = false;
     }
 };
+
+const fetchSummary = async () => {
+
+    try {
+        const response = await ApiService.get('loading-queue/summary/daily', `${plant_code}/${storage_location}`);
+        const payload = response?.data?.data ?? response?.data;
+
+        if (payload) {
+            summaryData.value = {
+                waiting: payload.waiting,
+                in_progress: payload.in_progress,
+                completed: payload.completed,
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching loading queue summary data:', error);
+    } finally {
+    }
+};
+
 
 const getDriverNameClass = (name) => {
     const normalizedLength = (name ?? '').replace(/\s+/g, '').length
@@ -369,7 +367,7 @@ const getDriverNameClass = (name) => {
 }
 
 .badge {
-  font-size: clamp(1.2rem, 1.15vw, 1.05rem);
+    font-size: clamp(1.2rem, 1.15vw, 1.05rem);
     padding: 6px 14px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.18);
@@ -378,7 +376,7 @@ const getDriverNameClass = (name) => {
 
 .summary-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
     padding: 16px 20px;
     background: #f8fafc;
