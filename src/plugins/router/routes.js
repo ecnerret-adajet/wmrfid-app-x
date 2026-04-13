@@ -540,6 +540,15 @@ export const routes = [
     //     },
     // },
     {
+        path: '/pallet/:physicalId',
+        name: 'pallet-info',
+        component: () => import('@/pages/pallet/show.vue'),
+        meta: {
+            // public: true,
+            pageTitle: 'Pallet Info',
+        },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/blank.vue'),
       children: [

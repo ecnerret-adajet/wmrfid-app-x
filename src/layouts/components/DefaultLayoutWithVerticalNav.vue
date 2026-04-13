@@ -5,10 +5,13 @@ import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 
 // Components
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import QrScannerModal from '@/components/QrScannerModal.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
+import { ref } from 'vue'
 
+const showScanner = ref(false)
 
 </script>
 
@@ -29,6 +32,19 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
 
         <VSpacer />
 
+        <!-- QR Scanner trigger -->
+        <IconBtn
+          v-tooltip="'Scan QR Code'"
+          class="me-1"
+          @click="showScanner = true"
+        >
+          <VIcon icon="ri-qr-scan-2-line" />
+        </IconBtn>
+
+        <QrScannerModal
+          v-if="showScanner"
+          @close="showScanner = false"
+        />
 
         <IconBtn>
           <VIcon icon="ri-notification-line" />
