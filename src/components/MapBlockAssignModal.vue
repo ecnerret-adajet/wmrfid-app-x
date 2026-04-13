@@ -412,7 +412,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
     <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal" :max-width="'1100px'">
         <div class="d-flex justify-space-between align-center">
             <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
-            <v-btn icon variant="text" color="primary" @click="openQrModal">
+            <v-btn icon variant="text" :color="block.data.qr_code_path ? 'success' : 'primary'" @click="openQrModal">
                 <i class="ri-qr-code-line text-h3"></i>
             </v-btn>
         </div>
