@@ -156,7 +156,7 @@ async function download() {
     a.href = url
     // remove spaces and invalid characters for filename
     const safeLabel = props.blockLabel ? props.blockLabel.replace(/\s+/g, '-') : props.blockId
-    a.download = `block-${safeLabel}-qr.png`
+    a.download = `${safeLabel}qr.png`
     a.click()
     URL.revokeObjectURL(url)
   } catch {
