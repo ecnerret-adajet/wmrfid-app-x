@@ -182,19 +182,30 @@ const fetchData = async () => {
 };
 
 const sapLoadEnd = async (shipmentNumber) => {
-    // ApiService.get(`test-load-end/${shipmentNumber}`)
+    try {
+        const response = await ApiService.get(`picklist/load-end/${shipmentNumber}`);
+        // If the backend returns an error structure, handle it
+        if (response.data && response.data.success === false && response.data.errors && response.data.errors.length > 0) {
+            errorMessage.value = response.data.errors[0];
+            dialogVisible.value = true;
+            return;
+        }
+        window.location.reload();
+    } catch (error) {
+        // Try to extract error message from backend
+        let msg = error.response?.data?.errors?.[0] || error.response?.data?.message || 'An unexpected error occurred.';
+        errorMessage.value = msg;
+        dialogVisible.value = true;
+    }
+
+    //  ApiService.get(`picklist/load-end/${shipmentNumber}`)
     //     .then(response => {
     //         window.location.reload();
-    //         console.log(response);
     //     })
-    ApiService.get(`picklist/load-end/${shipmentNumber}`)
-        .then(response => {
-            window.location.reload();
-        })
-        .catch(error => {
-            console.error(error);
-            window.location.reload();
-        });
+    //     .catch(error => {
+    //         console.error(error);
+    //         window.location.reload();
+    //     });
 
 };
 
