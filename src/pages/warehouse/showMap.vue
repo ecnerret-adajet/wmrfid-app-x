@@ -118,6 +118,7 @@ const fetchStorageLocationInformation = async () => {
             under_fumigation: item.under_fumigation,
             max_layer_count: item.max_layer_count || 3,
             legend_only: item.legend_only == 1 ? true : false,
+            qr_code_path: item.qr_code_path || null,
         }));
 
         state.index = state.layout.length;

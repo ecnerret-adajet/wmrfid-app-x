@@ -3,10 +3,11 @@ import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { ref } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import DefaultModal from './DefaultModal.vue';
 import SearchInput from './SearchInput.vue';
 import Toast from './Toast.vue';
+import BlockQrCodeModal from './BlockQrCodeModal.vue';
 
 const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
 
@@ -389,10 +390,32 @@ const handleSearch = debounce((search) => {
     }
 }, 500);
 
+const qrModal = ref(false);
+const qrTarget = ref({ blockId: null, hasExistingQr: false });
+
+function openQrModal() {
+    qrTarget.value = {
+        blockId: props.block.data.id,
+        hasExistingQr: !!props.block.data.qr_code_path,
+    };
+    qrModal.value = true;
+}
+
+function onQrGenerated({ block_id, qr_code_path }) {
+    if (props.block && props.block.data) {
+        props.block.data.qr_code_path = qr_code_path;
+    }
+}
+
 </script>
 <template>
     <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal" :max-width="'1100px'">
-        <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
+        <div class="d-flex justify-space-between align-center">
+            <p class="text-h3 font-weight-black text-grey-700">{{ block.data.lot?.label }} - {{ block.data.label }}</p>
+            <v-btn icon variant="text" :color="block.data.qr_code_path ? 'success' : 'primary'" @click="openQrModal">
+                <i class="ri-qr-code-line text-h3"></i>
+            </v-btn>
+        </div>
         <VList class="py-0 mt-3" lines="two" border rounded density="compact">
             <template v-for="(layer, index) of block.layers" :key="layer.layer_name">
                 <VListItem class="py-0 px-0"
@@ -579,6 +602,14 @@ const handleSearch = debounce((search) => {
     </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+
+    <BlockQrCodeModal
+        v-model="qrModal"
+        :block-id="qrTarget.blockId"
+        :has-existing-qr="qrTarget.hasExistingQr"
+        :block-label="`${block.data.lot?.label} - ${block.data.label}`"
+        @generated="onQrGenerated"
+    />
 </template>
 <style scoped>
 .layer-1 {

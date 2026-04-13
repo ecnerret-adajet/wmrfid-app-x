@@ -5,6 +5,7 @@ import DefaultModal from '@/components/DefaultModal.vue';
 import EditingModal from '@/components/EditingModal.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
+import QrCodeModal from '@/components/QrCodeModal.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel, generateSlug } from '@/composables/useHelpers';
@@ -550,6 +551,27 @@ watch(() => form.plant_code, () => {
     updateFilteredStorageLocations();
 });
 
+const qrModal = ref(false);
+const qrTarget = ref({ physicalId: null, hasExistingQr: false });
+
+function openQrModal(item) {
+    qrTarget.value = {
+        physicalId: item.name,
+        hasExistingQr: !!item.qr_code_path,
+    };
+    qrModal.value = true;
+}
+
+function onQrGenerated({ physical_id, qr_code_path }) {
+    const idx = serverItems.value.findIndex(r => r.name === physical_id);
+    if (idx !== -1) {
+        serverItems.value[idx] = {
+            ...serverItems.value[idx],
+            qr_code_path,
+        };
+    }
+}
+
 const selectedItem = ref(null);
 const updateLoading = ref(false);
 const editDialog = ref(false);
@@ -857,7 +879,15 @@ const handleUnloadPallet = async () => {
             </template>
 
             <template #item.actions="{ item }">
-                <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
+                <div v-if="authUserCan('edit.rfid')" class="d-flex justify-center align-center">
+                    <IconBtn
+                        size="small"
+                        :color="item.qr_code_path ? 'success' : 'default'"
+                        :title="item.qr_code_path ? 'View QR Code' : 'Generate QR Code'"
+                        @click="openQrModal(item)"
+                    >
+                        <VIcon icon="ri-qr-code-line" />
+                    </IconBtn>
                     <IconBtn size="small" @click="editItem(item)">
                         <VIcon icon="ri-pencil-line" />
                     </IconBtn>
@@ -1225,6 +1255,14 @@ const handleUnloadPallet = async () => {
             </div>
         </template>
     </EditingModal>
+
+    <QrCodeModal
+        v-if="qrTarget.physicalId"
+        v-model="qrModal"
+        :physical-id="qrTarget.physicalId"
+        :has-existing-qr="qrTarget.hasExistingQr"
+        @generated="onQrGenerated"
+    />
 
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
 </template>
