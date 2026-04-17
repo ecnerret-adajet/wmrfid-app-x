@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(node -e \"const b = require\\('./node_modules/@zxing/browser/esm/index.js'\\); console.log\\(Object.keys\\(b\\)\\)\")"
+    ]
+  }
+}

@@ -31,6 +31,7 @@ declare module 'vue' {
     PalletAssignModal: typeof import('./src/components/PalletAssignModal.vue')['default']
     PrimaryButton: typeof import('./src/components/PrimaryButton.vue')['default']
     QrCodeModal: typeof import('./src/components/QrCodeModal.vue')['default']
+    QrScannerModal: typeof import('./src/components/QrScannerModal.vue')['default']
     RecentProductionRuns: typeof import('./src/components/dashboard/RecentProductionRuns.vue')['default']
     ResponseModal: typeof import('./src/components/ResponseModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

@@ -15,6 +15,12 @@ router.beforeEach((to, from, next) => {
         next();
         return;
     }
+
+    // Allow public routes through without any auth checks
+    if (to.meta.public) {
+        next();
+        return;
+    }
     
     // Set page title dynamically based on route meta
     document.title = `${to.meta.pageTitle || 'Default'} - ${import.meta.env.VITE_APP_NAME}`;
