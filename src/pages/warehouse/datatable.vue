@@ -236,16 +236,22 @@ const handleViewWarehouse = (item) => {
 
 const actionList = [
     { title: 'View Details', key: 'view_details' },
+    { title: 'View Storage Bins', key: 'view_storage_bins' },
+
 ]
 
 const showSlocDetails = ref(false);
 const selectedSloc = ref(null);
 const handleAction = (sloc, action) => {
     selectedSloc.value = sloc;
-    console.log(selectedSloc.value);
     if (action.key == 'view_details') {
         showSlocDetails.value = true;
+    } else if (action.key == 'view_storage_bins') {
+        router.push({
+            path: `/warehouse/${sloc.plant_code}/${sloc.code}/storage-bins`,
+        });
     }
+
 }
 
 defineExpose({

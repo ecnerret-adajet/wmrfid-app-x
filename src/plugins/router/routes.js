@@ -219,6 +219,19 @@ export const routes = [
             },
         },
         {
+            path: 'warehouse/:plant_code/:sloc/storage-bins',
+            name: 'warehouse-storage-bins',
+            component: () => import('@/pages/warehouse/storage-bins/index.vue'),
+            meta: {
+                pageTitle: "Storage Bins",
+                breadcrumbs: (route) => [
+                    { label: "Storage Location", link: "/warehouse" },
+                    { label: "Storage Bins", link: `/warehouse/${route.params.plant_code}/${route.params.sloc}/storage-bins` }
+                ],
+            },
+            props: true
+        },
+        {
             path: 'rfid/pallets',
             name: 'rfid-pallets',
             component: () => import('@/pages/rfid-pallets/index.vue'),
