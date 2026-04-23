@@ -421,10 +421,47 @@ function onQrGenerated({ block_id, qr_code_path }) {
                 <VListItem class="py-0 px-0"
                     :class="selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent'">
                     <template v-if="layer.assigned_inventory">
+                        <v-row class="py-1 px-4" align="center" :class="[layer.layer_class,
+                        (selectedLayerIndex === index && enableBinTransfer) ? 'highlighted-item' : '']">
+                            <v-col cols="6">
+                                 <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
+                            </v-col>
+                            <v-col cols="5">
+                                <div class="assigned-info text-h5 text-white">
+                                    <div class="assigned-row">
+                                        <span class="label">Batch:</span>
+                                        <span class="value">{{ layer.assigned_inventory?.batch }}</span>
+                                    </div>
+                                    <div class="assigned-row">
+                                        <span class="label">Physical ID:</span>
+                                        <span class="value">{{ layer.assigned_inventory?.physical_id }}</span>
+                                    </div>
+                                </div>
+                            </v-col>
+                            <v-col cols="1">
+                                <v-menu location="start">
+                                    <template v-slot:activator="{ props }">
+                                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props"
+                                            color="grey"></v-btn>
+                                    </template>
+                                    <v-list>
+                                        <v-list-item v-for="(item, i) in items" :key="i" :value="i"
+                                            @click="handleActionClick(item.title, layer, index)">
+                                            <v-list-item-title>{{ item.title }}</v-list-item-title>
+                                        </v-list-item>
+                                    </v-list>
+                                </v-menu>
+                            </v-col>
+                        </v-row>
+                        <VDivider v-if="index !== block.layers - 1" color="white"/>
+                    </template>
+
+                    <!-- <template v-if="layer.assigned_inventory">
                         <VListItem :class="[layer.layer_class,
                         (selectedLayerIndex === index && enableBinTransfer) ? 'highlighted-item' : '']">
                             <VListItemTitle>
                                 <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
+                                
                             </VListItemTitle>
                             <template #append>
                                 <div class="assigned-info text-h5 text-white">
@@ -454,7 +491,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
                             </template>
                         </VListItem>
                         <VDivider v-if="index !== block.layers - 1" />
-                    </template>
+                    </template> -->
 
 
                     <template v-if="!layer.assigned_inventory">
@@ -607,7 +644,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
         v-model="qrModal"
         :block-id="qrTarget.blockId"
         :has-existing-qr="qrTarget.hasExistingQr"
-        :block-label="`${block.data.lot?.label} - ${block.data.label}`"
+        :block-label="`${block?.data?.lot?.label} - ${block?.data?.label}`"
         @generated="onQrGenerated"
     />
 </template>
@@ -661,7 +698,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
 }
 
 .assigned-row .label {
-  min-width: 120px; /* aligns the values */
+  min-width: 200px; /* aligns the values */
   font-weight: 600;
   opacity: 0.95;
 }

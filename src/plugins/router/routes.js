@@ -520,6 +520,17 @@ export const routes = [
         }
     },
     {
+        path: '/:plant_code/:sloc/:forklift/qr-putaway',
+        name: 'qr-putaway',
+        component: () => import('@/pages/qr/Index.vue'),
+        meta: {
+            pageTitle: 'QR Putaway',
+            breadcrumbs: (route) => [
+                    { label: 'QR Putaway', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/qr-putaway` }
+            ],
+        },
+    },
+    {
         path: '/sso-login',
         name: 'sso-callback',
         component: () => import('@/pages/sso-callback.vue'),

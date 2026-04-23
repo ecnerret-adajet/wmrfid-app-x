@@ -144,14 +144,16 @@ const wrapAction = async (inventory) => {
 }
 
 const pickInventory = async (inventory) => {
+    console.log('Picking inventory:', inventory);
     pickLoading.value = inventory.id;
 
-    if (inventory.is_confirmed == false) {
-        toast.value.message = 'Production run for this inventory must be confirmed first!'
-        toast.value.color = 'error';
-        toast.value.show = true;
-        return;
-    }
+    // if (inventory.is_confirmed == false) {
+    //     toast.value.message = 'Production run for this inventory must be confirmed first!'
+    //     toast.value.color = 'error';
+    //     toast.value.show = true;
+    //     pickLoading.value = false;
+    //     return;
+    // }
     try {
         const response = await axios.get(`inventory/pick-inventory/${inventory.id}`);
         loadItems({ page: props.page, itemsPerPage: props.itemsPerPage, search: props.search });
@@ -182,13 +184,13 @@ const proceedAction = () => {
 
 const handleShowConfirm = (action, item) => {
     let rfidModel = item;
-    selectedInventory.value = item.inventory;
+    selectedInventory.value = item;
     if (action == 'wrap') {
         selectedAction.title = 'Mark as Wrapped';
-        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${rfidModel?.name}</strong> as wrapped?`;
+        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${item?.physical_id}</strong> as wrapped?`;
     } else {
         selectedAction.title = 'Mark as Picked';
-        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${rfidModel?.name}</strong> as picked?`;
+        selectedAction.message = `Do you want to mark this RFID with physical ID of <strong>${item?.physical_id}</strong> as picked?`;
     }
     confirmModalOpen.value = true;
 }
@@ -234,54 +236,54 @@ defineExpose({
 
         <template #item.physical_id="{ item }">
             <td class="py-1 font-weight-medium text-h5">
-                {{ item.rfid?.name }}
+                {{ item.physical_id }}
             </td>
         </template>
 
         <template #item.batch="{ item }">
             <td class="py-1 font-weight-medium text-h5">
-                {{ item.rfid?.inventory?.batch ?? '--' }}
+                {{ item.batch ?? '--' }}
             </td>
         </template>
 
         <template #item.manufacturing_date="{ item }">
             <td class="py-1 font-weight-medium text-h4">
-                <span class="font-weight-medium text-h5">{{ item.rfid?.inventory?.mfg_date ?
-                    Moment(item.rfid?.inventory?.mfg_date).format('MMMM D, YYYY') : '--' }}</span>
-                <span class="font-weight-medium text-h5">&nbsp;{{ item.rfid?.inventory?.mfg_time ?? '' }}</span>
+                <span class="font-weight-medium text-h5">{{ item.mfg_date ?
+                    Moment(item.mfg_date).format('MMMM D, YYYY') : '--' }}</span>
+                <span class="font-weight-medium text-h5">&nbsp;{{ item.mfg_time ?? '' }}</span>
             </td>
         </template>
 
         <template #item.wrap_status="{ item }">
             <div class="d-flex justify-center align-center">
-                <i v-if="item.rfid?.inventory?.is_wrapped" style="font-size: 40px; background-color: green;"
+                <i v-if="item.is_wrapped" style="font-size: 40px; background-color: green;"
                     class="ri-checkbox-circle-line"></i>
-                <i @click="handleShowConfirm('wrap', item.rfid)" v-else style="font-size: 40px;"
+                <i @click="handleShowConfirm('wrap', item)" v-else style="font-size: 40px;"
                     class="ri-close-circle-line clickable-icon-operator"></i>
             </div>
         </template>
 
 
         <template #item.action="{ item }">
-            <template v-if="item.rfid?.inventory?.is_wrapped && item.rfid?.inventory?.picked_datetime != null">
-                <v-btn v-if="item.rfid?.inventory?.picked_datetime !== null"
-                    :color="item.rfid?.inventory?.picked_datetime === null ? 'primary-light' : 'primary-light'"
-                    :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'"
-                    :loading="pickLoading === item.rfid?.inventory?.id" :disabled="item.rfid?.inventory?.block_id"
-                    @click="selectInventory(item.rfid)" type="button" size="large"
-                    :class="item.rfid?.inventory?.block_id === null ? 'px-6 cursor-pointer' : 'px-6 cursor-not-allowed'">
-                    {{ item.rfid?.inventory?.block_id ? 'Assigned to Bin' : 'Assign to Bin' }}
+            <template v-if="item.is_wrapped && item.picked_datetime != null">
+                <v-btn v-if="item.picked_datetime !== null"
+                    :color="item.picked_datetime === null ? 'primary-light' : 'primary-light'"
+                    :variant="item.picked_datetime === null ? 'flat' : 'outlined'"
+                    :loading="pickLoading === item.id" :disabled="item.block_id"
+                    @click="selectInventory(item)" type="button" size="large"
+                    :class="item.block_id === null ? 'px-6 cursor-pointer' : 'px-6 cursor-not-allowed'">
+                    {{ item.block_id ? 'Assigned to Bin' : 'Assign to Bin' }}
                 </v-btn>
             </template>
 
             <template v-else>
-                <v-btn :color="item.rfid?.inventory?.picked_datetime === null ? 'primary-light' : 'primary-light'"
-                    :variant="item.rfid?.inventory?.picked_datetime === null ? 'flat' : 'outlined'"
-                    :loading="pickLoading === item.rfid?.inventory?.id"
-                    :disabled="item.rfid?.inventory?.picked_datetime !== null"
-                    @click="handleShowConfirm('pick', item.rfid)" type="button"
-                    :class="item.rfid?.inventory?.picked_datetime === null ? 'px-8 cursor-pointer' : 'px-4 cursor-not-allowed'">
-                    {{ item.rfid?.inventory?.picked_datetime === null ? 'Pick' : 'Picked' }}
+                <v-btn :color="item.picked_datetime === null ? 'primary-light' : 'primary-light'"
+                    :variant="item.picked_datetime === null ? 'flat' : 'outlined'"
+                    :loading="pickLoading === item.id"
+                    :disabled="item.picked_datetime !== null"
+                    @click="handleShowConfirm('pick', item)" type="button"
+                    :class="item.picked_datetime === null ? 'px-8 cursor-pointer' : 'px-4 cursor-not-allowed'">
+                    {{ item.picked_datetime === null ? 'Pick' : 'Picked' }}
                 </v-btn>
             </template>
         </template>

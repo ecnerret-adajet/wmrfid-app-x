@@ -158,7 +158,7 @@
                 Storage Location
               </v-list-item-title>
               <v-list-item-subtitle class="text-body-1 font-weight-medium">
-                {{ pallet.storage_location ?? '—' }}
+                {{ pallet.sloc }} - {{ pallet.storage_location ?? '—' }}
               </v-list-item-subtitle>
             </v-list-item>
 
@@ -197,6 +197,19 @@
               />
             </v-card-text>
           </template>
+            <!-- Suggested Bin Location -->
+            <v-divider />
+            <v-card-text class="d-flex flex-column align-center pa-4">
+              <v-chip
+                color="primary"
+                text-color="white"
+                class="text-h5 font-weight-bold px-6 py-3 mb-0"
+                size="large"
+                variant="outlined"
+              >
+                Suggested Bin Location: F18-4
+              </v-chip>
+            </v-card-text>
         </v-card>
       </template>
     </v-container>
