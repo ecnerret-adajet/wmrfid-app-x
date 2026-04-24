@@ -71,9 +71,16 @@ const confirmQualityInspection = async () => {
             storage_location_id: props.productionRun?.plant?.default_storage_location?.id,
             items: qualityInspectionItems.value.map(item => ({
                 physical_id: item.rfid[0]?.name,
+                rfid_code: item.rfid_code,
                 rfid_type: item.type,
                 type_slug: item.type_slug,
                 batch: item.batch ?? props.productionRun?.COMMODITY,
+                material_code: item.material?.bu_material,
+                entry_qty: item.quantity,
+                // entry_uom: item.uom,
+                // issuing_sloc: 
+                // issuing_plant:
+                // receiving_sloc: 
             }))
         })
         toast.value.message = 'Quality inspection confirmed successfully!'
