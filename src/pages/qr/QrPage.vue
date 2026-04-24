@@ -430,7 +430,7 @@ const tryAgain = () => {
     </DefaultModal>
   </div>
   <Loader :show="isLoading" />
-  <Toast :show="true" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+  <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 
 </template>
 
