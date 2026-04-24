@@ -73,7 +73,7 @@ const getPalletInfo = async (physicalId = null) => {
             showErrorModal.value = true
         } else if (err?.response?.data?.message === 'Weak Signal' ) {
             errorMessageTitle.value = 'Weak Signal'
-            errorMessage.value = 'This pallet was tagged with weak signal. Please coordinate with Engineering for RFID tags re-installation.'
+            errorMessage.value = 'The pallet tag is weak. Please coordinate with Engineering for RFID tags re-installation.'
             showErrorModal.value = true
         } else if (err?.response?.data?.message === 'No Inventory' ) {
             errorMessageTitle.value = 'No Batch Assigned'

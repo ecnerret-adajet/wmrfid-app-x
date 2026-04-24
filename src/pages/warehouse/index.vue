@@ -24,7 +24,7 @@ const tableSort = ref('name')
 const isLoading = ref(false);
 const errorMessage = ref(null)
 const plantsOption = ref([])
-
+const storageSectionOptions = ref([]);
 const toast = ref({
     message: 'Warehouse successfully created!',
     color: 'success',
@@ -45,8 +45,9 @@ onMounted(() => {
 const fetchDataDropdown = async () => {
     try {
         const preReqData = await ApiService.get('warehouse/get-data-dropdown');
-        const { plants } = preReqData.data
+        const { plants, storage_sections } = preReqData.data
         plantsOption.value = plants
+        storageSectionOptions.value = storage_sections
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -151,6 +152,14 @@ const exportData = async () => {
     }
 }
 
+// Dialog for selecting Storage Section Type
+const viewBinsDialog = ref(false);
+const selectedSectionType = ref(null);
+
+const openViewBinsDialog = () => {
+    viewBinsDialog.value = true;
+};
+
 </script>
 
 <template>
@@ -164,11 +173,19 @@ const exportData = async () => {
             Filter
         </v-btn>
 
+
         <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
             Export
+        </v-btn>
+
+        <v-btn class="d-flex align-center" prepend-icon="ri-eye-line" @click="openViewBinsDialog">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            View Storage Bins
         </v-btn>
 
         <v-btn v-if="authStore.user?.is_super_admin" class="d-flex justify-center align-center" @click="openDialog">
@@ -244,6 +261,28 @@ const exportData = async () => {
             </v-form>
         </template>
     </FilteringModal>
+
+    <!-- Dialog for selecting Storage Section Type -->
+    <v-dialog v-model="viewBinsDialog" max-width="400">
+        <!-- <v-card>
+            <v-card-title class="text-h6 font-weight-bold">Select Storage Section Type</v-card-title>
+            <v-card-text>
+                <v-select
+                    v-model="selectedSectionType"
+                    :items="storageSectionOptions"
+                    item-title="name"
+                    item-value="id"
+                    label="Storage Section Type"
+                    required
+                />
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer />
+                <v-btn text @click="viewBinsDialog = false">Cancel</v-btn>
+                <v-btn color="primary" :disabled="!selectedSectionType" @click="() => { viewBinsDialog = false; /* handle navigation or action here */ }">Continue</v-btn>
+            </v-card-actions>
+        </v-card> -->
+    </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" />
 </template>

@@ -7,6 +7,10 @@
       Transfer Requests
     </div>
 
+    
+    
+  </div>
+  <div class="mt-5">
     <v-select
       v-model="selectedStatus"
       :items="statusOptions"
@@ -15,9 +19,7 @@
       density="compact"
       variant="outlined"
       hide-details
-      style="max-width: 200px"
     />
-    
   </div>
 </v-card>
         <v-row>
@@ -95,22 +97,22 @@ const headers = [
   { text: 'TO Number', value: 'toNumber' },
 ]
 
-const statusOptions = ['Pending', 'For Putaway', 'Completed']
+const statusOptions = ['Pending', 'For Putaway', 'For Quality Inspection']
 const selectedStatus = ref(null)
 
 const items = ref([
   { transRequestId: 'TR-001', physicalId: '2513-17', batch: 'EHGPJK20', status: 'For Putaway', toStatus: 'Pending', toNumber: 'TO-001' },
-  { transRequestId: 'TR-002', physicalId: '9934-18', batch: 'EHGPJK20', status: 'Completed', toStatus: 'Completed', toNumber: 'TO-002' },
+  { transRequestId: 'TR-002', physicalId: '9934-18', batch: 'EHGPJK20', status: 'For Quality Inspection', toStatus: 'For Quality Inspection', toNumber: 'TO-002' },
   { transRequestId: 'TR-003', physicalId: '2245-18', batch: 'EHGPJK20', status: 'Pending', toStatus: 'Pending', toNumber: null },
   { transRequestId: 'TR-004', physicalId: '3321-18', batch: 'EHGPJK20', status: 'For Putaway', toStatus: 'Pending', toNumber: 'TO-003' },
-  { transRequestId: 'TR-005', physicalId: '4442-26', batch: 'EHGPJK20', status: 'Completed', toStatus: 'Completed', toNumber: 'TO-004' },
+  { transRequestId: 'TR-005', physicalId: '4442-26', batch: 'EHGPJK20', status: 'For Quality Inspection', toStatus: 'For Quality Inspection', toNumber: 'TO-004' },
   { transRequestId: 'TR-006', physicalId: '2342-25', batch: 'EHGPJK20', status: 'Pending', toStatus: 'Pending', toNumber: null },
   { transRequestId: 'TR-007', physicalId: '2345-25', batch: 'EHGPJK20', status: 'For Putaway', toStatus: 'Pending', toNumber: 'TO-005' },
 ])
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'Completed': return 'success'
+    case 'For Quality Inspection': return 'success'
     case 'For Putaway': return 'warning'
     case 'Pending': return 'orange'
     default: return 'grey'

@@ -6,6 +6,9 @@
 	<div v-else-if="navigation === 0">
 		<TransferRequest />
 	</div>
+	<div v-else-if="navigation === 2">
+		<WarehouseBin :plant_code="plant_code" :sloc="sloc"/>
+	</div>
 	<qr-bottom-navigation @update:nav="handleNavChange" />
 </template>
 
@@ -15,6 +18,7 @@ import { useRoute } from 'vue-router'
 import qrBottomNavigation from './qrBottomNavigation.vue'
 import QrPage from './QrPage.vue'
 import TransferRequest from './TransferRequest.vue'
+import WarehouseBin from './WarehouseBin.vue'
 
 const route = useRoute()
 const plant_code = computed(() => route.params.plant_code)

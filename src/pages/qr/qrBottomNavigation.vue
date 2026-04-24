@@ -30,7 +30,7 @@ const handleNavChange = (val) => {
 
         <v-btn :value="2" @click="handleNavChange(2)">
             <v-icon icon="ri-map-pin-line" size="30"></v-icon>
-            <span>Warehouse Map</span>
+            <span>Warehouse Bin</span>
         </v-btn>
         
     </v-bottom-navigation>
