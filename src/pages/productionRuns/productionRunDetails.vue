@@ -54,6 +54,44 @@ const openQualityInspection = () => {
     activeTab.value = 'quality_inspection'
 }
 
+const qualityInspectionStatusOptions = [
+    { title: 'Good', value: 'Good' },
+    { title: 'For RTM', value: 'For RTM' },
+]
+const qualityInspectionStatus = ref(null)
+const qualityInspectionLoading = ref(false)
+
+const confirmQualityInspection = async () => {
+    qualityInspectionLoading.value = true
+    toast.value.show = false
+    try {
+        await ApiService.post('inventories/quality-inspection', {
+            status: qualityInspectionStatus.value,
+            plant_code: props.productionRun?.plant?.plant_code,
+            storage_location_id: props.productionRun?.plant?.default_storage_location?.id,
+            items: qualityInspectionItems.value.map(item => ({
+                physical_id: item.rfid[0]?.name,
+                rfid_type: item.type,
+                type_slug: item.type_slug,
+                batch: item.batch ?? props.productionRun?.COMMODITY,
+            }))
+        })
+        toast.value.message = 'Quality inspection confirmed successfully!'
+        toast.value.color = 'success'
+        toast.value.show = true
+        qualityInspectionStatus.value = null
+        qualityInspectionItems.value = []
+        activeTab.value = 'batch_details'
+    } catch (error) {
+        toast.value.message = error.response?.data?.message || 'An error occurred during quality inspection.'
+        toast.value.color = 'error'
+        toast.value.show = true
+        console.error('Error confirming quality inspection:', error)
+    } finally {
+        qualityInspectionLoading.value = false
+    }
+}
+
 const qualityInspectionHeaders = [
     { title: 'PHYSICAL ID', key: 'physical_id', align: 'center', sortable: false },
     { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
@@ -601,6 +639,7 @@ const handleWrongPallet = async () => {
                         <v-window-item value="batch_details">
                             <div>
                                 <div class="mb-4 d-flex justify-between align-center">
+                                    <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
                                     <v-spacer></v-spacer>
 
                                     <v-btn @click="wrongPalletPosition" :disabled="selectedItems.length === 0"
@@ -657,7 +696,7 @@ const handleWrongPallet = async () => {
                                     </template>
 
                                     <template #item.commodity_status>
-                                        <v-badge color="info" content="Quality Inspection" class="text-uppercase"
+                                        <v-badge color="warning" content="Quality Inspection" class="text-uppercase"
                                             inline></v-badge>
                                     </template>
 
@@ -685,6 +724,23 @@ const handleWrongPallet = async () => {
                                     <span class="text-h6 font-weight-medium text-high-emphasis">
                                         {{ qualityInspectionItems.length }} item(s) for inspection
                                     </span>
+                                </div>
+
+                                <div class="mb-4 d-flex align-center gap-3">
+                                    <v-select
+                                        style="max-width: 220px;"
+                                        density="compact"
+                                        label="Select Status"
+                                        :items="qualityInspectionStatusOptions"
+                                        v-model="qualityInspectionStatus"
+                                        hide-details />
+                                    <v-btn
+                                        color="primary"
+                                        :disabled="!qualityInspectionStatus"
+                                        :loading="qualityInspectionLoading"
+                                        @click="confirmQualityInspection">
+                                        Confirm
+                                    </v-btn>
                                 </div>
 
                                 <VDataTable :headers="qualityInspectionHeaders" :items="qualityInspectionItems"
