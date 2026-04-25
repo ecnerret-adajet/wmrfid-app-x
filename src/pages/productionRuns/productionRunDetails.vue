@@ -425,6 +425,14 @@ const handleUpdate = async () => {
     }
 }
 
+const getCommodityStatusColor = (name) => {
+    if (!name) return 'grey'
+    const lower = name.toLowerCase()
+    if (lower === 'good') return 'success'
+    if (lower === 'for rtm' || lower === 'for-rtm') return 'info'
+    return 'grey'
+}
+
 const handleWrongPallet = async () => {
     wrongPalletLoading.value = true;
     toast.value.show = false;
@@ -716,10 +724,11 @@ const handleWrongPallet = async () => {
                                     </template>
 
                                     <template #item.commodity_status="{ item }">
-                                        <template v-if="!item.inventory">N/A</template>
+                                        <v-badge v-if="!item.inventory" color="grey" content="N/A" class="text-uppercase" inline />
                                         <v-badge v-else-if="item.inventory.commodity_status_id === null"
-                                            color="warning" content="Pending" class="text-uppercase" inline />
-                                        <v-badge v-else color="warning"
+                                            color="grey" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.name)"
                                             :content="item.inventory.commodity_status?.name" class="text-uppercase"
                                             inline />
                                     </template>
@@ -804,10 +813,11 @@ const handleWrongPallet = async () => {
                                     </template>
 
                                     <template #item.commodity_status="{ item }">
-                                        <template v-if="!item.inventory">N/A</template>
+                                        <v-badge v-if="!item.inventory" color="grey" content="N/A" class="text-uppercase" inline />
                                         <v-badge v-else-if="item.inventory.commodity_status_id === null"
-                                            color="warning" content="Pending" class="text-uppercase" inline />
-                                        <v-badge v-else color="info"
+                                            color="grey" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.name)"
                                             :content="item.inventory.commodity_status?.name" class="text-uppercase"
                                             inline />
                                     </template>
