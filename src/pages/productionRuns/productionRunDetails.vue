@@ -60,13 +60,16 @@ const qualityInspectionStatusOptions = [
 ]
 const qualityInspectionStatus = ref(null)
 const qualityInspectionLoading = ref(false)
+const qualityInspectionMethod = ref('simulate')
+const simulateCompleted = ref(false)
 
-const confirmQualityInspection = async () => {
+const confirmQualityInspection = async (method = qualityInspectionMethod.value) => {
     qualityInspectionLoading.value = true
     toast.value.show = false
     try {
         await ApiService.post('inventories/quality-inspection', {
             status: qualityInspectionStatus.value,
+            method: method,
             plant_code: props.productionRun?.plant?.plant_code,
             storage_location_id: props.productionRun?.plant?.default_storage_location?.id,
             items: qualityInspectionItems.value.map(item => ({
@@ -78,17 +81,27 @@ const confirmQualityInspection = async () => {
                 material_code: item.material?.bu_material,
                 entry_qty: item.quantity,
                 // entry_uom: item.uom,
-                // issuing_sloc: 
+                // issuing_sloc:
                 // issuing_plant:
-                // receiving_sloc: 
+                // receiving_sloc:
             }))
         })
-        toast.value.message = 'Quality inspection confirmed successfully!'
-        toast.value.color = 'success'
-        toast.value.show = true
-        qualityInspectionStatus.value = null
-        qualityInspectionItems.value = []
-        activeTab.value = 'batch_details'
+        if (method === 'simulate') {
+            toast.value.message = 'Simulation completed. You may now confirm the quality inspection.'
+            toast.value.color = 'info'
+            toast.value.show = true
+            simulateCompleted.value = true
+            qualityInspectionMethod.value = ''
+        } else {
+            toast.value.message = 'Quality inspection confirmed successfully!'
+            toast.value.color = 'success'
+            toast.value.show = true
+            qualityInspectionStatus.value = null
+            qualityInspectionItems.value = []
+            simulateCompleted.value = false
+            qualityInspectionMethod.value = 'simulate'
+            activeTab.value = 'batch_details'
+        }
     } catch (error) {
         toast.value.message = error.response?.data?.message || 'An error occurred during quality inspection.'
         toast.value.color = 'error'
@@ -724,7 +737,7 @@ const handleWrongPallet = async () => {
                             <div>
                                 <div class="mb-4 d-flex align-center">
                                     <v-btn variant="text" prepend-icon="ri-arrow-left-line" color="primary"
-                                        @click="activeTab = 'batch_details'">
+                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate' }">
                                         Back to Batch Details
                                     </v-btn>
                                     <v-spacer></v-spacer>
@@ -742,10 +755,17 @@ const handleWrongPallet = async () => {
                                         v-model="qualityInspectionStatus"
                                         hide-details />
                                     <v-btn
+                                        color="secondary"
+                                        :disabled="!qualityInspectionStatus || qualityInspectionLoading"
+                                        :loading="qualityInspectionLoading && qualityInspectionMethod === 'simulate'"
+                                        @click="confirmQualityInspection('simulate')">
+                                        Simulate
+                                    </v-btn>
+                                    <v-btn
                                         color="primary"
-                                        :disabled="!qualityInspectionStatus"
-                                        :loading="qualityInspectionLoading"
-                                        @click="confirmQualityInspection">
+                                        :disabled="!qualityInspectionStatus || !simulateCompleted"
+                                        :loading="qualityInspectionLoading && qualityInspectionMethod === ''"
+                                        @click="confirmQualityInspection('')">
                                         Confirm
                                     </v-btn>
                                 </div>
