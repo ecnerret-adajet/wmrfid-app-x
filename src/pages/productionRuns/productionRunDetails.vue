@@ -55,8 +55,8 @@ const openQualityInspection = () => {
 }
 
 const qualityInspectionStatusOptions = [
-    { title: 'Good', value: 'Good' },
-    { title: 'For RTM', value: 'For RTM' },
+    { title: 'Good', value: 'good' },
+    { title: 'For RTM', value: 'for-rtm' },
 ]
 const qualityInspectionStatus = ref(null)
 const qualityInspectionLoading = ref(false)
