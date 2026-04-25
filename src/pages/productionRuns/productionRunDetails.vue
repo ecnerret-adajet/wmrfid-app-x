@@ -430,6 +430,7 @@ const getCommodityStatusColor = (name) => {
     const lower = name.toLowerCase()
     if (lower === 'good') return 'success'
     if (lower === 'for rtm' || lower === 'for-rtm') return 'info'
+    if (lower === 'qualilty-inspection') return 'warning'
     return 'grey'
 }
 
@@ -728,7 +729,7 @@ const handleWrongPallet = async () => {
                                         <v-badge v-else-if="item.inventory.commodity_status_id === null"
                                             color="grey" content="Pending" class="text-uppercase" inline />
                                         <v-badge v-else
-                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.name)"
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.slug)"
                                             :content="item.inventory.commodity_status?.name" class="text-uppercase"
                                             inline />
                                     </template>
@@ -817,7 +818,7 @@ const handleWrongPallet = async () => {
                                         <v-badge v-else-if="item.inventory.commodity_status_id === null"
                                             color="grey" content="Pending" class="text-uppercase" inline />
                                         <v-badge v-else
-                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.name)"
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.slug)"
                                             :content="item.inventory.commodity_status?.name" class="text-uppercase"
                                             inline />
                                     </template>
