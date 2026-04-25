@@ -715,9 +715,13 @@ const handleWrongPallet = async () => {
                                         </div>
                                     </template>
 
-                                    <template #item.commodity_status>
-                                        <v-badge color="warning" content="Quality Inspection" class="text-uppercase"
-                                            inline></v-badge>
+                                    <template #item.commodity_status="{ item }">
+                                        <template v-if="!item.inventory">N/A</template>
+                                        <v-badge v-else-if="item.inventory.commodity_status_id === null"
+                                            color="warning" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else color="warning"
+                                            :content="item.inventory.commodity_status?.name" class="text-uppercase"
+                                            inline />
                                     </template>
 
                                     <template #item.action="{ item }">
@@ -799,9 +803,13 @@ const handleWrongPallet = async () => {
                                         </div>
                                     </template>
 
-                                    <template #item.commodity_status>
-                                        <v-badge color="info" content="Quality Inspection" class="text-uppercase"
-                                            inline></v-badge>
+                                    <template #item.commodity_status="{ item }">
+                                        <template v-if="!item.inventory">N/A</template>
+                                        <v-badge v-else-if="item.inventory.commodity_status_id === null"
+                                            color="warning" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else color="info"
+                                            :content="item.inventory.commodity_status?.name" class="text-uppercase"
+                                            inline />
                                     </template>
 
                                 </VDataTable>
