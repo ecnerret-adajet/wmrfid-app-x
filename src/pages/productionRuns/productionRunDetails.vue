@@ -430,7 +430,7 @@ const getCommodityStatusColor = (name) => {
     const lower = name.toLowerCase()
     if (lower === 'good') return 'success'
     if (lower === 'for rtm' || lower === 'for-rtm') return 'info'
-    if (lower === 'qualilty-inspection') return 'warning'
+    if (lower === 'quality-inspection') return 'warning'
     return 'grey'
 }
 
