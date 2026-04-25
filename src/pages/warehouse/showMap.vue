@@ -186,7 +186,7 @@ const handleEditMap = () => {
                     Map</h3>
             </div>
             <div class="d-flex justify-end">
-                <v-btn color="primary-light" v-if="authStore.user?.is_super_admin" @click="handleEditMap"
+                <v-btn color="primary-light"  @click="handleEditMap"
                     class="px-12 mr-2 text-grey-100">
                     Edit Map
                 </v-btn>
@@ -201,10 +201,13 @@ const handleEditMap = () => {
                             <VRow class="table-row">
                                 <VCol cols="4" class="d-inline-flex align-center">
                                     <span class="text-h6 text-uppercase font-weight-black"
-                                        style="margin-top: 1px;">Code</span>
+                                        style="margin-top: 1px;">SLOC: </span>
+                                        <span class="font-weight-medium ml-3">
+                                            {{ storageLocationModel?.code ?? '--' }}
+                                        </span>
                                 </VCol>
                                 <VCol class="d-inline-flex align-center">
-                                    <span class="font-weight-medium">{{ storageLocationModel?.code ?? '--' }}</span>
+                                    <span class="font-weight-medium"></span>
                                 </VCol>
                             </VRow>
                         </VCol>
@@ -212,11 +215,13 @@ const handleEditMap = () => {
                             <VRow class="table-row">
                                 <VCol cols="4" class="d-inline-flex align-center">
                                     <span class="text-h6 text-uppercase font-weight-black"
-                                        style="margin-top: 1px;">Plant</span>
+                                        style="margin-top: 1px;">Plant: </span>
+                                        <span class="font-weight-medium ml-3">
+                                            {{ storageLocationModel?.plant?.name ?? '--' }}
+                                        </span>
                                 </VCol>
                                 <VCol class="d-inline-flex align-center">
                                     <span class="font-weight-medium">
-                                        {{ storageLocationModel?.plant?.name ?? '--' }}
                                     </span>
                                 </VCol>
                             </VRow>
@@ -229,11 +234,13 @@ const handleEditMap = () => {
                             <VRow class="table-row">
                                 <VCol cols="4" class="d-inline-flex align-center">
                                     <span class="text-h6 text-uppercase font-weight-black "
-                                        style="margin-top: 1px;">Location</span>
+                                        style="margin-top: 1px;">Location: </span>
+                                        <span class="font-weight-medium ml-3">
+                                            {{ storageLocationModel?.plant?.city ?? '--' }}
+                                        </span>
                                 </VCol>
                                 <VCol class="d-inline-flex align-center">
                                     <span class="font-weight-medium">
-                                        {{ storageLocationModel?.plant?.city ?? '--' }}
                                     </span>
                                 </VCol>
                             </VRow>
@@ -243,10 +250,12 @@ const handleEditMap = () => {
                                 <VCol cols="4" class="d-inline-flex align-center">
                                     <span class="text-h6 text-uppercase font-weight-black"
                                         style="margin-top: 1px;">Plant Code</span>
+                                          <span class="font-weight-medium ml-3">
+                                            {{ storageLocationModel?.plant?.plant_code ?? '--' }}
+                                        </span>
                                 </VCol>
                                 <VCol class="d-inline-flex align-center">
                                     <span class="font-weight-medium">
-                                        {{ storageLocationModel?.plant?.plant_code ?? '--' }}
                                     </span>
                                 </VCol>
                             </VRow>
@@ -258,9 +267,9 @@ const handleEditMap = () => {
             </VList>
         </v-card-text>
         <div class="d-flex justify-end">
-            <v-btn color="primary-light" @click="smartAssignModal = true" class="px-8 mr-6 text-grey-100">
+            <!-- <v-btn color="primary-light" @click="smartAssignModal = true" class="px-8 mr-6 text-grey-100">
                 Smart Assign
-            </v-btn>
+            </v-btn> -->
         </div>
     </v-card>
     <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
@@ -279,7 +288,7 @@ const handleEditMap = () => {
                             marginRight: '5px',
                             backgroundColor: layer.layer === 4 ? '#a06ee2' :
                                 (layer.layer === 3 ? '#48a348' :
-                                    (layer.layer === 2 ? '#4877f7' : '#eece70'))
+                                    (layer.layer === 2 ? '#4877f7' : '#a18940'))
                         }"></div>
                         {{ layer.label }}
                     </template>
@@ -288,9 +297,13 @@ const handleEditMap = () => {
                     </div>
                     Empty
                     <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                            margin-right: 5px; background-color: #f7897e">
+                        margin-right: 5px; background-color: #f7897e">
                     </div>
                     Under Fumigation
+                    <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                        margin-right: 5px; background-color: #FFB400">
+                    </div>
+                    For Quality Inspection
                 </div>
 
                 <div class="d-flex align-center">
@@ -382,7 +395,7 @@ const handleEditMap = () => {
 
 .vue-grid-item .legend-text {
     font-size: 16px;
-    color: rgb(36, 35, 35);
+    color:black;
     position: absolute;
     top: 0px;
     bottom: 0;
@@ -405,7 +418,7 @@ const handleEditMap = () => {
 }
 
 .layer-1 {
-    background-color: #eece70;
+    background-color: #a18940;
     color: white;
 }
 
@@ -457,7 +470,7 @@ const handleEditMap = () => {
 }
 
 .vue-grid-item .text {
-    font-size: 16px;
+    font-size: 12px;
     text-align: center;
     position: absolute;
     top: 10px !important;

@@ -219,7 +219,7 @@ export const routes = [
             },
         },
         {
-            path: 'warehouse/:plant_code/:sloc/storage-bins',
+            path: 'warehouse/:plant_code/:sloc/:storage_section/storage-bins',
             name: 'warehouse-storage-bins',
             component: () => import('@/pages/warehouse/storage-bins/index.vue'),
             meta: {

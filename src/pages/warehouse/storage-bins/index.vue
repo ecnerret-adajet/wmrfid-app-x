@@ -1,7 +1,10 @@
 
 <template>
   <div class="pa-8">
-    <h1 class="text-h4 font-weight-bold mb-2">Storage Bins in {{plantCode}} - {{ sloc }}</h1>
+    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Warehouse # : <span class="font-bold text-primary">{{ storageLocation?.warehouse_number }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Section : <span class="font-bold text-primary">{{ storageSection?.name }}</span></h4>
     <div class="d-flex gap-4 align-center justify-center mb-2">
         <VTextField v-model="searchValue" label="Search" placeholder="Search bin" append-inner-icon="ri-search-line"
             single-line hide-details density="compact" class="flex-grow-1" />
@@ -25,13 +28,13 @@
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-        <v-select style="max-width: 250px;" class="flex-grow-1 align-center" label="Filter by Storage Section"
+        <!-- <v-select style="max-width: 250px;" class="flex-grow-1 align-center" label="Filter by Storage Section"
             clearable
             density="compact" :items="storageSectionOptions" v-model="filters.storage_section_id"
             item-title="name"
             item-value="id"
             :rules="[value => value !== undefined || 'Please select an item from the list']">
-        </v-select>
+        </v-select> -->
 
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
@@ -40,57 +43,75 @@
             Search
         </v-btn>
     </div>
-    <div class="my-2">
-        <v-btn v-if="selectedBlocks.length > 0" color="success" @click="assignDialog = true">
-            <!-- {{ hasAnyStorageSection ? 'Update Storage Section' : 'Assign To Storage Section' }} -->
-            Assign To Storage Section
-        </v-btn>
-    </div>
 
-    <v-dialog v-model="assignDialog" max-width="600">
-        <v-card>
-            <v-card-title class="text-h6 font-weight-bold">Assign to Storage Section</v-card-title>
-            <v-card-text>
-                <v-select
-                    v-model="assignSectionId"
-                    :items="storageSectionOptions.filter(s => s.id !== 'no-section')"
-                    item-title="name"
-                    item-value="id"
-                    label="Select Storage Section"
-                    required
-                    class="mb-4"
-                />
-                <v-table density="compact">
-                    <thead>
-                        <tr>
-                            <th>Block</th>
-                            <th>Lot</th>
-                            <th>Storage Section</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="block in selectedBlocks" :key="block.id">
-                            <td>{{ block.lot?.label}}-{{ block.label }}</td>
-                            <td>{{ block.lot?.label }}</td>
-                            <td>
-                                <span v-if="block.storage_section">
-                                    <v-chip color="primary" text-color="white" size="small">{{ block.storage_section.name }}</v-chip>
-                                </span>
-                                <span v-else>
-                                    <v-chip color="warning" text-color="white" size="small">No Storage Section</v-chip>
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </v-table>
-            </v-card-text>
-            <v-card-actions class="pa-4">
-                <v-spacer />
-                <v-btn color="secondary" text @click="assignDialog = false">Cancel</v-btn>
-                <v-btn color="primary" :disabled="!assignSectionId || selectedBlocks.length === 0" @click="confirmAssignBlocks">Assign</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+        <!-- KPI Cards and Assign Button Row -->
+        <div class="d-flex justify-between align-center mb-6 mt-2 gap-4">
+            <div class="d-flex gap-4 py-2 align-center">
+                <v-card class="text-center pt-3" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="text-h6 font-weight-bold mb-1">Total Bins</div>
+                    <div class="text-h4 font-weight-bold" style="margin-top: -10px">{{totalBlock || 0}}</div>
+                </v-card>
+                <v-card class="pt-3 text-center" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="text-h6 font-weight-bold mb-1">Available Bins</div>
+                    <div class="text-h4 font-weight-bold" style="color: #43A047; margin-top: -10px">{{ availableCount || 0 }}</div>
+                </v-card>
+                <v-card class="pt-3 text-center" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="text-h6 font-weight-bold mb-1">Occupied Bins</div>
+                    <div class="text-h4 font-weight-bold" style="color: #E53935; margin-top: -10px;">{{ occupiedCount || 0 }}</div>
+                </v-card>
+            </div>
+            <v-btn v-if="selectedBlocks.length > 0" color="primary" class="ml-2" @click="showPriority1Dialog = true" style="height: 56px; min-width: 180px;">
+                Update Priority 1
+            </v-btn>
+            <v-btn v-if="selectedBlocks.length > 0" color="warning" class="ml-2" @click="showPriority2Dialog = true" style="height: 56px; min-width: 180px;">
+                Update Priority 2
+            </v-btn>
+                <!-- Priority 1 Dialog -->
+                <v-dialog v-model="showPriority1Dialog" max-width="500">
+                    <v-card class="pa-4">
+                        <v-card-title class="text-h6 font-weight-bold">Update Priority 1</v-card-title>
+                        <v-card-text>
+                            <v-select class="flex-grow-1 align-center" label="Select Priority 1"
+                                clearable
+                                density="compact"
+                                :items="storageSection?.material_types || []"
+                                v-model="selectedPriority1"
+                                item-title="name"
+                                item-value="id"
+                                :rules="[value => value !== undefined || 'Please select an item from the list']">
+                            </v-select>
+                        </v-card-text>
+                        <v-card-actions class="pa-4">
+                            <v-spacer />
+                            <v-btn color="secondary" text @click="showPriority1Dialog = false">Cancel</v-btn>
+                            <v-btn color="primary" :disabled="!selectedPriority1" @click="updatePriority1">Update</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-dialog>
+
+                <!-- Priority 2 Dialog -->
+                <v-dialog v-model="showPriority2Dialog" max-width="500">
+                    <v-card class="pa-4">
+                        <v-card-title class="text-h6 font-weight-bold">Update Priority 2</v-card-title>
+                        <v-card-text>
+                             <v-select class="flex-grow-1 align-center" label="Select Priority 2"
+                                clearable
+                                density="compact"
+                                :items="storageSection?.material_types || []"
+                                v-model="selectedPriority2"
+                                item-title="name"
+                                item-value="id"
+                                :rules="[value => value !== undefined || 'Please select an item from the list']">
+                            </v-select>
+                        </v-card-text>
+                        <v-card-actions class="pa-4">
+                            <v-spacer />
+                            <v-btn color="secondary" text @click="showPriority2Dialog = false">Cancel</v-btn>
+                            <v-btn color="primary" :disabled="!selectedPriority2" @click="updatePriority2">Update</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-dialog>
+        </div>
     <VCard>
         <VDataTableServer
             :headers="headers"
@@ -108,7 +129,7 @@
         >
             <!-- Removed custom checkbox to allow native selection to work -->
             <template #item.block="{ item }">
-                {{ item.lot?.label}}-{{ item.label }}
+                {{ item.label }}
             </template>
             <template #item.lot="{ item }">
                 {{ item.lot?.label }}
@@ -126,60 +147,32 @@
                     </v-progress-circular>
                 </div>
             </template>
-            <template #item.storage_section="{ item }">
-                <v-chip v-if="item.storage_section"
-                    color="primary"
-                    text-color="white"
-                    class="text-h6 font-weight-bold px-6 mb-2 mt-1"
-                    size="large"
-                    variant="outlined"
-                >
-                    <span>{{ item.storage_section?.name }}</span>
-                </v-chip>
-                <v-chip v-else
-                    color="warning"
-                    text-color="white"
-                    class="text-h6 font-weight-bold px-6 mb-2 mt-1"
-                    size="large"
-                    variant="outlined"
-                >
-                    No Storage Section
-                </v-chip>
+
+            <template #item.priority_1="{ item }">
+                <v-chip v-if="item.priority1" size="small" color="primary" text-color="white">{{ item.priority1?.name }}</v-chip>
+                <span v-else>-</span>
             </template>
-            <template #item.priority="{ item }">
-                <div v-if="item.storage_section && item.storage_section?.storage_section_material_types.length > 0">
-                    <v-chip
-                        v-for="(matType, index) in item.storage_section.storage_section_material_types"
-                        :key="index"
-                        :color="
-                            matType.priority_level === 1 || matType.priority_level === '1' ? 'primary' :
-                            matType.priority_level === 2 || matType.priority_level === '2' ? 'warning' :
-                            matType.priority_level === 3 || matType.priority_level === '3' ? 'error' : 'primary'"
-                        text-color="white"
-                        class="text-h6 font-weight-bold px-4 mb-2 mt-1 mr-1"
-                        size="large"
-                        variant="outlined"
-                    >
-                        <span>{{ matType.material_type?.name }}</span>
-                    </v-chip>
-                </div>
+            <template #item.priority_2="{ item }">
+                <v-chip v-if="item.priority2" size="small" color="warning" text-color="dark">{{ item.priority2?.name }}</v-chip>
+                <span v-else>-</span>
             </template>
             <template #item.actions="{ item }">
                 <v-btn icon="ri-qr-code-line" @click="() => handleQr(item)" color="primary"></v-btn>
             </template>
         </VDataTableServer>
     </VCard>
-    <!-- <QrCodeModal
+    <QrCodeModal
         v-model="qrModal"
         :physical-id="qrTarget.qr"
         :has-existing-qr="true"
-    /> -->
+    />
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
   </div>
 </template>
 
 <script setup>
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import { computed, ref } from 'vue';
@@ -189,6 +182,7 @@ import { VDataTableServer } from 'vuetify/components';
 const route = useRoute();
 const plantCode = route.params.plant_code;
 const sloc = route.params.sloc;
+const s_section = route.params.storage_section;
 
 const searchValue = ref('');
 const serverItems = ref([]);
@@ -199,6 +193,9 @@ const pageLoading = ref(false);
 const qrModal = ref(false);
 const qrTarget = ref({ qr: null });
 const sortQuery = ref('-created_at');
+const totalBlock = ref(0);
+const occupiedCount = ref(0);
+const availableCount = ref(0);
 
 const lotOptions = ref([]);
 
@@ -231,9 +228,9 @@ const handleSearch = () => {
 const headers = computed(() => [
     { title: 'Block', key: 'block', align: 'center', sortable: false },
     { title: 'Lot', key: 'lot', align: 'center', sortable: false },
+    { title: 'Priority 1', key: 'priority_1', align: 'center', sortable: false },
+    { title: 'Priority 2', key: 'priority_2', align: 'center', sortable: false },
     { title: 'Availability', key: 'availability', align: 'center', sortable: false },
-    { title: 'Storage Section', key: 'storage_section', align: 'center', sortable: false },
-    { title: 'Priority', key: 'priority', align: 'start', sortable: false },
     { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]);
 
@@ -241,12 +238,14 @@ onMounted(() => {
     fetchDropdownData();
 })
 
-const storageSectionOptions = ref([]);
+const storageSection = ref(null);
+const storageLocation = ref(null);
+
 const fetchDropdownData = async () => {
     pageLoading.value = true;
     try {
         const token = JwtService.getToken();
-        const response = await axios.get(`/warehouse/storage-bins/get-data-dropdown/${plantCode}/${sloc}`, {
+        const response = await axios.get(`/warehouse/storage-bins/get-data-dropdown/${plantCode}/${sloc}/${s_section}`, {
             params: {
                 filters: filters
             },
@@ -255,15 +254,14 @@ const fetchDropdownData = async () => {
             }
         });
 
-        const { lots, storage_sections } = response.data;
+        const { lots, storage_section, storage_location } = response.data;
         lotOptions.value = lots;
-        // Add 'No Storage Section' option
-        storageSectionOptions.value = [
-            { id: 'no-section', name: 'No Storage Section' },
-            ...storage_sections
-        ];
-        console.log(lotOptions.value);
-        console.log(storageSectionOptions.value);
+        storageSection.value = storage_section;
+        storageLocation.value = storage_location;
+        totalBlock.value = response.data.total_blocks;
+        occupiedCount.value = response.data.occupied_blocks;
+        availableCount.value = response.data.available_blocks;
+  
     } catch (error) {
         console.log(error);
     } finally {
@@ -332,32 +330,34 @@ const selectedBlocks = ref([]);
 const assignDialog = ref(false);
 const assignSectionId = ref(null);
 
-const confirmAssignBlocks = async () => {
-    if (!assignSectionId.value || !selectedBlocks.value.length) return;
 
-    // Show toast error if any selected block already has a storage section
-    if (selectedBlocks.value.some(b => b.storage_section_id)) {
-        console.log('One or more selected blocks already have a storage section assigned.');
-        toast.message = 'Error: One or more selected blocks already have a storage section assigned.';
-        toast.color = 'error';
-        toast.show = true;
-        return;
-    }
+ // Priority dialog state and logic
+const showPriority1Dialog = ref(false);
+const showPriority2Dialog = ref(false);
+const selectedPriority1 = ref(null);
+const selectedPriority2 = ref(null);
+
+async function updatePriority1() {
+    if (!selectedPriority1.value || !selectedBlocks.value.length) return;
 
     try {
         pageLoading.value = true;
-        const token = JwtService.getToken();
-        await axios.post('/warehouse/storage-bins/assign-section-bulk', {
-            block_ids: selectedBlocks.value.map(b => b.id),
-            storage_section_id: assignSectionId.value,
-            sloc: sloc,
-            plant_code: plantCode,
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        assignDialog.value = false;
-        assignSectionId.value = null;
+        // Use ApiService to call the update priority endpoint, passing the full object
+        await ApiService.post(
+            `/warehouse/storage-bins/priority_1/update-priority`,
+            {
+                block_ids: selectedBlocks.value.map(b => b.id),
+                storage_section: storageSection.value ? storageSection.value.id : null,
+                selected_priority: selectedPriority1.value,
+            }
+        );
+        toast.message = 'Priority 1 updated!';
+        toast.color = 'success';
+        toast.show = true;
+        showPriority1Dialog.value = false;
+        selectedPriority1.value = null;
         selectedBlocks.value = [];
+        // Optionally reload items
         await loadItems({
             page: page.value,
             itemsPerPage: itemsPerPage.value,
@@ -365,22 +365,51 @@ const confirmAssignBlocks = async () => {
             search: searchValue.value
         });
     } catch (e) {
+        toast.message = 'Failed to update Priority 1.';
+        toast.color = 'error';
+        toast.show = true;
+        console.error(e);
+    } finally {
+        pageLoading.value = false;
+
+    }
+}
+
+
+async function updatePriority2() {
+    if (!selectedPriority2.value || !selectedBlocks.value.length) return;
+
+    try {
+        pageLoading.value = true;
+        // Use ApiService to call the update priority 2 endpoint, passing the full object
+        await ApiService.post(
+            `/warehouse/storage-bins/priority_2/update-priority`,
+            {
+                block_ids: selectedBlocks.value.map(b => b.id),
+                storage_section: storageSection.value ? storageSection.value.id : null,
+                selected_priority: selectedPriority2.value,
+            }
+        );
+        toast.message = 'Priority 2 updated!';
+        toast.color = 'success';
+        toast.show = true;
+        showPriority2Dialog.value = false;
+        selectedPriority2.value = null;
+          selectedBlocks.value = [];
+        // Optionally reload items
+        await loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: searchValue.value
+        });
+    } catch (e) {
+        toast.message = 'Failed to update Priority 2.';
+        toast.color = 'error';
+        toast.show = true;
         console.error(e);
     } finally {
         pageLoading.value = false;
     }
-};
-
-// Computed property to check if any selected block has a storage section
-const hasAnyStorageSection = computed(() => {
-    return selectedBlocks.value && selectedBlocks.value.some(b => b.storage_section_id);
-});
-
-// Only allow selection if all selected blocks have the same storage_section_id (including null)
-const isSelectable = (item) => {
-    return false;
-    // if (!selectedBlocks.value || selectedBlocks.value.length === 0) return true;
-    // const sectionId = selectedBlocks.value[0]?.storage_section_id || null;
-    // return (item.storage_section_id || null) === sectionId;
-};
+}
 </script>

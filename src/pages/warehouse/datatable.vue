@@ -1,5 +1,6 @@
 <script setup>
 import EditingModal from '@/components/EditingModal.vue';
+import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { generateSlug } from '@/composables/useHelpers';
@@ -51,17 +52,18 @@ const headers = computed(() => {
         { title: '', key: 'details', align: 'center', sortable: false },
         { title: 'WAREHOUSE', key: 'name', },
         { title: 'CODE', key: 'code', align: 'center' },
+        { title: 'WAREHOUSE NO.', key: 'warehouse_number', align: 'center' },
         { title: 'PLANT', key: 'plant_id', align: 'center' },
         // { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
         { title: 'LAST UPDATED AT', key: 'updated_at', align: 'center' },
     ];
     if (authStore.user?.is_super_admin) {
-        baseHeaders.splice(4, 0, {
-            title: 'Allow Multiple Materials',
-            key: 'blocks_allow_multiple_materials',
-            sortable: false,
-            align: 'center',
-        });
+        // baseHeaders.splice(4, 0, {
+        //     title: 'Allow Multiple Materials',
+        //     key: 'blocks_allow_multiple_materials',
+        //     sortable: false,
+        //     align: 'center',
+        // });
     }
 
     baseHeaders.push({
@@ -234,24 +236,54 @@ const handleViewWarehouse = (item) => {
     });
 }
 
+
 const actionList = [
     { title: 'View Details', key: 'view_details' },
     { title: 'View Storage Bins', key: 'view_storage_bins' },
-
-]
+];
 
 const showSlocDetails = ref(false);
 const selectedSloc = ref(null);
-const handleAction = (sloc, action) => {
+
+// Storage Bin Dialog
+const showStorageBinDialog = ref(false);
+const selectedStorageSection = ref(null);
+const storageSectionOptions = ref([]);
+const pageLoading = ref(false);
+
+const handleAction = async (sloc, action) => {
     selectedSloc.value = sloc;
     if (action.key == 'view_details') {
         showSlocDetails.value = true;
     } else if (action.key == 'view_storage_bins') {
+        // Fetch storage sections from API before showing dialog
+        showStorageBinDialog.value = false;
+        selectedStorageSection.value = null;
+        storageSectionOptions.value = [];
+        try {
+            pageLoading.value = true;
+            const response = await ApiService.get(`warehouse/${sloc.id}/get-storage-sections`);
+            // Assume response.data is an array of sections with id and name
+            storageSectionOptions.value = (response.data || []).map(section => ({
+                label: section.name || section.label || 'Section',
+                value: section.id || section.value
+            }));
+        } catch (e) {
+            storageSectionOptions.value = [];
+        } finally {
+            pageLoading.value = false;
+        }
+        showStorageBinDialog.value = true;
+    }
+}
+
+function confirmStorageSection() {
+    showStorageBinDialog.value = false;
+    if (selectedSloc.value && selectedStorageSection.value) {
         router.push({
-            path: `/warehouse/${sloc.plant_code}/${sloc.code}/storage-bins`,
+            path: `/warehouse/${selectedSloc.value.plant_code}/${selectedSloc.value.code || selectedSloc.value.sloc || selectedSloc.value.id}/${selectedStorageSection.value}/storage-bins`
         });
     }
-
 }
 
 defineExpose({
@@ -394,17 +426,46 @@ defineExpose({
         </v-sheet>
     </v-dialog>
 
-    <v-dialog v-if="selectedSloc" v-model="showSlocDetails" max-width="1500px">
-        <v-card elevation="2">
-            <v-card-title class="d-flex justify-end align-center mx-4 px-4 mt-6">
-                <v-btn icon="ri-close-line" variant="text" @click="showSlocDetails = false"></v-btn>
+
+    <!-- Storage Bin Dialog -->
+    <v-dialog v-model="showStorageBinDialog" max-width="500px">
+        <v-card class="pa-4">
+            <v-card-title class="d-flex justify-space-between align-center">
+                <span class="text-h6">Select Storage Section</span>
+                <v-btn icon="ri-close-line" variant="text" @click="showStorageBinDialog = false"></v-btn>
             </v-card-title>
             <v-card-text>
-                <warehouseDetails :storage-location="selectedSloc" />
+                <v-select
+                    v-model="selectedStorageSection"
+                    :items="storageSectionOptions"
+                    item-title="label"
+                    item-value="value"
+                    label="Storage Section"
+                    density="compact"
+                    outlined
+                />
             </v-card-text>
+            <v-card-actions class="justify-end">
+                <v-btn color="secondary" variant="outlined" @click="showStorageBinDialog = false">Cancel</v-btn>
+                <PrimaryButton @click="confirmStorageSection" color="primary" :disabled="!selectedStorageSection">
+                    Confirm
+                </PrimaryButton>
+            </v-card-actions>
         </v-card>
     </v-dialog>
 
+    <v-dialog v-if="selectedSloc" v-model="showSlocDetails" max-width="1500px">
+            <v-card elevation="2">
+                    <v-card-title class="d-flex justify-end align-center mx-4 px-4 mt-6">
+                            <v-btn icon="ri-close-line" variant="text" @click="showSlocDetails = false"></v-btn>
+                    </v-card-title>
+                    <v-card-text>
+                            <warehouseDetails :storage-location="selectedSloc" />
+                    </v-card-text>
+            </v-card>
+    </v-dialog>
+
     <Toast :show="toast.show" :message="toast.message" color="success" @update:show="toast.show = $event" />
+    <Loader :show="pageLoading" />
 
 </template>
