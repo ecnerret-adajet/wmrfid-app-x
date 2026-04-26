@@ -46,6 +46,82 @@ const filters = reactive({
     plant_id: null
 })
 
+const activeTab = ref('batch_details')
+const qualityInspectionItems = ref([])
+
+const openQualityInspection = () => {
+    qualityInspectionItems.value = [...selectedItems.value]
+    activeTab.value = 'quality_inspection'
+}
+
+const qualityInspectionStatusOptions = [
+    { title: 'Good', value: 'good' },
+    { title: 'For RTM', value: 'for-rtm' },
+]
+const qualityInspectionStatus = ref(null)
+const qualityInspectionLoading = ref(false)
+const qualityInspectionMethod = ref('simulate')
+const simulateCompleted = ref(false)
+
+const confirmQualityInspection = async (method = qualityInspectionMethod.value) => {
+    qualityInspectionLoading.value = true
+    toast.value.show = false
+    try {
+        await ApiService.post('inventories/quality-inspection', {
+            status: qualityInspectionStatus.value,
+            method: method,
+            plant_code: props.productionRun?.plant?.plant_code,
+            storage_location_id: props.productionRun?.plant?.default_storage_location?.id,
+            items: qualityInspectionItems.value.map(item => ({
+                physical_id: item.rfid[0]?.name,
+                rfid_code: item.rfid_code,
+                rfid_type: item.type,
+                type_slug: item.type_slug,
+                batch: item.batch ?? props.productionRun?.COMMODITY,
+                material_code: item.material?.bu_material,
+                entry_qty: item.quantity,
+                // entry_uom: item.uom,
+                // issuing_sloc:
+                // issuing_plant:
+                // receiving_sloc:
+            }))
+        })
+        if (method === 'simulate') {
+            toast.value.message = 'Simulation completed. You may now confirm the quality inspection.'
+            toast.value.color = 'info'
+            toast.value.show = true
+            simulateCompleted.value = true
+            qualityInspectionMethod.value = ''
+        } else {
+            toast.value.message = 'Quality inspection confirmed successfully!'
+            toast.value.color = 'success'
+            toast.value.show = true
+            qualityInspectionStatus.value = null
+            qualityInspectionItems.value = []
+            simulateCompleted.value = false
+            qualityInspectionMethod.value = 'simulate'
+            activeTab.value = 'batch_details'
+        }
+    } catch (error) {
+        toast.value.message = error.response?.data?.message || 'An error occurred during quality inspection.'
+        toast.value.color = 'error'
+        toast.value.show = true
+        console.error('Error confirming quality inspection:', error)
+    } finally {
+        qualityInspectionLoading.value = false
+    }
+}
+
+const qualityInspectionHeaders = [
+    { title: 'PHYSICAL ID', key: 'physical_id', align: 'center', sortable: false },
+    { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
+    { title: 'TYPE', key: 'type', align: 'center', sortable: false },
+    { title: 'MATERIAL', key: 'material', sortable: false },
+    { title: 'MFG DATE', key: 'mfg_date', sortable: false },
+    { title: 'LINE', key: 'line', align: 'center', sortable: false },
+    { title: 'COMMODITY STATUS', key: 'commodity_status', align: 'center', sortable: false },
+]
+
 const headers = [
     {
         title: 'PHYSICAL ID',
@@ -96,6 +172,12 @@ const headers = [
         title: 'Line',
         key: 'line',
         align: 'center'
+    },
+    {
+        title: 'COMMODITY STATUS',
+        key: 'commodity_status',
+        align: 'center',
+        sortable: false
     },
     {
         title: 'Action',
@@ -343,6 +425,15 @@ const handleUpdate = async () => {
     }
 }
 
+const getCommodityStatusColor = (name) => {
+    if (!name) return 'grey'
+    const lower = name.toLowerCase()
+    if (lower === 'good') return 'success'
+    if (lower === 'for rtm' || lower === 'for-rtm') return 'info'
+    if (lower === 'quality-inspection') return 'warning'
+    return 'grey'
+}
+
 const handleWrongPallet = async () => {
     wrongPalletLoading.value = true;
     toast.value.show = false;
@@ -538,117 +629,204 @@ const handleWrongPallet = async () => {
         </div>
         <div class="mt-4 mx-4">
             <v-card elevation="0" class="border">
-                <VRow class="mx-4">
-                    <VCol md="8">
-                        <SearchInput @update:search="handleSearch" />
-                    </VCol>
-                    <VCol md="2" class="d-flex justify-center align-center">
-                        <v-select class="mt-1" label="Filter by Type" density="compact" :items="tagTypesOption"
-                            v-model="selectedTagType">
-                        </v-select>
-                    </VCol>
-                    <VCol md="2" class="d-flex justify-center align-center">
-                        <v-btn block :loading="exportLoading" class="d-flex align-center"
-                            prepend-icon="ri-download-line" @click="exportData">
-                            <template #prepend>
-                                <v-icon color="white"></v-icon>
-                            </template>
-                            Export
-                        </v-btn>
-                    </VCol>
-                </VRow>
-                <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
+                <template v-if="activeTab === 'batch_details'">
+                    <VRow class="mx-4">
+                        <VCol md="8">
+                            <SearchInput @update:search="handleSearch" />
+                        </VCol>
+                        <VCol md="2" class="d-flex justify-center align-center">
+                            <v-select class="mt-1" label="Filter by Type" density="compact" :items="tagTypesOption"
+                                v-model="selectedTagType">
+                            </v-select>
+                        </VCol>
+                        <VCol md="2" class="d-flex justify-center align-center">
+                            <v-btn block :loading="exportLoading" class="d-flex align-center"
+                                prepend-icon="ri-download-line" @click="exportData">
+                                <template #prepend>
+                                    <v-icon color="white"></v-icon>
+                                </template>
+                                Export
+                            </v-btn>
+                        </VCol>
+                    </VRow>
+                    <v-divider class="border-opacity-25" style="border-color: #cbcfc8;"></v-divider>
+                </template>
+
                 <v-card-text class="mx-2">
-                    <div>
-                        <div class="mb-4 d-flex justify-between align-center">
-                            <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
-                            <v-spacer></v-spacer>
+                    <v-tabs v-model="activeTab" color="primary" class="mb-4">
+                        <v-tab value="batch_details">Batch Details</v-tab>
+                        <v-tab value="quality_inspection">
+                            Quality Inspection
+                            <v-badge v-if="qualityInspectionItems.length > 0"
+                                :content="qualityInspectionItems.length"
+                                color="primary" inline class="ml-2" />
+                        </v-tab>
+                    </v-tabs>
 
-                            <v-btn @click="wrongPalletPosition" :disabled="selectedItems.length === 0" class="px-5"
-                                type="button" color="warning">
-                                Remove Batch
-                            </v-btn>
+                    <v-window v-model="activeTab">
+                        <!-- Batch Details Tab -->
+                        <v-window-item value="batch_details">
+                            <div>
+                                <div class="mb-4 d-flex justify-between align-center">
+                                    <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
+                                    <v-spacer></v-spacer>
 
-                            <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5 ml-2"
-                                type="button" color="primary-light">
-                                Change Batch
-                            </v-btn>
-                        </div>
+                                    <v-btn @click="wrongPalletPosition" :disabled="selectedItems.length === 0"
+                                        class="px-5" type="button" color="warning">
+                                        Remove Batch
+                                    </v-btn>
 
-                        <div class="mb-2" v-if="selectedItems.length > 0">
-                            <span class="text-h6 font-weight-medium text-high-emphasis">
-                                Selected items count: ({{ selectedItems.length }})
-                            </span>
-                        </div>
+                                    <v-btn @click="changeBatch" :disabled="selectedItems.length === 0"
+                                        class="px-5 ml-2" type="button" color="primary-light">
+                                        Change Batch
+                                    </v-btn>
 
-                        <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems"
-                            :headers="headers" :items="serverItems" :items-length="totalItems" :loading="pageLoading"
-                            item-value="id" :search="searchValue" @update:options="loadItems" show-select return-object
-                            class="text-no-wrap">
-
-                            <template #item.physical_id="{ item }">
-                                <span @click="handleViewRfid(item)"
-                                    class="text-primary font-weight-bold cursor-pointer hover-underline">
-                                    {{ item.rfid[0]?.name }}
-                                </span>
-                            </template>
-
-                            <template #item.material="{ item }">
-                                <span class="font-weight-bold">{{ item.material?.description }}</span><br />
-                                <span class="text-subtitle-1">{{ item.material?.bu_material }}</span>
-                            </template>
-
-                            <template #item.type="{ item }">
-                                {{ item.type }}
-                            </template>
-
-                            <template #item.mfg_date="{ item }">
-                                {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
-                            </template>
-
-                            <!-- <template #item.is_loaded="{ item }">
-                                <div class="d-flex justify-center align-center">
-                                    <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
-                                        class="ri-checkbox-circle-line"></i>
-                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"
-                                        class="ri-close-circle-line"></i>
+                                    <v-btn @click="openQualityInspection" :disabled="selectedItems.length === 0"
+                                        class="px-5 ml-2" type="button" color="success">
+                                        Quality Inspection
+                                    </v-btn>
                                 </div>
-                            </template>
 
-                            <template #item.is_empty="{ item }">
-                                <div class="d-flex justify-center align-center">
-                                    <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
-                                        class="ri-checkbox-circle-line"></i>
-                                    <i v-else style="font-size: 30px; background-color: #FF4C51;"
-                                        class="ri-close-circle-line"></i>
+                                <div class="mb-2" v-if="selectedItems.length > 0">
+                                    <span class="text-h6 font-weight-medium text-high-emphasis">
+                                        Selected items count: ({{ selectedItems.length }})
+                                    </span>
                                 </div>
-                            </template>
 
-                            <template #item.under_fumigation="{ item }">
-                                <v-btn v-if="item.under_fumigation" :to="`/fumigations/${item.fumigation_request_id}`"
-                                    color="warning" variant="outlined" size="small">
-                                    Fumigated
-                                </v-btn>
-                                <i v-else style="font-size: 30px; background-color: #FF4C51;"
-                                    class="ri-close-circle-line"></i>
-                            </template> -->
+                                <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems"
+                                    :headers="headers" :items="serverItems" :items-length="totalItems"
+                                    :loading="pageLoading" item-value="id" :search="searchValue"
+                                    @update:options="loadItems" show-select return-object class="text-no-wrap">
 
-                            <template #item.line="{ item }">
-                                <div v-if="item.plc_run">
-                                    {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? null }}
+                                    <template #item.physical_id="{ item }">
+                                        <span @click="handleViewRfid(item)"
+                                            class="text-primary font-weight-bold cursor-pointer hover-underline">
+                                            {{ item.rfid[0]?.name }}
+                                        </span>
+                                    </template>
+
+                                    <template #item.material="{ item }">
+                                        <span class="font-weight-bold">{{ item.material?.description }}</span><br />
+                                        <span class="text-subtitle-1">{{ item.material?.bu_material }}</span>
+                                    </template>
+
+                                    <template #item.type="{ item }">
+                                        {{ item.type }}
+                                    </template>
+
+                                    <template #item.mfg_date="{ item }">
+                                        {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                                    </template>
+
+                                    <template #item.line="{ item }">
+                                        <div v-if="item.plc_run">
+                                            {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? null }}
+                                        </div>
+                                    </template>
+
+                                    <template #item.commodity_status="{ item }">
+                                        <v-badge v-if="!item.inventory" color="grey" content="N/A" class="text-uppercase" inline />
+                                        <v-badge v-else-if="item.inventory.commodity_status_id === null"
+                                            color="grey" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.slug)"
+                                            :content="item.inventory.commodity_status?.name" class="text-uppercase"
+                                            inline />
+                                    </template>
+
+                                    <template #item.action="{ item }">
+                                        <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
+                                            <IconBtn size="small" @click="editItem(item)">
+                                                <VIcon icon="ri-pencil-line" />
+                                            </IconBtn>
+                                        </div>
+                                    </template>
+
+                                </VDataTableServer>
+                            </div>
+                        </v-window-item>
+
+                        <!-- Quality Inspection Tab -->
+                        <v-window-item value="quality_inspection">
+                            <div>
+                                <div class="mb-4 d-flex align-center">
+                                    <v-btn variant="text" prepend-icon="ri-arrow-left-line" color="primary"
+                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate' }">
+                                        Back to Batch Details
+                                    </v-btn>
+                                    <v-spacer></v-spacer>
+                                    <span class="text-h6 font-weight-medium text-high-emphasis">
+                                        {{ qualityInspectionItems.length }} item(s) for inspection
+                                    </span>
                                 </div>
-                            </template>
 
-                            <template #item.action="{ item }">
-                                <div v-if="authUserCan('edit.rfid')" class="d-flex gap-1">
-                                    <IconBtn size="small" @click="editItem(item)">
-                                        <VIcon icon="ri-pencil-line" />
-                                    </IconBtn>
+                                <div class="mb-4 d-flex align-center gap-3">
+                                    <v-select
+                                        style="max-width: 220px;"
+                                        density="compact"
+                                        label="Select Status"
+                                        :items="qualityInspectionStatusOptions"
+                                        v-model="qualityInspectionStatus"
+                                        hide-details />
+                                    <v-btn
+                                        color="secondary"
+                                        :disabled="!qualityInspectionStatus || qualityInspectionLoading"
+                                        :loading="qualityInspectionLoading && qualityInspectionMethod === 'simulate'"
+                                        @click="confirmQualityInspection('simulate')">
+                                        Simulate
+                                    </v-btn>
+                                    <v-btn
+                                        color="primary"
+                                        :disabled="!qualityInspectionStatus || !simulateCompleted"
+                                        :loading="qualityInspectionLoading && qualityInspectionMethod === ''"
+                                        @click="confirmQualityInspection('')">
+                                        Confirm
+                                    </v-btn>
                                 </div>
-                            </template>
 
-                        </VDataTableServer>
-                    </div>
+                                <VDataTable :headers="qualityInspectionHeaders" :items="qualityInspectionItems"
+                                    item-value="id" class="text-no-wrap">
+
+                                    <template #item.physical_id="{ item }">
+                                        <span @click="handleViewRfid(item)"
+                                            class="text-primary font-weight-bold cursor-pointer hover-underline">
+                                            {{ item.rfid[0]?.name }}
+                                        </span>
+                                    </template>
+
+                                    <template #item.material="{ item }">
+                                        <span class="font-weight-bold">{{ item.material?.description }}</span><br />
+                                        <span class="text-subtitle-1">{{ item.material?.bu_material }}</span>
+                                    </template>
+
+                                    <template #item.type="{ item }">
+                                        {{ item.type }}
+                                    </template>
+
+                                    <template #item.mfg_date="{ item }">
+                                        {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                                    </template>
+
+                                    <template #item.line="{ item }">
+                                        <div v-if="item.plc_run">
+                                            {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? null }}
+                                        </div>
+                                    </template>
+
+                                    <template #item.commodity_status="{ item }">
+                                        <v-badge v-if="!item.inventory" color="grey" content="N/A" class="text-uppercase" inline />
+                                        <v-badge v-else-if="item.inventory.commodity_status_id === null"
+                                            color="grey" content="Pending" class="text-uppercase" inline />
+                                        <v-badge v-else
+                                            :color="getCommodityStatusColor(item.inventory.commodity_status?.slug)"
+                                            :content="item.inventory.commodity_status?.name" class="text-uppercase"
+                                            inline />
+                                    </template>
+
+                                </VDataTable>
+                            </div>
+                        </v-window-item>
+                    </v-window>
                 </v-card-text>
             </v-card>
         </div>
