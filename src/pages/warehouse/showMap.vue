@@ -116,6 +116,7 @@ const fetchStorageLocationInformation = async () => {
             id: item.id || null,
             allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
             under_fumigation: item.under_fumigation,
+            for_quality_inspection: item.for_quality_inspection,
             max_layer_count: item.max_layer_count || 3,
             legend_only: item.legend_only == 1 ? true : false,
             qr_code_path: item.qr_code_path || null,
@@ -325,6 +326,7 @@ const handleEditMap = () => {
                             'bg-legend': item.type === 'lot' && (item.legend_only === true),
                             'bg-primary-light': item.type === 'lot' && !item.legend_only,
                             'under-fumigation': item.under_fumigation,
+                            'quality-inspection': item.for_quality_inspection,
                             'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
                             'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                             'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
@@ -443,6 +445,10 @@ const handleEditMap = () => {
 
 .under-fumigation {
     background-color: #f7897e;
+}
+
+.quality-inspection {
+    background-color: #FFB400;
 }
 
 .vue-grid-layout {
