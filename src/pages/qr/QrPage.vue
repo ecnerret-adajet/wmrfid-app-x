@@ -119,7 +119,7 @@ const getBinLocationInfo = async (text) => {
             showErrorModal.value = true
         } else if (err?.response?.data?.message === 'Mismatch Block' ) {
             errorMessageTitle.value = 'Mismatched Bin Detected'
-            errorMessage.value = 'The scanned bin location does not match the suggested bin for this pallet.'
+            errorMessage.value = 'The scanned bin location does not match the assigned bin for this pallet.'
             showErrorModal.value = true
         } else if (err?.response?.data?.message === 'Not yet wrapped') {
             errorMessageTitle.value = 'Not Yet Wrapped'
@@ -403,10 +403,10 @@ const tryAgain = () => {
     </DefaultModal>
 
     <ScannerModal
-      v-if="showScanner"
-      :type="scanType"
-      @close="showScanner = false"
-      @scan-result="handleScanResult($event)"
+        v-if="showScanner"
+        :type="scanType"
+        @close="showScanner = false"
+        @scan-result="handleScanResult($event)"
     />
 
     <DefaultModal

@@ -97,6 +97,7 @@ const headers = computed(() => {
         { title: 'EPC', key: 'epc', align: 'center', sortable: false },
         { title: 'BATCH', key: 'batch' },
         { title: 'MFG DATE', key: 'mfg_date', align: 'center' },
+        { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
         { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
         // Wrapping column will be conditionally included
         { title: 'LOADING', key: 'is_loaded', align: 'center', sortable: false },
@@ -848,6 +849,20 @@ const handleUnloadPallet = async () => {
             <template #item.batch="{ item }">
                 <span class="font-weight-bold">{{ item.batch }}</span><br />
                 <span v-if="item.material_name" class="text-subtitle-1">{{ item.material_name }}</span>
+            </template>
+
+             <template #item.pallet_status="{ item }">
+                <template v-if="(item.is_wrapped === '1' || item.is_wrapped === 1) && (item.commodity_status_id === 4 || item.commodity_status_id === '4')">
+                    <v-chip size="small" color="primary-light" text-color="white">Wrapped</v-chip>
+                </template>
+                <template v-else>
+                    <v-chip v-if="item.commodity_status_id === 4 || item.commodity_status_id === '4'" size="small" color="error" text-color="white">Pending</v-chip>
+                    <v-chip v-else-if="item.commodity_status_id === 3 || item.commodity_status_id === '3'" size="small" color="warning" text-color="white">For QI</v-chip>
+                    <v-chip v-else-if="item.commodity_status_id === 2 || item.commodity_status_id === '2'" size="small" color="secondary-darken-1" text-color="white">For RTM</v-chip>
+                    <v-chip v-else-if="item.commodity_status_id === 1 || item.commodity_status_id === '1'" size="small" color="primary" text-color="white">Good</v-chip>
+                    <v-chip v-else-if="item.commodity_status_id === 6 || item.commodity_status_id === '6'" size="small" color="info" text-color="white">Wrapped</v-chip>
+                    <span v-else>-</span>
+                </template>
             </template>
 
             <template #item.mfg_date="{ item }">

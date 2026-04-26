@@ -17,10 +17,10 @@ const handleNavChange = (val) => {
 </script>
 
 <template>
-    <v-bottom-navigation  v-model="value" color="primary" active mode="shift" app fixed grow>
+    <v-bottom-navigation v-model="value" color="primary" active mode="shift" app fixed grow>
         <v-btn :value="0" @click="handleNavChange(0)">
             <v-icon icon="ri-exchange-line" size="30"></v-icon>
-            <span>Transfer Request</span>
+            <span>Transfer Requests</span>
         </v-btn>
 
         <v-btn :value="1" @click="handleNavChange(1)">
@@ -30,7 +30,7 @@ const handleNavChange = (val) => {
 
         <v-btn :value="2" @click="handleNavChange(2)">
             <v-icon icon="ri-map-pin-line" size="30"></v-icon>
-            <span>Warehouse Bin</span>
+            <span>Storage Bin</span>
         </v-btn>
         
     </v-bottom-navigation>

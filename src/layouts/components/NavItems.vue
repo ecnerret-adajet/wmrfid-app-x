@@ -88,6 +88,11 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.manual.repack')"
         :item="{ title: 'Repacking', icon: 'ri-user-settings-line', to: '/repacking' }" />
 
+    <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
+        :item="{ title: 'Putaway', icon: 'ri-database-2-line', 
+        to: `${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
+    
+
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
     <!-- Shipments Section  -->
