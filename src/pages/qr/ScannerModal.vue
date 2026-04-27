@@ -122,7 +122,11 @@ async function startScanner() {
     error.value = null
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 }
+            },
         })
 
         if (videoEl.value) {
@@ -143,8 +147,7 @@ async function startScanner() {
         }
 
         const codeReader = new BrowserQRCodeReader()
-        scanControls = await codeReader.decodeFromVideoDevice(
-            undefined,
+        scanControls = await codeReader.decodeFromVideoElement(
             videoEl.value,
             (result, err) => {
                 if (result) {
