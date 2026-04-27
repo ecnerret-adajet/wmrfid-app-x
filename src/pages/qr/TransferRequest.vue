@@ -343,8 +343,8 @@ const confirmWrapping = async (text) => {
             errorMessage.value = 'No batch assigned on pallet. Please verify or coordinate with Production for reconciliation.';
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Already on wrapping Area') {
-            errorMessageTitle.value = 'Pallet Already on Wrapping Area';
-            errorMessage.value = 'This pallet is already on the wrapping area but not yet tagged as wrapped. Please raise to IT for assistance.';
+            errorMessageTitle.value = 'Wrapping not yet detected';
+            errorMessage.value = 'Wrapping completion not yet detected. If completed, raise to IT for assistance.';
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Pallet is already wrapped.') {
             errorMessageTitle.value = 'Pallet Already Wrapped';
