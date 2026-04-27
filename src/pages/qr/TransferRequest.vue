@@ -5,6 +5,19 @@
                 <div class="text-subtitle-2 font-weight-medium">
                     Transfer Requests
                 </div>
+                <!-- <v-btn icon color="primary" @click="syncTransferRequests" :title="'Sync'">
+                    <v-icon>mdi-sync</v-icon>
+                </v-btn>
+                <VIcon class="clickable-icon" v-bind="props" size="30"
+                    color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" /> -->
+
+                <VTooltip location="top">
+                    <template #activator="{ props }">
+                        <VIcon class="clickable-icon" v-bind="props" size="30"
+                            color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" />
+                    </template>
+                    <span>Refresh Data</span>
+                </VTooltip>
             </div>
             <div class="mt-5">
                 <v-select
@@ -22,7 +35,7 @@
             <v-row>
                 <v-col
                     v-for="item in filteredItems?.transfer_requests"
-                    :key="item.transfer_request_id"
+                    :key="item.id"
                     cols="12"
                 >
                 <v-card class="pa-3" rounded="lg" elevation="2">
@@ -79,6 +92,12 @@
                         </v-sheet>
 
                         <v-sheet v-if="item.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <span>Wrapped Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ item.wrapped_datetime ? moment(item.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Assigned Bin #:</span>
                                 <span class="font-weight-medium">
@@ -170,10 +189,23 @@ import DefaultModal from '@/components/DefaultModal.vue';
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
 import { useTransferRequestsStore } from '@/stores/transferRequests';
+import moment from 'moment';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
+
+function syncTransferRequests() {
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        toast.message = 'Syncing transfer requests...';
+        toast.color = 'info';
+        toast.show = true;
+    }
+}
 
 const headers = [
   { text: 'Trans Request ID', value: 'transfer_request_id' },
@@ -240,9 +272,9 @@ async function generateTransferOrder(item) {
     const forklift = route.params.forklift;
     if (!plant_code || !sloc || !forklift) return;
     selectedTransferRequest.value = item.transfer_request_id;
+  
     try {
-        const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.transfer_request_id);
-      
+        const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id);
     } catch (err) {
         // Optionally show an error message
         if (err?.response?.data?.message === 'No Assigned Bin' ) {
@@ -252,6 +284,8 @@ async function generateTransferOrder(item) {
         }
     } finally {
         selectedTransferRequest.value = null;
+        // Refresh the list after operation
+        transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
     }
 }
 
@@ -323,6 +357,7 @@ const confirmWrapping = async (text) => {
         }
     } finally {
         isLoading.value = false;
+        transferRequestsStore.fetchTransferRequests(route.params.plant_code, route.params.sloc, route.params.forklift);
     }
 }
 
@@ -367,6 +402,7 @@ const confirmPutaway = async (text) => {
         }
     } finally {
         isLoading.value = false;
+        transferRequestsStore.fetchTransferRequests(route.params.plant_code, route.params.sloc, route.params.forklift);
     }
 }
 

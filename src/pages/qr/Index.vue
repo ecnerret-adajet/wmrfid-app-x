@@ -24,7 +24,7 @@ const plant_code = computed(() => route.params.plant_code)
 const sloc = computed(() => route.params.sloc)
 const forklift = computed(() => route.params.forklift)
 
-const navigation = ref(1)
+const navigation = ref(0)
 
 const handleNavChange = (val) => {
     navigation.value = val

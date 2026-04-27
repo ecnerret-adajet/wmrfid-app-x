@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 
 const emit = defineEmits(['update:nav'])
 
-const value = ref(1)
+const value = ref(0)
 
 // Watch for changes and emit to parent
 watch(value, (newVal) => {

@@ -43,15 +43,15 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
         this.transferOrderResponse = data;
 
         // Update only the affected transfer request in the items array
-        if (data && data.transfer_request) {
-          const idx = this.items?.transfer_requests?.findIndex(
-            (tr) => tr.transfer_request_id === transferRequestId
-          );
-          if (idx !== -1) {
-            this.items.transfer_requests[idx] = data.transfer_request;
-          }
+        // if (data && data.transfer_request) {
+        //   const idx = this.items?.transfer_requests?.findIndex(
+        //     (tr) => tr.transfer_request_id === transferRequestId
+        //   );
+        //   if (idx !== -1) {
+        //     this.items.transfer_requests[idx] = data.transfer_request;
+        //   }
 
-        }
+        // }
         return data;
       } catch (e) {
         this.error = e;
@@ -75,14 +75,14 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
         });
 
         // Update only the affected transfer request in the items array
-        if (data && data.transfer_request) {
-          const idx = this.items?.transfer_requests?.findIndex(
-            (tr) => tr.transfer_request_id === data.transfer_request.transfer_request_id
-          );
-          if (idx !== -1) {
-            this.items.transfer_requests[idx] = data.transfer_request;
-          }
-        }
+        // if (data && data.transfer_request) {
+        //   const idx = this.items?.transfer_requests?.findIndex(
+        //     (tr) => tr.transfer_request_id === data.transfer_request.transfer_request_id
+        //   );
+        //   if (idx !== -1) {
+        //     this.items.transfer_requests[idx] = data.transfer_request;
+        //   }
+        // }
         return data;
       } catch (e) {
         this.error = e;
@@ -107,14 +107,14 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
         });
 
         // Update only the affected transfer request in the items array
-        if (data && data.transfer_request) {
-            const idx = this.items?.transfer_requests?.findIndex(
-                (tr) => tr.transfer_request_id === data.transfer_request.transfer_request_id
-            );
-            if (idx !== -1) {
-                this.items.transfer_requests[idx] = data.transfer_request;
-            }
-        }
+        // if (data && data.transfer_request) {
+        //     const idx = this.items?.transfer_requests?.findIndex(
+        //         (tr) => tr.transfer_request_id === data.transfer_request.transfer_request_id
+        //     );
+        //     if (idx !== -1) {
+        //         this.items.transfer_requests[idx] = data.transfer_request;
+        //     }
+        // }
         return data;
       } catch (e) {
         this.error = e;
