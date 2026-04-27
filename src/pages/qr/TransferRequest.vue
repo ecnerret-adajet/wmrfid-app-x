@@ -91,7 +91,7 @@
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Wrapped Date:</span>
                                 <span class="font-weight-medium">
