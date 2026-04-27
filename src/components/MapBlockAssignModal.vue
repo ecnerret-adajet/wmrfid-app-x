@@ -650,7 +650,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
 </template>
 <style scoped>
 .layer-1 {
-    background-color: #eece70;
+    background-color: #a18940;
     color: white;
 }
 
@@ -683,6 +683,10 @@ function onQrGenerated({ block_id, qr_code_path }) {
 
 .under-fumigation {
     background-color: #f7897e;
+}
+
+.quality-inspection {
+    background-color: #FFB400;
 }
 
 .assigned-info {

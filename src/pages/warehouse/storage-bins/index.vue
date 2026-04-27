@@ -129,7 +129,7 @@
         >
             <!-- Removed custom checkbox to allow native selection to work -->
             <template #item.block="{ item }">
-                {{ item.label }}
+                {{ item.lot?.label}}-{{item.label }}
             </template>
             <template #item.lot="{ item }">
                 {{ item.lot?.label }}
@@ -157,20 +157,24 @@
                 <span v-else>-</span>
             </template>
             <template #item.actions="{ item }">
-                <v-btn icon="ri-qr-code-line" @click="() => handleQr(item)" color="primary"></v-btn>
+                <v-btn icon="ri-qr-code-line" @click="() => openQrModal(item)" color="primary"></v-btn>
             </template>
         </VDataTableServer>
     </VCard>
-    <QrCodeModal
+
+    <BlockQrCodeModal
         v-model="qrModal"
-        :physical-id="qrTarget.qr"
-        :has-existing-qr="true"
+        :block-id="qrTarget.blockId"
+        :has-existing-qr="qrTarget.hasExistingQr"
+        :block-label="`${selectedQrBlock?.lot?.label} - ${selectedQrBlock?.label}`"
+        @generated="onQrGenerated"
     />
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
   </div>
 </template>
 
 <script setup>
+import BlockQrCodeModal from '@/components/BlockQrCodeModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
@@ -190,8 +194,6 @@ const itemsPerPage = ref(20);
 const page = ref(1);
 const totalItems = ref(0);
 const pageLoading = ref(false);
-const qrModal = ref(false);
-const qrTarget = ref({ qr: null });
 const sortQuery = ref('-created_at');
 const totalBlock = ref(0);
 const occupiedCount = ref(0);
@@ -318,9 +320,9 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     }
 }
 const handleQr = (bin) => {
-    qrTarget.value = { qr: bin.qr };
+    qrTarget.value = { qr: bin.qr_code_path };
     qrModal.value = true;
-    
+    console.log(bin);
 };
 
 // For multi-select and assignment
@@ -412,4 +414,25 @@ async function updatePriority2() {
         pageLoading.value = false;
     }
 }
+
+const qrModal = ref(false);
+const qrTarget = ref({ blockId: null, hasExistingQr: false });
+
+const selectedQrBlock = ref(null);
+function openQrModal(bin) {
+    selectedQrBlock.value = bin;
+    qrTarget.value = {
+        blockId: bin.id,
+        hasExistingQr: !!bin.qr_code_path,
+    };
+    console.log(qrTarget.value)
+    qrModal.value = true;
+}
+
+function onQrGenerated({ block_id, qr_code_path }) {
+    if (selectedQrBlock.value) {
+        selectedQrBlock.value.qr_code_path = qr_code_path;
+    }
+}
+
 </script>
