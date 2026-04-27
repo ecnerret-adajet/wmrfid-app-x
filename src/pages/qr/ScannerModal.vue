@@ -67,7 +67,7 @@
                 </div>
             </v-card-text>
 
-            <v-card-actions class="justify-center pb-8">
+            <v-card-actions class="justify-center pb-12">
                 <v-btn style="z-index: 99;"
                     variant="elevated"
                     color="white"

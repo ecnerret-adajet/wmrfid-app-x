@@ -23,12 +23,7 @@ const handleNavChange = (val) => {
             <span>Transfer Requests</span>
         </v-btn>
 
-        <v-btn :value="1" @click="handleNavChange(1)">
-            <v-icon icon="ri-qr-scan-2-line" size="30"></v-icon>
-            <span>QR Scanner</span>
-        </v-btn>
-
-        <v-btn :value="2" @click="handleNavChange(2)">
+        <v-btn :value="2" @click="handleNavChange(1)">
             <v-icon icon="ri-map-pin-line" size="30"></v-icon>
             <span>Storage Bin</span>
         </v-btn>

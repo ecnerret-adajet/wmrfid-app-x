@@ -158,7 +158,7 @@
         </div>
         </DefaultModal>
 
-        <Loader :show="isLoading" />
+        <Loader :show="isLoading || transferRequestsStore.loading" />
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
     </v-container>
     
@@ -190,7 +190,7 @@ const toast = reactive({
 
 
 const statusOptions = ['Pending', 'For Putaway' , 'For Wrapping', 'Completed']
-const selectedStatus = ref(null)
+const selectedStatus = ref('Pending')
 
 // Pinia store usage
 const route = useRoute();
