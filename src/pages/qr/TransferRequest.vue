@@ -273,7 +273,7 @@ onMounted(() => {
 const getStatusColor = (status) => {
     switch (status) {
         case 'For Putaway': return 'success'
-        case 'Pending': return 'warning'
+        case 'Pending': return 'error'
         case 'For Wrapping': return 'info'
         case 'Completed': return 'primary'
         default: return 'grey'
