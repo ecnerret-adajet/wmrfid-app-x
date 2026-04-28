@@ -167,7 +167,7 @@
                             class="mt-1"
                             @click="generateTransferOrder(item)"
                         >
-                            Scan to Generate Transfer Order
+                            Generate Transfer Order
                         </v-btn>
                         <v-sheet v-else class="w-100 pa-2 mb-2" color="#F75959" rounded>
                             <span>Invalid Request</span>
@@ -249,7 +249,7 @@ const toast = reactive({
 });
 
 
-const statusOptions = ['Pending', 'For Putaway' , 'For Wrapping', 'Completed', 'Invalid Request']
+const statusOptions = ['Pending', 'For Wrapping', 'For Putaway', 'Completed', 'Invalid Request']
 const selectedStatus = ref('Pending')
 
 // Pinia store usage
