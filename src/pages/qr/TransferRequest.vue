@@ -91,9 +91,9 @@
                             </div>
                         </v-sheet>
 
-                        <v-sheet  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="item.status_text !== 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
-                                <span>Wrapped Date:</span>
+                                <span>RFID Wrapped Date:</span>
                                 <span class="font-weight-medium">
                                     {{ item.wrapped_datetime ? moment(item.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
                                 </span>
@@ -108,6 +108,10 @@
                                 <span>Assigned Layer:</span>
                                 <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || '--' }}</span>
                             </div>
+                        </v-sheet>
+
+                        <v-sheet v-if="item.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
+                            <span>Invalid Request</span>
                         </v-sheet>
                         
                         <v-btn v-if="item.has_wrapping_area && item.status_text === 'For Wrapping'"
@@ -135,15 +139,18 @@
                     <div v-else class="d-flex flex-column align-center">
                     <div class="text-primary-2 mb-2">No TO yet</div>
                     <v-divider />
-                    <v-btn
-                        color="primary"
-                        block
-                        :loading="selectedTransferRequest === item.transfer_request_id"
-                        class="mt-1"
-                        @click="generateTransferOrder(item)"
-                    >
-                        Generate Transfer Order
-                    </v-btn>
+                        <v-btn v-if="item.status_text !== 'Invalid Request'"
+                            color="primary"
+                            block
+                            :loading="selectedTransferRequest === item.transfer_request_id"
+                            class="mt-1"
+                            @click="generateTransferOrder(item)"
+                        >
+                            Scan to Generate Transfer Order
+                        </v-btn>
+                        <v-sheet v-else class="w-100 pa-2 mb-2" color="#F75959" rounded>
+                            <span>Invalid Request</span>
+                        </v-sheet>
                     </div>
 
                 </v-card>
@@ -221,7 +228,7 @@ const toast = reactive({
 });
 
 
-const statusOptions = ['Pending', 'For Putaway' , 'For Wrapping', 'Completed']
+const statusOptions = ['Pending', 'For Putaway' , 'For Wrapping', 'Completed', 'Invalid Request']
 const selectedStatus = ref('Pending')
 
 // Pinia store usage
