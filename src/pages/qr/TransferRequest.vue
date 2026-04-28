@@ -32,13 +32,32 @@
             </div>
         </v-card>
         <div class="flex-grow-1 overflow-y-auto pb-16">
+            <div class="mb-2 font-weight-medium text-h4">
+                Showing {{ filteredItems.transfer_requests.length }} entries
+            </div>
+            <div class="mb-4">
+                <v-text-field
+                    v-model="searchQuery"
+                    label="Search"
+                    clearable
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    prepend-inner-icon="mdi-magnify"
+                />
+            </div>
             <v-row>
                 <v-col
                     v-for="item in filteredItems?.transfer_requests"
                     :key="item.id"
                     cols="12"
                 >
-                <v-card class="pa-3" rounded="lg" elevation="2">
+                <v-card
+                    class="pa-3"
+                    rounded="lg"
+                    elevation="2"
+                    :id="'tr-card-' + item.id"
+                >
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
                         <div class="font-weight-bold">
@@ -48,6 +67,8 @@
                             size="small"
                             :color="getStatusColor(item.status_text)"
                             dark
+                            class="clickable"
+                            @click="selectedStatus = item.status_text"
                         >
                             {{ item.status_text }}
                         </v-chip>
@@ -259,14 +280,26 @@ const getStatusColor = (status) => {
     }
 }
 
+const searchQuery = ref('');
 const filteredItems = computed(() => {
     if (!items.value || !items.value.transfer_requests) return { transfer_requests: [] };
-    if (!selectedStatus.value) return items.value;
-    return {
-        ...items.value,
-        transfer_requests: items.value.transfer_requests.filter(item => item.status_text === selectedStatus.value)
-    };
-})
+    let filtered = items.value.transfer_requests;
+    if (selectedStatus.value) {
+        filtered = filtered.filter(item => item.status_text === selectedStatus.value);
+    }
+    if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        filtered = filtered.filter(item => {
+            return (
+                (item.physical_id && item.physical_id.toLowerCase().includes(q)) ||
+                (item.batch && item.batch.toLowerCase().includes(q)) ||
+                (item.transfer_request_id && item.transfer_request_id.toString().toLowerCase().includes(q)) ||
+                (item.transfer_order?.transfer_order_id && item.transfer_order.transfer_order_id.toString().toLowerCase().includes(q))
+            );
+        });
+    }
+    return { ...items.value, transfer_requests: filtered };
+});
 
 const showScanner = ref(false);
 const scanType = ref('pallet');
@@ -279,11 +312,22 @@ async function generateTransferOrder(item) {
     const forklift = route.params.forklift;
     if (!plant_code || !sloc || !forklift) return;
     selectedTransferRequest.value = item.transfer_request_id;
-  
     try {
         const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id);
+        // Wait for the store to refresh
+        await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        // Find the updated item
+        const updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
+        if (updated) {
+            // Set the filter to the new status
+            selectedStatus.value = updated.status_text;
+            // Scroll to the card after DOM update
+            setTimeout(() => {
+                const el = document.getElementById('tr-card-' + updated.id);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
     } catch (err) {
-        // Optionally show an error message
         if (err?.response?.data?.message === 'No Assigned Bin' ) {
             errorMessageTitle.value = 'Error'
             errorMessage.value = 'No assigned bin. Contact IT regarding putaway strategy.'
@@ -291,8 +335,6 @@ async function generateTransferOrder(item) {
         }
     } finally {
         selectedTransferRequest.value = null;
-        // Refresh the list after operation
-        transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
     }
 }
 
