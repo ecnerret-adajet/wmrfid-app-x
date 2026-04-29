@@ -266,7 +266,7 @@
                             min="1"
                             style="max-width: 140px"
                             :suffix="weakPalletInfo.unit || 'bags'"
-                            readonly=""
+                     
                         />
                     </div>
                 </v-sheet>
