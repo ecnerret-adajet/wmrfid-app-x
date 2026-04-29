@@ -245,8 +245,6 @@
                             item-title="description"
                             item-value="id"
                             return-object
-                            hide-no-data
-                            :filter-keys="['description']"
                         />
                     </div>
                     <v-divider class="mb-2" />
@@ -268,6 +266,7 @@
                             min="1"
                             style="max-width: 140px"
                             :suffix="weakPalletInfo.unit || 'bags'"
+                            readonly=""
                         />
                     </div>
                 </v-sheet>
@@ -281,6 +280,54 @@
                 class="mt-2"
             />
 
+
+            <template v-if="weakPalletInfo.physical_id">
+                <!-- camera buttons -->
+                <div class="mb-2">
+                    <v-btn 
+                        v-if="!stream"
+                        class="mt-4 mr-2"
+                        color="info"
+                        variant="elevated"
+                        @click="startCamera()"
+                    >
+                        Take Photo
+                    </v-btn>
+                    <v-btn
+                        v-if="stream"
+                        class="mt-4 mr-2"
+                        color="primary"
+                        variant="elevated"
+                        @click="captureImage()"
+                    >
+                        Capture
+                    </v-btn>
+                    <v-btn 
+                        v-if="stream"
+                        class="mt-4"
+                        color="error"
+                        variant="elevated"
+                        @click="stopCamera()"
+                    >
+                        Stop Camera
+                    </v-btn>
+                </div>
+
+                <!-- image preview -->
+                <div v-if="image">
+                    <h4>Preview:</h4>
+                    <img :src="image" width="100%" />
+                </div>
+                <div v-else class="d-flex ga-2 mt-4">
+                    <video ref="video" autoplay playsinline width="100%"></video>
+                    <canvas ref="canvas" style="display:none;"></canvas>
+                </div>
+
+                
+            </template>
+
+             <v-divider class="mt-4" />
+
             <div class="d-flex ga-2 mt-4 justify-end">
                 <v-btn
                     variant="outlined"
@@ -289,7 +336,7 @@
                     Cancel
                 </v-btn>
                 <v-btn
-                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material"
+                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material && image"
                     color="warning"
                     variant="elevated"
                     :disabled="!weakPalletInfo"
@@ -544,6 +591,7 @@ function close() {
 const showWeakPalletModal = ref(false)
 const weakPalletSearch = ref('')
 const weakPalletInfo = reactive({
+    id: null,
     physical_id: null,
     batch: null,
     commodity_name: null,
@@ -557,13 +605,23 @@ const isSearchingPallet = ref(false);
 const isConfirmingWeakPallet = ref(false);
 
 const confirmWeakPallet = async () => {
+
     isConfirmingWeakPallet.value = true
     try {
-        await ApiService.post('rfid-pallet/confirm-weak-pallet', {
-            pallet_info: weakPalletInfo,
-            plant_code: route.params.plant_code,
-            sloc: route.params.sloc,
-        })
+        await ApiService.post(
+            'rfid-pallet/confirm-weak-pallet',
+            {
+                pallet_info: weakPalletInfo,
+                plant_code: route.params.plant_code,
+                sloc: route.params.sloc,
+                image: image.value // ✅ send directly
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
         toast.message = 'Pallet successfully tagged as weak'
         toast.color = 'warning'
         toast.show = true
@@ -584,6 +642,7 @@ const closeWeakPalletModal = () => {
     weakPalletInfo.value = null
     weakPalletInfo.physical_id = null
     weakPalletQuantity.value = 40
+    stopCamera();
 }
 
 const findPallet = debounce(async () => {
@@ -600,7 +659,9 @@ const findPallet = debounce(async () => {
             }
         );
 
+        weakPalletInfo.id = response.data.id;
         weakPalletInfo.physical_id = response.data.name;
+        weakPalletInfo.storage_location_id = response.data.storage_location_id;
 
     } catch (error) {
         console.error(error);
@@ -610,7 +671,7 @@ const findPallet = debounce(async () => {
 }, 500);
 
 const searchMaterials = debounce(async (search) => {
-    isLoading.value = true;
+    // isLoading.value = true;
 
     try {
         const response = await ApiService.query(
@@ -625,10 +686,40 @@ const searchMaterials = debounce(async (search) => {
     } catch (error) {
         console.error(error);
     } finally {
-        isLoading.value = false;
+        // isLoading.value = false;
     }
 }, 500);
 
+
+const video = ref(null)
+const canvas = ref(null)
+const image = ref(null)
+const stream = ref(null)
+
+const startCamera = async () => {
+    image.value = null;
+    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
+    video.value.srcObject = stream.value
+}
+const stopCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop())
+    stream.value = null
+  }
+
+  if (video.value) {
+    video.value.srcObject = null
+  }
+}
+
+const captureImage = () => {
+    const ctx = canvas.value.getContext('2d')
+    canvas.value.width = video.value.videoWidth
+    canvas.value.height = video.value.videoHeight
+    ctx.drawImage(video.value, 0, 0)
+    image.value = canvas.value.toDataURL('image/png') // base64
+    stopCamera();
+}
 </script>
 
 <style scoped>

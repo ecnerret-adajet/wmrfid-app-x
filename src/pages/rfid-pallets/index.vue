@@ -1070,6 +1070,7 @@ const handleUnloadPallet = async () => {
                             :items="materialsOption" v-model="manualBatchUpdateForm.material_id"
                             :rules="[value => !!value || 'Please select an item from the list']" />
                     </v-col>
+                    {{  manualBatchUpdateForm  }}
                     <v-col cols="12" md="6">
                         <DateTimePicker v-model="manualBatchUpdateForm.mfg_date"
                             placeholder="Select Manufacturing Date" />
