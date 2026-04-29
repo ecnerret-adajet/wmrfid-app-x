@@ -196,6 +196,7 @@
             @close="closeWeakPalletModal"
         >
             <div class="d-flex ga-2 mb-4">
+                <!-- Search Pallet -->
                 <v-text-field
                     v-model="weakPalletSearch"
                     label="Search Pallet"
@@ -204,20 +205,19 @@
                     variant="outlined"
                     density="compact"
                     hide-details
-                    @keyup.enter="searchPallet"
                 />
                 <v-btn
                     color="primary"
                     variant="elevated"
                     :loading="isSearchingPallet"
-                    @click="searchPallet"
+                    @click="findPallet()"
                 >
                     Search
                 </v-btn>
             </div>
 
             <v-card
-                v-if="weakPalletInfo"
+                v-if="weakPalletInfo.physical_id"
                 class="pa-3"
                 elevation="2"
                 rounded="lg"
@@ -235,16 +235,28 @@
                         <span class="font-weight-medium">{{ weakPalletInfo.physical_id }}</span>
                     </div>
                     <v-divider class="mb-2" />
+
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span class="mr-2">Commodity: </span>
+                        <v-autocomplete
+                            v-model="weakPalletInfo.material"
+                            :items="materials"
+                            :loading="isLoading"
+                            item-title="description"
+                            item-value="id"
+                            return-object
+                            hide-no-data
+                            :filter-keys="['description']"
+                        />
+                    </div>
+                    <v-divider class="mb-2" />
+
                     <div class="d-flex justify-space-between align-center mb-2">
                         <span>Batch: </span>
-                        <span class="font-weight-medium text-primary">{{ weakPalletInfo.batch || '--' }}</span>
+                        <span class="font-weight-medium text-primary">{{ weakPalletInfo?.material?.code || '--' }}</span>
                     </div>
                     <v-divider class="mb-2" />
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Commodity: </span>
-                        <span class="font-weight-medium">{{ weakPalletInfo.commodity_name || '--' }}</span>
-                    </div>
-                    <v-divider class="mb-2" />
+             
                     <div class="d-flex justify-space-between align-center">
                         <span>Quantity: </span>
                         <v-text-field
@@ -277,6 +289,7 @@
                     Cancel
                 </v-btn>
                 <v-btn
+                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material"
                     color="warning"
                     variant="elevated"
                     :disabled="!weakPalletInfo"
@@ -301,9 +314,10 @@ import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useTransferRequestsStore } from '@/stores/transferRequests';
+import { debounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
 
@@ -352,6 +366,7 @@ onMounted(() => {
   if (plant_code && sloc && forklift) {
     transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
   }
+  searchMaterials();
 });
 
 const getStatusColor = (status) => {
@@ -528,44 +543,24 @@ function close() {
 // Tag Weak Pallet
 const showWeakPalletModal = ref(false)
 const weakPalletSearch = ref('')
-const weakPalletInfo = ref({
-    physical_id: 'PLT-2026-00123',
-    batch: 'AGRPKD29',
-    commodity_name: 'Fertilizer',
+const weakPalletInfo = reactive({
+    physical_id: null,
+    batch: null,
+    commodity_name: null,
     quantity: 40,
-    unit: 'bags'
-})
-const weakPalletQuantity = ref(40)
-const isSearchingPallet = ref(false)
-const isConfirmingWeakPallet = ref(false)
-
-const searchPallet = async () => {
-    if (!weakPalletSearch.value.trim()) return
-    isSearchingPallet.value = true
-    weakPalletInfo.value = null
-    try {
-        const response = await ApiService.query('rfid/pallets/search', {
-            search: weakPalletSearch.value,
-            plant_code: route.params.plant_code,
-            sloc: route.params.sloc,
-        })
-        weakPalletInfo.value = response.data?.data ?? response.data
-        weakPalletQuantity.value = weakPalletInfo.value?.quantity ?? 40
-    } catch (err) {
-        errorMessageTitle.value = 'Pallet Not Found'
-        errorMessage.value = err?.response?.data?.message || 'No pallet found matching the search criteria.'
-        showErrorModal.value = true
-    } finally {
-        isSearchingPallet.value = false
-    }
-}
+    unit: 'bags',
+    material: null,
+});
+const materials = ref([]);
+const weakPalletQuantity = ref(40);
+const isSearchingPallet = ref(false);
+const isConfirmingWeakPallet = ref(false);
 
 const confirmWeakPallet = async () => {
-    if (!weakPalletInfo.value) return
     isConfirmingWeakPallet.value = true
     try {
-        await ApiService.post('rfid/pallets/tag-weak', {
-            physical_id: weakPalletInfo.value.physical_id,
+        await ApiService.post('rfid-pallet/confirm-weak-pallet', {
+            pallet_info: weakPalletInfo,
             plant_code: route.params.plant_code,
             sloc: route.params.sloc,
         })
@@ -573,6 +568,7 @@ const confirmWeakPallet = async () => {
         toast.color = 'warning'
         toast.show = true
         closeWeakPalletModal()
+        syncTransferRequests();
     } catch (err) {
         errorMessageTitle.value = 'Error'
         errorMessage.value = err?.response?.data?.message || 'An unexpected error occurred.'
@@ -586,8 +582,52 @@ const closeWeakPalletModal = () => {
     showWeakPalletModal.value = false
     weakPalletSearch.value = ''
     weakPalletInfo.value = null
+    weakPalletInfo.physical_id = null
     weakPalletQuantity.value = 40
 }
+
+const findPallet = debounce(async () => {
+    isLoading.value = true;
+
+    try {
+        const response = await ApiService.query(
+            `rfid-pallet/find-pallet`,
+            {
+                params: { 
+                    pallet_name: weakPalletSearch.value, 
+                    plant_code: route.params.plant_code 
+                }
+            }
+        );
+
+        weakPalletInfo.physical_id = response.data.name;
+
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isLoading.value = false;
+    }
+}, 500);
+
+const searchMaterials = debounce(async (search) => {
+    isLoading.value = true;
+
+    try {
+        const response = await ApiService.query(
+            `rfid-pallet/${route.params.plant_code}/search-materials`,
+            {
+                params: { search }
+            }
+        );
+
+        materials.value = response.data;
+
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isLoading.value = false;
+    }
+}, 500);
 
 </script>
 
