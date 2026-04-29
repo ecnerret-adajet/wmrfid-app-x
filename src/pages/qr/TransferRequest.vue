@@ -11,13 +11,24 @@
                 <VIcon class="clickable-icon" v-bind="props" size="30"
                     color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" /> -->
 
-                <VTooltip location="top">
-                    <template #activator="{ props }">
-                        <VIcon class="clickable-icon" v-bind="props" size="30"
-                            color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" />
-                    </template>
-                    <span>Refresh Data</span>
-                </VTooltip>
+                <div class="d-flex align-center ga-2">
+                    <v-btn
+                        size="small"
+                        color="warning"
+                        variant="elevated"
+                        prepend-icon="ri-flag-2-line"
+                        @click="showWeakPalletModal = true"
+                    >
+                        Tag Weak Pallet
+                    </v-btn>
+                    <VTooltip location="top">
+                        <template #activator="{ props }">
+                            <VIcon class="clickable-icon" v-bind="props" size="30"
+                                color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" />
+                        </template>
+                        <span>Refresh Data</span>
+                    </VTooltip>
+                </div>
             </div>
             <div class="mt-5">
                 <v-select
@@ -205,6 +216,166 @@
         </div>
         </DefaultModal>
 
+        <!-- Tag Weak Pallet Modal -->
+        <DefaultModal
+            :show="showWeakPalletModal"
+            dialog-title="Tag Weak Pallet"
+            max-width="500px"
+            @close="closeWeakPalletModal"
+        >
+            <div class="d-flex ga-2 mb-4">
+                <!-- Search Pallet -->
+                <v-text-field
+                    v-model="weakPalletSearch"
+                    label="Search Pallet"
+                    placeholder="Enter pallet ID or name"
+                    append-inner-icon="ri-search-line"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                />
+                <v-btn
+                    color="primary"
+                    variant="elevated"
+                    :loading="isSearchingPallet"
+                    @click="findPallet()"
+                >
+                    Search
+                </v-btn>
+            </div>
+
+            <v-card
+                v-if="weakPalletInfo.physical_id"
+                class="pa-3"
+                elevation="2"
+                rounded="lg"
+            >
+                <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">
+                    Pallet Information
+                </div>
+                <v-sheet
+                    color="#f5f5f5"
+                    rounded
+                    class="pa-3"
+                >
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Pallet Name: </span>
+                        <span class="font-weight-medium">{{ weakPalletInfo.physical_id }}</span>
+                    </div>
+                    <v-divider class="mb-2" />
+
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span class="mr-2">Commodity: </span>
+                        <v-autocomplete
+                            v-model="weakPalletInfo.material"
+                            :items="materials"
+                            :loading="isLoading"
+                            item-title="description"
+                            item-value="id"
+                            return-object
+                        />
+                    </div>
+                    <v-divider class="mb-2" />
+
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Batch: </span>
+                        <span class="font-weight-medium text-primary">{{ weakPalletInfo?.material?.code || '--' }}</span>
+                    </div>
+                    <v-divider class="mb-2" />
+             
+                    <div class="d-flex justify-space-between align-center">
+                        <span>Quantity: </span>
+                        <v-text-field
+                            v-model.number="weakPalletQuantity"
+                            type="number"
+                            density="compact"
+                            variant="outlined"
+                            hide-details
+                            min="1"
+                            style="max-width: 140px"
+                            :suffix="weakPalletInfo.unit || 'bags'"
+                     
+                        />
+                    </div>
+                </v-sheet>
+            </v-card>
+
+            <v-empty-state
+                v-else
+                icon="ri-search-line"
+                title="Search for a pallet"
+                text="Enter a pallet ID or name above to view its details."
+                class="mt-2"
+            />
+
+
+            <template v-if="weakPalletInfo.physical_id">
+                <!-- camera buttons -->
+                <div class="mb-2">
+                    <v-btn 
+                        v-if="!stream"
+                        class="mt-4 mr-2"
+                        color="info"
+                        variant="elevated"
+                        @click="startCamera()"
+                    >
+                        Take Photo
+                    </v-btn>
+                    <v-btn
+                        v-if="stream"
+                        class="mt-4 mr-2"
+                        color="primary"
+                        variant="elevated"
+                        @click="captureImage()"
+                    >
+                        Capture
+                    </v-btn>
+                    <v-btn 
+                        v-if="stream"
+                        class="mt-4"
+                        color="error"
+                        variant="elevated"
+                        @click="stopCamera()"
+                    >
+                        Stop Camera
+                    </v-btn>
+                </div>
+
+                <!-- image preview -->
+                <div v-if="image">
+                    <h4>Preview:</h4>
+                    <img :src="image" width="100%" />
+                </div>
+                <div v-else class="d-flex ga-2 mt-4">
+                    <video ref="video" autoplay playsinline width="100%"></video>
+                    <canvas ref="canvas" style="display:none;"></canvas>
+                </div>
+
+                
+            </template>
+
+             <v-divider class="mt-4" />
+
+            <div class="d-flex ga-2 mt-4 justify-end">
+                <v-btn
+                    variant="outlined"
+                    @click="closeWeakPalletModal"
+                >
+                    Cancel
+                </v-btn>
+                <v-btn
+                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material && image"
+                    color="warning"
+                    variant="elevated"
+                    :disabled="!weakPalletInfo"
+                    :loading="isConfirmingWeakPallet"
+                    @click="confirmWeakPallet"
+                >
+                    Confirm Weak Pallet
+                </v-btn>
+            </div>
+        </DefaultModal>
+
         <Loader :show="isLoading || transferRequestsStore.loading" />
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
     </v-container>
@@ -216,10 +387,12 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import { useTransferRequestsStore } from '@/stores/transferRequests';
+import { debounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
 
@@ -268,6 +441,7 @@ onMounted(() => {
   if (plant_code && sloc && forklift) {
     transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
   }
+  searchMaterials();
 });
 
 const getStatusColor = (status) => {
@@ -462,6 +636,139 @@ function close() {
     selectedTransferRequest.value = null
 }
 
+// Tag Weak Pallet
+const showWeakPalletModal = ref(false)
+const weakPalletSearch = ref('')
+const weakPalletInfo = reactive({
+    id: null,
+    physical_id: null,
+    batch: null,
+    commodity_name: null,
+    quantity: 40,
+    unit: 'bags',
+    material: null,
+});
+const materials = ref([]);
+const weakPalletQuantity = ref(40);
+const isSearchingPallet = ref(false);
+const isConfirmingWeakPallet = ref(false);
+
+const confirmWeakPallet = async () => {
+
+    isConfirmingWeakPallet.value = true
+    try {
+        await ApiService.post(
+            'rfid-pallet/confirm-weak-pallet',
+            {
+                pallet_info: weakPalletInfo,
+                plant_code: route.params.plant_code,
+                sloc: route.params.sloc,
+                image: image.value // ✅ send directly
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        toast.message = 'Pallet successfully tagged as weak'
+        toast.color = 'warning'
+        toast.show = true
+        closeWeakPalletModal()
+        syncTransferRequests();
+    } catch (err) {
+        errorMessageTitle.value = 'Error'
+        errorMessage.value = err?.response?.data?.message || 'An unexpected error occurred.'
+        showErrorModal.value = true
+    } finally {
+        isConfirmingWeakPallet.value = false
+    }
+}
+
+const closeWeakPalletModal = () => {
+    showWeakPalletModal.value = false
+    weakPalletSearch.value = ''
+    weakPalletInfo.value = null
+    weakPalletInfo.physical_id = null
+    weakPalletQuantity.value = 40
+    stopCamera();
+}
+
+const findPallet = debounce(async () => {
+    isLoading.value = true;
+
+    try {
+        const response = await ApiService.query(
+            `rfid-pallet/find-pallet`,
+            {
+                params: { 
+                    pallet_name: weakPalletSearch.value, 
+                    plant_code: route.params.plant_code 
+                }
+            }
+        );
+
+        weakPalletInfo.id = response.data.id;
+        weakPalletInfo.physical_id = response.data.name;
+        weakPalletInfo.storage_location_id = response.data.storage_location_id;
+
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isLoading.value = false;
+    }
+}, 500);
+
+const searchMaterials = debounce(async (search) => {
+    // isLoading.value = true;
+
+    try {
+        const response = await ApiService.query(
+            `rfid-pallet/${route.params.plant_code}/search-materials`,
+            {
+                params: { search }
+            }
+        );
+
+        materials.value = response.data;
+
+    } catch (error) {
+        console.error(error);
+    } finally {
+        // isLoading.value = false;
+    }
+}, 500);
+
+
+const video = ref(null)
+const canvas = ref(null)
+const image = ref(null)
+const stream = ref(null)
+
+const startCamera = async () => {
+    image.value = null;
+    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
+    video.value.srcObject = stream.value
+}
+const stopCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop())
+    stream.value = null
+  }
+
+  if (video.value) {
+    video.value.srcObject = null
+  }
+}
+
+const captureImage = () => {
+    const ctx = canvas.value.getContext('2d')
+    canvas.value.width = video.value.videoWidth
+    canvas.value.height = video.value.videoHeight
+    ctx.drawImage(video.value, 0, 0)
+    image.value = canvas.value.toDataURL('image/png') // base64
+    stopCamera();
+}
 </script>
 
 <style scoped>
