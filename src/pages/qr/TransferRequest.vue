@@ -11,13 +11,24 @@
                 <VIcon class="clickable-icon" v-bind="props" size="30"
                     color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" /> -->
 
-                <VTooltip location="top">
-                    <template #activator="{ props }">
-                        <VIcon class="clickable-icon" v-bind="props" size="30"
-                            color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" />
-                    </template>
-                    <span>Refresh Data</span>
-                </VTooltip>
+                <div class="d-flex align-center ga-2">
+                    <v-btn
+                        size="small"
+                        color="warning"
+                        variant="elevated"
+                        prepend-icon="ri-flag-2-line"
+                        @click="showWeakPalletModal = true"
+                    >
+                        Tag Weak Pallet
+                    </v-btn>
+                    <VTooltip location="top">
+                        <template #activator="{ props }">
+                            <VIcon class="clickable-icon" v-bind="props" size="30"
+                                color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" />
+                        </template>
+                        <span>Refresh Data</span>
+                    </VTooltip>
+                </div>
             </div>
             <div class="mt-5">
                 <v-select
@@ -177,6 +188,106 @@
         </div>
         </DefaultModal>
 
+        <!-- Tag Weak Pallet Modal -->
+        <DefaultModal
+            :show="showWeakPalletModal"
+            dialog-title="Tag Weak Pallet"
+            max-width="500px"
+            @close="closeWeakPalletModal"
+        >
+            <div class="d-flex ga-2 mb-4">
+                <v-text-field
+                    v-model="weakPalletSearch"
+                    label="Search Pallet"
+                    placeholder="Enter pallet ID or name"
+                    append-inner-icon="ri-search-line"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    @keyup.enter="searchPallet"
+                />
+                <v-btn
+                    color="primary"
+                    variant="elevated"
+                    :loading="isSearchingPallet"
+                    @click="searchPallet"
+                >
+                    Search
+                </v-btn>
+            </div>
+
+            <v-card
+                v-if="weakPalletInfo"
+                class="pa-3"
+                elevation="2"
+                rounded="lg"
+            >
+                <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">
+                    Pallet Information
+                </div>
+                <v-sheet
+                    color="#f5f5f5"
+                    rounded
+                    class="pa-3"
+                >
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Pallet Name: </span>
+                        <span class="font-weight-medium">{{ weakPalletInfo.physical_id }}</span>
+                    </div>
+                    <v-divider class="mb-2" />
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Batch: </span>
+                        <span class="font-weight-medium text-primary">{{ weakPalletInfo.batch || '--' }}</span>
+                    </div>
+                    <v-divider class="mb-2" />
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Commodity: </span>
+                        <span class="font-weight-medium">{{ weakPalletInfo.commodity_name || '--' }}</span>
+                    </div>
+                    <v-divider class="mb-2" />
+                    <div class="d-flex justify-space-between align-center">
+                        <span>Quantity: </span>
+                        <v-text-field
+                            v-model.number="weakPalletQuantity"
+                            type="number"
+                            density="compact"
+                            variant="outlined"
+                            hide-details
+                            min="1"
+                            style="max-width: 140px"
+                            :suffix="weakPalletInfo.unit || 'bags'"
+                        />
+                    </div>
+                </v-sheet>
+            </v-card>
+
+            <v-empty-state
+                v-else
+                icon="ri-search-line"
+                title="Search for a pallet"
+                text="Enter a pallet ID or name above to view its details."
+                class="mt-2"
+            />
+
+            <div class="d-flex ga-2 mt-4 justify-end">
+                <v-btn
+                    variant="outlined"
+                    @click="closeWeakPalletModal"
+                >
+                    Cancel
+                </v-btn>
+                <v-btn
+                    color="warning"
+                    variant="elevated"
+                    :disabled="!weakPalletInfo"
+                    :loading="isConfirmingWeakPallet"
+                    @click="confirmWeakPallet"
+                >
+                    Confirm Weak Pallet
+                </v-btn>
+            </div>
+        </DefaultModal>
+
         <Loader :show="isLoading || transferRequestsStore.loading" />
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
     </v-container>
@@ -188,6 +299,7 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import { useTransferRequestsStore } from '@/stores/transferRequests';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
@@ -237,9 +349,9 @@ onMounted(() => {
   const plant_code = route.params.plant_code;
   const sloc = route.params.sloc;
   const forklift = route.params.forklift;
-  if (plant_code && sloc && forklift) {
-    transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-  }
+//   if (plant_code && sloc && forklift) {
+//     transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+//   }
 });
 
 const getStatusColor = (status) => {
@@ -411,6 +523,70 @@ function close() {
     showScanner.value = false
     scanResult.value = null
     selectedTransferRequest.value = null
+}
+
+// Tag Weak Pallet
+const showWeakPalletModal = ref(false)
+const weakPalletSearch = ref('')
+const weakPalletInfo = ref({
+    physical_id: 'PLT-2026-00123',
+    batch: 'AGRPKD29',
+    commodity_name: 'Fertilizer',
+    quantity: 40,
+    unit: 'bags'
+})
+const weakPalletQuantity = ref(40)
+const isSearchingPallet = ref(false)
+const isConfirmingWeakPallet = ref(false)
+
+const searchPallet = async () => {
+    if (!weakPalletSearch.value.trim()) return
+    isSearchingPallet.value = true
+    weakPalletInfo.value = null
+    try {
+        const response = await ApiService.query('rfid/pallets/search', {
+            search: weakPalletSearch.value,
+            plant_code: route.params.plant_code,
+            sloc: route.params.sloc,
+        })
+        weakPalletInfo.value = response.data?.data ?? response.data
+        weakPalletQuantity.value = weakPalletInfo.value?.quantity ?? 40
+    } catch (err) {
+        errorMessageTitle.value = 'Pallet Not Found'
+        errorMessage.value = err?.response?.data?.message || 'No pallet found matching the search criteria.'
+        showErrorModal.value = true
+    } finally {
+        isSearchingPallet.value = false
+    }
+}
+
+const confirmWeakPallet = async () => {
+    if (!weakPalletInfo.value) return
+    isConfirmingWeakPallet.value = true
+    try {
+        await ApiService.post('rfid/pallets/tag-weak', {
+            physical_id: weakPalletInfo.value.physical_id,
+            plant_code: route.params.plant_code,
+            sloc: route.params.sloc,
+        })
+        toast.message = 'Pallet successfully tagged as weak'
+        toast.color = 'warning'
+        toast.show = true
+        closeWeakPalletModal()
+    } catch (err) {
+        errorMessageTitle.value = 'Error'
+        errorMessage.value = err?.response?.data?.message || 'An unexpected error occurred.'
+        showErrorModal.value = true
+    } finally {
+        isConfirmingWeakPallet.value = false
+    }
+}
+
+const closeWeakPalletModal = () => {
+    showWeakPalletModal.value = false
+    weakPalletSearch.value = ''
+    weakPalletInfo.value = null
+    weakPalletQuantity.value = 40
 }
 
 </script>
