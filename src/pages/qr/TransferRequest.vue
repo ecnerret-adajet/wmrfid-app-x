@@ -349,9 +349,9 @@ onMounted(() => {
   const plant_code = route.params.plant_code;
   const sloc = route.params.sloc;
   const forklift = route.params.forklift;
-//   if (plant_code && sloc && forklift) {
-//     transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-//   }
+  if (plant_code && sloc && forklift) {
+    transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+  }
 });
 
 const getStatusColor = (status) => {
