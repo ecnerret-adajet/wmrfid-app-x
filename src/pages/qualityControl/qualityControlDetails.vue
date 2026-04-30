@@ -43,7 +43,8 @@ const sortQuery = ref('-created_at');
 const selectedItems = ref([])
 const filters = reactive({
     tag_type_id: null,
-    plant_id: null
+    plant_id: null,
+    commodity_status_id: 4
 })
 
 const activeTab = ref('batch_details')
