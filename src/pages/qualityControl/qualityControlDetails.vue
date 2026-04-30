@@ -234,7 +234,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: searchValue.value,
             filters: filters,
             storage_location_id: props.productionRun?.storage_location_id || null,
-            commodity_status_id: 4
+            commodity_status_id: 3
         }
     })
         .then((response) => {
