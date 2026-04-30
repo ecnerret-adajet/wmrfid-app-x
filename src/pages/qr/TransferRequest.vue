@@ -265,7 +265,7 @@
                     <v-divider class="mb-2" />
 
                     <div class="d-flex justify-space-between align-center mb-2">
-                        <span class="mr-2">Commodity: </span>
+                        <span class="mr-2">Commodity : </span>
                         <v-autocomplete
                             v-model="weakPalletInfo.material"
                             :items="materials"
@@ -278,13 +278,13 @@
                     <v-divider class="mb-2" />
 
                     <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Batch: </span>
+                        <span>Batch : </span>
                         <span class="font-weight-medium text-primary">{{ weakPalletInfo?.material?.code || '--' }}</span>
                     </div>
                     <v-divider class="mb-2" />
              
-                    <div class="d-flex justify-space-between align-center">
-                        <span>Quantity: </span>
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span>Quantity : </span>
                         <v-text-field
                             v-model.number="weakPalletQuantity"
                             type="number"
@@ -297,6 +297,20 @@
                      
                         />
                     </div>
+                    
+                    <v-divider class="mb-2" />
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <span class="mr-2">Reason : </span>
+                        <v-autocomplete
+                            v-model="weakPalletInfo.reason"
+                            :items="items.weak_pallet_reasons"
+                            :loading="isLoading"
+                            item-title="name"
+                            item-value="id"
+                            return-object
+                        />
+                    </div>
+                    <v-divider class="mb-2" />
                 </v-sheet>
             </v-card>
 
@@ -332,12 +346,21 @@
                     </v-btn>
                     <v-btn 
                         v-if="stream"
-                        class="mt-4"
+                        class="mt-4 mr-2"
                         color="error"
                         variant="elevated"
                         @click="stopCamera()"
                     >
                         Stop Camera
+                    </v-btn>
+                    <v-btn 
+                        v-if="stream"
+                        class="mt-4"
+                        color="default"
+                        variant="elevated"
+                        @click="switchCamera()"
+                    >
+                        {{ useFront ? 'Front' : 'Back' }}
                     </v-btn>
                 </div>
 
@@ -364,7 +387,7 @@
                     Cancel
                 </v-btn>
                 <v-btn
-                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material && image"
+                    v-if="weakPalletInfo.physical_id && weakPalletInfo.material && image && weakPalletInfo.reason"
                     color="warning"
                     variant="elevated"
                     :disabled="!weakPalletInfo"
@@ -639,7 +662,8 @@ function close() {
 // Tag Weak Pallet
 const showWeakPalletModal = ref(false)
 const weakPalletSearch = ref('')
-const weakPalletInfo = reactive({
+
+const weakPalletInfoInitialState = () => ({
     id: null,
     physical_id: null,
     batch: null,
@@ -647,7 +671,10 @@ const weakPalletInfo = reactive({
     quantity: 40,
     unit: 'bags',
     material: null,
+    reason: null,
 });
+
+const weakPalletInfo = reactive(weakPalletInfoInitialState());
 const materials = ref([]);
 const weakPalletQuantity = ref(40);
 const isSearchingPallet = ref(false);
@@ -687,12 +714,15 @@ const confirmWeakPallet = async () => {
 
 const closeWeakPalletModal = () => {
     showWeakPalletModal.value = false
-    weakPalletSearch.value = ''
-    weakPalletInfo.value = null
-    weakPalletInfo.physical_id = null
-    weakPalletQuantity.value = 40
-    stopCamera();
+    resetPalletInfo();
 }
+
+const resetPalletInfo = () => {
+    weakPalletSearch.value = '';
+    Object.assign(weakPalletInfo, weakPalletInfoInitialState());
+    image.value = null;
+    stopCamera();
+};
 
 const findPallet = debounce(async () => {
     isLoading.value = true;
@@ -744,11 +774,31 @@ const video = ref(null)
 const canvas = ref(null)
 const image = ref(null)
 const stream = ref(null)
+const useFront = ref(false);
 
 const startCamera = async () => {
+    // 1. Stop all tracks in the current stream to release the hardware
+    if (stream.value) {
+        stream.value.getTracks().forEach(track => track.stop());
+    }
+
     image.value = null;
-    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
-    video.value.srcObject = stream.value
+
+    try {
+        // 2. Request the new stream based on the updated facingMode
+        stream.value = await navigator.mediaDevices.getUserMedia({ 
+            video: {
+                facingMode: useFront.value ? "user" : "environment"
+            }
+        });
+
+        // 3. Attach the new stream to the video element
+        if (video.value) {
+            video.value.srcObject = stream.value;
+        }
+    } catch (err) {
+        console.error("Error accessing camera:", err);
+    }
 }
 const stopCamera = () => {
   if (stream.value) {
@@ -768,6 +818,15 @@ const captureImage = () => {
     ctx.drawImage(video.value, 0, 0)
     image.value = canvas.value.toDataURL('image/png') // base64
     stopCamera();
+}
+
+const switchCamera = () => {
+    if (useFront.value == true){
+        useFront.value = false;
+    }
+    else {
+        useFront.value = true;
+    }
 }
 </script>
 
