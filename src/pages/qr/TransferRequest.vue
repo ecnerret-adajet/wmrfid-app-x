@@ -133,12 +133,6 @@
 
                         <v-sheet v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
-                                <span>RFID Wrapped Date:</span>
-                                <span class="font-weight-medium">
-                                    {{ (item.wrapped_datetime || item.transfer_request?.wrapped_datetime) ? moment(item.wrapped_datetime || item.transfer_request?.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
-                                </span>
-                            </div>
-                            <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Assigned Bin #:</span>
                                 <span class="font-weight-medium">
                                     {{ (item.transfer_order?.designated_block?.lot?.label || item.designated_block?.lot?.label || '--') }} - {{ (item.transfer_order?.designated_block?.label || item.designated_block?.label || '--') }}
@@ -148,6 +142,27 @@
                                 <span>Assigned Layer:</span>
                                 <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || item.layer_position || '--' }}</span>
                             </div>
+                            
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <span>RFID Wrapped Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.wrapped_datetime || item.transfer_request?.wrapped_datetime) ? moment(item.wrapped_datetime || item.transfer_request?.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                            <div v-if="item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date" class="d-flex justify-space-between align-center mb-1">
+                                <span>Wrapped Completion Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date) ? moment(item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                            <div v-if="item.putaway_completion_date || item.transfer_request?.putaway_completion_date" class="d-flex justify-space-between align-center mb-1">
+                                <span>Putaway Completion Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.putaway_completion_date || item.transfer_request?.putaway_completion_date) ? moment(item.putaway_completion_date || item.transfer_request?.putaway_completion_date).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                         
+                            
                         </v-sheet>
 
                         <v-sheet v-if="item.status_text === 'Invalid Request' || item.transfer_request?.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
