@@ -96,6 +96,17 @@ export const routes = [
             },
         },
         {
+            path: 'quality-control',
+            name: 'quality-control',
+            component: () => import('@/pages/qualityControl/index.vue'),
+            meta: {
+              pageTitle: "Quality Control",
+              breadcrumbs: [
+                  { label: "Quality Control", link: "/quality-control" },
+              ],
+            },
+        },
+        {
             path: 'repacking',
             name: 'repacking',
             component: () => import('@/pages/manualRepacking/index.vue'),

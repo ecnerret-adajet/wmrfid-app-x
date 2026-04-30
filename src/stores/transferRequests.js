@@ -10,19 +10,48 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
     transferOrderResponse: null,
   }),
   actions: {
-    async fetchTransferRequests(plant_code, sloc, forkliftId) {
+    async fetchTransferRequests(plant_code, sloc, forkliftId, params = {}) {
       this.loading = true
       this.error = null
       try {
-        ApiService.setHeader()
-        const { data } = await ApiService.get(
-          `rfid/pallet/${plant_code}/${sloc}/${forkliftId}/get-qr-transfer-requests`
-        )
-        this.items = data
+        ApiService.setHeader();
+        // Compose query params for transfer_requests_status and search
+        const queryParams = {};
+        if (params.transfer_requests_status) {
+          queryParams['transfer_requests_status'] = params.transfer_requests_status;
+        }
+        if (params.search) {
+          queryParams['search'] = params.search;
+        }
+        const url = `rfid/pallet/${plant_code}/${sloc}/${forkliftId}/get-qr-transfer-requests`;
+        const { data } = await ApiService.query(url, { params: queryParams });
+        this.items = data;
       } catch (e) {
-        this.error = e
+        this.error = e;
       } finally {
-        this.loading = false
+        this.loading = false;
+      }
+    },
+    async fetchTransferOrders(plant_code, sloc, forkliftId, params = {}) {
+      this.loading = true;
+      this.error = null;
+      try {
+        ApiService.setHeader();
+        // Compose query params for transfer_orders_status and search
+        const queryParams = {};
+        if (params.transfer_orders_status) {
+          queryParams['transfer_orders_status'] = params.transfer_orders_status;
+        }
+        if (params.search) {
+          queryParams['search'] = params.search;
+        }
+        const url = `rfid/pallet/${plant_code}/${sloc}/${forkliftId}/get-qr-transfer-orders`;
+        const { data } = await ApiService.query(url, { params: queryParams });
+        this.items = data;
+      } catch (e) {
+        this.error = e;
+      } finally {
+        this.loading = false;
       }
     },
     clear() {
