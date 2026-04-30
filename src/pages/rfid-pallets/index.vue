@@ -894,8 +894,9 @@ const handleUnloadPallet = async () => {
             </template>
 
             <template #item.actions="{ item }">
-                <div v-if="authUserCan('edit.rfid')" class="d-flex justify-center align-center">
+                <div class="d-flex justify-center align-center">
                     <IconBtn
+                        v-if="authUserCan('generate.qr')"
                         size="small"
                         :color="item.qr_code_path ? 'success' : 'default'"
                         :title="item.qr_code_path ? 'View QR Code' : 'Generate QR Code'"
@@ -903,7 +904,7 @@ const handleUnloadPallet = async () => {
                     >
                         <VIcon icon="ri-qr-code-line" />
                     </IconBtn>
-                    <IconBtn size="small" @click="editItem(item)">
+                    <IconBtn v-if="authUserCan('edit.rfid')" size="small" @click="editItem(item)">
                         <VIcon icon="ri-pencil-line" />
                     </IconBtn>
                 </div>
