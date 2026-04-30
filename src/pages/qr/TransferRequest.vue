@@ -223,7 +223,18 @@
             max-width="500px"
             @close="closeWeakPalletModal"
         >
-            <div class="d-flex ga-2 mb-4">
+            <div class="d-flex justify-space-between align-center mb-4">
+                <v-autocomplete
+                    v-model="weakPalletInfo.packing_no"
+                    :items="items.packing_lines"
+                    :loading="isLoading"
+                    return-object
+                    placeholder="Packing Line"
+                />
+            </div>
+       
+            <div class="d-flex ga-2 mb-4" v-if="weakPalletInfo.packing_no">
+    
                 <!-- Search Pallet -->
                 <v-text-field
                     v-model="weakPalletSearch"
@@ -246,71 +257,109 @@
 
             <v-card
                 v-if="weakPalletInfo.physical_id"
-                class="pa-3"
-                elevation="2"
+                class="pa-4"
+                elevation="3"
                 rounded="lg"
             >
-                <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">
+                <!-- Header -->
+                <div class="text-h6 font-weight-bold text-primary mb-4">
                     Pallet Information
                 </div>
-                <v-sheet
-                    color="#f5f5f5"
-                    rounded
-                    class="pa-3"
-                >
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Pallet Name: </span>
-                        <span class="font-weight-medium">{{ weakPalletInfo.physical_id }}</span>
-                    </div>
-                    <v-divider class="mb-2" />
 
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span class="mr-2">Commodity : </span>
-                        <v-autocomplete
-                            v-model="weakPalletInfo.material"
-                            :items="materials"
-                            :loading="isLoading"
-                            item-title="description"
-                            item-value="id"
-                            return-object
-                        />
-                    </div>
-                    <v-divider class="mb-2" />
-
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Batch : </span>
-                        <span class="font-weight-medium text-primary">{{ weakPalletInfo?.material?.code || '--' }}</span>
-                    </div>
-                    <v-divider class="mb-2" />
-             
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Quantity : </span>
-                        <v-text-field
-                            v-model.number="weakPalletQuantity"
-                            type="number"
-                            density="compact"
-                            variant="outlined"
-                            hide-details
-                            min="1"
-                            style="max-width: 140px"
-                            :suffix="weakPalletInfo.unit || 'bags'"
-                     
-                        />
-                    </div>
+                <v-sheet color="grey-lighten-4" rounded="lg" class="pa-2">
                     
-                    <v-divider class="mb-2" />
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span class="mr-2">Reason : </span>
-                        <v-autocomplete
-                            v-model="weakPalletInfo.reason"
-                            :items="items.weak_pallet_reasons"
-                            :loading="isLoading"
-                            item-title="name"
-                            item-value="id"
-                            return-object
-                        />
-                    </div>
-                    <v-divider class="mb-2" />
+                    <!-- Pallet Name -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Pallet Name
+                        </v-col>
+                        <v-col cols="8">
+                            <div class="font-weight-medium">
+                                {{ weakPalletInfo.physical_id }}
+                            </div>
+                        </v-col>
+                    </v-row>
+
+                    <!-- Commodity -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Commodity
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.material"
+                                :items="materials"
+                                :loading="isLoading"
+                                item-title="description"
+                                item-value="id"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                @update:modelValue="onCommoditySelect"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Batch -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Batch
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.batch"
+                                :items="filteredBatches"
+                                :loading="isLoading"
+                                item-title="COMMODITY"
+                                item-value="ID"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                :disabled="!weakPalletInfo.material"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Quantity -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Quantity
+                        </v-col>
+                        <v-col cols="8">
+                            <v-text-field
+                                v-model.number="weakPalletQuantity"
+                                type="number"
+                                min="1"
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                :suffix="weakPalletInfo.unit || 'bags'"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Reason -->
+                    <v-row class="align-center">
+                        <v-col cols="4">
+                            Reason
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.reason"
+                                :items="items.weak_pallet_reasons"
+                                :loading="isLoading"
+                                item-title="name"
+                                item-value="id"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                            />
+                        </v-col>
+                    </v-row>
+
                 </v-sheet>
             </v-card>
 
@@ -464,7 +513,6 @@ onMounted(() => {
   if (plant_code && sloc && forklift) {
     transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
   }
-  searchMaterials();
 });
 
 const getStatusColor = (status) => {
@@ -672,10 +720,12 @@ const weakPalletInfoInitialState = () => ({
     unit: 'bags',
     material: null,
     reason: null,
+    packing_no: null,
 });
 
 const weakPalletInfo = reactive(weakPalletInfoInitialState());
 const materials = ref([]);
+const plc_batches = ref([]);
 const weakPalletQuantity = ref(40);
 const isSearchingPallet = ref(false);
 const isConfirmingWeakPallet = ref(false);
@@ -742,6 +792,10 @@ const findPallet = debounce(async () => {
         weakPalletInfo.physical_id = response.data.name;
         weakPalletInfo.storage_location_id = response.data.storage_location_id;
 
+        if (weakPalletInfo.physical_id){
+            searchMaterials();
+        }
+    
     } catch (error) {
         console.error(error);
     } finally {
@@ -756,11 +810,15 @@ const searchMaterials = debounce(async (search) => {
         const response = await ApiService.query(
             `rfid-pallet/${route.params.plant_code}/search-materials`,
             {
-                params: { search }
+                params: { 
+                    search, 
+                    packing_no: weakPalletInfo.packing_no
+                }
             }
         );
 
-        materials.value = response.data;
+        materials.value = response.data.materials;
+        plc_batches.value = response.data.plc_batches;
 
     } catch (error) {
         console.error(error);
@@ -768,6 +826,21 @@ const searchMaterials = debounce(async (search) => {
         // isLoading.value = false;
     }
 }, 500);
+
+const filteredBatches = computed(() => {
+    return plc_batches.value.filter(b =>
+        b.COMMODITY?.trim().substring(0, 4) ==
+        weakPalletInfo?.material?.code?.trim()
+    );
+});
+
+// set default batcj
+const onCommoditySelect = (value) => {
+    weakPalletInfo.batch = plc_batches.value.find(b =>
+        b.COMMODITY?.trim().substring(0, 4) ==
+        weakPalletInfo?.material?.code?.trim() && b.STOP_T == null
+    ) || null;
+};
 
 
 const video = ref(null)
@@ -828,6 +901,7 @@ const switchCamera = () => {
         useFront.value = true;
     }
 }
+
 </script>
 
 <style scoped>
