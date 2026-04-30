@@ -73,9 +73,9 @@
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
                         <div class="font-weight-bold d-flex align-center">
-                            TR #: {{ item.transfer_request_id }}
+                            TR #: {{ item.transfer_request?.transfer_request_id || item.transfer_request_id }}
                             <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
-                            <span class="ml-3">{{ item.created_at ? moment(item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                            <span class="ml-3">{{ (item.transfer_request?.created_at || item.created_at) ? moment(item.transfer_request?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
                         </div>
                         
                         <v-chip
@@ -98,63 +98,78 @@
                     </div>
 
                     <!-- TO Section -->
-                    <div v-if="item.transfer_order" class="d-flex flex-column align-center">
+                    <div v-if="item.status_text !== 'Pending'" class="d-flex flex-column align-center">
                         <div class="d-flex justify-space-between align-center w-100 mb-2">
                             <div>
                             <div class="text-black font-weight-bold d-flex align-center">
                                 TO Number
                                 <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
-                                <span class="ml-3">{{ item.transfer_order?.created_at ? moment(item.transfer_order.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                                <span class="ml-3">{{ (item.transfer_order?.created_at || item.created_at) ? moment(item.transfer_order?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
                             </div>
-                            <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id }}</div>
+                            <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id || item.transfer_order_id }}</div>
                             </div>
                             <v-chip
                             size="small"
-                            :color="getStatusColor(item.transfer_order?.status_text)"
+                            :color="getStatusColor(item.transfer_order?.status_text || item.status_text)"
                             dark
                             >
-                            {{ item.transfer_order?.status_text }}
+                            {{ item.transfer_order?.status_text || item.status_text }}
                             </v-chip>
                         </div>
 
-                        <v-sheet v-if="item.has_wrapping_area && item.status_text === 'For Wrapping'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Proceed To:</span>
                                 <span class="font-weight-medium">Wrapping Area</span>
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="item.status_text === 'For Putaway' || item.transfer_request?.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Proceed To:</span>
                                 <span class="font-weight-medium">Storage Bin</span>
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text !== 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
-                            <div class="d-flex justify-space-between align-center mb-1">
-                                <span>RFID Wrapped Date:</span>
-                                <span class="font-weight-medium">
-                                    {{ item.wrapped_datetime ? moment(item.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
-                                </span>
-                            </div>
+                        <v-sheet v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Assigned Bin #:</span>
                                 <span class="font-weight-medium">
-                                    {{ item.transfer_order?.designated_block?.lot?.label || '--' }} - {{ item.transfer_order?.designated_block?.label || '--' }}
+                                    {{ (item.transfer_order?.designated_block?.lot?.label || item.designated_block?.lot?.label || '--') }} - {{ (item.transfer_order?.designated_block?.label || item.designated_block?.label || '--') }}
                                 </span>
                             </div>
                             <div class="d-flex justify-space-between align-center">
                                 <span>Assigned Layer:</span>
-                                <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || '--' }}</span>
+                                <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || item.layer_position || '--' }}</span>
                             </div>
+                            
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <span>RFID Wrapped Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.wrapped_datetime || item.transfer_request?.wrapped_datetime) ? moment(item.wrapped_datetime || item.transfer_request?.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                            <div v-if="item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date" class="d-flex justify-space-between align-center mb-1">
+                                <span>Wrapped Completion Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date) ? moment(item.wrapped_completion_date || item.transfer_request?.wrapped_completion_date).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                            <div v-if="item.putaway_completion_date || item.transfer_request?.putaway_completion_date" class="d-flex justify-space-between align-center mb-1">
+                                <span>Putaway Completion Date:</span>
+                                <span class="font-weight-medium">
+                                    {{ (item.putaway_completion_date || item.transfer_request?.putaway_completion_date) ? moment(item.putaway_completion_date || item.transfer_request?.putaway_completion_date).format('MMM D, YYYY h:mm A') : '' }}
+                                </span>
+                            </div>
+                         
+                            
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
+                        <v-sheet v-if="item.status_text === 'Invalid Request' || item.transfer_request?.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
                             <span>Invalid Request</span>
                         </v-sheet>
                         
-                        <v-btn v-if="item.has_wrapping_area && item.status_text === 'For Wrapping'"
+                        <v-btn v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')"
                             color="info"
                             block
                             class="mt-1"
@@ -163,7 +178,7 @@
                         >
                             Scan Wrapping Area QR
                         </v-btn>
-                        <v-btn v-else-if="item.status_text === 'For Putaway'"
+                        <v-btn v-else-if="item.status_text === 'For Putaway' || item.transfer_request?.status_text === 'For Putaway'"
                             color="primary"
                             block
                             class="mt-1"
@@ -179,10 +194,10 @@
                     <div v-else class="d-flex flex-column align-center">
                     <div class="text-primary-2 mb-2">No TO yet</div>
                     <v-divider />
-                        <v-btn v-if="item.status_text !== 'Invalid Request'"
+                        <v-btn v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"
                             color="primary"
                             block
-                            :loading="selectedTransferRequest === item.transfer_request_id"
+                            :loading="selectedTransferRequest === (item.transfer_request?.transfer_request_id || item.transfer_request_id)"
                             class="mt-1"
                             @click="generateTransferOrder(item)"
                         >
@@ -231,7 +246,18 @@
             max-width="500px"
             @close="closeWeakPalletModal"
         >
-            <div class="d-flex ga-2 mb-4">
+            <div class="d-flex justify-space-between align-center mb-4">
+                <v-autocomplete
+                    v-model="weakPalletInfo.packing_no"
+                    :items="items.packing_lines"
+                    :loading="isLoading"
+                    return-object
+                    placeholder="Packing Line"
+                />
+            </div>
+       
+            <div class="d-flex ga-2 mb-4" v-if="weakPalletInfo.packing_no">
+    
                 <!-- Search Pallet -->
                 <v-text-field
                     v-model="weakPalletSearch"
@@ -254,71 +280,109 @@
 
             <v-card
                 v-if="weakPalletInfo.physical_id"
-                class="pa-3"
-                elevation="2"
+                class="pa-4"
+                elevation="3"
                 rounded="lg"
             >
-                <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">
+                <!-- Header -->
+                <div class="text-h6 font-weight-bold text-primary mb-4">
                     Pallet Information
                 </div>
-                <v-sheet
-                    color="#f5f5f5"
-                    rounded
-                    class="pa-3"
-                >
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Pallet Name: </span>
-                        <span class="font-weight-medium">{{ weakPalletInfo.physical_id }}</span>
-                    </div>
-                    <v-divider class="mb-2" />
 
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span class="mr-2">Commodity : </span>
-                        <v-autocomplete
-                            v-model="weakPalletInfo.material"
-                            :items="materials"
-                            :loading="isLoading"
-                            item-title="description"
-                            item-value="id"
-                            return-object
-                        />
-                    </div>
-                    <v-divider class="mb-2" />
-
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Batch : </span>
-                        <span class="font-weight-medium text-primary">{{ weakPalletInfo?.material?.code || '--' }}</span>
-                    </div>
-                    <v-divider class="mb-2" />
-             
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span>Quantity : </span>
-                        <v-text-field
-                            v-model.number="weakPalletQuantity"
-                            type="number"
-                            density="compact"
-                            variant="outlined"
-                            hide-details
-                            min="1"
-                            style="max-width: 140px"
-                            :suffix="weakPalletInfo.unit || 'bags'"
-                     
-                        />
-                    </div>
+                <v-sheet color="grey-lighten-4" rounded="lg" class="pa-2">
                     
-                    <v-divider class="mb-2" />
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <span class="mr-2">Reason : </span>
-                        <v-autocomplete
-                            v-model="weakPalletInfo.reason"
-                            :items="items.weak_pallet_reasons"
-                            :loading="isLoading"
-                            item-title="name"
-                            item-value="id"
-                            return-object
-                        />
-                    </div>
-                    <v-divider class="mb-2" />
+                    <!-- Pallet Name -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Pallet Name
+                        </v-col>
+                        <v-col cols="8">
+                            <div class="font-weight-medium">
+                                {{ weakPalletInfo.physical_id }}
+                            </div>
+                        </v-col>
+                    </v-row>
+
+                    <!-- Commodity -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Commodity
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.material"
+                                :items="materials"
+                                :loading="isLoading"
+                                item-title="description"
+                                item-value="id"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                @update:modelValue="onCommoditySelect"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Batch -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Batch
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.batch"
+                                :items="filteredBatches"
+                                :loading="isLoading"
+                                item-title="COMMODITY"
+                                item-value="ID"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                :disabled="!weakPalletInfo.material"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Quantity -->
+                    <v-row class="align-center mb-3">
+                        <v-col cols="4">
+                            Quantity
+                        </v-col>
+                        <v-col cols="8">
+                            <v-text-field
+                                v-model.number="weakPalletQuantity"
+                                type="number"
+                                min="1"
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                :suffix="weakPalletInfo.unit || 'bags'"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <!-- Reason -->
+                    <v-row class="align-center">
+                        <v-col cols="4">
+                            Reason
+                        </v-col>
+                        <v-col cols="8">
+                            <v-autocomplete
+                                v-model="weakPalletInfo.reason"
+                                :items="items.weak_pallet_reasons"
+                                :loading="isLoading"
+                                item-title="name"
+                                item-value="id"
+                                return-object
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                            />
+                        </v-col>
+                    </v-row>
+
                 </v-sheet>
             </v-card>
 
@@ -423,16 +487,26 @@ import { useTransferRequestsStore } from '@/stores/transferRequests';
 import { debounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
+
 
 function syncTransferRequests() {
     const plant_code = route.params.plant_code;
     const sloc = route.params.sloc;
     const forklift = route.params.forklift;
     if (plant_code && sloc && forklift) {
-        transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        // Pass status as request parameters
+        transferRequestsStore.fetchTransferRequests(
+            plant_code,
+            sloc,
+            forklift,
+            {
+                transfer_requests_status: selectedStatus.value,
+                transfer_orders_status: selectedStatus.value
+            }
+        );
         toast.message = 'Syncing transfer requests...';
         toast.color = 'info';
         toast.show = true;
@@ -466,13 +540,20 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 
 onMounted(() => {
-  const plant_code = route.params.plant_code;
-  const sloc = route.params.sloc;
-  const forklift = route.params.forklift;
-  if (plant_code && sloc && forklift) {
-    transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-  }
-  searchMaterials();
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        transferRequestsStore.fetchTransferRequests(
+            plant_code,
+            sloc,
+            forklift,
+            {
+                transfer_requests_status: selectedStatus.value,
+                transfer_orders_status: selectedStatus.value
+            }
+        );
+    }
 });
 
 const getStatusColor = (status) => {
@@ -485,25 +566,75 @@ const getStatusColor = (status) => {
     }
 }
 
+
 const searchQuery = ref('');
 const filteredItems = computed(() => {
     if (!items.value || !items.value.transfer_requests) return { transfer_requests: [] };
-    let filtered = items.value.transfer_requests;
-    if (selectedStatus.value) {
-        filtered = filtered.filter(item => item.status_text === selectedStatus.value);
-    }
-    if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase();
-        filtered = filtered.filter(item => {
-            return (
-                (item.physical_id && item.physical_id.toLowerCase().includes(q)) ||
-                (item.batch && item.batch.toLowerCase().includes(q)) ||
-                (item.transfer_request_id && item.transfer_request_id.toString().toLowerCase().includes(q)) ||
-                (item.transfer_order?.transfer_order_id && item.transfer_order.transfer_order_id.toString().toLowerCase().includes(q))
+    return { ...items.value, transfer_requests: items.value.transfer_requests };
+});
+
+import { debounce as lodashDebounce } from 'lodash';
+
+const fetchWithSearch = lodashDebounce(() => {
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        const search = searchQuery.value;
+        if (selectedStatus.value === 'Pending' || selectedStatus.value === 'Invalid Request') {
+            transferRequestsStore.fetchTransferRequests(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_requests_status: selectedStatus.value,
+                    search: searchQuery.value
+                }
             );
-        });
+        } else {
+            transferRequestsStore.fetchTransferOrders(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_orders_status: selectedStatus.value,
+                    search: searchQuery.value
+                }
+            );
+        }
     }
-    return { ...items.value, transfer_requests: filtered };
+}, 2000);
+
+watch(searchQuery, () => {
+    fetchWithSearch();
+});
+
+
+watch(selectedStatus, (newStatus) => {
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        if (newStatus === 'Pending' || newStatus === 'Invalid Request') {
+            transferRequestsStore.fetchTransferRequests(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_requests_status: newStatus
+                }
+            );
+        } else {
+            transferRequestsStore.fetchTransferOrders(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_orders_status: newStatus
+                }
+            );
+        }
+    }
 });
 
 const showScanner = ref(false);
@@ -692,10 +823,12 @@ const weakPalletInfoInitialState = () => ({
     unit: 'bags',
     material: null,
     reason: null,
+    packing_no: null,
 });
 
 const weakPalletInfo = reactive(weakPalletInfoInitialState());
 const materials = ref([]);
+const plc_batches = ref([]);
 const weakPalletQuantity = ref(40);
 const isSearchingPallet = ref(false);
 const isConfirmingWeakPallet = ref(false);
@@ -762,6 +895,10 @@ const findPallet = debounce(async () => {
         weakPalletInfo.physical_id = response.data.name;
         weakPalletInfo.storage_location_id = response.data.storage_location_id;
 
+        if (weakPalletInfo.physical_id){
+            searchMaterials();
+        }
+    
     } catch (error) {
         console.error(error);
     } finally {
@@ -776,11 +913,15 @@ const searchMaterials = debounce(async (search) => {
         const response = await ApiService.query(
             `rfid-pallet/${route.params.plant_code}/search-materials`,
             {
-                params: { search }
+                params: { 
+                    search, 
+                    packing_no: weakPalletInfo.packing_no
+                }
             }
         );
 
-        materials.value = response.data;
+        materials.value = response.data.materials;
+        plc_batches.value = response.data.plc_batches;
 
     } catch (error) {
         console.error(error);
@@ -788,6 +929,21 @@ const searchMaterials = debounce(async (search) => {
         // isLoading.value = false;
     }
 }, 500);
+
+const filteredBatches = computed(() => {
+    return plc_batches.value.filter(b =>
+        b.COMMODITY?.trim().substring(0, 4) ==
+        weakPalletInfo?.material?.code?.trim()
+    );
+});
+
+// set default batcj
+const onCommoditySelect = (value) => {
+    weakPalletInfo.batch = plc_batches.value.find(b =>
+        b.COMMODITY?.trim().substring(0, 4) ==
+        weakPalletInfo?.material?.code?.trim() && b.STOP_T == null
+    ) || null;
+};
 
 
 const video = ref(null)
@@ -848,6 +1004,7 @@ const switchCamera = () => {
         useFront.value = true;
     }
 }
+
 </script>
 
 <style scoped>
