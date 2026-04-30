@@ -151,7 +151,8 @@ const filters = reactive({
     storage_location_id: null,
     plant_code: authStore.user?.assigned_plant?.plant_code || null,
     status: null,
-    date_filter: 'today'
+    date_filter: 'today',
+    commodity_status_id: 4 // default value for QC
 });
 
 const isFiltersEmpty = computed(() => {
