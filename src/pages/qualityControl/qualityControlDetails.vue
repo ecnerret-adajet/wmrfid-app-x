@@ -44,7 +44,6 @@ const selectedItems = ref([])
 const filters = reactive({
     tag_type_id: null,
     plant_id: null,
-    commodity_status_id: 4
 })
 
 const activeTab = ref('batch_details')
@@ -234,7 +233,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             sort: sortQuery.value,
             search: searchValue.value,
             filters: filters,
-            storage_location_id: props.productionRun?.storage_location_id || null
+            storage_location_id: props.productionRun?.storage_location_id || null,
+            commodity_status_id: 4
         }
     })
         .then((response) => {
