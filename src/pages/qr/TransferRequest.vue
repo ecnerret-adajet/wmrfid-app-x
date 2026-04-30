@@ -73,9 +73,9 @@
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
                         <div class="font-weight-bold d-flex align-center">
-                            TR #: {{ item.transfer_request_id }}
+                            TR #: {{ item.transfer_request?.transfer_request_id || item.transfer_request_id }}
                             <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
-                            <span class="ml-3">{{ item.created_at ? moment(item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                            <span class="ml-3">{{ (item.transfer_request?.created_at || item.created_at) ? moment(item.transfer_request?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
                         </div>
                         
                         <v-chip
@@ -98,63 +98,63 @@
                     </div>
 
                     <!-- TO Section -->
-                    <div v-if="item.transfer_order" class="d-flex flex-column align-center">
+                    <div v-if="item.status_text !== 'Pending'" class="d-flex flex-column align-center">
                         <div class="d-flex justify-space-between align-center w-100 mb-2">
                             <div>
                             <div class="text-black font-weight-bold d-flex align-center">
                                 TO Number
                                 <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
-                                <span class="ml-3">{{ item.transfer_order?.created_at ? moment(item.transfer_order.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                                <span class="ml-3">{{ (item.transfer_order?.created_at || item.created_at) ? moment(item.transfer_order?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
                             </div>
-                            <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id }}</div>
+                            <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id || item.transfer_order_id }}</div>
                             </div>
                             <v-chip
                             size="small"
-                            :color="getStatusColor(item.transfer_order?.status_text)"
+                            :color="getStatusColor(item.transfer_order?.status_text || item.status_text)"
                             dark
                             >
-                            {{ item.transfer_order?.status_text }}
+                            {{ item.transfer_order?.status_text || item.status_text }}
                             </v-chip>
                         </div>
 
-                        <v-sheet v-if="item.has_wrapping_area && item.status_text === 'For Wrapping'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Proceed To:</span>
                                 <span class="font-weight-medium">Wrapping Area</span>
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="item.status_text === 'For Putaway' || item.transfer_request?.status_text === 'For Putaway'" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Proceed To:</span>
                                 <span class="font-weight-medium">Storage Bin</span>
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text !== 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>RFID Wrapped Date:</span>
                                 <span class="font-weight-medium">
-                                    {{ item.wrapped_datetime ? moment(item.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
+                                    {{ (item.wrapped_datetime || item.transfer_request?.wrapped_datetime) ? moment(item.wrapped_datetime || item.transfer_request?.wrapped_datetime).format('MMM D, YYYY h:mm A') : '' }}
                                 </span>
                             </div>
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Assigned Bin #:</span>
                                 <span class="font-weight-medium">
-                                    {{ item.transfer_order?.designated_block?.lot?.label || '--' }} - {{ item.transfer_order?.designated_block?.label || '--' }}
+                                    {{ (item.transfer_order?.designated_block?.lot?.label || item.designated_block?.lot?.label || '--') }} - {{ (item.transfer_order?.designated_block?.label || item.designated_block?.label || '--') }}
                                 </span>
                             </div>
                             <div class="d-flex justify-space-between align-center">
                                 <span>Assigned Layer:</span>
-                                <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || '--' }}</span>
+                                <span class="font-weight-medium">Layer {{ item.transfer_order?.layer_position || item.layer_position || '--' }}</span>
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="item.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
+                        <v-sheet v-if="item.status_text === 'Invalid Request' || item.transfer_request?.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
                             <span>Invalid Request</span>
                         </v-sheet>
                         
-                        <v-btn v-if="item.has_wrapping_area && item.status_text === 'For Wrapping'"
+                        <v-btn v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')"
                             color="info"
                             block
                             class="mt-1"
@@ -163,7 +163,7 @@
                         >
                             Scan Wrapping Area QR
                         </v-btn>
-                        <v-btn v-else-if="item.status_text === 'For Putaway'"
+                        <v-btn v-else-if="item.status_text === 'For Putaway' || item.transfer_request?.status_text === 'For Putaway'"
                             color="primary"
                             block
                             class="mt-1"
@@ -179,10 +179,10 @@
                     <div v-else class="d-flex flex-column align-center">
                     <div class="text-primary-2 mb-2">No TO yet</div>
                     <v-divider />
-                        <v-btn v-if="item.status_text !== 'Invalid Request'"
+                        <v-btn v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"
                             color="primary"
                             block
-                            :loading="selectedTransferRequest === item.transfer_request_id"
+                            :loading="selectedTransferRequest === (item.transfer_request?.transfer_request_id || item.transfer_request_id)"
                             class="mt-1"
                             @click="generateTransferOrder(item)"
                         >
@@ -423,16 +423,26 @@ import { useTransferRequestsStore } from '@/stores/transferRequests';
 import { debounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
+
 
 function syncTransferRequests() {
     const plant_code = route.params.plant_code;
     const sloc = route.params.sloc;
     const forklift = route.params.forklift;
     if (plant_code && sloc && forklift) {
-        transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        // Pass status as request parameters
+        transferRequestsStore.fetchTransferRequests(
+            plant_code,
+            sloc,
+            forklift,
+            {
+                transfer_requests_status: selectedStatus.value,
+                transfer_orders_status: selectedStatus.value
+            }
+        );
         toast.message = 'Syncing transfer requests...';
         toast.color = 'info';
         toast.show = true;
@@ -466,13 +476,21 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 
 onMounted(() => {
-  const plant_code = route.params.plant_code;
-  const sloc = route.params.sloc;
-  const forklift = route.params.forklift;
-  if (plant_code && sloc && forklift) {
-    transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-  }
-  searchMaterials();
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        transferRequestsStore.fetchTransferRequests(
+            plant_code,
+            sloc,
+            forklift,
+            {
+                transfer_requests_status: selectedStatus.value,
+                transfer_orders_status: selectedStatus.value
+            }
+        );
+    }
+    searchMaterials();
 });
 
 const getStatusColor = (status) => {
@@ -485,25 +503,75 @@ const getStatusColor = (status) => {
     }
 }
 
+
 const searchQuery = ref('');
 const filteredItems = computed(() => {
     if (!items.value || !items.value.transfer_requests) return { transfer_requests: [] };
-    let filtered = items.value.transfer_requests;
-    if (selectedStatus.value) {
-        filtered = filtered.filter(item => item.status_text === selectedStatus.value);
-    }
-    if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase();
-        filtered = filtered.filter(item => {
-            return (
-                (item.physical_id && item.physical_id.toLowerCase().includes(q)) ||
-                (item.batch && item.batch.toLowerCase().includes(q)) ||
-                (item.transfer_request_id && item.transfer_request_id.toString().toLowerCase().includes(q)) ||
-                (item.transfer_order?.transfer_order_id && item.transfer_order.transfer_order_id.toString().toLowerCase().includes(q))
+    return { ...items.value, transfer_requests: items.value.transfer_requests };
+});
+
+import { debounce as lodashDebounce } from 'lodash';
+
+const fetchWithSearch = lodashDebounce(() => {
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        const search = searchQuery.value;
+        if (selectedStatus.value === 'Pending' || selectedStatus.value === 'Invalid Request') {
+            transferRequestsStore.fetchTransferRequests(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_requests_status: selectedStatus.value,
+                    search: searchQuery.value
+                }
             );
-        });
+        } else {
+            transferRequestsStore.fetchTransferOrders(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_orders_status: selectedStatus.value,
+                    search: searchQuery.value
+                }
+            );
+        }
     }
-    return { ...items.value, transfer_requests: filtered };
+}, 2000);
+
+watch(searchQuery, () => {
+    fetchWithSearch();
+});
+
+
+watch(selectedStatus, (newStatus) => {
+    const plant_code = route.params.plant_code;
+    const sloc = route.params.sloc;
+    const forklift = route.params.forklift;
+    if (plant_code && sloc && forklift) {
+        if (newStatus === 'Pending' || newStatus === 'Invalid Request') {
+            transferRequestsStore.fetchTransferRequests(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_requests_status: newStatus
+                }
+            );
+        } else {
+            transferRequestsStore.fetchTransferOrders(
+                plant_code,
+                sloc,
+                forklift,
+                {
+                    transfer_orders_status: newStatus
+                }
+            );
+        }
+    }
 });
 
 const showScanner = ref(false);
