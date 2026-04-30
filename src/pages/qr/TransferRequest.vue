@@ -709,7 +709,7 @@ const confirmWrapping = async (text) => {
             sloc: route.params.sloc,
             forklift: route.params.forklift,
             physical_id: selectedTransferRequest.value.physical_id,
-            transfer_request_id: selectedTransferRequest.value.id,
+            transfer_request_id: selectedTransferRequest.value?.transfer_request_id || selectedTransferRequest.value.id,
             qr_text: text
         });
         if (response?.data?.success) {
@@ -766,7 +766,7 @@ const confirmPutaway = async (text) => {
             sloc: route.params.sloc,
             forklift: route.params.forklift,
             physical_id: selectedTransferRequest.value.physical_id,
-            transfer_request_id: selectedTransferRequest.value.id,
+            transfer_request_id: selectedTransferRequest.value?.transfer_request_id || selectedTransferRequest.value.id,
             qr_text: text
         });
         if (response?.data?.success) {
