@@ -62,12 +62,14 @@ const qualityInspectionStatus = ref(null)
 const qualityInspectionLoading = ref(false)
 const qualityInspectionMethod = ref('simulate')
 const simulateCompleted = ref(false)
+const simulationErrors = ref([])
 
 const confirmQualityInspection = async (method = qualityInspectionMethod.value) => {
     qualityInspectionLoading.value = true
     toast.value.show = false
+    simulationErrors.value = []
     try {
-        await ApiService.post('inventories/quality-inspection', {
+        const response = await ApiService.post('inventories/quality-inspection', {
             status: qualityInspectionStatus.value,
             method: method,
             plant_code: props.productionRun?.plant?.plant_code,
@@ -86,6 +88,34 @@ const confirmQualityInspection = async (method = qualityInspectionMethod.value) 
                 // receiving_sloc:
             }))
         })
+
+        const data = response.data;
+        let hasError = false;
+        let errorMessages = [];
+
+        if (data.goods_movement_313 && data.goods_movement_313.status === 'E') {
+            hasError = true;
+            if (data.goods_movement_313.returns) {
+                errorMessages.push(...data.goods_movement_313.returns.filter(r => r.MESSAGE).map(r => r.MESSAGE));
+            }
+        }
+        
+        if (data.goods_movement_315 && data.goods_movement_315.status === 'E') {
+            hasError = true;
+            if (data.goods_movement_315.returns) {
+                errorMessages.push(...data.goods_movement_315.returns.filter(r => r.MESSAGE).map(r => r.MESSAGE));
+            }
+        }
+
+        if (hasError) {
+            simulationErrors.value = errorMessages;
+            simulateCompleted.value = false;
+            toast.value.message = 'Simulation failed. Please check the errors below.'
+            toast.value.color = 'error'
+            toast.value.show = true
+            return;
+        }
+
         if (method === 'simulate') {
             toast.value.message = 'Simulation completed. You may now confirm the quality inspection.'
             toast.value.color = 'info'
@@ -757,7 +787,7 @@ const handleWrongPallet = async () => {
                             <div>
                                 <div class="mb-4 d-flex align-center">
                                     <v-btn variant="text" prepend-icon="ri-arrow-left-line" color="primary"
-                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate' }">
+                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate'; simulationErrors = [] }">
                                         Back to Batch Details
                                     </v-btn>
                                     <v-spacer></v-spacer>
@@ -765,6 +795,13 @@ const handleWrongPallet = async () => {
                                         {{ qualityInspectionItems.length }} item(s) for inspection
                                     </span>
                                 </div>
+
+                                <v-alert v-if="simulationErrors.length > 0" type="error" variant="tonal" class="mb-4">
+                                    <div class="text-subtitle-1 font-weight-bold mb-1">Simulation Errors:</div>
+                                    <ul class="ml-4">
+                                        <li v-for="(error, index) in simulationErrors" :key="index">{{ error }}</li>
+                                    </ul>
+                                </v-alert>
 
                                 <div class="mb-4 d-flex align-center gap-3">
                                     <v-select
