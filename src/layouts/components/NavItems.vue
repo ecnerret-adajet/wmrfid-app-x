@@ -83,8 +83,23 @@ const proceedMapping = () => {
         :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories' }" />
     <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
         :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs' }" />
-    <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
-        :item="{ title: 'Quality Control', icon: 'ri-test-tube-line', to: '/quality-control' }" />
+
+    <!-- <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
+        :item="{ title: 'Quality Control', icon: 'ri-test-tube-line', to: '/quality-control' }" /> -->
+
+    <VerticalNavGroup v-if="authUserCan('can.view.quality.control')" :item="{ title: 'Quality Control', icon: 'ri-database-2-line' }">
+        <VerticalNavLink :item="{
+            title: 'Quality Inspection',
+            href: '/quality-control',
+            to: '/quality-control',
+        }" />
+        <!-- <VerticalNavLink :item="{
+            title: 'Material Documents',
+            href: '/quality-control/material-documents',
+            to: '/quality-control/material-documents',
+        }" /> -->
+    </VerticalNavGroup>
+
     <VerticalNavLink v-if="authUserCan('view.warehouses')"
         :item="{ title: 'Warehouse', icon: 'ri-home-gear-line', to: '/warehouse' }" />
     <VerticalNavLink v-if="authUserCan('view.manual.repack')"
