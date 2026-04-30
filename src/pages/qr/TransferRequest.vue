@@ -3,13 +3,8 @@
         <v-card class="pa-3 mb-2" elevation="1">
             <div class="d-flex align-center justify-space-between">
                 <div class="text-subtitle-2 font-weight-medium">
-                    Transfer Requests
+                    {{ selectedStatus === 'Pending' ? 'Transfer Requests' : 'Transfer Orders' }}
                 </div>
-                <!-- <v-btn icon color="primary" @click="syncTransferRequests" :title="'Sync'">
-                    <v-icon>mdi-sync</v-icon>
-                </v-btn>
-                <VIcon class="clickable-icon" v-bind="props" size="30"
-                    color="primary" icon="ri-refresh-fill" @click="syncTransferRequests" /> -->
 
                 <VTooltip location="top">
                     <template #activator="{ props }">
@@ -60,9 +55,12 @@
                 >
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
-                        <div class="font-weight-bold">
+                        <div class="font-weight-bold d-flex align-center">
                             TR #: {{ item.transfer_request_id }}
+                            <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
+                            <span class="ml-3">{{ item.created_at ? moment(item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
                         </div>
+                        
                         <v-chip
                             size="small"
                             :color="getStatusColor(item.status_text)"
@@ -86,7 +84,11 @@
                     <div v-if="item.transfer_order" class="d-flex flex-column align-center">
                         <div class="d-flex justify-space-between align-center w-100 mb-2">
                             <div>
-                            <div class="text-caption text-grey">TO Number</div>
+                            <div class="text-black font-weight-bold d-flex align-center">
+                                TO Number
+                                <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
+                                <span class="ml-3">{{ item.transfer_order?.created_at ? moment(item.transfer_order.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                            </div>
                             <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id }}</div>
                             </div>
                             <v-chip
@@ -328,7 +330,11 @@ async function generateTransferOrder(item) {
             }, 300);
         }
     } catch (err) {
-        if (err?.response?.data?.message === 'No Assigned Bin' ) {
+        if (err?.response?.status === 401) {
+            errorMessageTitle.value = 'Not Authorized';
+            errorMessage.value = 'Your session may have expired. Please log in again.';
+            showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'No Assigned Bin' ) {
             errorMessageTitle.value = 'Error'
             errorMessage.value = 'No assigned bin. Contact IT regarding putaway strategy.'
             showErrorModal.value = true
@@ -379,7 +385,11 @@ const confirmWrapping = async (text) => {
             selectedTransferRequest.value = null;
         }
     } catch (err) {
-        if (err?.response?.data?.message === 'Pallet not found.') {
+        if (err?.response?.status === 401) {
+            errorMessageTitle.value = 'Not Authorized';
+            errorMessage.value = 'Your session may have expired. Please log in again.';
+            showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'Pallet not found.') {
             errorMessageTitle.value = 'Pallet not found.';
             errorMessage.value = 'Please scan a valid pallet QR code.';
             showErrorModal.value = true;
@@ -432,7 +442,11 @@ const confirmPutaway = async (text) => {
             selectedTransferRequest.value = null;
         }
     } catch (err) {
-        if (err?.response?.data?.message === 'Invalid QR code') {
+        if (err?.response?.status === 401) {
+            errorMessageTitle.value = 'Not Authorized';
+            errorMessage.value = 'Your session may have expired. Please log in again.';
+            showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'Invalid QR code') {
             errorMessageTitle.value = 'Invalid QR Code.'
             errorMessage.value = 'Please scan a valid QR code.'
             showErrorModal.value = true
