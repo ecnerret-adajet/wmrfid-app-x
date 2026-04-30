@@ -434,6 +434,10 @@ const getCommodityStatusColor = (name) => {
     return 'grey'
 }
 
+const isSelectable = (item) => {
+    return item.inventory?.commodity_status?.slug === 'quality-inspection' || item.inventory?.commodity_status?.name === 'Quality Inspection'
+}
+
 const handleWrongPallet = async () => {
     wrongPalletLoading.value = true;
     toast.value.show = false;
@@ -696,6 +700,7 @@ const handleWrongPallet = async () => {
                                 <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems"
                                     :headers="headers" :items="serverItems" :items-length="totalItems"
                                     :loading="pageLoading" item-value="id" :search="searchValue"
+                                    :item-selectable="isSelectable"
                                     @update:options="loadItems" show-select return-object class="text-no-wrap">
 
                                     <template #item.physical_id="{ item }">
