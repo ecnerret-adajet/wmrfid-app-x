@@ -3,7 +3,13 @@
         <v-card class="pa-3 mb-2" elevation="1">
             <div class="d-flex align-center justify-space-between">
                 <div class="text-subtitle-2 font-weight-medium">
-                    {{ selectedStatus === 'Pending' ? 'Transfer Requests' : 'Transfer Orders' }}
+                    {{
+                        selectedStatus === 'Pending'
+                        ? 'Transfer Requests'
+                        : selectedStatus === 'Invalid Request'
+                            ? 'Invalid Requests'
+                            : 'Transfer Orders'
+                    }}
                 </div>
 
                 <div class="d-flex align-center ga-2">
