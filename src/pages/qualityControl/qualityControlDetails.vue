@@ -535,7 +535,7 @@ const handleWrongPallet = async () => {
                 </VRow>
             </VListItem>
         </VList>
-        <div class="mx-4">
+        <!-- <div class="mx-4">
             <v-row>
                 <v-col cols="3">
                     <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
@@ -631,7 +631,7 @@ const handleWrongPallet = async () => {
                     </v-card>
                 </v-col>
             </v-row>
-        </div>
+        </div> -->
         <div class="mt-4 mx-4">
             <v-card elevation="0" class="border">
                 <template v-if="activeTab === 'batch_details'">
@@ -676,17 +676,17 @@ const handleWrongPallet = async () => {
                                     <h4 class="text-h4 font-weight-black text-primary">Batch Details</h4>
                                     <v-spacer></v-spacer>
 
-                                    <v-btn @click="wrongPalletPosition" :disabled="selectedItems.length === 0"
+                                    <v-btn v-if="authUserCan('can.remove.pallet')" @click="wrongPalletPosition" :disabled="selectedItems.length === 0"
                                         class="px-5" type="button" color="warning">
                                         Remove Batch
                                     </v-btn>
 
-                                    <v-btn @click="changeBatch" :disabled="selectedItems.length === 0"
+                                    <v-btn v-if="authUserCan('can.change.batch')" @click="changeBatch" :disabled="selectedItems.length === 0"
                                         class="px-5 ml-2" type="button" color="primary-light">
                                         Change Batch
                                     </v-btn>
 
-                                    <v-btn @click="openQualityInspection" :disabled="selectedItems.length === 0"
+                                    <v-btn v-if="authUserCan('can.qi.pallets')" @click="openQualityInspection" :disabled="selectedItems.length === 0"
                                         class="px-5 ml-2" type="button" color="success">
                                         Quality Inspection
                                     </v-btn>
