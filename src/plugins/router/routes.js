@@ -553,6 +553,17 @@ export const routes = [
         },
     },
     {
+        path: '/:plant_code/:sloc/:forklift/fumigation',
+        name: 'fumigation-nomination',
+        component: () => import('@/pages/fumigation/FumigationNomination.vue'),
+        meta: {
+            pageTitle: 'Fumigation Nomination',
+            breadcrumbs: (route) => [
+                { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation-nomination` }
+            ],
+        },
+    },
+    {
         path: '/sso-login',
         name: 'sso-callback',
         component: () => import('@/pages/sso-callback.vue'),
