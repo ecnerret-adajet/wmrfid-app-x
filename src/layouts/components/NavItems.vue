@@ -93,6 +93,10 @@ const proceedMapping = () => {
             href: '/quality-control',
             to: '/quality-control',
         }" />
+        <VerticalNavLink :item="{
+            title: 'QC Inspection',
+            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`,
+        }" />
         <!-- <VerticalNavLink :item="{
             title: 'Material Documents',
             href: '/quality-control/material-documents',

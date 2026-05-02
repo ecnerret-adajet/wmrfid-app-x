@@ -542,6 +542,17 @@ export const routes = [
         },
     },
     {
+        path: '/:plant_code/:sloc/:forklift/qc-inspection',
+        name: 'qc-inspection',
+        component: () => import('@/pages/qualityControl/QcInspection.vue'),
+        meta: {
+            pageTitle: 'QC Inspection',
+            breadcrumbs: (route) => [
+                { label: 'QC Inspection', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/qc-inspection` }
+            ],
+        },
+    },
+    {
         path: '/sso-login',
         name: 'sso-callback',
         component: () => import('@/pages/sso-callback.vue'),
