@@ -194,7 +194,11 @@
                     <div v-else class="d-flex flex-column align-center">
                     <div class="text-primary-2 mb-2">No TO yet</div>
                     <v-divider />
-                        <v-btn v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"
+                        <v-btn v-if="(
+                                item.status_text !== 'Invalid Request' && 
+                                (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request') &&
+                                !item.is_bin_transfer
+                            )"
                             color="primary"
                             block
                             :loading="selectedTransferRequest === (item.transfer_request?.transfer_request_id || item.transfer_request_id)"
@@ -203,6 +207,9 @@
                         >
                             Generate Transfer Order
                         </v-btn>
+                        <v-sheet v-else-if="item.is_bin_transfer" class="w-100 pa-2 mb-2" color="#FFB400" rounded>
+                            <span>Pending TO Approval</span>
+                        </v-sheet>
                         <v-sheet v-else class="w-100 pa-2 mb-2" color="#F75959" rounded>
                             <span>Invalid Request</span>
                         </v-sheet>
@@ -651,9 +658,14 @@ async function generateTransferOrder(item) {
     try {
         const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id);
         // Wait for the store to refresh
-        await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        if (selectedStatus.value === 'Pending' || selectedStatus.value === 'Invalid Request') {
+            await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        } else {
+            await transferRequestsStore.fetchTransferOrders(plant_code, sloc, forklift);
+        }
         // Find the updated item
-        const updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
+        const itemsArr = transferRequestsStore.items?.transfer_requests || transferRequestsStore.items?.transfer_orders || [];
+        const updated = itemsArr.find(tr => tr.id === item.id);
         if (updated) {
             // Set the filter to the new status
             selectedStatus.value = updated.status_text;
