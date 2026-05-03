@@ -46,11 +46,11 @@ const headers = [
         title: 'PHYSICAL ID',
         key: 'physical_id',
     },
-    {
-        title: 'TYPE',
-        key: 'type',
-        sortable: false
-    },
+    // {
+    //     title: 'TYPE',
+    //     key: 'type',
+    //     sortable: false
+    // },
     {
         title: 'MFG DATE',
         key: 'mfg_date',
@@ -77,6 +77,21 @@ const headers = [
         title: 'QUANTITY',
         key: 'quantity',
         align: 'center'
+    },
+    {
+        title: 'STATUS',
+        key: 'commodity_status',
+        sortable: false
+    },
+    {
+        title: 'BIN LOCATION',
+        key: 'bin_location',
+        sortable: false
+    },
+    {
+        title: 'LAYER',
+        key: 'layer',
+        sortable: false
     },
 ]
 
@@ -534,12 +549,12 @@ const exportData = async () => {
                             </template>
 
                             <template #item.physical_id="{ item }">
-                                {{ item.rfid?.name }}
+                                {{ item.physical_id }}
                             </template>
 
-                            <template #item.type="{ item }">
+                            <!-- <template #item.type="{ item }">
                                 {{ item.type }}
-                            </template>
+                            </template> -->
 
                             <template #item.mfg_date="{ item }">
                                 {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
@@ -569,6 +584,20 @@ const exportData = async () => {
 
                             <template #item.updated_at="{ item }">
                                 {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+                            </template>
+
+                            <template #item.commodity_status="{ item }">
+                                <span class="font-weight-bold">
+                                    {{ item.commodity_status?.name ?? '' }}
+                                </span>
+                            </template>
+
+                            <template #item.bin_location="{ item }">
+                                {{ item.block?.label && item.block?.lot?.label ? `${item.block.lot.label} - ${item.block.label}` : '' }}
+                            </template>
+
+                            <template #item.layer="{ item }">
+                                {{ item.position_in_block }}
                             </template>
 
                         </VDataTableServer>
@@ -626,7 +655,8 @@ const exportData = async () => {
                 <tbody>
                     <tr v-for="(item, index) in selectedItems" :key="index">
                         <td>{{ item.rfid_code }}</td>
-                        <td>{{ item.rfid?.name }}</td>
+                        <td>{{ item.physical_id}}</td>
+                        <!-- <td>{{ item.rfid?.name }}</td> -->
                         <td>{{ item.material?.description ?? 'N/A' }}</td>
                         <td>
                             {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
