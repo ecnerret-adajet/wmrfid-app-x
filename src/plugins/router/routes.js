@@ -394,6 +394,18 @@ export const routes = [
         },
 
         {
+            path: 'qc-disposition',
+            name: 'qc-disposition',
+            component: () => import('@/pages/qualityControl/QcDisposition.vue'),
+            meta: {
+              pageTitle: 'QC Disposition',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+              ],
+            },
+        },
+
+        {
             path: 'application-requests',
             name: 'application-requests',
             component: () => import('@/pages/applicationRequest/index.vue'),
