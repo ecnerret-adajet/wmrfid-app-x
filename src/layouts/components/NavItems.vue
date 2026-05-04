@@ -85,14 +85,15 @@ const proceedMapping = () => {
         <VerticalNavLink :item="{
             title: 'Requests',
             to: '/qc-disposition',
+            exactMatch: true,
         }" />
         <VerticalNavLink :item="{
             title: 'Approvals',
-            to: '',
+            to: '/qc-disposition/approvals',
         }" />
         <VerticalNavLink :item="{
             title: 'Postings',
-            to: '',
+            to: '/qc-disposition/postings',
         }" />
     </VerticalNavGroup>
     <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"

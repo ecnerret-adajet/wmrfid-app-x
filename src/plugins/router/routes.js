@@ -404,6 +404,30 @@ export const routes = [
               ],
             },
         },
+        {
+            path: 'qc-disposition/approvals',
+            name: 'qc-disposition-approvals',
+            component: () => import('@/pages/qualityControl/QcDispositionApproval.vue'),
+            meta: {
+              pageTitle: 'QC Disposition Approvals',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Approvals', link: '/qc-disposition/approvals' },
+              ],
+            },
+        },
+        {
+            path: 'qc-disposition/postings',
+            name: 'qc-disposition-postings',
+            component: () => import('@/pages/qualityControl/Postings.vue'),
+            meta: {
+              pageTitle: 'QC Disposition Postings',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Postings', link: '/qc-disposition/postings' },
+              ],
+            },
+        },
 
         {
             path: 'application-requests',

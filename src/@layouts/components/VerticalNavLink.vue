@@ -16,6 +16,11 @@ const isActive = computed(() => {
     // Normalize route and current path for comparison
     const baseRoute = props.item.to.toString().replace(/\/$/, '')
     const currentRoute = route.path.toString().replace(/\/$/, '')
+    
+    if (props.item.exactMatch) {
+        return currentRoute === baseRoute 
+    }
+
     if (currentRoute === '/rfid-monitoring') {
         return currentRoute === baseRoute 
     } else {
