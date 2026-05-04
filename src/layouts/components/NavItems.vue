@@ -81,8 +81,20 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse' }" />
     <VerticalNavLink v-if="authUserCan('view.inventories')"
         :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories' }" />
-    <VerticalNavLink v-if="authUserCan('can.view.qc.disposition')"
-        :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line', to: '/qc-disposition' }" />
+    <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
+        <VerticalNavLink :item="{
+            title: 'Requests',
+            to: '/qc-disposition',
+        }" />
+        <VerticalNavLink :item="{
+            title: 'Approvals',
+            to: '',
+        }" />
+        <VerticalNavLink :item="{
+            title: 'Postings',
+            to: '',
+        }" />
+    </VerticalNavGroup>
     <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
         :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs' }" />
 

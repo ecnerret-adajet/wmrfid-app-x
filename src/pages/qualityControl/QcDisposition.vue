@@ -3,7 +3,7 @@ import ApiService from '@/services/ApiService'
 import JwtService from '@/services/JwtService'
 import axios from 'axios'
 import Moment from 'moment'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
@@ -11,7 +11,8 @@ const searchValue = ref('')
 const showCreateDialog = ref(false)
 
 const plantsOptions = ref([])
-const filters = reactive({ plant_id: null })
+const storageLocations = ref([])
+const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], storage_location_id: null })
 
 const selectedItems = ref([])
 const serverItems = ref([])
@@ -27,12 +28,21 @@ onMounted(() => loadPlants())
 const loadPlants = async () => {
   try {
     const token = JwtService.getToken()
-    const response = await axios.get('/production-runs/get-data-dropdown', {
+    const response = await axios.get('/managed-plant-storage-locations', {
       headers: { Authorization: `Bearer ${token}` },
     })
     plantsOptions.value = (response.data.plants ?? [])
       .filter(item => item.name !== null)
-      .map(item => ({ value: item.id, title: item.name }))
+      .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
+    if (plantsOptions.value.length > 0) {
+      filters.plant_id = plantsOptions.value[0].value
+      filters.plant_code = plantsOptions.value[0].plant_code
+      filters.storage_locations = plantsOptions.value[0].storage_locations
+    }
+    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
+    if(filters.storage_locations.length > 0) {
+      filters.storage_location_id = filters.storage_locations[0].value
+    }
   } catch (error) {
     console.error(error)
   }
@@ -85,13 +95,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     })
 }
 
-watch(() => filters.plant_id, () => {
-  loadItems({
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    sortBy: [{ key: sortQuery.value.replace('-', ''), order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }],
-  })
-})
+// watch(() => filters.plant_id, () => {
+//   loadItems({
+//     page: page.value,
+//     itemsPerPage: itemsPerPage.value,
+//     sortBy: [{ key: sortQuery.value.replace('-', ''), order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }],
+//   })
+// })
 
 const handleSearch = () => {
   searchValue.value = searchInput.value
@@ -108,35 +118,98 @@ const totalSelectedQuantity = computed(() =>
 
 const dispoForm = reactive({ remarks: null })
 const dispoLoading = ref(false)
-const dispoError = ref(null)
+const grGiSlipNumber = ref('')
+const refDocNumber = ref('')
+const postingDate = ref(new Date().toISOString().split('T')[0])
+const qualityInspectionStatus = ref('for-qc-dispo')
+const qualityInspectionStatusOptions = [
+  { title: 'For QC Dispo', value: 'for-qc-dispo' },
+]
+const simulateCompleted = ref(false)
+const simulationErrors = ref([])
+const dialogAlert = ref({ show: false, type: 'info', message: '' })
 
 const openCreateDialog = () => {
   dispoForm.remarks = null
-  dispoError.value = null
+  grGiSlipNumber.value = ''
+  refDocNumber.value = ''
+  postingDate.value = new Date().toISOString().split('T')[0]
+  qualityInspectionStatus.value = 'for-qc-dispo'
+  simulateCompleted.value = false
+  simulationErrors.value = []
+  dialogAlert.value = { show: false, type: 'info', message: '' }
   showCreateDialog.value = true
 }
 
-const handleCreateDispo = async () => {
+const handleCreateDispo = async (method) => {
   dispoLoading.value = true
-  dispoError.value = null
+  simulationErrors.value = []
+  dialogAlert.value = { show: false, type: 'info', message: '' }
 
   if (!dispoForm.remarks) {
-    dispoError.value = 'Remarks is required.'
+    dialogAlert.value = { show: true, type: 'error', message: 'Remarks is required.' }
     dispoLoading.value = false
     return
   }
 
   try {
-    await ApiService.post('qc-disposition/create', {
+    const response = await ApiService.post('inventories/quality-inspection', {
       ...dispoForm,
-      items: selectedItems.value,
+      method,
+      gr_gi_slip_number: grGiSlipNumber.value,
+      ref_doc_number: refDocNumber.value,
+      posting_date: postingDate.value,
+      status: qualityInspectionStatus.value,
+      plant_code: filters.plant_code,
+      storage_location_id: filters.storage_location_id,
+      items: selectedItems.value.map(item => ({
+        physical_id: item.physical_id,
+        rfid_code: item.rfid_code,
+        rfid_type: item.type,
+        type_slug: item.type_slug,
+        batch: item.batch,
+        material_code: item.material?.bu_material,
+        entry_qty: item.quantity,
+      })),
     })
-    showCreateDialog.value = false
-    selectedItems.value = []
-    lastOptions.value = {}
-    loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
+
+    const data = response.data
+    let hasError = false
+    const errorMessages = []
+
+    if (data.goods_movement_313?.status === 'E') {
+      hasError = true
+      errorMessages.push(...(data.goods_movement_313.returns ?? []).filter(r => r.MESSAGE).map(r => r.MESSAGE))
+    }
+    if (data.goods_movement_315?.status === 'E') {
+      hasError = true
+      errorMessages.push(...(data.goods_movement_315.returns ?? []).filter(r => r.MESSAGE).map(r => r.MESSAGE))
+    }
+
+    if (hasError) {
+      simulationErrors.value = errorMessages
+      simulateCompleted.value = false
+      dialogAlert.value = { show: true, type: 'error', message: 'Simulation failed. Please check the errors below.' }
+      return
+    }
+
+    if (method === 'simulate') {
+      simulateCompleted.value = true
+      dialogAlert.value = { show: true, type: 'info', message: 'Simulation completed. You may now confirm the QC disposition.' }
+    } else {
+      dialogAlert.value = { show: true, type: 'success', message: 'QC Disposition created successfully!' }
+      simulateCompleted.value = false
+      showCreateDialog.value = false
+      selectedItems.value = []
+      lastOptions.value = {}
+      loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
+    }
   } catch (error) {
-    dispoError.value = error.response?.data?.message || 'An unexpected error occurred.'
+    dialogAlert.value = {
+      show: true,
+      type: 'error',
+      message: error.response?.data?.message || 'An unexpected error occurred.',
+    }
   } finally {
     dispoLoading.value = false
   }
@@ -144,6 +217,26 @@ const handleCreateDispo = async () => {
 </script>
 
 <template>
+  <VRow>
+    <VCol cols="12" md="3">
+      <v-skeleton-loader v-if="pageLoading" type="article" />
+      <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
+        <div class="d-flex align-center">
+          <div
+            class="d-flex align-center justify-center mr-4"
+            style="width: 48px; height: 48px; background-color: #cae2fa; border-radius: 12px;"
+          >
+            <v-icon icon="ri-list-check" color="primary" size="24" />
+          </div>
+          <div>
+            <span class="text-subtitle-1 font-weight-bold text-grey-700">Total Goods Status</span>
+            <div class="text-h4 font-weight-bold text-primary mt-1">{{ totalItems }}</div>
+          </div>
+        </div>
+      </v-card>
+    </VCol>
+  </VRow>
+
   <VRow class="align-center mb-3">
     <VCol cols="12" md="3" class="d-flex align-center">
       <v-select
@@ -199,14 +292,58 @@ const handleCreateDispo = async () => {
       </v-card-title>
       <v-divider />
       <v-card-text class="pa-4">
-        <VAlert
-          v-if="dispoError"
-          color="error"
+        <v-alert
+          v-if="dialogAlert.show"
+          :type="dialogAlert.type"
           variant="tonal"
           class="mb-4"
+          closable
+          @click:close="dialogAlert.show = false"
         >
-          {{ dispoError }}
-        </VAlert>
+          <div>{{ dialogAlert.message }}</div>
+          <ul v-if="simulationErrors.length > 0" class="ml-4 mt-1">
+            <li v-for="(err, i) in simulationErrors" :key="i">{{ err }}</li>
+          </ul>
+        </v-alert>
+        <VTextField
+          v-model="grGiSlipNumber"
+          label="GR GI Slip Number"
+          placeholder="Enter GR GI Slip Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <VTextField
+          v-model="refDocNumber"
+          label="Ref Doc Number"
+          placeholder="Enter Ref Doc Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <VTextField
+          v-model="postingDate"
+          label="Posting Date"
+          type="date"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <v-select
+          v-model="qualityInspectionStatus"
+          label="Select Status"
+          :items="qualityInspectionStatusOptions"
+          item-title="title"
+          item-value="value"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+          disabled
+        />
         <v-textarea
           v-model="dispoForm.remarks"
           class="mb-4"
@@ -278,11 +415,20 @@ const handleCreateDispo = async () => {
         </v-btn>
         <v-spacer />
         <v-btn
-          color="primary"
-          :loading="dispoLoading"
-          @click="handleCreateDispo"
+          color="secondary"
+          :disabled="!qualityInspectionStatus || dispoLoading"
+          :loading="dispoLoading && !simulateCompleted"
+          @click="handleCreateDispo('simulate')"
         >
-          Create
+          Simulate
+        </v-btn>
+        <v-btn
+          v-if="simulateCompleted"
+          color="primary"
+          :loading="dispoLoading && simulateCompleted"
+          @click="handleCreateDispo('')"
+        >
+          Confirm
         </v-btn>
       </v-card-actions>
     </v-card>
