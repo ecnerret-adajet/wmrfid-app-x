@@ -35,17 +35,17 @@ const headers = [
         key: 'plant',
     },
     {
-        title: 'MATERIAL TYPE',
+        title: 'STORAGE SECTION',
         key: 'material_type',
         align: 'center',
         sortable: false
     },
-    {
-        title: 'MAX STORAGE PERIOD',
-        key: 'max_storage_period',
-        align: 'center',
-        sortable: false
-    },
+    // {
+    //     title: 'MAX STORAGE PERIOD',
+    //     key: 'max_storage_period',
+    //     align: 'center',
+    //     sortable: false
+    // },
     {
         title: 'BU MATERIAL',
         key: 'bu_material',
@@ -123,6 +123,10 @@ defineExpose({
 
     <template #item.plant="{ item }">
         {{ item.plant?.name  }}
+    </template>
+
+    <template #item.material_type="{ item }">
+        {{ item.material_type?.name  }}
     </template>
 
     <template #item.created_at="{ item }">
