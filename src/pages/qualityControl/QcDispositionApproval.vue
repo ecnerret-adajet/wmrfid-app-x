@@ -156,7 +156,7 @@ const handleApprove = async (method) => {
       plant_code: filters.plant_code,
       storage_location_id: filters.storage_location_id,
       from_qc_disposition: true, // default value for this instance, to default the W104 as the issuing sloc
-      type: 'qc-disposition',
+      type: 'qc-disposition-approval',
       items: selectedItems.value.map(item => ({
         physical_id: item.physical_id,
         rfid_code: item.rfid_code,
@@ -165,6 +165,8 @@ const handleApprove = async (method) => {
         batch: item.batch,
         material_code: item.material?.bu_material,
         entry_qty: item.quantity,
+        designated_block_id: item.block_id,
+        layer_position: item.position_in_block,
       })),
     })
 

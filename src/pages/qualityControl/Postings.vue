@@ -1,69 +1,143 @@
 <script setup>
 import ApiService from '@/services/ApiService'
-import JwtService from '@/services/JwtService'
-import axios from 'axios'
-import Moment from 'moment'
-import { computed, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 
 const pageLoading = ref(false)
+const initialLoading = ref(true)
 const searchInput = ref('')
 const searchValue = ref('')
-const showCreateDialog = ref(false)
 
 const plantsOptions = ref([])
 const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], storage_location_id: null })
+const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], sloc: null })
 
-const selectedItems = ref([])
 const serverItems = ref([])
 const totalItems = ref(0)
 const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
-const lastOptions = ref({})
+const detailDialog = ref(false)
+const selectedLog = ref(null)
+
+const headers = [
+  { title: 'PHYSICAL ID', key: 'physical_id', sortable: false },
+  { title: 'BATCH', key: 'batch', sortable: false },
+  { title: 'PLANT', key: 'plant', sortable: false },
+  { title: 'QTY', key: 'entry_qty', align: 'center', sortable: false },
+  { title: 'TRANSFER REQUEST', key: 'transfer_request', sortable: false },
+  { title: 'TRANSFER ORDER', key: 'transfer_order', sortable: false },
+  { title: 'POSTING DATE', key: 'posting_date', sortable: false },
+  { title: 'CREATED AT', key: 'created_at', sortable: false },
+  { title: 'MOVEMENT ITEMS', key: 'log_items_count', align: 'center', sortable: false },
+  { title: '', key: 'actions', sortable: false, align: 'end' },
+]
+
+const itemHeaders = [
+  { title: 'MATERIAL DOCUMENT', key: 'material_document' },
+  { title: 'PALLET ID', key: 'pallet_physical_id' },
+  { title: 'MOVEMENT TYPE', key: 'movement_type', align: 'center' },
+  { title: 'PLANT', key: 'plant' },
+  { title: 'ISSUING SLOC', key: 'issuing_sloc' },
+  { title: 'RECEIVING SLOC', key: 'receiving_sloc' },
+  { title: 'QTY', key: 'entry_qty', align: 'center' },
+  { title: 'UOM', key: 'entry_uom', align: 'center' },
+  { title: 'CREATE DATE', key: 'created_at' },
+]
 
 onMounted(() => loadPlants())
 
 const loadPlants = async () => {
   try {
-    const token = JwtService.getToken()
-    const response = await axios.get('/managed-plant-storage-locations', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await ApiService.query('managed-plant-storage-locations', {})
     plantsOptions.value = (response.data.plants ?? [])
       .filter(item => item.name !== null)
       .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
+    
     if (plantsOptions.value.length > 0) {
-      filters.plant_id = plantsOptions.value[0].value
-      filters.plant_code = plantsOptions.value[0].plant_code
-      filters.storage_locations = plantsOptions.value[0].storage_locations
+      const firstPlant = plantsOptions.value[0]
+      filters.plant_id = firstPlant.value
+      filters.plant_code = firstPlant.plant_code
+      
+      storageLocations.value = response.data.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code, plant_id: item.plant_id }))
+      
+      if(storageLocations.value.length > 0) {
+        filters.sloc = storageLocations.value[0]
+      }
     }
-    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
-    if(filters.storage_locations.length > 0) {
-      filters.storage_location_id = filters.storage_locations[0].value
-    }
+    
+    // Automatically load items after plants are loaded
+    handleSearch()
   } catch (error) {
     console.error(error)
+  } finally {
+    initialLoading.value = false
   }
 }
 
-const headers = [
-  { title: 'BATCH', key: 'batch' },
-  { title: 'MATERIAL', key: 'material_id' },
-  { title: 'PHYSICAL ID', key: 'physical_id' },
-  { title: 'MFG DATE', key: 'mfg_date' },
-  { title: 'QUANTITY', key: 'quantity', align: 'center' },
-  { title: 'STATUS', key: 'commodity_status', sortable: false },
-  { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
-  { title: 'LAYER', key: 'layer', sortable: false },
-]
+watch(() => filters.plant_id, (newVal) => {
+    const selectedSloc = storageLocations.value.find(p => p.plant_id === newVal);
+    if (selectedSloc) {
+        filters.plant_code = selectedSloc.plant_code;
+        storageLocations.value = selectedSloc.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
+        
+        if (storageLocations.value.length > 0) {
+            // filters.sloc = storageLocations.value[0].value;
+            filters.sloc = selectedSloc.code;
+        } else {
+            filters.sloc = null;
+        }
+        
+        handleSearch();
+    }
+})
 
-const loadItems = ({ page, itemsPerPage, sortBy }) => {
-  const options = { page, itemsPerPage, sortBy, search: searchValue.value, plant_id: filters.plant_id }
-  const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options)
-  if (isSame) return
-  lastOptions.value = options
+watch(() => filters.sloc, () => {
+    handleSearch();
+})
+
+// const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
+//   if (!filters.plant_code || !filters.sloc) {
+//       serverItems.value = []
+//       totalItems.value = 0
+//       return
+//   }
+
+//   pageLoading.value = true
+
+//   if (sortBy && sortBy.length > 0) {
+//     const sort = sortBy[0]
+//     sortQuery.value = sort.order === 'desc' ? `-${sort.key}` : sort.key
+//   } else {
+//     sortQuery.value = '-created_at'
+//   }
+
+//   ApiService.query(`quality-control/goods-movement-logs/${filters.plant_code}/${filters.sloc?.code}`, {
+//     params: {
+//       page: pageVal,
+//       itemsPerPage: perPage,
+//       sort: sortQuery.value,
+//       search: searchValue.value,
+//       type: "qc-disposition"
+//     },
+//   })
+//     .then((response) => {
+//       totalItems.value = response.data.total
+//       serverItems.value = response.data.data
+//       pageLoading.value = false
+//     })
+//     .catch((error) => {
+//       console.error(error)
+//       pageLoading.value = false
+//     })
+// }
+
+const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
+  if (!filters.plant_code || !filters.sloc) {
+    serverItems.value = []
+    totalItems.value = 0
+    return
+  }
 
   pageLoading.value = true
 
@@ -74,14 +148,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     sortQuery.value = '-created_at'
   }
 
-  ApiService.query('inventories/fetch-inventories', {
+  // ApiService.query(`quality-control/dispositions/${filters.plant_code}/${filters.sloc?.code}`, {
+  ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc?.code}`, {
     params: {
-      page,
-      itemsPerPage,
+      page: pageVal,
+      itemsPerPage: perPage,
       sort: sortQuery.value,
       search: searchValue.value,
-      plant_id: filters.plant_id,
-      commodity_status_id: 1,
     },
   })
     .then((response) => {
@@ -95,132 +168,41 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     })
 }
 
-// watch(() => filters.plant_id, () => {
-//   loadItems({
-//     page: page.value,
-//     itemsPerPage: itemsPerPage.value,
-//     sortBy: [{ key: sortQuery.value.replace('-', ''), order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }],
-//   })
-// })
-
 const handleSearch = () => {
   searchValue.value = searchInput.value
-  lastOptions.value = {}
+  loadItems({
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: [],
+  })
 }
 
-const handleSelectionChange = (val) => {
-  selectedItems.value = val
-}
-
-const totalSelectedQuantity = computed(() =>
-  selectedItems.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
-)
-
-const dispoForm = reactive({ remarks: null })
-const dispoLoading = ref(false)
-const grGiSlipNumber = ref('')
-const refDocNumber = ref('')
-const postingDate = ref(new Date().toISOString().split('T')[0])
-const qualityInspectionStatus = ref('for-qc-dispo')
-const qualityInspectionStatusOptions = [
-  { title: 'For QC Dispo', value: 'for-qc-dispo' },
-]
-const simulateCompleted = ref(false)
-const simulationErrors = ref([])
-const dialogAlert = ref({ show: false, type: 'info', message: '' })
-
-const openCreateDialog = () => {
-  dispoForm.remarks = null
-  grGiSlipNumber.value = ''
-  refDocNumber.value = ''
-  postingDate.value = new Date().toISOString().split('T')[0]
-  qualityInspectionStatus.value = 'for-qc-dispo'
-  simulateCompleted.value = false
-  simulationErrors.value = []
-  dialogAlert.value = { show: false, type: 'info', message: '' }
-  showCreateDialog.value = true
-}
-
-const handleCreateDispo = async (method) => {
-  dispoLoading.value = true
-  simulationErrors.value = []
-  dialogAlert.value = { show: false, type: 'info', message: '' }
-
-  if (!dispoForm.remarks) {
-    dialogAlert.value = { show: true, type: 'error', message: 'Remarks is required.' }
-    dispoLoading.value = false
-    return
-  }
-
-  try {
-    const response = await ApiService.post('inventories/quality-inspection', {
-      ...dispoForm,
-      method,
-      gr_gi_slip_number: grGiSlipNumber.value,
-      ref_doc_number: refDocNumber.value,
-      posting_date: postingDate.value,
-      status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
-      storage_location_id: filters.storage_location_id,
-      items: selectedItems.value.map(item => ({
-        physical_id: item.physical_id,
-        rfid_code: item.rfid_code,
-        rfid_type: item.type,
-        type_slug: item.type_slug,
-        batch: item.batch,
-        material_code: item.material?.bu_material,
-        entry_qty: item.quantity,
-      })),
-    })
-
-    const data = response.data
-    let hasError = false
-    const errorMessages = []
-
-    if (data.goods_movement_313?.status === 'E') {
-      hasError = true
-      errorMessages.push(...(data.goods_movement_313.returns ?? []).filter(r => r.MESSAGE).map(r => r.MESSAGE))
-    }
-    if (data.goods_movement_315?.status === 'E') {
-      hasError = true
-      errorMessages.push(...(data.goods_movement_315.returns ?? []).filter(r => r.MESSAGE).map(r => r.MESSAGE))
-    }
-
-    if (hasError) {
-      simulationErrors.value = errorMessages
-      simulateCompleted.value = false
-      dialogAlert.value = { show: true, type: 'error', message: 'Simulation failed. Please check the errors below.' }
-      return
-    }
-
-    if (method === 'simulate') {
-      simulateCompleted.value = true
-      dialogAlert.value = { show: true, type: 'info', message: 'Simulation completed. You may now confirm the QC disposition.' }
-    } else {
-      dialogAlert.value = { show: true, type: 'success', message: 'QC Disposition created successfully!' }
-      simulateCompleted.value = false
-      showCreateDialog.value = false
-      selectedItems.value = []
-      lastOptions.value = {}
-      loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
-    }
-  } catch (error) {
-    dialogAlert.value = {
-      show: true,
-      type: 'error',
-      message: error.response?.data?.message || 'An unexpected error occurred.',
-    }
-  } finally {
-    dispoLoading.value = false
-  }
-}
+const openDetailDialog = (log) => {
+    selectedLog.value = log;
+    detailDialog.value = true;
+};
 </script>
 
 <template>
+  <template v-if="initialLoading">
+    <VRow class="mb-3">
+      <VCol cols="12" md="3">
+        <v-skeleton-loader type="card" />
+      </VCol>
+    </VRow>
+    <VRow class="mb-3">
+      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
+      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
+      <VCol cols="12" md="4"><v-skeleton-loader type="text" /></VCol>
+      <VCol cols="12" md="2"><v-skeleton-loader type="button" /></VCol>
+    </VRow>
+    <v-skeleton-loader type="table" />
+  </template>
+
+  <template v-else>
   <VRow>
     <VCol cols="12" md="3">
-      <v-skeleton-loader v-if="pageLoading" type="article" />
-      <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
+      <v-card class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
         <div class="d-flex align-center">
           <div
             class="d-flex align-center justify-center mr-4"
@@ -229,7 +211,7 @@ const handleCreateDispo = async (method) => {
             <v-icon icon="ri-list-check" color="primary" size="24" />
           </div>
           <div>
-            <span class="text-subtitle-1 font-weight-bold text-grey-700">Total Goods Status</span>
+            <span class="text-subtitle-1 font-weight-bold text-grey-700">Total Postings</span>
             <div class="text-h4 font-weight-bold text-primary mt-1">{{ totalItems }}</div>
           </div>
         </div>
@@ -243,14 +225,23 @@ const handleCreateDispo = async (method) => {
         label="Filter by Plant"
         density="compact"
         hide-details
-        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        :items="plantsOptions"
         v-model="filters.plant_id"
       />
     </VCol>
-    <VCol cols="12" md="5">
+    <VCol cols="12" md="3" class="d-flex align-center">
+      <v-select
+        label="Filter by Storage Location"
+        density="compact"
+        hide-details
+        :items="storageLocations"
+        v-model="filters.sloc"
+      />
+    </VCol>
+    <VCol cols="12" md="4">
       <VTextField
         v-model="searchInput"
-        placeholder="Search..."
+        placeholder="Search movement type, batch..."
         append-inner-icon="ri-search-line"
         single-line
         hide-details
@@ -268,209 +259,166 @@ const handleCreateDispo = async (method) => {
         Search
       </v-btn>
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
-      <v-btn
-        block
-        color="warning"
-        prepend-icon="ri-add-line"
-        :disabled="selectedItems.length === 0"
-        @click="openCreateDialog"
-      >
-        Create QC Dispo
-      </v-btn>
-    </VCol>
   </VRow>
 
-  <v-dialog
-    v-model="showCreateDialog"
-    max-width="700"
-    persistent
-  >
-    <v-card>
-      <v-card-title class="text-h6 font-weight-bold pa-4">
-        QC Disposition Request
-      </v-card-title>
-      <v-divider />
-      <v-card-text class="pa-4">
-        <v-alert
-          v-if="dialogAlert.show"
-          :type="dialogAlert.type"
-          variant="tonal"
-          class="mb-4"
-          closable
-          @click:close="dialogAlert.show = false"
-        >
-          <div>{{ dialogAlert.message }}</div>
-          <ul v-if="simulationErrors.length > 0" class="ml-4 mt-1">
-            <li v-for="(err, i) in simulationErrors" :key="i">{{ err }}</li>
-          </ul>
-        </v-alert>
-        <VTextField
-          v-model="grGiSlipNumber"
-          label="GR GI Slip Number"
-          placeholder="Enter GR GI Slip Number"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <VTextField
-          v-model="refDocNumber"
-          label="Ref Doc Number"
-          placeholder="Enter Ref Doc Number"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <VTextField
-          v-model="postingDate"
-          label="Posting Date"
-          type="date"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <v-select
-          v-model="qualityInspectionStatus"
-          label="Select Status"
-          :items="qualityInspectionStatusOptions"
-          item-title="title"
-          item-value="value"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-          disabled
-        />
-        <v-textarea
-          v-model="dispoForm.remarks"
-          class="mb-4"
-          clear-icon="ri-close-line"
-          label="Remarks"
-          lines="1"
-          variant="outlined"
-          density="compact"
-          clearable
-        />
-        <v-divider class="mb-4" />
-        <div class="d-flex gap-3 mb-4">
-          <v-card
-            variant="tonal"
-            color="primary"
-            rounded="lg"
-            class="flex-1-1"
-          >
-            <v-card-text class="pa-3">
-              <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">Total Pallets</div>
-              <div class="text-h5 font-weight-bold">{{ selectedItems.length }}</div>
-            </v-card-text>
-          </v-card>
-          <v-card
-            variant="tonal"
-            color="success"
-            rounded="lg"
-            class="flex-1-1"
-          >
-            <v-card-text class="pa-3">
-              <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">Total Quantity</div>
-              <div class="text-h5 font-weight-bold">{{ totalSelectedQuantity }}</div>
-            </v-card-text>
-          </v-card>
-        </div>
-        <v-table density="compact">
-          <thead>
-            <tr>
-              <th>Physical ID</th>
-              <th>Batch</th>
-              <th class="text-center">Quantity</th>
-              <th>Bin Location</th>
-              <th class="text-center">Layer</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="item in selectedItems"
-              :key="item.id"
-            >
-              <td>{{ item.physical_id }}</td>
-              <td>{{ item.batch }}</td>
-              <td class="text-center">{{ item.quantity }}</td>
-              <td>{{ item.block?.lot?.label && item.block?.label ? `${item.block.lot.label} - ${item.block.label}` : '--' }}</td>
-              <td class="text-center">{{ item.position_in_block ?? '--' }}</td>
-            </tr>
-          </tbody>
-        </v-table>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
-        <v-btn
-          color="error"
-          variant="outlined"
-          :disabled="dispoLoading"
-          @click="showCreateDialog = false"
-        >
-          Cancel
-        </v-btn>
-        <v-spacer />
-        <v-btn
-          color="secondary"
-          :disabled="!qualityInspectionStatus || dispoLoading"
-          :loading="dispoLoading && !simulateCompleted"
-          @click="handleCreateDispo('simulate')"
-        >
-          Simulate
-        </v-btn>
-        <v-btn
-          v-if="simulateCompleted"
-          color="primary"
-          :loading="dispoLoading && simulateCompleted"
-          @click="handleCreateDispo('')"
-        >
-          Confirm
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <v-progress-linear
+    :active="pageLoading"
+    indeterminate
+    color="primary"
+    height="3"
+    class="mb-1"
+  />
 
   <VCard>
     <VDataTableServer
       v-model:items-per-page="itemsPerPage"
-      :model-value="selectedItems"
       :headers="headers"
       :items="serverItems"
       :items-length="totalItems"
       :loading="pageLoading"
       item-value="id"
       :search="searchValue"
-      show-select
-      return-object
       @update:options="loadItems"
-      @update:model-value="handleSelectionChange"
       class="text-no-wrap"
     >
-      <template #item.material_id="{ item }">
-        {{ item.material?.description }}
+      <template #item.entry_qty="{ item }">
+          {{ item.entry_qty }} {{ item.entry_uom }}
       </template>
 
-      <template #item.mfg_date="{ item }">
-        {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+      <template #item.transfer_request="{ item }">
+          <div v-if="item.transfer_request">
+              <div class="text-caption font-weight-bold">{{ item.transfer_request.transfer_request_id }}</div>
+              <v-chip size="x-small" variant="tonal" color="info">{{ item.transfer_request.status_text }}</v-chip>
+          </div>
+          <span v-else>--</span>
       </template>
 
-      <template #item.commodity_status="{ item }">
-        <span class="font-weight-bold">
-          {{ item.commodity_status?.name ?? '' }}
-        </span>
+      <template #item.transfer_order="{ item }">
+          <div v-if="item.transfer_order">
+              <div class="text-caption font-weight-bold">{{ item.transfer_order.transfer_order_id }}</div>
+              <v-chip size="x-small" variant="tonal" color="success">{{ item.transfer_order.status_text }}</v-chip>
+          </div>
+          <span v-else>--</span>
       </template>
 
-      <template #item.bin_location="{ item }">
-        {{ item.block?.label && item.block?.lot?.label ? `${item.block.lot.label} - ${item.block.label}` : '' }}
+      <template #item.material_document="{ item }">
+          {{ item.qc_disposition?.material_document || '--' }}
       </template>
 
-      <template #item.layer="{ item }">
-        {{ item.position_in_block }}
+      <template #item.posting_date="{ item }">
+          {{ item.qc_disposition?.posting_date || '--' }}
+      </template>
+
+      <template #item.created_at="{ item }">
+          {{ item.created_at ? new Date(item.created_at).toLocaleString('sv-SE') : '--' }}
+      </template>
+
+      <template #item.log_items_count="{ item }">
+          <v-chip size="small" variant="tonal" color="secondary">
+              {{ item.goods_movement_log_items?.length ?? 0 }}
+          </v-chip>
+      </template>
+
+      <template #item.actions="{ item }">
+          <v-btn
+              icon
+              variant="text"
+              size="small"
+              color="primary"
+              @click="openDetailDialog(item)"
+          >
+              <v-icon icon="ri-eye-line" />
+          </v-btn>
       </template>
     </VDataTableServer>
   </VCard>
+
+  <v-dialog
+      v-model="detailDialog"
+      max-width="1200"
+      scrollable
+  >
+      <v-card v-if="selectedLog">
+          <v-card-title class="text-h6 font-weight-bold pa-4 d-flex align-center justify-space-between">
+              <span>Disposition Item Detail</span>
+              <v-btn icon variant="text" size="small" @click="detailDialog = false">
+                  <v-icon icon="ri-close-line" />
+              </v-btn>
+          </v-card-title>
+          <v-divider />
+          <v-card-text class="pa-4">
+              <v-row dense class="mb-4">
+                  <v-col cols="4">
+                      <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Material</div>
+                      <div class="text-body-1">{{ selectedLog.material }}</div>
+                  </v-col>
+                  <v-col cols="4">
+                      <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Batch</div>
+                      <div class="text-body-1">{{ selectedLog.batch }}</div>
+                  </v-col>
+                  <v-col cols="4" class="d-flex flex-column">
+                      <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Transfer Request</div>
+                      <div class="text-body-1">{{ selectedLog.transfer_request?.transfer_request_id || '--' }}</div>
+                      <div class="mt-1">
+                          <v-chip
+                              v-if="selectedLog.transfer_request"
+                              size="small"
+                              variant="tonal"
+                              color="info"
+                          >
+                              {{ selectedLog.transfer_request.status_text }}
+                          </v-chip>
+                          <span v-else>--</span>
+                      </div>
+                  </v-col>
+                  <v-col cols="4">
+                      <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Plant</div>
+                      <div class="text-body-1">{{ selectedLog.plant }}</div>
+                  </v-col>
+                  <v-col cols="4">
+                      <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Remarks</div>
+                      <div class="text-body-1">{{ selectedLog.qc_disposition?.remarks || '--' }}</div>
+                  </v-col>
+              </v-row>
+
+              <v-divider class="mb-4" />
+
+              <div class="text-subtitle-2 font-weight-bold mb-2">
+                  Goods Movement Log Items ({{ selectedLog.goods_movement_log_items?.length ?? 0 }})
+              </div>
+              <v-table density="compact">
+                  <thead>
+                      <tr>
+                          <th v-for="h in itemHeaders" :key="h.key" :class="h.align === 'center' ? 'text-center' : ''">
+                              {{ h.title }}
+                          </th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="item in selectedLog.goods_movement_log_items" :key="item.id">
+                          <td>
+                              <template v-if="item.goods_movement_log?.material_document">
+                                  <div class="text-caption font-weight-bold">{{ item.goods_movement_log?.material_document }}</div>
+                              </template>
+                              <span v-else>--</span>
+                          </td>
+                          <td>{{ item.pallet_physical_id || '--' }}</td>
+                          <td class="text-center">
+                              <v-chip :color="item.movement_type === '313' ? 'warning' : 'success'" size="small" label>
+                                  {{ item.movement_type }}
+                              </v-chip>
+                          </td>
+                          <td>{{ item.plant }}</td>
+                          <td>{{ item.issuing_sloc || '--' }}</td>
+                          <td>{{ item.receiving_sloc || '--' }}</td>
+                          <td class="text-center">{{ item.entry_qty }}</td>
+                          <td class="text-center">{{ item.entry_uom }}</td>
+                          <td>{{ item.created_at?.slice(0, 19).replace('T', ' ') }}</td>
+                      </tr>
+                  </tbody>
+              </v-table>
+          </v-card-text>
+      </v-card>
+  </v-dialog>
+  </template>
 </template>
