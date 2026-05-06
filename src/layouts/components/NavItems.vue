@@ -126,9 +126,8 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
         :item="{ title: 'Putaway', icon: 'ri-database-2-line', 
-        to: `${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
-    
-
+        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
+   
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
     <!-- Shipments Section  -->
@@ -161,6 +160,9 @@ const proceedMapping = () => {
     </VerticalNavGroup>
     <VerticalNavLink
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" />
+     <VerticalNavLink v-if="authUserCan('can.view.bin.transfer.requests')"
+        :item="{ title: 'Bin Transfer', icon: 'ri-box-2-line', to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/bin-transfer` }" />
+
 
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->

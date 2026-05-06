@@ -243,6 +243,18 @@ export const routes = [
             props: true
         },
         {
+            path: '/:plant_code/:sloc/bin-transfer',
+            name: 'bin-transfer',
+            component: () => import('@/pages/warehouse/bin-transfer/index.vue'),
+            meta: {
+                pageTitle: "Bin Transfer",
+                breadcrumbs: (route) => [
+                    { label: "Bin Transfer", link: `/${route.params.plant_code}/${route.params.sloc}/bin-transfer` }
+                ],
+            },
+            props: true
+        },
+        {
             path: 'rfid/pallets',
             name: 'rfid-pallets',
             component: () => import('@/pages/rfid-pallets/index.vue'),
