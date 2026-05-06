@@ -43,7 +43,7 @@
                 />
             </div>
         </v-card>
-        <div class="flex-grow-1 overflow-y-auto pb-16">
+        <div class="flex-grow-1 overflow-y-auto pb-16 px-4">
             <div class="mb-2 font-weight-medium text-h4">
                 Showing {{ filteredItems.transfer_requests.length }} entries
             </div>
@@ -58,8 +58,8 @@
                     prepend-inner-icon="mdi-magnify"
                 />
             </div>
-            <v-row>
-                <v-col
+            <v-row v-if="filteredItems?.transfer_requests?.length > 0">
+                <v-col 
                     v-for="item in filteredItems?.transfer_requests"
                     :key="item.id"
                     cols="12"
@@ -68,7 +68,7 @@
                     class="pa-3"
                     rounded="lg"
                     elevation="2"
-                    :id="'tr-card-' + item.id"
+                    :id="'tr-card-' + (item.transfer_request ? item.transfer_request.id : item.id)"
                 >
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
@@ -209,6 +209,12 @@
                     </div>
 
                 </v-card>
+                </v-col>
+            </v-row>
+            <v-row v-else class="px-4 justify-center align-center" style="min-height: 200px;">
+                <v-col cols="12" class="text-center">
+                    <v-icon size="48" color="grey" icon="ri-checkbox-blank-line"></v-icon>
+                    <div class="text-h6 mt-2">No Items to display</div>
                 </v-col>
             </v-row>
         </div>
@@ -484,7 +490,7 @@ import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useTransferRequestsStore } from '@/stores/transferRequests';
-import { debounce } from 'lodash';
+import { debounce, debounce as lodashDebounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
@@ -513,19 +519,11 @@ function syncTransferRequests() {
     }
 }
 
-const headers = [
-  { text: 'Trans Request ID', value: 'transfer_request_id' },
-  { text: 'Physical ID', value: 'physical_id' },
-  { text: 'Status', value: 'status' },
-  { text: 'TO Number', value: 'toNumber' },
-]
-
 const toast = reactive({
     message: 'Success!',
     color: 'success',
     show: false
 });
-
 
 const statusOptions = ['Pending', 'For Wrapping', 'For Putaway', 'Completed', 'Invalid Request']
 const selectedStatus = ref('Pending')
@@ -566,14 +564,12 @@ const getStatusColor = (status) => {
     }
 }
 
-
 const searchQuery = ref('');
 const filteredItems = computed(() => {
     if (!items.value || !items.value.transfer_requests) return { transfer_requests: [] };
     return { ...items.value, transfer_requests: items.value.transfer_requests };
 });
 
-import { debounce as lodashDebounce } from 'lodash';
 
 const fetchWithSearch = lodashDebounce(() => {
     const plant_code = route.params.plant_code;
@@ -652,8 +648,8 @@ async function generateTransferOrder(item) {
         const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id);
         // Wait for the store to refresh
         await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-        // Find the updated item
-        const updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
+        // Find the updated item in the correct array based on selectedStatus
+        let updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
         if (updated) {
             // Set the filter to the new status
             selectedStatus.value = updated.status_text;
@@ -662,6 +658,7 @@ async function generateTransferOrder(item) {
                 const el = document.getElementById('tr-card-' + updated.id);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 300);
+
         }
     } catch (err) {
         if (err?.response?.status === 401) {
@@ -677,7 +674,6 @@ async function generateTransferOrder(item) {
         selectedTransferRequest.value = null;
     }
 }
-
 
 const handleScanResult = async (data) => {
     scanType.value = data.type
@@ -709,10 +705,22 @@ const confirmWrapping = async (text) => {
             sloc: route.params.sloc,
             forklift: route.params.forklift,
             physical_id: selectedTransferRequest.value.physical_id,
-            transfer_request_id: selectedTransferRequest.value?.transfer_request_id || selectedTransferRequest.value.id,
+            transfer_order_id: selectedTransferRequest.value?.transfer_order_id,
             qr_text: text
         });
-        if (response?.data?.success) {
+        if (response?.success) {
+            // Fetch updated data
+            await transferRequestsStore.fetchTransferRequests(route.params.plant_code, route.params.sloc, route.params.forklift);
+            // Find the updated item in the correct array
+            let updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === selectedTransferRequest.value.transfer_request?.id);
+            if (updated) {
+                selectedStatus.value = updated.status_text;
+                setTimeout(() => {
+                    const el = document.getElementById('tr-card-' + updated.id);
+                    console.log('Found element:', el);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
             toast.message = 'Pallet successfully moved to wrapping area';
             toast.color = 'success';
             toast.show = true;
@@ -743,6 +751,18 @@ const confirmWrapping = async (text) => {
             errorMessageTitle.value = 'Pallet Already Wrapped';
             errorMessage.value = 'This pallet is already tagged as wrapped. If this is incorrect, please raise to IT for assistance.';
             showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'Pending TO with same storage section') {
+            errorMessageTitle.value = 'Pending TO for Wrapping Area';
+            if (err.response.data?.error) {
+                errorMessage.value = `Please complete wrapping for TO #: ${err.response.data.error} first.`;
+            } else {
+                errorMessage.value = 'There is a pending transfer order for wrapping. Please select ';
+            }
+            showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'Storage section not found for the material.') {
+            errorMessageTitle.value = 'Storage Section Missing';
+            errorMessage.value = 'Storage section not found for the material. Please raise to IT for assistance.';
+            showErrorModal.value = true;
         } else {
             errorMessageTitle.value = 'An unexpected error occurred.';
             errorMessage.value = 'Please scan a valid pallet QR code.';
@@ -750,7 +770,6 @@ const confirmWrapping = async (text) => {
         }
     } finally {
         isLoading.value = false;
-        transferRequestsStore.fetchTransferRequests(route.params.plant_code, route.params.sloc, route.params.forklift);
     }
 }
 

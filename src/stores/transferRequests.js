@@ -90,7 +90,7 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
       }
     },
 
-    async confirmWrapping({ plant_code, sloc, forklift, physical_id, transfer_request_id, qr_text }) {
+    async confirmWrapping({ plant_code, sloc, forklift, physical_id, transfer_order_id, qr_text }) {
       this.loading = true;
       this.error = null;
       try {
@@ -99,7 +99,7 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
         const { data } = await ApiService.post(url, {
           physical_id,
           putaway_type: 'wrapping_area',
-          transfer_request_id,
+          transfer_order_id,
           qr_text
         });
 
