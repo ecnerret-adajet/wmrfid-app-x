@@ -27,6 +27,8 @@ const headers = [
   { title: 'TRANSFER REQUEST', key: 'transfer_request', sortable: false },
   { title: 'TRANSFER ORDER', key: 'transfer_order', sortable: false },
   { title: 'POSTING DATE', key: 'posting_date', sortable: false },
+  { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
+  { title: 'VERIFIED BY', key: 'verified_by', sortable: false },
   { title: 'CREATED AT', key: 'created_at', sortable: false },
   { title: 'MOVEMENT ITEMS', key: 'log_items_count', align: 'center', sortable: false },
   { title: '', key: 'actions', sortable: false, align: 'end' },
@@ -289,6 +291,14 @@ const openDetailDialog = (log) => {
 
       <template #item.posting_date="{ item }">
           {{ item.qc_disposition?.posting_date || '--' }}
+      </template>
+
+      <template #item.requested_by="{ item }">
+          {{ item.requested_by?.name || '--' }}
+      </template>
+
+      <template #item.verified_by="{ item }">
+          {{ item.validated_by?.name || '--' }}
       </template>
 
       <template #item.created_at="{ item }">

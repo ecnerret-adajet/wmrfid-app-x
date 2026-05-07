@@ -81,44 +81,8 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle :item="{ heading: 'Warehouse' }" />
     <VerticalNavLink v-if="authUserCan('view.inventories')"
         :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories' }" />
-    <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
-        <VerticalNavLink :item="{
-            title: 'Disposition Request',
-            to: '/qc-disposition',
-            exactMatch: true,
-        }" />
-        <VerticalNavLink :item="{
-            title: 'Pending Disposition',
-            to: '/qc-disposition/approvals',
-        }" />
-        <VerticalNavLink :item="{
-            title: 'Disposition List',
-            to: '/qc-disposition/postings',
-        }" />
-    </VerticalNavGroup>
     <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
         :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs' }" />
-
-    <!-- <VerticalNavLink v-if="authUserCan('view.production.runs') && authStore.user?.has_production"
-        :item="{ title: 'Quality Control', icon: 'ri-test-tube-line', to: '/quality-control' }" /> -->
-
-    <VerticalNavGroup v-if="authUserCan('can.view.quality.control')" :item="{ title: 'Quality Control', icon: 'ri-database-2-line' }">
-        <VerticalNavLink :item="{
-            title: 'Quality Inspection',
-            href: '/quality-control',
-            to: '/quality-control',
-        }" />
-        <VerticalNavLink :item="{
-            title: 'QC Inspection',
-            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`,
-        }" />
-        <!-- <VerticalNavLink :item="{
-            title: 'Material Documents',
-            href: '/quality-control/material-documents',
-            to: '/quality-control/material-documents',
-        }" /> -->
-    </VerticalNavGroup>
-
     <VerticalNavLink v-if="authUserCan('view.warehouses')"
         :item="{ title: 'Warehouse', icon: 'ri-home-gear-line', to: '/warehouse' }" />
     <VerticalNavLink v-if="authUserCan('view.manual.repack')"
@@ -129,6 +93,40 @@ const proceedMapping = () => {
         to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
    
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
+
+    <!-- Quality Control Section  -->
+    <VerticalNavSectionTitle v-if="authUserCan('can.view.qc.disposition') || authUserCan('can.view.quality.control')"
+        :item="{ heading: 'Quality Control' }" />
+    <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
+        <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')" :item="{
+            title: 'Disposition Request',
+            to: '/qc-disposition',
+            exactMatch: true,
+        }" />
+        <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.approval')" :item="{
+            title: 'Pending Disposition',
+            to: '/qc-disposition/approvals',
+        }" />
+        <VerticalNavLink v-if="authUserCan('can.view.qc.postings')" :item="{
+            title: 'Disposition List',
+            to: '/qc-disposition/postings',
+        }" />
+    </VerticalNavGroup>
+    <VerticalNavLink v-if="authUserCan('can.view.quality.control')"
+        :item="{ title: 'QC Inspection', icon: 'ri-database-2-line', 
+        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`}"/>
+
+    <!-- <VerticalNavGroup v-if="authUserCan('can.view.quality.control')" :item="{ title: 'Quality Control', icon: 'ri-database-2-line' }">
+        <VerticalNavLink :item="{
+            title: 'Quality Inspection',
+            href: '/quality-control',
+            to: '/quality-control',
+        }" />
+        <VerticalNavLink :item="{
+            title: 'QC Inspection',
+            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`,
+        }" />
+    </VerticalNavGroup> -->
 
     <!-- Shipments Section  -->
     <VerticalNavSectionTitle v-if="authUserCan('view.shipments') ||

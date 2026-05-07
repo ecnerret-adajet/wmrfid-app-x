@@ -206,7 +206,7 @@ defineExpose({ loadItems, selectedItems });
             <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
             <h4 class="text-h5 font-weight-bold mb-2">Total for Quality Inspection : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
         </div>
-        <div class="d-flex gap-4 align-center justify-center px-4 mb-2">
+        <div class="d-flex gap-4 align-center justify-center mb-2">
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -378,32 +378,34 @@ defineExpose({ loadItems, selectedItems });
                 </v-card-actions>
             </v-card>
         </v-dialog>
-        <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        :model-value="selectedItems"
-        :headers="headers"
-        :items="serverItems"
-        :items-length="totalItems"
-        :loading="loading"
-        item-value="id"
-        show-select
-        return-object
-        @update:options="loadItems"
-        @update:model-value="handleSelectionChange"
-        class="text-no-wrap"
-    >
-        <template #item.material="{ item }">
-            <span class="font-weight-bold">{{ item.material?.description }}</span><br />
-            <span class="text-subtitle-1 text-medium-emphasis">{{ item.material?.bu_material }}</span>
-        </template>
+        <VCard>
+            <VDataTableServer
+                v-model:items-per-page="itemsPerPage"
+                :model-value="selectedItems"
+                :headers="headers"
+                :items="serverItems"
+                :items-length="totalItems"
+                :loading="loading"
+                item-value="id"
+                show-select
+                return-object
+                @update:options="loadItems"
+                @update:model-value="handleSelectionChange"
+                class="text-no-wrap"
+            >
+                <template #item.material="{ item }">
+                    <span class="font-weight-bold">{{ item.material?.description }}</span><br />
+                    <span class="text-subtitle-1 text-medium-emphasis">{{ item.material?.bu_material }}</span>
+                </template>
 
-        <template #item.bin_location="{ item }">
-            {{ item.block?.lot?.label ?? '--' }} - {{ item.block?.label ?? '--' }}
-        </template>
+                <template #item.bin_location="{ item }">
+                    {{ item.block?.lot?.label ?? '--' }} - {{ item.block?.label ?? '--' }}
+                </template>
 
-        <template #item.position_in_block="{ item }">
-            Layer {{ item.position_in_block ?? '--' }}
-        </template>
-    </VDataTableServer>
+                <template #item.position_in_block="{ item }">
+                    Layer {{ item.position_in_block ?? '--' }}
+                </template>
+            </VDataTableServer>
+        </VCard>
     </div>
 </template>
