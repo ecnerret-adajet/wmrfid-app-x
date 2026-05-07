@@ -3,7 +3,6 @@ import ApiService from '@/services/ApiService'
 import { onMounted, reactive, ref, watch } from 'vue'
 
 const pageLoading = ref(false)
-const initialLoading = ref(true)
 const searchInput = ref('')
 const searchValue = ref('')
 
@@ -70,8 +69,6 @@ const loadPlants = async () => {
     handleSearch()
   } catch (error) {
     console.error(error)
-  } finally {
-    initialLoading.value = false
   }
 }
 
@@ -184,25 +181,10 @@ const openDetailDialog = (log) => {
 </script>
 
 <template>
-  <template v-if="initialLoading">
-    <VRow class="mb-3">
-      <VCol cols="12" md="3">
-        <v-skeleton-loader type="card" />
-      </VCol>
-    </VRow>
-    <VRow class="mb-3">
-      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="4"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="2"><v-skeleton-loader type="button" /></VCol>
-    </VRow>
-    <v-skeleton-loader type="table" />
-  </template>
-
-  <template v-else>
   <VRow>
     <VCol cols="12" md="3">
-      <v-card class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
+      <v-skeleton-loader v-if="pageLoading" type="article" />
+      <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
         <div class="d-flex align-center">
           <div
             class="d-flex align-center justify-center mr-4"
@@ -420,5 +402,4 @@ const openDetailDialog = (log) => {
           </v-card-text>
       </v-card>
   </v-dialog>
-  </template>
 </template>

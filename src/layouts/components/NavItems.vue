@@ -83,7 +83,7 @@ const proceedMapping = () => {
         :item="{ title: 'Inventory', icon: 'ri-stack-line', to: '/inventories' }" />
     <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
         <VerticalNavLink :item="{
-            title: 'Transfer Request',
+            title: 'Disposition Request',
             to: '/qc-disposition',
             exactMatch: true,
         }" />

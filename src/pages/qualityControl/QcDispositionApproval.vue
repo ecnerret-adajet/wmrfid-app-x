@@ -273,7 +273,7 @@ const handleApprove = async (method) => {
         :disabled="selectedItems.length === 0"
         @click="openApprovalDialog"
       >
-        Approve
+        Manage
       </v-btn>
     </VCol>
   </VRow>
