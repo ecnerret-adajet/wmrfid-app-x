@@ -66,51 +66,125 @@
             <v-btn v-if="selectedBlocks.length > 0" color="warning" class="ml-2" @click="showPriority2Dialog = true" style="height: 56px; min-width: 180px;">
                 Update Priority 2
             </v-btn>
-                <!-- Priority 1 Dialog -->
-                <v-dialog v-model="showPriority1Dialog" max-width="500">
-                    <v-card class="pa-4">
-                        <v-card-title class="text-h6 font-weight-bold">Update Priority 1</v-card-title>
-                        <v-card-text>
-                            <v-select class="flex-grow-1 align-center" label="Select Priority 1"
-                                clearable
-                                density="compact"
-                                :items="storageSection?.material_types || []"
-                                v-model="selectedPriority1"
-                                item-title="name"
-                                item-value="id"
-                                :rules="[value => value !== undefined || 'Please select an item from the list']">
-                            </v-select>
-                        </v-card-text>
-                        <v-card-actions class="pa-4">
-                            <v-spacer />
-                            <v-btn color="secondary" text @click="showPriority1Dialog = false">Cancel</v-btn>
-                            <v-btn color="primary" :disabled="!selectedPriority1" @click="updatePriority1">Update</v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-dialog>
+            <v-btn
+                v-if="selectedBlocks.length > 0"
+                color="info"
+                class="ml-2"
+                @click="showLoosePalletDialog = true"
+                style="height: 56px; min-width: 220px;"
+            >
+                Tag as Loose Pallet Area
+            </v-btn>
+            <!-- Priority 1 Dialog -->
+            <v-dialog v-model="showPriority1Dialog" max-width="500">
+                <v-card class="pa-4">
+                    <v-card-title class="text-h6 font-weight-bold">Update Priority 1</v-card-title>
+                    <v-card-text>
+                        <v-select class="flex-grow-1 align-center" label="Select Priority 1"
+                            clearable
+                            density="compact"
+                            :items="storageSection?.material_types || []"
+                            v-model="selectedPriority1"
+                            item-title="name"
+                            item-value="id"
+                            :rules="[value => value !== undefined || 'Please select an item from the list']">
+                        </v-select>
+                    </v-card-text>
+                    <v-card-actions class="pa-4">
+                        <v-spacer />
+                        <v-btn color="secondary" text @click="showPriority1Dialog = false">Cancel</v-btn>
+                        <v-btn color="primary" :disabled="!selectedPriority1" @click="updatePriority1">Update</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
 
-                <!-- Priority 2 Dialog -->
-                <v-dialog v-model="showPriority2Dialog" max-width="500">
-                    <v-card class="pa-4">
-                        <v-card-title class="text-h6 font-weight-bold">Update Priority 2</v-card-title>
-                        <v-card-text>
-                             <v-select class="flex-grow-1 align-center" label="Select Priority 2"
-                                clearable
-                                density="compact"
-                                :items="storageSection?.material_types || []"
-                                v-model="selectedPriority2"
-                                item-title="name"
-                                item-value="id"
-                                :rules="[value => value !== undefined || 'Please select an item from the list']">
-                            </v-select>
-                        </v-card-text>
-                        <v-card-actions class="pa-4">
-                            <v-spacer />
-                            <v-btn color="secondary" text @click="showPriority2Dialog = false">Cancel</v-btn>
-                            <v-btn color="primary" :disabled="!selectedPriority2" @click="updatePriority2">Update</v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-dialog>
+            <!-- Priority 2 Dialog -->
+            <v-dialog v-model="showPriority2Dialog" max-width="500">
+                <v-card class="pa-4">
+                    <v-card-title class="text-h6 font-weight-bold">Update Priority 2</v-card-title>
+                    <v-card-text>
+                            <v-select class="flex-grow-1 align-center" label="Select Priority 2"
+                            clearable
+                            density="compact"
+                            :items="storageSection?.material_types || []"
+                            v-model="selectedPriority2"
+                            item-title="name"
+                            item-value="id"
+                            :rules="[value => value !== undefined || 'Please select an item from the list']">
+                        </v-select>
+                    </v-card-text>
+                    <v-card-actions class="pa-4">
+                        <v-spacer />
+                        <v-btn color="secondary" text @click="showPriority2Dialog = false">Cancel</v-btn>
+                        <v-btn color="primary" :disabled="!selectedPriority2" @click="updatePriority2">Update</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <!-- Loose pallet tagging dialog -->
+            <v-dialog v-model="showLoosePalletDialog" max-width="700">
+                <v-card class="pa-4">
+                    <v-card-title class="text-h6 font-weight-bold">
+                        Assign Loose Pallet Area
+                    </v-card-title>
+
+                    <v-card-text>
+                        <p class="mb-4">
+                            You are about to designate the following storage bins as
+                            <strong>Loose Pallet Areas</strong>.
+                        </p>
+
+                        <p class="mb-4">
+                            Loose pallet areas are intended for partially filled or not full pallets.
+                        </p>
+
+                        <p class="font-weight-bold mb-2">
+                            Selected Bins:
+                        </p>
+
+                        <v-sheet
+                            border
+                            rounded
+                            class="pa-3"
+                            max-height="300"
+                            style="overflow-y: auto;"
+                        >
+                            <div
+                                v-for="block in selectedBlocks"
+                                :key="block.id"
+                                class="mb-2"
+                            >
+                                • {{ block.lot?.label }} - {{ block.label }}
+                            </div>
+                        </v-sheet>
+
+                        <p class="mt-4 text-medium-emphasis">
+                            Do you want to continue assigning these bins as loose pallet areas?
+                        </p>
+                    </v-card-text>
+
+                    <v-card-actions class="pa-4">
+                        <v-spacer />
+
+                        <v-btn
+                            color="secondary"
+                            variant="outlined"
+                            @click="showLoosePalletDialog = false"
+                        >
+                            Cancel
+                        </v-btn>
+
+                        <v-btn
+                            color="info"
+                            variant="flat"
+                            @click="handleAssignLoosePallet"
+                            :loading="pageLoading"
+                        >
+                            Confirm
+                        </v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
         </div>
     <VCard>
         <VDataTableServer
@@ -156,6 +230,11 @@
                 <v-chip v-if="item.priority2" size="small" color="warning" text-color="dark">{{ item.priority2?.name }}</v-chip>
                 <span v-else>-</span>
             </template>
+            <template #item.is_loose_pallet_bin="{ item }">
+                <v-chip v-if="item.is_loose_pallet_bin" size="small" color="info" text-color="white">
+                    Yes
+                </v-chip>
+            </template>
             <template #item.actions="{ item }">
                 <v-btn icon="ri-qr-code-line" @click="() => openQrModal(item)" color="primary"></v-btn>
             </template>
@@ -198,7 +277,7 @@ const sortQuery = ref('-created_at');
 const totalBlock = ref(0);
 const occupiedCount = ref(0);
 const availableCount = ref(0);
-
+const showLoosePalletDialog = ref(false);
 const lotOptions = ref([]);
 
 const availabilityOptions = [
@@ -232,6 +311,7 @@ const headers = computed(() => [
     { title: 'Lot', key: 'lot', align: 'center', sortable: false },
     { title: 'Priority 1', key: 'priority_1', align: 'center', sortable: false },
     { title: 'Priority 2', key: 'priority_2', align: 'center', sortable: false },
+    { title: 'Loose Area?', key: 'is_loose_pallet_bin', align: 'center', sortable: false },
     { title: 'Availability', key: 'availability', align: 'center', sortable: false },
     { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]);
@@ -434,5 +514,44 @@ function onQrGenerated({ block_id, qr_code_path }) {
         selectedQrBlock.value.qr_code_path = qr_code_path;
     }
 }
+
+const handleAssignLoosePallet = async () => {
+    try {
+        pageLoading.value = true;
+
+        await ApiService.post(
+            '/warehouse/storage-bins/tag-loose-pallet-area',
+            {
+                block_ids: selectedBlocks.value.map(b => b.id),
+                is_loose_pallet_area: true,
+            }
+        );
+
+        toast.message = 'Selected bins successfully tagged as Loose Pallet Areas.';
+        toast.color = 'success';
+        toast.show = true;
+
+        showLoosePalletDialog.value = false;
+
+        selectedBlocks.value = [];
+
+        await loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: searchValue.value
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        toast.message = 'Failed to update selected bins.';
+        toast.color = 'error';
+        toast.show = true;
+
+    } finally {
+        pageLoading.value = false;
+    }
+};
 
 </script>

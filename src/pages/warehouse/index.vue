@@ -24,6 +24,7 @@ const tableSort = ref('name')
 const isLoading = ref(false);
 const errorMessage = ref(null)
 const plantsOption = ref([])
+const storageSectionsOption = ref([])
 
 const toast = ref({
     message: 'Warehouse successfully created!',
@@ -42,11 +43,13 @@ onMounted(() => {
     fetchDataDropdown();
 })
 
+
 const fetchDataDropdown = async () => {
     try {
         const preReqData = await ApiService.get('warehouse/get-data-dropdown');
-        const { plants } = preReqData.data
+        const { plants, storage_sections } = preReqData.data
         plantsOption.value = plants
+        storageSectionsOption.value = storage_sections
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -186,7 +189,7 @@ const openViewBinsDialog = () => {
     </div>
 
     <VCard>
-        <datatable ref="datatableRef" :plants-option="plantsOption" @pagination-changed="onPaginationChanged"
+        <datatable ref="datatableRef" :plants-option="plantsOption" :storage-sections-option="storageSectionsOption"  @pagination-changed="onPaginationChanged"
             :search="searchValue" />
     </VCard>
 
