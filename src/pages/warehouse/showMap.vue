@@ -116,7 +116,7 @@ const fetchStorageLocationInformation = async () => {
             id: item.id || null,
             allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
             under_fumigation: item.under_fumigation,
-            for_quality_inspection: item.for_quality_inspection,
+            // for_quality_inspection: item.for_quality_inspection,
             max_layer_count: item.max_layer_count || 3,
             legend_only: item.legend_only == 1 ? true : false,
             qr_code_path: item.qr_code_path || null,
@@ -289,7 +289,7 @@ const handleEditMap = () => {
                             marginRight: '5px',
                             backgroundColor: layer.layer === 4 ? '#a06ee2' :
                                 (layer.layer === 3 ? '#48a348' :
-                                    (layer.layer === 2 ? '#4877f7' : '#a18940'))
+                                    (layer.layer === 2 ? '#4877f7' : '#ebc965'))
                         }"></div>
                         {{ layer.label }}
                     </template>
@@ -297,14 +297,14 @@ const handleEditMap = () => {
                             margin-right: 5px; background-color: #f0edf2">
                     </div>
                     Empty
-                    <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                    <!-- <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
                         margin-right: 5px; background-color: #f7897e">
                     </div>
                     Under Fumigation
                     <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
                         margin-right: 5px; background-color: #FFB400">
                     </div>
-                    For Quality Inspection
+                    For Quality Inspection -->
                 </div>
 
                 <div class="d-flex align-center">
@@ -326,7 +326,6 @@ const handleEditMap = () => {
                             'bg-legend': item.type === 'lot' && (item.legend_only === true),
                             'bg-primary-light': item.type === 'lot' && !item.legend_only,
                             'under-fumigation': item.under_fumigation,
-                            'quality-inspection': item.for_quality_inspection,
                             'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
                             'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                             'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
@@ -420,7 +419,7 @@ const handleEditMap = () => {
 }
 
 .layer-1 {
-    background-color: #a18940;
+    background-color: #ebc965;
     color: white;
 }
 
@@ -445,10 +444,6 @@ const handleEditMap = () => {
 
 .under-fumigation {
     background-color: #f7897e;
-}
-
-.quality-inspection {
-    background-color: #FFB400;
 }
 
 .vue-grid-layout {

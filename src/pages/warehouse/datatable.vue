@@ -355,14 +355,14 @@ defineExpose({
         <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-center align-center">
 
-                <IconBtn  size="small"
-                    @click="editItem(item)">
-                    <VIcon icon="ri-pencil-line" />
-                </IconBtn>
-                <!-- <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin" size="small"
+                <!-- <IconBtn  size="small"
                     @click="editItem(item)">
                     <VIcon icon="ri-pencil-line" />
                 </IconBtn> -->
+                <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin" size="small"
+                    @click="editItem(item)">
+                    <VIcon icon="ri-pencil-line" />
+                </IconBtn>
                 <IconBtn size="small" @click="viewMap(item)">
                     <VIcon icon="ri-map-2-line" />
                 </IconBtn>
