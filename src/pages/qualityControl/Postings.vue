@@ -26,9 +26,10 @@ const headers = [
   { title: 'QTY', key: 'entry_qty', align: 'center', sortable: false },
   { title: 'TRANSFER REQUEST', key: 'transfer_request', sortable: false },
   { title: 'TRANSFER ORDER', key: 'transfer_order', sortable: false },
+  { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'POSTING DATE', key: 'posting_date', sortable: false },
-  { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
-  { title: 'VERIFIED BY', key: 'verified_by', sortable: false },
+  // { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
+  // { title: 'VERIFIED BY', key: 'verified_by', sortable: false },
   { title: 'CREATED AT', key: 'created_at', sortable: false },
   { title: 'MOVEMENT ITEMS', key: 'log_items_count', align: 'center', sortable: false },
   { title: '', key: 'actions', sortable: false, align: 'end' },
@@ -43,7 +44,7 @@ const itemHeaders = [
   { title: 'RECEIVING SLOC', key: 'receiving_sloc' },
   { title: 'QTY', key: 'entry_qty', align: 'center' },
   { title: 'CREATED AT', key: 'created_at' },
-  { title: 'TYPE', key: 'type' },
+  { title: 'SAP ID', key: 'sap_id' },
 ]
 
 onMounted(() => loadPlants())
@@ -272,7 +273,7 @@ const openDetailDialog = (log) => {
       <template #item.transfer_request="{ item }">
           <div v-if="item.transfer_request">
               <div class="text-caption font-weight-bold">{{ item.transfer_request.transfer_request_id }}</div>
-              <v-chip size="x-small" variant="tonal" color="info">{{ item.transfer_request.status_text }}</v-chip>
+              <v-chip size="x-small" variant="tonal" class="text-uppercase" color="info">{{ item.transfer_request.status_text }}</v-chip>
           </div>
           <span v-else>--</span>
       </template>
@@ -280,8 +281,15 @@ const openDetailDialog = (log) => {
       <template #item.transfer_order="{ item }">
           <div v-if="item.transfer_order">
               <div class="text-caption font-weight-bold">{{ item.transfer_order.transfer_order_id }}</div>
-              <v-chip size="x-small" variant="tonal" color="success">{{ item.transfer_order.status_text }}</v-chip>
+              <v-chip size="x-small" variant="tonal" class="text-uppercase" color="success">{{ item.transfer_order.status_text }}</v-chip>
           </div>
+          <span v-else>--</span>
+      </template>
+
+      <template #item.bin_location="{ item }">
+          <span v-if="item.designated_block">
+              {{ item.designated_block.label }}<span v-if="item.designated_block.lot"> - {{ item.designated_block.lot.label }}</span>
+          </span>
           <span v-else>--</span>
       </template>
 
@@ -293,13 +301,13 @@ const openDetailDialog = (log) => {
           {{ item.qc_disposition?.posting_date || '--' }}
       </template>
 
-      <template #item.requested_by="{ item }">
+      <!-- <template #item.requested_by="{ item }">
           {{ item.requested_by?.name || '--' }}
       </template>
 
       <template #item.verified_by="{ item }">
           {{ item.validated_by?.name || '--' }}
-      </template>
+      </template> -->
 
       <template #item.created_at="{ item }">
           {{ item.created_at ? new Date(item.created_at).toLocaleString('sv-SE') : '--' }}
@@ -405,7 +413,11 @@ const openDetailDialog = (log) => {
                           <td>{{ item.receiving_sloc || '--' }}</td>
                           <td>{{ item.entry_qty }} {{ item.entry_uom }}</td>
                           <td>{{ item.created_at?.slice(0, 19).replace('T', ' ') }}</td>
-                          <td>{{ item.goods_movement_log?.type }}</td>
+                          <td>
+                            <span class="text-uppercase">
+                              {{ item.goods_movement_log?.sap_id }}
+                            </span>
+                          </td>
                       </tr>
                   </tbody>
               </v-table>
