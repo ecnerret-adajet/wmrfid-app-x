@@ -1,6 +1,10 @@
 <script setup>
+import DateRangePicker from '@/components/DateRangePicker.vue'
+import FilteringModal from '@/components/FilteringModal.vue'
+import PrimaryButton from '@/components/PrimaryButton.vue'
 import ApiService from '@/services/ApiService'
-import { onMounted, reactive, ref, watch } from 'vue'
+import moment from 'moment'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
@@ -15,6 +19,44 @@ const totalItems = ref(0)
 const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
+
+const filterModalVisible = ref(false)
+const dateFilters = reactive({ created_at: null })
+
+const appliedFilters = reactive({
+  start_date: null,
+  end_date: null
+})
+
+const filterModalOpen = () => {
+  if (!filterModalVisible.value) {
+    filterModalVisible.value = true
+  }
+}
+
+const isFiltersEmpty = computed(() => {
+  return !dateFilters.created_at || dateFilters.created_at.length === 0
+})
+
+const applyFilter = () => {
+  if (dateFilters.created_at && dateFilters.created_at.length === 2) {
+    appliedFilters.start_date = moment(dateFilters.created_at[0]).format('YYYY-MM-DD')
+    appliedFilters.end_date = moment(dateFilters.created_at[1]).format('YYYY-MM-DD')
+  } else {
+    appliedFilters.start_date = null
+    appliedFilters.end_date = null
+  }
+  handleSearch()
+  filterModalVisible.value = false
+}
+
+const resetFilter = () => {
+  dateFilters.created_at = null
+  appliedFilters.start_date = null
+  appliedFilters.end_date = null
+  handleSearch()
+  filterModalVisible.value = false
+}
 
 const detailDialog = ref(false)
 const selectedLog = ref(null)
@@ -148,6 +190,9 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     sortQuery.value = '-created_at'
   }
 
+  let start_date = appliedFilters.start_date
+  let end_date = appliedFilters.end_date
+
   // ApiService.query(`quality-control/dispositions/${filters.plant_code}/${filters.sloc?.code}`, {
   ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc?.code}`, {
     params: {
@@ -155,6 +200,8 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
       itemsPerPage: perPage,
       sort: sortQuery.value,
       search: searchValue.value,
+      start_date: start_date,
+      end_date: end_date,
     },
   })
     .then((response) => {
@@ -223,7 +270,7 @@ const openDetailDialog = (log) => {
         v-model="filters.sloc"
       />
     </VCol>
-    <VCol cols="12" md="4">
+    <VCol cols="12" md="3">
       <VTextField
         v-model="searchInput"
         placeholder="Search movement type, batch..."
@@ -234,14 +281,27 @@ const openDetailDialog = (log) => {
         @keyup.enter="handleSearch"
       />
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="3" class="d-flex align-center">
       <v-btn
-        block
+        class="flex-grow-1 mr-2"
         :loading="pageLoading"
         prepend-icon="ri-search-line"
+        color="primary"
         @click="handleSearch"
       >
+        <template v-slot:loader>
+          <v-progress-circular indeterminate color="white" size="24" />
+        </template>
         Search
+      </v-btn>
+      <v-btn
+        class="flex-grow-1"
+        prepend-icon="ri-equalizer-line"
+        variant="tonal"
+        color="primary"
+        @click="filterModalOpen"
+      >
+        Filter
       </v-btn>
     </VCol>
   </VRow>
@@ -415,4 +475,24 @@ const openDetailDialog = (log) => {
           </v-card-text>
       </v-card>
   </v-dialog>
+
+  <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Postings'">
+      <template #default>
+          <v-form>
+              <div class="mt-4">
+                  <label class="font-weight-bold">Date Created</label>
+                  <DateRangePicker class="mt-1" v-model="dateFilters.created_at" placeholder="Select Start and End Date" />
+              </div>
+
+              <div class="d-flex justify-end align-center mt-8">
+                  <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                      class="px-12 mr-3">Reset Filter</v-btn>
+                  <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter"
+                      :loading="pageLoading">
+                      Apply Filter
+                  </PrimaryButton>
+              </div>
+          </v-form>
+      </template>
+  </FilteringModal>
 </template>
