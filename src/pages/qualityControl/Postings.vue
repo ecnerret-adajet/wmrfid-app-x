@@ -245,15 +245,6 @@ const openDetailDialog = (log) => {
       </v-btn>
     </VCol>
   </VRow>
-
-  <v-progress-linear
-    :active="pageLoading"
-    indeterminate
-    color="primary"
-    height="3"
-    class="mb-1"
-  />
-
   <VCard>
     <VDataTableServer
       v-model:items-per-page="itemsPerPage"
