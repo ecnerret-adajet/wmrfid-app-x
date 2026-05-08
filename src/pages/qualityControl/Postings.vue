@@ -35,15 +35,15 @@ const headers = [
 ]
 
 const itemHeaders = [
-  { title: 'MATERIAL DOCUMENT', key: 'material_document' },
+  { title: 'MAT DOC', key: 'material_document' },
   { title: 'PALLET ID', key: 'pallet_physical_id' },
-  { title: 'MOVEMENT TYPE', key: 'movement_type', align: 'center' },
+  { title: 'MOVE TYPE', key: 'movement_type', align: 'center' },
   { title: 'PLANT', key: 'plant' },
   { title: 'ISSUING SLOC', key: 'issuing_sloc' },
   { title: 'RECEIVING SLOC', key: 'receiving_sloc' },
   { title: 'QTY', key: 'entry_qty', align: 'center' },
-  { title: 'UOM', key: 'entry_uom', align: 'center' },
-  { title: 'CREATE DATE', key: 'created_at' },
+  { title: 'CREATED AT', key: 'created_at' },
+  { title: 'TYPE', key: 'type' },
 ]
 
 onMounted(() => loadPlants())
@@ -378,7 +378,7 @@ const openDetailDialog = (log) => {
               <div class="text-subtitle-2 font-weight-bold mb-2">
                   Goods Movement Log Items ({{ selectedLog.goods_movement_log_items?.length ?? 0 }})
               </div>
-              <v-table density="compact">
+              <v-table density="compact" class="text-no-wrap">
                   <thead>
                       <tr>
                           <th v-for="h in itemHeaders" :key="h.key" :class="h.align === 'center' ? 'text-center' : ''">
@@ -403,9 +403,9 @@ const openDetailDialog = (log) => {
                           <td>{{ item.plant }}</td>
                           <td>{{ item.issuing_sloc || '--' }}</td>
                           <td>{{ item.receiving_sloc || '--' }}</td>
-                          <td class="text-center">{{ item.entry_qty }}</td>
-                          <td class="text-center">{{ item.entry_uom }}</td>
+                          <td>{{ item.entry_qty }} {{ item.entry_uom }}</td>
                           <td>{{ item.created_at?.slice(0, 19).replace('T', ' ') }}</td>
+                          <td>{{ item.goods_movement_log?.type }}</td>
                       </tr>
                   </tbody>
               </v-table>

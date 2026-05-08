@@ -97,6 +97,10 @@ const proceedMapping = () => {
     <!-- Quality Control Section  -->
     <VerticalNavSectionTitle v-if="authUserCan('can.view.qc.disposition') || authUserCan('can.view.quality.control')"
         :item="{ heading: 'Quality Control' }" />
+
+     <VerticalNavLink v-if="authUserCan('can.view.quality.control')"
+        :item="{ title: 'QC Inspection', icon: 'ri-database-2-line', 
+        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`}"/>
     <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
         <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')" :item="{
             title: 'Disposition Request',
@@ -112,9 +116,7 @@ const proceedMapping = () => {
             to: '/qc-disposition/postings',
         }" />
     </VerticalNavGroup>
-    <VerticalNavLink v-if="authUserCan('can.view.quality.control')"
-        :item="{ title: 'QC Inspection', icon: 'ri-database-2-line', 
-        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`}"/>
+    
 
     <!-- <VerticalNavGroup v-if="authUserCan('can.view.quality.control')" :item="{ title: 'Quality Control', icon: 'ri-database-2-line' }">
         <VerticalNavLink :item="{

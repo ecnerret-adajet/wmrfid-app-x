@@ -1,6 +1,7 @@
 <script setup>
 import InventoryAgeChart from '@/components/dashboard/InventoryAgeChart.vue';
 import WarehouseUtilization from '@/components/dashboard/WarehouseUtilization.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
@@ -22,6 +23,8 @@ const filters = reactive({
     storage_location_id: null, // Prepared for future usage
     plant_id: authStore.user?.assigned_plant?.id || null
 })
+
+const { authUserCan } = useAuthorization();
 
 const headers = [
     {
@@ -131,7 +134,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
 
     <!-- TOP KPI  -->
     <VRow class="match-height ml-1">
-        <v-col cols="12" sm="12" md="3">
+        <v-col v-if="authUserCan('inventory.view.count')" cols="12" sm="12" md="3">
             <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
                 <div class="d-flex align-center">
@@ -201,7 +204,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
                 </div>
             </v-card>
         </v-col>
-        <v-col cols="12" sm="12" md="3">
+        <v-col v-if="authUserCan('inventory.outbound.counts')" cols="12" sm="12" md="3">
             <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
             <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
                 <div class="d-flex align-center">
