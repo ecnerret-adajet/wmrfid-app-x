@@ -92,12 +92,24 @@
                     
                     <!-- Body -->
                     <div class="mb-2">
-                        <div class="font-weight-bold">{{ item.physical_id }}</div>
+                        <div class="d-flex align-center">
+                            <div class="font-weight-bold mr-4">
+                                {{ item.physical_id }}
+                            </div>
+
+                            <v-chip
+                                size="small"
+                                color="warning"
+                                v-if="item.transfer_request?.is_loose"
+                            >
+                                Loose Pallet
+                            </v-chip>
+                        </div>
                         <div v-if="item.batch" class="text-primary">
                             {{ item.batch }}
                         </div>
                     </div>
-
+                   
                     <!-- TO Section -->
                     <div v-if="item.status_text !== 'Pending'" class="d-flex flex-column align-center">
                         <div v-if="item.transfer_order || item.transfer_order_id" class="d-flex justify-space-between align-center w-100 mb-2">
@@ -117,6 +129,8 @@
                             {{ item.transfer_order?.status_text || item.status_text }}
                             </v-chip>
                         </div>
+
+                        
 
                         <v-sheet v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
@@ -716,7 +730,6 @@ async function generateTransferOrder(item, qr_text, palletStatus, looseCount) {
         await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
         let updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
         if (updated) {
-            console.log(updated)
             if (
                 updated.status_text === 'Inline Rejected' ||
                 updated.status_text === 'Invalid Request' 
@@ -759,6 +772,10 @@ async function generateTransferOrder(item, qr_text, palletStatus, looseCount) {
             errorMessageTitle.value = 'Error'
             errorMessage.value = 'No assigned bin. Contact IT regarding putaway strategy.'
             showErrorModal.value = true
+        } else if (err?.response?.data?.message === 'No Loose Area') {
+            errorMessageTitle.value = 'Loose Area Missing';
+            errorMessage.value = 'No bin assigned for loose pallet area. Please raise to IT for assistance.';
+            showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'TR exists') {
             errorMessageTitle.value = 'Transfer Request Already Exists';
             if (err.response.data?.error) {
