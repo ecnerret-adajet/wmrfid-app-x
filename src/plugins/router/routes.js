@@ -487,6 +487,18 @@ export const routes = [
             },
         },
 
+        {
+            path: '/:plant_code/:sloc/:forklift/fumigation',
+            name: 'fumigation-nomination',
+            component: () => import('@/pages/fumigation/FumigationNomination.vue'),
+            meta: {
+                pageTitle: 'Fumigation Nomination',
+                breadcrumbs: (route) => [
+                    { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation` }
+                ],
+            },
+        },
+
       ],
     },
     {
@@ -598,17 +610,6 @@ export const routes = [
             pageTitle: 'QR Putaway',
             breadcrumbs: (route) => [
                     { label: 'QR Putaway', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/qr-putaway` }
-            ],
-        },
-    },
-    {
-        path: '/:plant_code/:sloc/:forklift/fumigation',
-        name: 'fumigation-nomination',
-        component: () => import('@/pages/fumigation/FumigationNomination.vue'),
-        meta: {
-            pageTitle: 'Fumigation Nomination',
-            breadcrumbs: (route) => [
-                { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation-nomination` }
             ],
         },
     },

@@ -332,6 +332,7 @@ defineExpose({ loadItems, selectedItems });
             </v-card>
         </v-dialog>
 
+        <v-card>
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :model-value="selectedItems"
@@ -372,5 +373,6 @@ defineExpose({ loadItems, selectedItems });
                 <span v-else>--</span>
             </template>
         </VDataTableServer>
+        </v-card>
     </div>
 </template>
