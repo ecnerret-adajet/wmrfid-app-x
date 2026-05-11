@@ -1,9 +1,12 @@
 <script setup>
+import DateRangePicker from '@/components/DateRangePicker.vue'
+import FilteringModal from '@/components/FilteringModal.vue'
+import PrimaryButton from '@/components/PrimaryButton.vue'
 import ApiService from '@/services/ApiService'
-import { onMounted, reactive, ref, watch } from 'vue'
+import moment from 'moment'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 const pageLoading = ref(false)
-const initialLoading = ref(true)
 const searchInput = ref('')
 const searchValue = ref('')
 
@@ -17,6 +20,44 @@ const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
+const filterModalVisible = ref(false)
+const dateFilters = reactive({ created_at: null })
+
+const appliedFilters = reactive({
+  start_date: null,
+  end_date: null
+})
+
+const filterModalOpen = () => {
+  if (!filterModalVisible.value) {
+    filterModalVisible.value = true
+  }
+}
+
+const isFiltersEmpty = computed(() => {
+  return !dateFilters.created_at || dateFilters.created_at.length === 0
+})
+
+const applyFilter = () => {
+  if (dateFilters.created_at && dateFilters.created_at.length === 2) {
+    appliedFilters.start_date = moment(dateFilters.created_at[0]).format('YYYY-MM-DD')
+    appliedFilters.end_date = moment(dateFilters.created_at[1]).format('YYYY-MM-DD')
+  } else {
+    appliedFilters.start_date = null
+    appliedFilters.end_date = null
+  }
+  handleSearch()
+  filterModalVisible.value = false
+}
+
+const resetFilter = () => {
+  dateFilters.created_at = null
+  appliedFilters.start_date = null
+  appliedFilters.end_date = null
+  handleSearch()
+  filterModalVisible.value = false
+}
+
 const detailDialog = ref(false)
 const selectedLog = ref(null)
 
@@ -27,22 +68,25 @@ const headers = [
   { title: 'QTY', key: 'entry_qty', align: 'center', sortable: false },
   { title: 'TRANSFER REQUEST', key: 'transfer_request', sortable: false },
   { title: 'TRANSFER ORDER', key: 'transfer_order', sortable: false },
+  { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'POSTING DATE', key: 'posting_date', sortable: false },
+  // { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
+  // { title: 'VERIFIED BY', key: 'verified_by', sortable: false },
   { title: 'CREATED AT', key: 'created_at', sortable: false },
   { title: 'MOVEMENT ITEMS', key: 'log_items_count', align: 'center', sortable: false },
   { title: '', key: 'actions', sortable: false, align: 'end' },
 ]
 
 const itemHeaders = [
-  { title: 'MATERIAL DOCUMENT', key: 'material_document' },
+  { title: 'MAT DOC', key: 'material_document' },
   { title: 'PALLET ID', key: 'pallet_physical_id' },
-  { title: 'MOVEMENT TYPE', key: 'movement_type', align: 'center' },
+  { title: 'MOVE TYPE', key: 'movement_type', align: 'center' },
   { title: 'PLANT', key: 'plant' },
   { title: 'ISSUING SLOC', key: 'issuing_sloc' },
   { title: 'RECEIVING SLOC', key: 'receiving_sloc' },
   { title: 'QTY', key: 'entry_qty', align: 'center' },
-  { title: 'UOM', key: 'entry_uom', align: 'center' },
-  { title: 'CREATE DATE', key: 'created_at' },
+  { title: 'CREATED AT', key: 'created_at' },
+  { title: 'SAP ID', key: 'sap_id' },
 ]
 
 onMounted(() => loadPlants())
@@ -70,8 +114,6 @@ const loadPlants = async () => {
     handleSearch()
   } catch (error) {
     console.error(error)
-  } finally {
-    initialLoading.value = false
   }
 }
 
@@ -148,6 +190,9 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     sortQuery.value = '-created_at'
   }
 
+  let start_date = appliedFilters.start_date
+  let end_date = appliedFilters.end_date
+
   // ApiService.query(`quality-control/dispositions/${filters.plant_code}/${filters.sloc?.code}`, {
   ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc?.code}`, {
     params: {
@@ -155,6 +200,8 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
       itemsPerPage: perPage,
       sort: sortQuery.value,
       search: searchValue.value,
+      start_date: start_date,
+      end_date: end_date,
     },
   })
     .then((response) => {
@@ -184,25 +231,10 @@ const openDetailDialog = (log) => {
 </script>
 
 <template>
-  <template v-if="initialLoading">
-    <VRow class="mb-3">
-      <VCol cols="12" md="3">
-        <v-skeleton-loader type="card" />
-      </VCol>
-    </VRow>
-    <VRow class="mb-3">
-      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="3"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="4"><v-skeleton-loader type="text" /></VCol>
-      <VCol cols="12" md="2"><v-skeleton-loader type="button" /></VCol>
-    </VRow>
-    <v-skeleton-loader type="table" />
-  </template>
-
-  <template v-else>
   <VRow>
     <VCol cols="12" md="3">
-      <v-card class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
+      <v-skeleton-loader v-if="pageLoading" type="article" />
+      <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
         <div class="d-flex align-center">
           <div
             class="d-flex align-center justify-center mr-4"
@@ -238,7 +270,7 @@ const openDetailDialog = (log) => {
         v-model="filters.sloc"
       />
     </VCol>
-    <VCol cols="12" md="4">
+    <VCol cols="12" md="3">
       <VTextField
         v-model="searchInput"
         placeholder="Search movement type, batch..."
@@ -249,26 +281,30 @@ const openDetailDialog = (log) => {
         @keyup.enter="handleSearch"
       />
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="3" class="d-flex align-center">
       <v-btn
-        block
+        class="flex-grow-1 mr-2"
         :loading="pageLoading"
         prepend-icon="ri-search-line"
+        color="primary"
         @click="handleSearch"
       >
+        <template v-slot:loader>
+          <v-progress-circular indeterminate color="white" size="24" />
+        </template>
         Search
+      </v-btn>
+      <v-btn
+        class="flex-grow-1"
+        prepend-icon="ri-equalizer-line"
+        variant="tonal"
+        color="primary"
+        @click="filterModalOpen"
+      >
+        Filter
       </v-btn>
     </VCol>
   </VRow>
-
-  <v-progress-linear
-    :active="pageLoading"
-    indeterminate
-    color="primary"
-    height="3"
-    class="mb-1"
-  />
-
   <VCard>
     <VDataTableServer
       v-model:items-per-page="itemsPerPage"
@@ -288,7 +324,7 @@ const openDetailDialog = (log) => {
       <template #item.transfer_request="{ item }">
           <div v-if="item.transfer_request">
               <div class="text-caption font-weight-bold">{{ item.transfer_request.transfer_request_id }}</div>
-              <v-chip size="x-small" variant="tonal" color="info">{{ item.transfer_request.status_text }}</v-chip>
+              <v-chip size="x-small" variant="tonal" class="text-uppercase" color="info">{{ item.transfer_request.status_text }}</v-chip>
           </div>
           <span v-else>--</span>
       </template>
@@ -296,8 +332,15 @@ const openDetailDialog = (log) => {
       <template #item.transfer_order="{ item }">
           <div v-if="item.transfer_order">
               <div class="text-caption font-weight-bold">{{ item.transfer_order.transfer_order_id }}</div>
-              <v-chip size="x-small" variant="tonal" color="success">{{ item.transfer_order.status_text }}</v-chip>
+              <v-chip size="x-small" variant="tonal" class="text-uppercase" color="success">{{ item.transfer_order.status_text }}</v-chip>
           </div>
+          <span v-else>--</span>
+      </template>
+
+      <template #item.bin_location="{ item }">
+          <span v-if="item.designated_block">
+              {{ item.designated_block.label }}<span v-if="item.designated_block.lot"> - {{ item.designated_block.lot.label }}</span>
+          </span>
           <span v-else>--</span>
       </template>
 
@@ -308,6 +351,14 @@ const openDetailDialog = (log) => {
       <template #item.posting_date="{ item }">
           {{ item.qc_disposition?.posting_date || '--' }}
       </template>
+
+      <!-- <template #item.requested_by="{ item }">
+          {{ item.requested_by?.name || '--' }}
+      </template>
+
+      <template #item.verified_by="{ item }">
+          {{ item.validated_by?.name || '--' }}
+      </template> -->
 
       <template #item.created_at="{ item }">
           {{ item.created_at ? new Date(item.created_at).toLocaleString('sv-SE') : '--' }}
@@ -386,7 +437,7 @@ const openDetailDialog = (log) => {
               <div class="text-subtitle-2 font-weight-bold mb-2">
                   Goods Movement Log Items ({{ selectedLog.goods_movement_log_items?.length ?? 0 }})
               </div>
-              <v-table density="compact">
+              <v-table density="compact" class="text-no-wrap">
                   <thead>
                       <tr>
                           <th v-for="h in itemHeaders" :key="h.key" :class="h.align === 'center' ? 'text-center' : ''">
@@ -411,14 +462,37 @@ const openDetailDialog = (log) => {
                           <td>{{ item.plant }}</td>
                           <td>{{ item.issuing_sloc || '--' }}</td>
                           <td>{{ item.receiving_sloc || '--' }}</td>
-                          <td class="text-center">{{ item.entry_qty }}</td>
-                          <td class="text-center">{{ item.entry_uom }}</td>
+                          <td>{{ item.entry_qty }} {{ item.entry_uom }}</td>
                           <td>{{ item.created_at?.slice(0, 19).replace('T', ' ') }}</td>
+                          <td>
+                            <span class="text-uppercase">
+                              {{ item.goods_movement_log?.sap_id }}
+                            </span>
+                          </td>
                       </tr>
                   </tbody>
               </v-table>
           </v-card-text>
       </v-card>
   </v-dialog>
-  </template>
+
+  <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Postings'">
+      <template #default>
+          <v-form>
+              <div class="mt-4">
+                  <label class="font-weight-bold">Date Created</label>
+                  <DateRangePicker class="mt-1" v-model="dateFilters.created_at" placeholder="Select Start and End Date" />
+              </div>
+
+              <div class="d-flex justify-end align-center mt-8">
+                  <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter"
+                      class="px-12 mr-3">Reset Filter</v-btn>
+                  <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter"
+                      :loading="pageLoading">
+                      Apply Filter
+                  </PrimaryButton>
+              </div>
+          </v-form>
+      </template>
+  </FilteringModal>
 </template>

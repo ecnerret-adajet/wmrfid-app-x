@@ -260,8 +260,12 @@ const handleApprove = async (method) => {
         block
         :loading="pageLoading"
         prepend-icon="ri-search-line"
+        color="primary"
         @click="handleSearch"
       >
+        <template v-slot:loader>
+          <v-progress-circular indeterminate color="white" size="24" />
+        </template>
         Search
       </v-btn>
     </VCol>
@@ -273,7 +277,7 @@ const handleApprove = async (method) => {
         :disabled="selectedItems.length === 0"
         @click="openApprovalDialog"
       >
-        Approve
+        Manage
       </v-btn>
     </VCol>
   </VRow>

@@ -1,4 +1,5 @@
 <script setup>
+import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import avatar1 from '@images/avatars/avatar-1.png';
@@ -67,6 +68,52 @@ const handleUpdate = async () => {
             isLoading.value = false;
         }
     } 
+}
+
+const sapDialogVisible = ref(false);
+const isSapLoading = ref(false);
+const sapErrorMessage = ref(null);
+const sapSuccess = ref(false);
+const sapAccountForm = ref(null);
+
+const sapForm = reactive({
+    username: '',
+    password: '',
+    loading: false,
+})
+
+const getSAPCredential = () => {
+    sapForm.loading = true
+    ApiService.get('user/sap-credentials')
+        .then(({ data }) => {
+            sapForm.username = data.username
+            sapForm.loading = false
+        })
+}
+
+const handleSapAccount = () => {
+    sapDialogVisible.value = true;
+}
+
+onMounted(() => {
+    getSAPCredential()
+})
+
+const handleSapSubmit = async () => {
+    const { valid } = await sapAccountForm.value.validate();
+    if (valid) {
+        isSapLoading.value = true;
+        sapSuccess.value = false;
+        sapErrorMessage.value = null;
+        try {
+            await ApiService.post('user/sap-credentials', sapForm);
+            sapSuccess.value = true;
+        } catch (error) {
+            sapErrorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        } finally {
+            isSapLoading.value = false;
+        }
+    }
 }
 
 // Countdown logic
@@ -171,6 +218,18 @@ const startCountdown = () => {
                 </template>
 
                 <VListItemTitle>Change Password</VListItemTitle>
+            </VListItem>
+
+            <VListItem @click="handleSapAccount">
+                <template #prepend>
+                <VIcon
+                    class="me-2"
+                    icon="ri-login-circle-line"
+                    size="22"
+                />
+                </template>
+
+                <VListItemTitle>SAP Account</VListItemTitle>
             </VListItem>
 
             <!-- 👉 Pricing -->
@@ -289,6 +348,68 @@ const startCountdown = () => {
                         <VBtn block type="submit" class="mt-6" :loading="isLoading" @click="changePasswordForm?.validate()">
                             Update
                         </VBtn>
+                    </VRow>
+                </VForm>
+            </VCardText>
+        </VCard>
+    </v-dialog>
+
+    <v-dialog v-model="sapDialogVisible" max-width="550px" persistent>
+      <VCard class="auth-card pa-4 pt-4">
+            <VCardItem class="justify-center">
+                <v-icon
+                    class="text-center mx-auto"
+                    color="grey-700"
+                    icon="ri-login-circle-line"
+                    size="56"
+                ></v-icon>
+            </VCardItem>
+            <VCardText class="pt-2">
+                <h4 class="text-h4 mb-1 text-center">
+                    SAP Account
+                </h4>
+                <p class="mb-0 text-center">
+                    Enter your SAP credentials to link your account for seamless integration.
+                </p>
+            </VCardText>
+
+            <VCardText>
+                <VForm @submit.prevent="handleSapSubmit" ref="sapAccountForm">
+                    <VRow>
+                        <VCol cols="12">
+                            <VTextField
+                                v-model="sapForm.username"
+                                label="User Name"
+                                placeholder="SAP username"
+                                autocomplete="username"
+                                :rules="[requiredValidator]"
+                                :loading="sapForm.loading"
+                            />
+
+                            <VTextField
+                                v-model="sapForm.password"
+                                label="Password"
+                                class="mt-4"
+                                placeholder="············"
+                                type="password"
+                                autocomplete="current-password"
+                                :rules="[requiredValidator]"
+                            />
+
+                            <VAlert v-if="sapSuccess" class="mt-4 text-center" color="primary" variant="tonal">
+                                SAP account saved successfully.
+                            </VAlert>
+                            <VAlert v-if="sapErrorMessage" class="mt-4" color="error" variant="tonal">
+                                {{ sapErrorMessage }}
+                            </VAlert>
+
+                            <VBtn block type="submit" class="mt-6" :loading="isSapLoading">
+                                Submit
+                            </VBtn>
+                            <VBtn block variant="text" class="mt-2" @click="sapDialogVisible = false">
+                                Cancel
+                            </VBtn>
+                        </VCol>
                     </VRow>
                 </VForm>
             </VCardText>
