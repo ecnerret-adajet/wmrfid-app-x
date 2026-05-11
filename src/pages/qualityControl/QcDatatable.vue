@@ -144,6 +144,7 @@ const confirmQualityInspection = async (method) => {
             posting_date: postingDate.value,
             plant_code: storageLocation.value?.plant?.plant_code,
             storage_location_id: storageLocation.value?.id,
+            type: 'qc-inspection',
             items: selectedItems.value.map(item => ({
                 physical_id: item.physical_id,
                 rfid_code: item.rfid_code,
@@ -152,6 +153,8 @@ const confirmQualityInspection = async (method) => {
                 batch: item.batch,
                 material_code: item.material?.bu_material,
                 entry_qty: item.quantity,
+                designated_block_id: item.block_id,
+                layer_position: item.position_in_block,
             })),
         });
 
