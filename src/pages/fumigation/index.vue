@@ -32,14 +32,37 @@ const rfidSearchValue = ref('');
 const errorMessage = ref(null);
 const filters = reactive({
     start_date: null,
-    end_date: null
+    end_date: null,
+    plant_code: null,
 });
+
+onMounted(() => loadPlants())
+
+const loadPlants = async () => {
+    try {
+        const response = await ApiService.get('managed-plant-storage-locations')
+        plantsOption.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.plant_code, title: item.name }))
+        if (plantsOption.value.length > 0) {
+            filters.plant_code = plantsOption.value[0].value
+        }
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+watch(() => filters.plant_code, () => {
+    page.value = 1
+    loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
+})
 
 const rfidFilters = reactive({
     start_date: null,
     end_date: null,
     material_id: null,
     plant_code: null,
+    sloc: null,
     under_fumigation: false
 });
 
@@ -102,31 +125,13 @@ const headers = [
 ]
 
 const rfidHeaders = [
-    {
-        title: 'PHYSICAL ID',
-        key: 'physical_id',
-    },
-    {
-        title: 'PLANT',
-        key: 'plant',
-    },
-    {
-        title: 'BATCH',
-        key: 'batch', 
-    },
-    {
-        title: 'MATERIAL',
-        key: 'material_description',
-    },
-    {
-        title: 'QUANTITY',
-        key: 'quantity', 
-        align: 'center',
-    },
-    {
-        title: 'MFG DATE',
-        key: 'mfg_date',
-    },
+    { title: 'PALLET ID', key: 'physical_id' },
+    { title: 'QUANTITY', key: 'quantity', align: 'center', sortable: false },
+    { title: 'BATCH', key: 'batch' },
+    { title: 'MATERIAL', key: 'material', sortable: false },
+    { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
+    { title: 'LAYER', key: 'position_in_block', align: 'center', sortable: false },
+    { title: 'STATUS', key: 'commodity_status', align: 'center', sortable: false },
 ]
 
 const filterModalOpen = () => {
@@ -162,22 +167,15 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         })
         .then((response) => {
            
-            const { table, materials, plants } = response.data;
+            const { table, materials } = response.data;
             totalItems.value = table.total;
             serverItems.value = table.data;
-            console.log(serverItems.value);
 
             materialsOption.value = materials.map(item => ({
                 value: item.id,
                 title: `${item.plant_code} - ${item.code} - ${item.description}`,
                 plant_code: item.plant_code,
                 default_pallet_quantity: item.default_pallet_quantity
-            }));
-
-            plantsOption.value = plants.map(item => ({
-                value: item.plant_code,
-                title: item.name,
-                name: item.name
             }));
 
             loading.value = false
@@ -207,7 +205,9 @@ const createFumigateForm = reactive({
     remarks: null,
     startDate: null,
     endDate: null,
-    items: []
+    delivery_order_no: null,
+    items: [],
+    delivery_line_items: [],
 })
 
 const fumigateModal = ref(false);
@@ -271,6 +271,7 @@ const handleCreateFumigate = async () => {
     fumigateLoading.value = true;
     toast.show = false;
     createFumigateForm.items = selectedItems.value
+    createFumigateForm.delivery_line_items = selectedDeliveryLineItem.value ? [selectedDeliveryLineItem.value] : []
 
     if (!createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
         errorMessage.value = 'Start Date, End Date, and Remarks are required.';
@@ -318,17 +319,73 @@ const handleCreateFumigate = async () => {
 const showCreateFumigate = ref(false);
 const selectedItems = ref([])
 const createFumigation = () => {
-    showCreateFumigate.value = true
+    showCreateFumigate.value = true;
+    fetchDeliveryOrders();
 }
 
 const clearFumigateForm = () => {
     createFumigateForm.remarks = null;
     createFumigateForm.startDate = null;
     createFumigateForm.endDate = null;
+    createFumigateForm.delivery_order_no = null;
     createFumigateForm.items = [];
+    createFumigateForm.delivery_line_items = [];
+    deliveryOrderSearch.value = '';
+    selectedDeliveryLineItem.value = null;
 }
 
+const deliveryOrderSearch = ref('');
+const deliveryOrderItems = ref([]);
+const deliveryOrderLoading = ref(false);
+
+const fetchDeliveryOrders = async (search = '') => {
+    deliveryOrderLoading.value = true;
+    try {
+        const response = await ApiService.query('fumigations/open-delivery-orders', {
+            params: {
+                plant_code: filters.plant_code,
+                search,
+            },
+        });
+        deliveryOrderItems.value = response.data ?? [];
+    } catch {
+        deliveryOrderItems.value = [];
+    } finally {
+        deliveryOrderLoading.value = false;
+    }
+};
+
+let deliverySearchTimer = null;
+watch(deliveryOrderSearch, (val) => {
+    clearTimeout(deliverySearchTimer);
+    deliverySearchTimer = setTimeout(() => fetchDeliveryOrders(val), 350);
+});
+
+const selectedDelivery = computed(() =>
+    deliveryOrderItems.value.find(d => d.delivery_document === createFumigateForm.delivery_order_no) ?? null
+);
+
+const selectedDeliveryItems = computed(() => selectedDelivery.value?.delivery_items ?? []);
+
+const selectedDeliveryLineItem = ref(null);
+
+watch(() => createFumigateForm.delivery_order_no, () => {
+    selectedDeliveryLineItem.value = null;
+});
+
+const toggleDeliveryLineItem = (item) => {
+    selectedDeliveryLineItem.value = selectedDeliveryLineItem.value?.id === item.id ? null : item;
+};
+
+const isDeliveryLineItemSelected = (item) =>
+    selectedDeliveryLineItem.value?.id === item.id;
+
 const loadRfid = ({ page, itemsPerPage, sortBy, search }) => {
+    if (!selectedDeliveryLineItem.value) {
+        rfidServerItems.value = [];
+        rfidTotalItems.value = 0;
+        return;
+    }
     rfidLoading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -340,15 +397,36 @@ const loadRfid = ({ page, itemsPerPage, sortBy, search }) => {
         rfidSortQuery.value = '-created_at';
     }
 
-    ApiService.query('fumigations/datatable/rfid',{
+    // ApiService.query('fumigations/datatable/rfid',{
+    //     params: {
+    //         page,
+    //         itemsPerPage,
+    //         sort: rfidSortQuery.value,
+    //         search: rfidSearchValue.value,
+    //         filters: rfidFilters
+    //     }
+    //     })
+    //     .then((response) => {
+    //         rfidTotalItems.value = response.data.total;
+    //         rfidServerItems.value = response.data.data
+    //         rfidLoading.value = false
+    //     })
+    //     .catch((error) => {
+    //         console.log(error);
+    //     });
+
+    ApiService.query('inventories/fetch-inventories', {
         params: {
             page,
             itemsPerPage,
             sort: rfidSortQuery.value,
             search: rfidSearchValue.value,
-            filters: rfidFilters
+            plant_code: filters.plant_code,
+            sloc: rfidFilters.sloc,
+            commodity_status_id: 1,
+            material_code: selectedDeliveryLineItem.value?.material_number,
         }
-        })
+    })
         .then((response) => {
             rfidTotalItems.value = response.data.total;
             rfidServerItems.value = response.data.data
@@ -378,8 +456,12 @@ watch(() => rfidFilters.plant_code, (newVal, oldVal) => {
     if (newVal === oldVal) return;
     page.value = 1;
 
+    rfidFilters.sloc = null;
+    storageLocation.value = null;
+
     if (!newVal) {
         rfidFilters.material_id = null;
+        slocOptions.value = [];
         onFilterChange();
         return;
     }
@@ -392,6 +474,12 @@ watch(() => rfidFilters.plant_code, (newVal, oldVal) => {
         rfidFilters.material_id = null;
     }
 
+    fetchSlocOptions(newVal);
+    onFilterChange();
+});
+
+watch(selectedDeliveryLineItem, (newVal) => {
+    page.value = 1;
     onFilterChange();
 });
 
@@ -412,6 +500,53 @@ const filteredMaterialsOption = computed(() => {
     return materialsOption.value.filter(m => String(m.plant_code) === String(rfidFilters.plant_code));
 });
 
+const storageLocation = ref(null);
+const slocOptions = ref([]);
+const slocLoading = ref(false);
+
+const fetchSlocOptions = async (plant_code) => {
+    if (!plant_code) {
+        slocOptions.value = [];
+        return;
+    }
+    slocLoading.value = true;
+    try {
+        const response = await ApiService.query('warehouse/storage-locations', {
+            params: { plant_code },
+        });
+        slocOptions.value = (response.data ?? []).map(s => ({
+            value: s.code,
+            title: `${s.code} - ${s.name}`,
+        }));
+    } catch {
+        slocOptions.value = [];
+    } finally {
+        slocLoading.value = false;
+    }
+};
+
+const fetchStorageLocationDetails = async () => {
+    if (!rfidFilters.plant_code || !rfidFilters.sloc) {
+        storageLocation.value = null;
+        return;
+    }
+    try {
+        const response = await ApiService.get(`warehouse/storage-location/${rfidFilters.plant_code}/${rfidFilters.sloc}`);
+        storageLocation.value = response.data.storage_location;
+    } catch {
+        storageLocation.value = null;
+    }
+};
+
+watch(() => rfidFilters.sloc, (newVal) => {
+    if (newVal) {
+        fetchStorageLocationDetails();
+    } else {
+        storageLocation.value = null;
+    }
+    onFilterChange();
+});
+
 const cancelCreateFumigation = () => {
     showCreateFumigate.value = false;
     clearFumigateForm();
@@ -422,6 +557,14 @@ const cancelCreateFumigation = () => {
 </script>
 <template>
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
+        <v-select
+            label="Filter by Plant"
+            density="compact"
+            hide-details
+            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+            v-model="filters.plant_code"
+            style="min-width: 200px; max-width: 250px;"
+        />
         <SearchInput class="flex-grow-1" @update:search="handleSearch" />
         <v-btn
             class="d-flex align-center"
@@ -640,6 +783,14 @@ const cancelCreateFumigation = () => {
     <EditingModal @close="showCreateFumigate = false" max-width="1500px" :show="showCreateFumigate"
         :dialog-title="`Fumigation Request`">
         <template #default>
+            <div v-if="storageLocation" class="mb-4 pa-3 rounded border">
+                <h4 class="text-h6 font-weight-bold mb-1">
+                    Plant: <span class="text-primary">{{ storageLocation?.plant?.plant_code }} - {{ storageLocation?.plant?.name }}</span>
+                </h4>
+                <h4 class="text-h6 font-weight-bold">
+                    Storage Location: <span class="text-primary">{{ storageLocation?.code }} - {{ storageLocation?.name }}</span>
+                </h4>
+            </div>
             <v-form @submit.prevent="handleFumigate">
                 <v-row>
                     <v-col cols="12" md="6">
@@ -649,6 +800,91 @@ const cancelCreateFumigation = () => {
                         <DatePicker v-model="createFumigateForm.endDate" placeholder="Select End Date" />
                     </v-col>
                 </v-row>
+                <VAutocomplete
+                    v-model="createFumigateForm.delivery_order_no"
+                    v-model:search="deliveryOrderSearch"
+                    :items="deliveryOrderItems"
+                    :loading="deliveryOrderLoading"
+                    item-title="delivery_document"
+                    item-value="delivery_document"
+                    label="Delivery Order No."
+                    placeholder="Type to search delivery order..."
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    clear-icon="ri-close-line"
+                    no-filter
+                    class="mt-4"
+                >
+                    <template #item="{ item, props: itemProps }">
+                        <v-list-item v-bind="itemProps" />
+                    </template>
+                    <template #no-data>
+                        <v-list-item>
+                            <v-list-item-title class="text-medium-emphasis">
+                                {{ deliveryOrderLoading ? 'Searching...' : 'No delivery orders found' }}
+                            </v-list-item-title>
+                        </v-list-item>
+                    </template>
+                </VAutocomplete>
+                <v-card v-if="selectedDelivery" variant="tonal" color="primary" rounded="lg" class="mt-3 mb-2 pa-3">
+                    <VRow dense>
+                        <VCol cols="12" md="4">
+                            <div class="text-caption text-uppercase font-weight-bold text-medium-emphasis">Ship To</div>
+                            <div class="font-weight-bold">{{ selectedDelivery.ship_to_name }}</div>
+                            <div class="text-caption text-medium-emphasis">{{ selectedDelivery.ship_to_customer }}</div>
+                        </VCol>
+                        <VCol cols="12" md="4">
+                            <div class="text-caption text-uppercase font-weight-bold text-medium-emphasis">Ship To Address</div>
+                            <div class="font-weight-bold">{{ selectedDelivery.ship_to_address }}</div>
+                        </VCol>
+                        <VCol cols="12" md="4">
+                            <div class="text-caption text-uppercase font-weight-bold text-medium-emphasis">Sold To</div>
+                            <div class="font-weight-bold">{{ selectedDelivery.sold_to_name }}</div>
+                            <div class="text-caption text-medium-emphasis">{{ selectedDelivery.sold_to_customer }}</div>
+                        </VCol>
+                    </VRow>
+                </v-card>
+                <v-table
+                    v-if="selectedDeliveryItems.length > 0"
+                    density="compact"
+                    class="mt-2 mb-2 border rounded"
+                >
+                    <thead>
+                        <tr>
+                            <th style="width: 48px;"></th>
+                            <th>Material</th>
+                            <th class="text-center">Quantity</th>
+                            <th>Storage Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="item in selectedDeliveryItems"
+                            :key="item.id"
+                            style="cursor: pointer;"
+                            @click="toggleDeliveryLineItem(item)"
+                        >
+                            <td @click.stop>
+                                <v-checkbox
+                                    :model-value="isDeliveryLineItemSelected(item)"
+                                    density="compact"
+                                    hide-details
+                                    @update:model-value="toggleDeliveryLineItem(item)"
+                                />
+                            </td>
+                            <td>
+                                <span class="font-weight-bold">{{ item.material_description }}</span><br />
+                                <span class="text-caption text-medium-emphasis">{{ item.material_number }}</span>
+                            </td>
+                            <td class="text-center">
+                                {{ item.delivery_quantity }}<br />
+                                <span class="text-caption text-medium-emphasis">{{ item.sales_unit }}</span>
+                            </td>
+                            <td>{{ item.storage_location }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
                 <v-textarea class="mt-4" clear-icon="ri-close-line" label="Remarks" v-model="createFumigateForm.remarks"
                     clearable></v-textarea>
             </v-form>
@@ -666,11 +902,34 @@ const cancelCreateFumigation = () => {
                     <v-autocomplete label="Select Plant" density="compact" item-title="title" item-value="value"
                         :items="plantsOption" v-model="rfidFilters.plant_code" @update:modelValue="onFilterChange"/>
                 </div>
-                 <div class="d-flex align-center" style="min-width: 330px;">
+                <div class="d-flex align-center" style="min-width: 260px;">
+                    <v-autocomplete
+                        label="Select Storage Location"
+                        density="compact"
+                        item-title="title"
+                        item-value="value"
+                        :items="slocOptions"
+                        :loading="slocLoading"
+                        :disabled="!rfidFilters.plant_code"
+                        v-model="rfidFilters.sloc"
+                    />
+                </div>
+                <div class="d-flex align-center" style="min-width: 330px;">
                     <v-autocomplete label="Select Material" density="compact" @update:modelValue="onFilterChange" item-title="title" item-value="value"
                         :items="filteredMaterialsOption" v-model="rfidFilters.material_id" />
                 </div>
             </div>
+
+            <VAlert
+                v-if="!selectedDeliveryLineItem"
+                color="info"
+                variant="tonal"
+                class="mb-3"
+                density="compact"
+                icon="ri-information-line"
+            >
+                Please select at least one delivery line item above to proceed with pallet selection.
+            </VAlert>
 
             <div class="mb-2" v-if="selectedItems.length > 0">
                 <span class="text-h6 font-weight-medium text-high-emphasis">
@@ -681,25 +940,38 @@ const cancelCreateFumigation = () => {
             <VDataTableServer v-model:items-per-page="rfidItemsPerPage" v-model="selectedItems"
                             :headers="rfidHeaders" :items="rfidServerItems" :items-length="rfidTotalItems" :loading="rfidLoading"
                             item-value="id" :search="rfidSearchValue" @update:options="loadRfid" show-select return-object
-                            class="text-no-wrap">
+                            :class="['text-no-wrap', { 'rfid-select-disabled': !selectedDeliveryLineItem }]">
                 <template #item.physical_id="{ item }">
-                    {{ item.name }}
+                    {{ item.physical_id }}
                 </template>
                 <template #item.batch="{ item }">
                     {{ item.batch }}
                 </template>
-                <template #item.plant="{ item }">
-                    {{ item.plant_name }}
+                <template #item.material="{ item }">
+                    <span class="font-weight-bold">{{ item.material?.description }}</span><br />
+                    <span class="text-subtitle-1 text-medium-emphasis">{{ item.material?.bu_material }}</span>
                 </template>
-                <template #item.material_description="{ item }">
-                    {{ item.description }}
+                <template #item.bin_location="{ item }">
+                    {{ item.block?.lot?.label ?? '--' }} - {{ item.block?.label ?? '--' }}
                 </template>
-                <template #item.mfg_date="{ item }">
-                    {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+                <template #item.position_in_block="{ item }">
+                    Layer {{ item.position_in_block ?? '--' }}
+                </template>
+                <template #item.commodity_status="{ item }">
+                    <v-chip
+                        v-if="item.commodity_status?.name"
+                        color="success"
+                        variant="tonal"
+                        size="small"
+                        class="text-uppercase font-weight-bold"
+                    >
+                        {{ item.commodity_status.name }}
+                    </v-chip>
+                    <span v-else>--</span>
                 </template>
 
             </VDataTableServer>
-            
+
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelCreateFumigation" class="px-12 mr-3">Cancel</v-btn>
                 <PrimaryButton @click="handleCreateFumigate" color="primary" class="px-12" type="submit"
@@ -711,3 +983,10 @@ const cancelCreateFumigation = () => {
     </EditingModal>
 
 </template>
+
+<style scoped>
+.rfid-select-disabled :deep(.v-selection-control) {
+    pointer-events: none;
+    opacity: 0.38;
+}
+</style>

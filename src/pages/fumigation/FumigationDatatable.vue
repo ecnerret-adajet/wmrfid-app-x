@@ -1,7 +1,7 @@
 <script setup>
 import DatePicker from '@/components/DatePicker.vue';
 import ApiService from '@/services/ApiService';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -112,8 +112,42 @@ const createFumigateForm = reactive({
     startDate: null,
     endDate: null,
     remarks: null,
+    delivery_order_no: null,
     plant_code: route.params.plant_code,
     sloc: route.params.sloc,
+});
+
+const deliveryOrderSearch = ref('');
+const deliveryOrderItems = ref([]);
+const deliveryOrderLoading = ref(false);
+
+const fetchDeliveryOrders = async (search = '') => {
+    deliveryOrderLoading.value = true;
+    try {
+        const response = await ApiService.query('fumigations/open-delivery-orders', {
+            params: {
+                plant_code: route.params.plant_code,
+                search,
+            },
+        });
+        deliveryOrderItems.value = response.data ?? [];
+    } catch {
+        deliveryOrderItems.value = [];
+    } finally {
+        deliveryOrderLoading.value = false;
+    }
+};
+
+let deliverySearchTimer = null;
+watch(deliveryOrderSearch, (val) => {
+    clearTimeout(deliverySearchTimer);
+    deliverySearchTimer = setTimeout(() => fetchDeliveryOrders(val), 350);
+});
+
+const selectedDeliveryItems = computed(() => {
+    if (!createFumigateForm.delivery_order_no) return [];
+    const delivery = deliveryOrderItems.value.find(d => d.delivery_document === createFumigateForm.delivery_order_no);
+    return delivery?.delivery_items ?? [];
 });
 
 const totalSelectedQuantity = computed(() =>
@@ -124,8 +158,11 @@ const openInspectionDialog = () => {
     createFumigateForm.startDate = null;
     createFumigateForm.endDate = null;
     createFumigateForm.remarks = null;
+    createFumigateForm.delivery_order_no = null;
+    deliveryOrderSearch.value = '';
     errorMessage.value = null;
     inspectionDialog.value = true;
+    fetchDeliveryOrders();
 };
 
 const handleCreateFumigate = async () => {
@@ -174,12 +211,12 @@ defineExpose({ loadItems, selectedItems });
 
 <template>
     <div>
-        <div class="pa-4">
+        <div class="p-4">
             <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
             <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
             <h4 class="text-h5 font-weight-bold mb-2">Total for Fumigation : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
         </div>
-        <div class="d-flex gap-4 align-center justify-center px-4 mb-2">
+        <div class="d-flex gap-4 align-center justify-center mb-4">
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -253,7 +290,7 @@ defineExpose({ loadItems, selectedItems });
                     </v-row>
                     <v-textarea
                         v-model="createFumigateForm.remarks"
-                        class="mt-4 mb-4"
+                        class="mt-4"
                         clear-icon="ri-close-line"
                         label="Remarks"
                         lines="1"
@@ -261,6 +298,65 @@ defineExpose({ loadItems, selectedItems });
                         density="compact"
                         clearable
                     />
+                    <VAutocomplete
+                        v-model="createFumigateForm.delivery_order_no"
+                        v-model:search="deliveryOrderSearch"
+                        :items="deliveryOrderItems"
+                        :loading="deliveryOrderLoading"
+                        item-title="delivery_document"
+                        item-value="delivery_document"
+                        label="Delivery Order No."
+                        placeholder="Type to search delivery order..."
+                        variant="outlined"
+                        density="compact"
+                        clearable
+                        clear-icon="ri-close-line"
+                        no-filter
+                        class="mt-4 mb-4"
+                    >
+                        <template #item="{ item, props: itemProps }">
+                            <v-list-item
+                                v-bind="itemProps"
+                                :subtitle="item.raw.ship_to_customer ?? ''"
+                            />
+                        </template>
+                        <template #no-data>
+                            <v-list-item>
+                                <v-list-item-title class="text-medium-emphasis">
+                                    {{ deliveryOrderLoading ? 'Searching...' : 'No delivery orders found' }}
+                                </v-list-item-title>
+                            </v-list-item>
+                        </template>
+                    </VAutocomplete>
+                    <v-table
+                        v-if="selectedDeliveryItems.length > 0"
+                        density="compact"
+                        class="mb-4 border rounded"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th class="text-center">Quantity</th>
+                                <th>Storage Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="item in selectedDeliveryItems"
+                                :key="item.id"
+                            >
+                                <td>
+                                    <span class="font-weight-bold">{{ item.material_description }}</span><br />
+                                    <span class="text-caption text-medium-emphasis">{{ item.material_number }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {{ item.delivery_quantity }}<br />
+                                    <span class="text-caption text-medium-emphasis">{{ item.sales_unit }}</span>
+                                </td>
+                                <td>{{ item.storage_location }}</td>
+                            </tr>
+                        </tbody>
+                    </v-table>
                     <v-divider class="mb-4" />
                     <div class="d-flex gap-3 mb-4">
                         <v-card
