@@ -272,15 +272,20 @@ const handleCreateFumigate = async () => {
     fumigateLoading.value = true;
     toast.show = false;
 
-    // Flatten all assigned RFIDs across line items into items array
-    createFumigateForm.items = Object.values(assignedRfidsByLineItem.value).flatMap(g => g.items)
+    // Flatten all assigned RFIDs across line items; explicitly carry _assigned_quantity alongside assigned_quantity
+    createFumigateForm.items = Object.values(assignedRfidsByLineItem.value).flatMap(g =>
+        g.items.map(item => ({ ...item, _assigned_quantity: item.assigned_quantity }))
+    )
 
-    // Build delivery_line_items with their nested assigned_items (partial qty included)
+    // Build delivery_line_items with nested assigned_items; _assigned_quantity mirrors assigned_quantity for backend clarity
     createFumigateForm.delivery_line_items = selectedDeliveryItems.value
         .filter(lineItem => assignedRfidsByLineItem.value[lineItem.id]?.items.length > 0)
         .map(lineItem => ({
             ...lineItem,
-            assigned_items: assignedRfidsByLineItem.value[lineItem.id].items,
+            assigned_items: assignedRfidsByLineItem.value[lineItem.id].items.map(item => ({
+                ...item,
+                _assigned_quantity: item.assigned_quantity,
+            })),
         }))
 
     if (!createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
