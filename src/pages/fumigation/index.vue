@@ -132,6 +132,7 @@ const rfidHeaders = [
     { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
     { title: 'LAYER', key: 'position_in_block', align: 'center', sortable: false },
     { title: 'STATUS', key: 'commodity_status', align: 'center', sortable: false },
+    { title: 'RESERVED QTY', key: '_assigned_quantity', align: 'center', sortable: false },
 ]
 
 const filterModalOpen = () => {
@@ -537,12 +538,20 @@ const fullyConsumedRfidIds = computed(() => {
     return consumed
 })
 
-// Injects _selectable so Vuetify disables the checkbox for fully-consumed entries
+// Injects _selectable and _assigned_quantity for display and selectability control
 const rfidServerItemsWithSelectability = computed(() =>
-    rfidServerItems.value.map(item => ({
-        ...item,
-        _selectable: !fullyConsumedRfidIds.value.has(item.id),
-    }))
+    rfidServerItems.value.map(item => {
+        let assignedQty = null
+        for (const assignment of Object.values(assignedRfidsByLineItem.value)) {
+            const found = assignment.items.find(i => i.id === item.id)
+            if (found) { assignedQty = found.assigned_quantity; break }
+        }
+        return {
+            ...item,
+            _selectable: !fullyConsumedRfidIds.value.has(item.id),
+            _assigned_quantity: assignedQty,
+        }
+    })
 )
 
 const storageLocation = ref(null);
@@ -1083,6 +1092,18 @@ const cancelCreateFumigation = () => {
                         {{ item.commodity_status.name }}
                     </v-chip>
                     <span v-else>--</span>
+                </template>
+                <template #item._assigned_quantity="{ item }">
+                    <v-chip
+                        v-if="item._assigned_quantity !== null"
+                        color="warning"
+                        variant="tonal"
+                        size="small"
+                        class="font-weight-bold"
+                    >
+                        {{ item._assigned_quantity }}
+                    </v-chip>
+                    <span v-else class="text-medium-emphasis">—</span>
                 </template>
 
             </VDataTableServer>
