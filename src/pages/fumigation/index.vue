@@ -19,6 +19,7 @@ const materialsOption = ref([]);
 const plantsOption = ref([]);
 const rfidLoading = ref(false);
 const loading = ref(true);
+const plantsLoaded = ref(false);
 const totalItems = ref(0);
 const rfidTotalItems = ref(0);
 const itemsPerPage = ref(10);
@@ -44,11 +45,17 @@ const loadPlants = async () => {
         plantsOption.value = (response.data.plants ?? [])
             .filter(item => item.name !== null)
             .map(item => ({ value: item.plant_code, title: item.name }))
+        plantsLoaded.value = true
         if (plantsOption.value.length > 0) {
             filters.plant_code = plantsOption.value[0].value
+            // watcher on filters.plant_code will trigger loadItems
+        } else {
+            loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
         }
     } catch (error) {
         console.error(error)
+        plantsLoaded.value = true
+        loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
     }
 }
 
@@ -70,19 +77,19 @@ const { authUserCan } = useAuthorization();
 
 const headers = [
     {
-        title: 'MATERIAL',
-        key: 'material_id',
+        title: 'DELIVERY DOCUMENT',
+        key: 'delivery_document',
     },
-    {
-        title: 'BATCH',
-        key: 'batch',
-    },
-    {
-        title: 'RFID COUNT',
-        key: 'inventory_count',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'BATCH',
+    //     key: 'batch',
+    // },
+    // {
+    //     title: 'RFID COUNT',
+    //     key: 'inventory_count',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'PLANT',
         key: 'plant_code',
@@ -146,6 +153,7 @@ const handleSearch = debounce((search) => {
 }, 500);
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+    if (!plantsLoaded.value) return
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -207,12 +215,18 @@ const createFumigateForm = reactive({
     startDate: null,
     endDate: null,
     delivery_order_no: null,
+    plant_code: null,
     items: [],
-    delivery_line_items: [],
 })
 
 const fumigateModal = ref(false);
+const detailsModal = ref(false);
 const selectedFumigationRequest = ref(null)
+
+const openDetailsModal = (item) => {
+    selectedFumigationRequest.value = item;
+    detailsModal.value = true;
+}
 const editItem = (item) => {
     if (item.status === 'completed') {
         toast.message = 'Fumigation request already completed';
@@ -272,21 +286,19 @@ const handleCreateFumigate = async () => {
     fumigateLoading.value = true;
     toast.show = false;
 
-    // Flatten all assigned RFIDs across line items; explicitly carry _assigned_quantity alongside assigned_quantity
-    createFumigateForm.items = Object.values(assignedRfidsByLineItem.value).flatMap(g =>
-        g.items.map(item => ({ ...item, _assigned_quantity: item.assigned_quantity }))
-    )
+    createFumigateForm.plant_code = filters.plant_code
 
-    // Build delivery_line_items with nested assigned_items; _assigned_quantity mirrors assigned_quantity for backend clarity
-    createFumigateForm.delivery_line_items = selectedDeliveryItems.value
+    // Build items: each assigned RFID enriched with item_number from its delivery line item
+    createFumigateForm.items = selectedDeliveryItems.value
         .filter(lineItem => assignedRfidsByLineItem.value[lineItem.id]?.items.length > 0)
-        .map(lineItem => ({
-            ...lineItem,
-            assigned_items: assignedRfidsByLineItem.value[lineItem.id].items.map(item => ({
+        .flatMap(lineItem =>
+            assignedRfidsByLineItem.value[lineItem.id].items.map(item => ({
                 ...item,
+                item_number: lineItem.item_number,
+                assigned_quantity: item.assigned_quantity,
                 _assigned_quantity: item.assigned_quantity,
-            })),
-        }))
+            }))
+        )
 
     if (!createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
         errorMessage.value = 'Start Date, End Date, and Remarks are required.';
@@ -343,8 +355,8 @@ const clearFumigateForm = () => {
     createFumigateForm.startDate = null;
     createFumigateForm.endDate = null;
     createFumigateForm.delivery_order_no = null;
+    createFumigateForm.plant_code = null;
     createFumigateForm.items = [];
-    createFumigateForm.delivery_line_items = [];
     deliveryOrderSearch.value = '';
     selectedDeliveryLineItem.value = null;
     assignedRfidsByLineItem.value = {};
@@ -712,17 +724,17 @@ const cancelCreateFumigation = () => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
-            <template #item.material_id="{ item }">
+            <!-- <template #item.material_id="{ item }">
                 {{ item.material?.description }}
             </template>
 
             <template #item.batch="{ item }">
                 {{ item.batch }}
-            </template>
+            </template> -->
 
-            <template #item.inventory_count="{ item }">
+            <!-- <template #item.inventory_count="{ item }">
                 {{ item.inventories?.length }}
-            </template>
+            </template> -->
 
             <template #item.start_date="{ item }">
                 <span v-if="item.start_date">{{ item.start_date ? Moment(item.start_date).format('MMMM D, YYYY') : '' }}</span>
@@ -766,6 +778,12 @@ const cancelCreateFumigation = () => {
 
              <template #item.action="{ item }">
                 <div class="d-flex gap-1 justify-center align-center">
+                    <IconBtn
+                        size="small"
+                        @click="openDetailsModal(item)"
+                    >
+                        <VIcon icon="ri-eye-line" />
+                    </IconBtn>
                     <!-- Add role allowed for editing fumigation  -->
                     <IconBtn v-if="authUserCan('update.fumigation.requests')"
                         size="small"
@@ -893,6 +911,122 @@ const cancelCreateFumigation = () => {
     </v-dialog>
 
     <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event"/>
+
+    <v-dialog v-model="detailsModal" max-width="1400px" scrollable>
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center px-6 pt-6 pb-2">
+                <div class="d-flex align-center gap-2">
+                    <i class="ri-file-list-3-line text-primary text-h4"></i>
+                    <div>
+                        <div class="text-h5 font-weight-bold text-primary">Fumigation Items</div>
+                        <div class="text-caption text-medium-emphasis">
+                            Delivery: <strong>{{ selectedFumigationRequest?.delivery_document ?? '—' }}</strong>
+                            &nbsp;|&nbsp;
+                            Plant: <strong>{{ selectedFumigationRequest?.plant_code ?? '—' }}</strong>
+                            &nbsp;|&nbsp;
+                            Status:
+                            <v-chip
+                                :color="selectedFumigationRequest?.status === 'completed' ? 'success' : selectedFumigationRequest?.status === 'in progress' ? 'warning' : 'info'"
+                                size="x-small"
+                                variant="tonal"
+                                class="text-uppercase font-weight-bold"
+                            >{{ selectedFumigationRequest?.status }}</v-chip>
+                        </div>
+                    </div>
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="detailsModal = false" />
+            </v-card-title>
+
+            <v-divider />
+
+            <v-card-text class="pa-4">
+                <div class="overflow-x-auto">
+                    <v-table density="compact" class="border rounded fumigation-details-table">
+                        <thead>
+                            <tr>
+                                <th class="text-no-wrap">Physical ID</th>
+                                <th class="text-no-wrap">Batch</th>
+                                <th class="text-no-wrap">Bin Location</th>
+                                <th class="text-no-wrap">Delivery No.</th>
+                                <th class="text-center text-no-wrap">Delivery Item</th>
+                                <th>Material</th>
+                                <th class="text-center text-no-wrap">Reserved Qty</th>
+                                <th class="text-no-wrap">Transfer Request</th>
+                                <th class="text-no-wrap">Transfer Order</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="fumigation_item in selectedFumigationRequest?.fumigation_items ?? []"
+                                :key="fumigation_item.id"
+                            >
+                                <td class="text-no-wrap font-weight-medium">{{ fumigation_item.physical_id }}</td>
+                                <td class="text-no-wrap">{{ fumigation_item.batch ?? '—' }}</td>
+                                <td class="text-no-wrap">
+                                    <span v-if="fumigation_item.block?.lot?.label || fumigation_item.block?.label">
+                                        {{ fumigation_item.block?.lot?.label ?? '—' }} &mdash; {{ fumigation_item.block?.label ?? '—' }}
+                                    </span>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
+                                <td class="text-no-wrap">{{ fumigation_item.delivery_document ?? '—' }}</td>
+                                <td class="text-center text-no-wrap">{{ fumigation_item.delivery_item_number ?? '—' }}</td>
+                                <td style="min-width: 200px;">
+                                    <span class="font-weight-bold d-block">{{ fumigation_item.material_description ?? '—' }}</span>
+                                    <span class="text-caption text-medium-emphasis">{{ fumigation_item.material_code }}</span>
+                                </td>
+                                <td class="text-center text-no-wrap">
+                                    <v-chip
+                                        v-if="fumigation_item.reserved_quantity != null"
+                                        color="primary"
+                                        variant="tonal"
+                                        size="small"
+                                        class="font-weight-bold"
+                                    >
+                                        {{ fumigation_item.reserved_quantity }} {{ fumigation_item.uom }}
+                                    </v-chip>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
+                                <td class="text-no-wrap">
+                                    <v-chip
+                                        v-if="fumigation_item.transfer_order?.transfer_request?.transfer_request_id"
+                                        color="secondary"
+                                        variant="tonal"
+                                        size="small"
+                                    >
+                                        {{ fumigation_item.transfer_order.transfer_request.transfer_request_id }}
+                                    </v-chip>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
+                                <td class="text-no-wrap">
+                                    <v-chip
+                                        v-if="fumigation_item.transfer_order?.transfer_order_id"
+                                        color="secondary"
+                                        variant="tonal"
+                                        size="small"
+                                    >
+                                        {{ fumigation_item.transfer_order.transfer_order_id }}
+                                    </v-chip>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
+                            </tr>
+                            <tr v-if="!(selectedFumigationRequest?.fumigation_items?.length > 0)">
+                                <td colspan="9" class="text-center text-medium-emphasis py-6">No fumigation items found.</td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </div>
+                <div class="text-caption text-medium-emphasis mt-2 text-right">
+                    {{ selectedFumigationRequest?.fumigation_items?.length ?? 0 }} item(s)
+                </div>
+            </v-card-text>
+
+            <v-divider />
+
+            <v-card-actions class="justify-end px-6 py-3">
+                <v-btn variant="outlined" @click="detailsModal = false">Close</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
     <EditingModal @close="showCreateFumigate = false" max-width="1500px" :show="showCreateFumigate"
         :dialog-title="`Fumigation Request`">
@@ -1202,5 +1336,19 @@ const cancelCreateFumigation = () => {
 .rfid-select-disabled :deep(.v-selection-control) {
     pointer-events: none;
     opacity: 0.38;
+}
+
+.fumigation-details-table :deep(th) {
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.fumigation-details-table :deep(td) {
+    vertical-align: middle;
+    padding-block: 8px;
 }
 </style>
