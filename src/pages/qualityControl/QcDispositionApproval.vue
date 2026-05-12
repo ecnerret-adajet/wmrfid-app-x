@@ -117,6 +117,7 @@ const qualityInspectionStatus = ref(null)
 const qualityInspectionStatusOptions = [
   { title: 'Good', value: 'good' },
   { title: 'For RTM', value: 'for-rtm' },
+  { title: 'Disposal', value: 'disposal' },
 ]
 const simulateCompleted = ref(false)
 const simulationErrors = ref([])

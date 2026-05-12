@@ -151,6 +151,7 @@ const statusColor = (status) => {
             </v-btn>
         </div>
 
+        <v-card>
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
@@ -217,6 +218,7 @@ const statusColor = (status) => {
                 </v-btn>
             </template>
         </VDataTableServer>
+        </v-card>
 
         <v-dialog
             v-model="detailDialog"

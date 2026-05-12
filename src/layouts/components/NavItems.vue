@@ -148,13 +148,13 @@ const proceedMapping = () => {
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"
         :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound' }" /> -->
-    <VerticalNavGroup v-if="authUserCan('view.fumigation.requests')" :item="{ title: 'Fumigations', icon: 'ri-shield-check-line' }">
+    <VerticalNavGroup v-if="authUserCan('view.fumigation.requests')" :item="{ title: 'Fumigation', icon: 'ri-shield-check-line' }">
         <VerticalNavLink :item="{
-            title: 'Fumigation List',
+            title: 'Entries',
             to: '/fumigations',
         }" />
         <VerticalNavLink :item="{
-            title: 'Fumigation Nomination',
+            title: 'Create',
             to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/fumigation`,
         }" />
     </VerticalNavGroup>
