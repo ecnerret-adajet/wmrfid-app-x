@@ -296,6 +296,7 @@ const handleCreateFumigate = async () => {
                 ...item,
                 item_number: lineItem.item_number,
                 assigned_quantity: item.assigned_quantity,
+                sales_unit: item.sales_unit,
                 _assigned_quantity: item.assigned_quantity,
             }))
         )
@@ -649,7 +650,7 @@ const handleAssign = () => {
         if (remaining <= 0) break
         if (assignment.items.find(i => i.id === rfid.id)) continue // deduplicate
         const take = Math.min(rfid.quantity, remaining)
-        assignment.items.push({ ...rfid, assigned_quantity: take })
+        assignment.items.push({ ...rfid, assigned_quantity: take, sales_unit: selectedDeliveryLineItem.value.sales_unit })
         assignment.totalAssigned += take
         remaining -= take
     }
