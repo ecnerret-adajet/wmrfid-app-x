@@ -270,8 +270,17 @@ const handleFumigate = async () => {
 const handleCreateFumigate = async () => {
     fumigateLoading.value = true;
     toast.show = false;
-    createFumigateForm.items = selectedItems.value
-    createFumigateForm.delivery_line_items = selectedDeliveryLineItem.value ? [selectedDeliveryLineItem.value] : []
+
+    // Flatten all assigned RFIDs across line items into items array
+    createFumigateForm.items = Object.values(assignedRfidsByLineItem.value).flatMap(g => g.items)
+
+    // Build delivery_line_items with their nested assigned_items (partial qty included)
+    createFumigateForm.delivery_line_items = selectedDeliveryItems.value
+        .filter(lineItem => assignedRfidsByLineItem.value[lineItem.id]?.items.length > 0)
+        .map(lineItem => ({
+            ...lineItem,
+            assigned_items: assignedRfidsByLineItem.value[lineItem.id].items,
+        }))
 
     if (!createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
         errorMessage.value = 'Start Date, End Date, and Remarks are required.';
@@ -288,8 +297,8 @@ const handleCreateFumigate = async () => {
         return;
     }
 
-    if (selectedItems.value.length === 0) {
-        errorMessage.value = 'Please select at least one RFID item for fumigation.';
+    if (createFumigateForm.items.length === 0) {
+        errorMessage.value = 'Please assign at least one RFID item to a delivery line item.';
         fumigateLoading.value = false;
         return;
     }
@@ -332,6 +341,7 @@ const clearFumigateForm = () => {
     createFumigateForm.delivery_line_items = [];
     deliveryOrderSearch.value = '';
     selectedDeliveryLineItem.value = null;
+    assignedRfidsByLineItem.value = {};
 }
 
 const deliveryOrderSearch = ref('');
@@ -369,8 +379,15 @@ const selectedDeliveryItems = computed(() => selectedDelivery.value?.delivery_it
 
 const selectedDeliveryLineItem = ref(null);
 
+// keyed by delivery line item id → { items: [{...rfid, assigned_quantity}], totalAssigned }
+const assignedRfidsByLineItem = ref({})
+const assignedItemsModal = ref(false)
+const assignedItemsModalTarget = ref(null)
+
 watch(() => createFumigateForm.delivery_order_no, () => {
     selectedDeliveryLineItem.value = null;
+    assignedRfidsByLineItem.value = {};
+    selectedItems.value = [];
 });
 
 const toggleDeliveryLineItem = (item) => {
@@ -500,6 +517,15 @@ const filteredMaterialsOption = computed(() => {
     return materialsOption.value.filter(m => String(m.plant_code) === String(rfidFilters.plant_code));
 });
 
+// TODO (backend): Allow create when at least one line item is satisfied.
+// Future: enforce all delivery line items must be satisfied before submitting.
+const hasAnySatisfiedLineItem = computed(() => {
+    return selectedDeliveryItems.value.some(lineItem => {
+        const assignment = assignedRfidsByLineItem.value[lineItem.id]
+        return assignment && assignment.totalAssigned >= lineItem.delivery_quantity
+    })
+})
+
 const storageLocation = ref(null);
 const slocOptions = ref([]);
 const slocLoading = ref(false);
@@ -546,6 +572,61 @@ watch(() => rfidFilters.sloc, (newVal) => {
     }
     onFilterChange();
 });
+
+// TODO: Add under_fumigation and is_reserved RFID eligibility filtering once backend support is confirmed.
+// under_fumigation=0 → available; under_fumigation=1 → skip. is_reserved=true → include.
+const handleAssign = () => {
+    if (!selectedDeliveryLineItem.value) {
+        errorMessage.value = 'Please select a delivery line item first.'
+        return
+    }
+    if (selectedItems.value.length === 0) {
+        errorMessage.value = 'Please select at least one RFID entry to assign.'
+        return
+    }
+
+    const lineItemId = selectedDeliveryLineItem.value.id
+    const deliveryQty = selectedDeliveryLineItem.value.delivery_quantity
+
+    if (!assignedRfidsByLineItem.value[lineItemId]) {
+        assignedRfidsByLineItem.value[lineItemId] = { items: [], totalAssigned: 0 }
+    }
+
+    const assignment = assignedRfidsByLineItem.value[lineItemId]
+    let remaining = deliveryQty - assignment.totalAssigned
+
+    if (remaining <= 0) {
+        errorMessage.value = `Delivery quantity of ${deliveryQty} is already satisfied for this line item.`
+        return
+    }
+
+    for (const rfid of selectedItems.value) {
+        if (remaining <= 0) break
+        if (assignment.items.find(i => i.id === rfid.id)) continue // deduplicate
+        const take = Math.min(rfid.quantity, remaining)
+        assignment.items.push({ ...rfid, assigned_quantity: take })
+        assignment.totalAssigned += take
+        remaining -= take
+    }
+
+    selectedItems.value = []
+    errorMessage.value = null
+}
+
+const openAssignedModal = (lineItem) => {
+    assignedItemsModalTarget.value = lineItem
+    assignedItemsModal.value = true
+}
+
+const removeAssignedRfid = (lineItemId, rfidId) => {
+    const assignment = assignedRfidsByLineItem.value[lineItemId]
+    if (!assignment) return
+    const idx = assignment.items.findIndex(i => i.id === rfidId)
+    if (idx !== -1) {
+        assignment.totalAssigned -= assignment.items[idx].assigned_quantity
+        assignment.items.splice(idx, 1)
+    }
+}
 
 const cancelCreateFumigation = () => {
     showCreateFumigate.value = false;
@@ -855,7 +936,9 @@ const cancelCreateFumigation = () => {
                             <th style="width: 48px;"></th>
                             <th>Material</th>
                             <th class="text-center">Quantity</th>
+                            <th>Plant Code</th>
                             <th>Storage Location</th>
+                            <th class="text-center">Assigned</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -881,7 +964,20 @@ const cancelCreateFumigation = () => {
                                 {{ item.delivery_quantity }}<br />
                                 <span class="text-caption text-medium-emphasis">{{ item.sales_unit }}</span>
                             </td>
+                            <td>{{ item.plant }}</td>
                             <td>{{ item.storage_location }}</td>
+                            <td class="text-center" @click.stop>
+                                <v-btn
+                                    v-if="assignedRfidsByLineItem[item.id]?.items.length > 0"
+                                    size="small"
+                                    variant="tonal"
+                                    color="primary"
+                                    @click="openAssignedModal(item)"
+                                >
+                                    {{ assignedRfidsByLineItem[item.id]?.items.length }} pallets / {{ assignedRfidsByLineItem[item.id]?.totalAssigned }} units
+                                </v-btn>
+                                <span v-else class="text-medium-emphasis">—</span>
+                            </td>
                         </tr>
                     </tbody>
                 </v-table>
@@ -974,13 +1070,86 @@ const cancelCreateFumigation = () => {
 
             <div class="d-flex justify-end align-center mt-4">
                 <v-btn color="secondary" variant="outlined" @click="cancelCreateFumigation" class="px-12 mr-3">Cancel</v-btn>
-                <PrimaryButton @click="handleCreateFumigate" color="primary" class="px-12" type="submit"
-                    :loading="fumigateLoading">
+                <v-btn
+                    color="warning"
+                    variant="tonal"
+                    class="px-12 mr-3"
+                    :disabled="!selectedDeliveryLineItem || selectedItems.length === 0"
+                    @click="handleAssign"
+                >
+                    Assign
+                </v-btn>
+                <PrimaryButton
+                    v-if="hasAnySatisfiedLineItem"
+                    @click="handleCreateFumigate"
+                    color="primary"
+                    class="px-12"
+                    :loading="fumigateLoading"
+                >
                     Create
                 </PrimaryButton>
             </div>
         </template>
     </EditingModal>
+
+    <v-dialog v-model="assignedItemsModal" max-width="800px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div>
+                    <div class="text-h5 font-semibold text-primary">Assigned RFIDs</div>
+                    <div class="text-body-2 text-medium-emphasis mt-1">
+                        {{ assignedItemsModalTarget?.material_description }}
+                        &mdash;
+                        <strong>{{ assignedRfidsByLineItem[assignedItemsModalTarget?.id]?.totalAssigned ?? 0 }}</strong>
+                        / {{ assignedItemsModalTarget?.delivery_quantity }} {{ assignedItemsModalTarget?.sales_unit }} assigned
+                    </div>
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="assignedItemsModal = false" />
+            </v-card-title>
+            <v-card-text>
+                <v-table density="compact" class="border rounded mt-2">
+                    <thead>
+                        <tr>
+                            <th>Pallet ID</th>
+                            <th>Batch</th>
+                            <th>Material</th>
+                            <th class="text-center">Assigned Qty</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="rfid in assignedRfidsByLineItem[assignedItemsModalTarget?.id]?.items ?? []"
+                            :key="rfid.id"
+                        >
+                            <td>{{ rfid.physical_id }}</td>
+                            <td>{{ rfid.batch }}</td>
+                            <td>
+                                <span class="font-weight-bold">{{ rfid.material?.description }}</span><br />
+                                <span class="text-caption text-medium-emphasis">{{ rfid.material?.bu_material }}</span>
+                            </td>
+                            <td class="text-center">{{ rfid.assigned_quantity }}</td>
+                            <td class="text-center">
+                                <IconBtn
+                                    size="small"
+                                    color="error"
+                                    @click="removeAssignedRfid(assignedItemsModalTarget.id, rfid.id)"
+                                >
+                                    <VIcon icon="ri-delete-bin-line" />
+                                </IconBtn>
+                            </td>
+                        </tr>
+                        <tr v-if="!(assignedRfidsByLineItem[assignedItemsModalTarget?.id]?.items?.length > 0)">
+                            <td colspan="5" class="text-center text-medium-emphasis py-4">No RFIDs assigned yet.</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </v-card-text>
+            <v-card-actions class="justify-end px-6 pb-4">
+                <v-btn variant="outlined" @click="assignedItemsModal = false">Close</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
 </template>
 
