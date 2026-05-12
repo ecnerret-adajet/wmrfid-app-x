@@ -96,7 +96,6 @@
                             <div class="font-weight-bold mr-4">
                                 {{ item.physical_id }}
                             </div>
-
                             <v-chip
                                 size="small"
                                 color="warning"
@@ -201,7 +200,7 @@
                             color="info"
                             block
                             class="mt-1"
-                            @click="handleQrScan(item, 'wrapping')"
+                            @click="handleWrappingScanning(item)"
                             prepend-icon="mdi-qrcode-scan"
                         >
                             Scan Wrapping Area QR
@@ -210,7 +209,7 @@
                             color="primary"
                             block
                             class="mt-1"
-                            @click="handleQrScan(item, 'bin')"
+                            @click="handleBinScanning(item)"
                             prepend-icon="mdi-qrcode-scan"
                         >
                             Scan Bin QR
@@ -231,7 +230,7 @@
                             block
                             :loading="selectedTransferRequest === (item.transfer_request?.transfer_request_id || item.transfer_request_id)"
                             class="mt-1"
-                            @click="handleScanGenerateTransferOrder(item, 'generate_to')"
+                            @click="handleScanGenerateTransferOrder(item)"
                         >
                             Scan Pallet QR to Generate TO
                         </v-btn>
@@ -866,7 +865,7 @@ const confirmWrapping = async (text) => {
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Already on wrapping Area') {
             errorMessageTitle.value = 'Wrapping not yet detected';
-            errorMessage.value = 'Wrapping completion not yet detected. If completed, raise to IT for assistance.';
+            errorMessage.value = 'Wrapping completion not yet detected. Please spin the pallet again to re-scan the wrapping RFID tag. If error persists, please raise to IT for assistance.';
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Pallet is already wrapped.') {
             errorMessageTitle.value = 'Pallet Already Wrapped';
@@ -1178,17 +1177,30 @@ const handleQrScanResult = async (data) => {
         } finally {
             isLoading.value = false;
         }
+    } else if (scanType.value === 'wrapping') {
+        await confirmWrapping(data.data);
+    } else if (scanType.value === 'bin') {
+        await confirmPutaway(data.data);
+    } else {
+        console.error('Unknown scan type:', scanType.value);
     }
-    // else if (scanType.value === 'bin') {
-    //     confirmPutaway(data.text);
-    // } else {
-    //     console.error('Unknown scan type:', scanType.value);
-    // }
 }
 
-const handleScanGenerateTransferOrder = (item, type) => {
+const handleScanGenerateTransferOrder = (item) => {
     selectedTransferRequest.value = item;
     scanType.value = 'generate_to';
+    showQrCodeScanner.value = true
+}
+
+const handleWrappingScanning = (item) => {
+    selectedTransferRequest.value = item;
+    scanType.value = 'wrapping';
+    showQrCodeScanner.value = true
+}
+
+const handleBinScanning = (item) => {
+    selectedTransferRequest.value = item;
+    scanType.value = 'bin';
     showQrCodeScanner.value = true
 }
 
