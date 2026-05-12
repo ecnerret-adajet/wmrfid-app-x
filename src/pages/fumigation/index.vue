@@ -526,6 +526,25 @@ const hasAnySatisfiedLineItem = computed(() => {
     })
 })
 
+// RFIDs whose full quantity has been consumed by an assignment — not selectable in the table
+const fullyConsumedRfidIds = computed(() => {
+    const consumed = new Set()
+    for (const assignment of Object.values(assignedRfidsByLineItem.value)) {
+        for (const item of assignment.items) {
+            if (item.assigned_quantity >= item.quantity) consumed.add(item.id)
+        }
+    }
+    return consumed
+})
+
+// Injects _selectable so Vuetify disables the checkbox for fully-consumed entries
+const rfidServerItemsWithSelectability = computed(() =>
+    rfidServerItems.value.map(item => ({
+        ...item,
+        _selectable: !fullyConsumedRfidIds.value.has(item.id),
+    }))
+)
+
 const storageLocation = ref(null);
 const slocOptions = ref([]);
 const slocLoading = ref(false);
@@ -1034,8 +1053,8 @@ const cancelCreateFumigation = () => {
             </div>
 
             <VDataTableServer v-model:items-per-page="rfidItemsPerPage" v-model="selectedItems"
-                            :headers="rfidHeaders" :items="rfidServerItems" :items-length="rfidTotalItems" :loading="rfidLoading"
-                            item-value="id" :search="rfidSearchValue" @update:options="loadRfid" show-select return-object
+                            :headers="rfidHeaders" :items="rfidServerItemsWithSelectability" :items-length="rfidTotalItems" :loading="rfidLoading"
+                            item-value="id" item-selectable="_selectable" :search="rfidSearchValue" @update:options="loadRfid" show-select return-object
                             :class="['text-no-wrap', { 'rfid-select-disabled': !selectedDeliveryLineItem }]">
                 <template #item.physical_id="{ item }">
                     {{ item.physical_id }}
