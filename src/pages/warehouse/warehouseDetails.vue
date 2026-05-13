@@ -296,7 +296,7 @@ const exportData = async () => {
                     </v-chip>
                 </template>
                 <template #item.physical_id="{ item }">
-                    {{ item.rfid?.name }}
+                    {{ item.physical_id }}
                 </template>
                 <template #item.material="{ item }">
                     {{ item.material?.description }}
