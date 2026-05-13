@@ -852,7 +852,7 @@ const handleUnloadPallet = async () => {
             </template>
 
              <template #item.pallet_status="{ item }">
-                <template v-if="(item.is_wrapped === '1' || item.is_wrapped === 1) && (item.commodity_status_id === 4 || item.commodity_status_id === '4')">
+                <template v-if="item.wrapped_datetime && (item.commodity_status_id === 4 || item.commodity_status_id === '4')">
                     <v-chip size="small" color="primary-light" text-color="white">Wrapped</v-chip>
                 </template>
                 <template v-else>
@@ -871,7 +871,7 @@ const handleUnloadPallet = async () => {
 
             <template #item.is_wrapped="{ item }">
                 <div class="d-flex justify-center align-center">
-                    <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;"
+                    <i v-if="item.wrapped_datetime" style="font-size: 30px; background-color: green;"
                         class="ri-checkbox-circle-line"></i>
                     <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
                 </div>
