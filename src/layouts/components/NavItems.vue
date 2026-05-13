@@ -88,9 +88,6 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.manual.repack')"
         :item="{ title: 'Repacking', icon: 'ri-user-settings-line', to: '/repacking' }" />
 
-    <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
-        :item="{ title: 'Putaway', icon: 'ri-database-2-line', 
-        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
    
     <!-- <VerticalNavLink :item="{ title: 'Warehouse', icon: 'ri-route-line'}" @click="showMappingModal = true"/> -->
 
@@ -148,7 +145,7 @@ const proceedMapping = () => {
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"
         :item="{ title: 'STO Inbound', icon: 'ri-download-2-line', to: '/sto-inbound' }" /> -->
-    <VerticalNavGroup v-if="authUserCan('view.fumigation.requests')" :item="{ title: 'Fumigation', icon: 'ri-shield-check-line' }">
+    <VerticalNavGroup v-if="authUserCan('view.fumigation.requests')" :item="{ title: 'Fumigation List', icon: 'ri-shield-check-line' }">
         <VerticalNavLink :item="{
             title: 'Entries',
             to: '/fumigations',
@@ -162,7 +159,10 @@ const proceedMapping = () => {
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" />
      <VerticalNavLink v-if="authUserCan('can.view.bin.transfer.requests')"
         :item="{ title: 'Bin Transfer', icon: 'ri-box-2-line', to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/bin-transfer` }" />
-
+     <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
+        :item="{ title: 'Putaway', icon: 'ri-database-2-line', 
+        to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
+   
 
     <!-- <VerticalNavLink :item="{ title: 'Deliveries', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
     <!-- <VerticalNavLink :item="{ title: 'Curtain', icon: 'ri-truck-line', to: '/warehouse'}"/> -->
@@ -175,7 +175,7 @@ const proceedMapping = () => {
     <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines')"
         :item="{ heading: 'Master Data' }" />
     <VerticalNavLink v-if="authUserCan('view.materials')"
-        :item="{ title: 'Materials', icon: 'ri-stack-line', to: '/materials' }" />
+        :item="{ title: 'Material List', icon: 'ri-stack-line', to: '/materials' }" />
     <VerticalNavLink v-if="authUserCan('view.production.lines')"
         :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines' }" />
 
