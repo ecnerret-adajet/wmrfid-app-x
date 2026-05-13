@@ -12,7 +12,6 @@ import { useRouter } from 'vue-router';
 import batchDetails from './batchDetails.vue';
 
 const pageLoading = ref(false);
-const storageLocations = ref([]);
 const plantsOptions = ref([]);
 const statisticsData = ref(null);
 
@@ -44,14 +43,8 @@ const loadData = async () => {
             }
         });
 
-        const { storage_locations, statistics, plants } = response.data;
+        const { statistics, plants } = response.data;
         statisticsData.value = statistics;
-        
-        storageLocations.value = storage_locations.map(item => ({
-            value: item.id,
-            title: item.name,
-            name: item.name
-        }));
 
         plantsOptions.value = plants
             .filter(item => item.name !== null)
