@@ -226,16 +226,9 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { table, statistics, tag_types, storage_locations, materials, plants } = response.data;
+        const { table, statistics, tag_types, storage_locations, plants } = response.data;
         totalItems.value = table.total;
         serverItems.value = table.data;
-
-        // statisticsData.value = statistics;
-        materialsOption.value = materials.map(item => ({
-            value: item.id,
-            title: `${item.plant_code} - ${item.code} - ${item.description}`,
-            default_pallet_quantity: item.default_pallet_quantity
-        }));
 
         tagTypesOption.value = tag_types.map(item => ({
             value: item.id,
@@ -283,6 +276,7 @@ const changeBatch = () => {
         toast.value.show = true;
         return;
     }
+    fetchMaterials();
     changeBatchModal.value = true;
 }
 
@@ -295,6 +289,7 @@ const manualBatch = () => {
         toast.value.show = true;
         return;
     }
+    fetchMaterials();
     manualBatchModal.value = true;
 }
 
@@ -374,7 +369,6 @@ const handleChangeBatch = async () => {
     });
 
     batchUpdateForm.selectedRfid = selectedItems.value
-
     try {
         const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
         changeBatchLoading.value = false;
@@ -402,7 +396,7 @@ const handleManualBatch = async () => {
     toast.value.show = false;
 
     manualBatchUpdateForm.selectedRfid = selectedItems.value
-
+   
     try {
         const response = await ApiService.post('inventories/manual-batch-update', manualBatchUpdateForm)
         manualBatchLoading.value = false;
@@ -621,9 +615,9 @@ watch(
     (newMaterialId) => {
         if (!newMaterialId) return;
         // Find the selected material
-        console.log(manualBatchUpdateForm.material_id)
-        const selectedMaterial = materialsOption.value.find(m => m.value === newMaterialId);
-        console.log(selectedMaterial)
+    
+        const selectedMaterial = materialsOption.value.find(m => m.id === newMaterialId);
+
         if (selectedMaterial && selectedMaterial.default_pallet_quantity !== undefined) {
             selectedItems.value.forEach(item => {
                 // Only set if not already set
@@ -640,7 +634,7 @@ watch(
     (newMaterialId) => {
         if (!newMaterialId) return;
         // Find the selected material
-        const selectedMaterial = materialsOption.value.find(m => m.value === newMaterialId);
+        const selectedMaterial = materialsOption.value.find(m => m.id === newMaterialId);
 
         if (selectedMaterial && selectedMaterial.default_pallet_quantity !== undefined) {
             selectedItems.value.forEach(item => {
@@ -711,6 +705,41 @@ const handleUnloadPallet = async () => {
         showUnloadPalletModal.value = false;
     }
 }
+
+const isMaterialsLoading = ref(false);
+let debounceTimeout = null;
+
+// Core dynamic fetch function
+const fetchMaterials = async (searchQuery = '') => {
+    isMaterialsLoading.value = true;
+    try {
+        const response = await ApiService.query('inventories/get-materials-dropdown', {
+            params: {
+                search: searchQuery,
+                limit: searchQuery ? null : 10 
+            }
+        });
+        
+        // Populate the autocomplete selections list
+        materialsOption.value = response.data.materials;
+    } catch (error) {
+        console.error('Failed fetching materials:', error);
+    } finally {
+        isMaterialsLoading.value = false;
+    }
+};
+
+// Listen to input mutations with a 300ms delay threshold
+const handleSearchInput = (value) => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        fetchMaterials(value);
+    }, 300);
+};
+
+onMounted(() => {
+    fetchMaterials();
+});
 
 </script>
 
@@ -1001,9 +1030,46 @@ const handleUnloadPallet = async () => {
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
+                        <!-- <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
                             :items="materialsOption" v-model="batchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']" />
+                            :rules="[value => !!value || 'Please select an item from the list']" /> -->
+
+                        <v-autocomplete
+                            v-model="batchUpdateForm.material_id"
+                            :items="materialsOption"
+                            :loading="isMaterialsLoading"
+                            item-title="description"
+                            item-value="id"
+                            label="Select Material"
+                            :custom-filter="() => true"
+                            density="compact"
+                            clearable
+                            @update:search="handleSearchInput"
+                            :no-data-text="isMaterialsLoading ? 'Searching items...' : 'No materials found'"
+                            :item-props="(item) => ({ key: item.id, id: 'material-opt-' + item.id })"
+                        >
+                             <template #item="{ props, item }">
+                                <!-- Removed :title to hide the raw material ID -->
+                                <v-list-item v-bind="props">
+                                    
+                                    <!-- Replaces the top title layer with your custom layout -->
+                                    <template #title>
+                                        <div class="font-weight-bold">
+                                            {{ item.raw.bu_material }} - {{ item.raw.plant?.plant_code || item.raw.plant_code }}
+                                        </div>
+                                    </template>
+
+                                    <!-- Replaces the bottom subtitle layer -->
+                                    <template #subtitle>
+                                        <div class="text-caption text-wrap">
+                                            {{ item.raw.description }}
+                                        </div>
+                                    </template>
+
+                                </v-list-item>
+                            </template>
+                        </v-autocomplete>
+
                     </v-col>
                     <v-col cols="12" md="6">
                         <DateTimePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />
@@ -1067,9 +1133,44 @@ const handleUnloadPallet = async () => {
             <v-form @submit.prevent="handleManualBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
+                        <!-- <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
                             :items="materialsOption" v-model="manualBatchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']" />
+                            :rules="[value => !!value || 'Please select an item from the list']" /> -->
+                        <v-autocomplete
+                            v-model="manualBatchUpdateForm.material_id"
+                            :items="materialsOption"
+                            :loading="isMaterialsLoading"
+                            item-title="description"
+                            item-value="id"
+                            label="Select Material"
+                            :custom-filter="() => true"
+                            density="compact"
+                            clearable
+                            @update:search="handleSearchInput"
+                            :no-data-text="isMaterialsLoading ? 'Searching items...' : 'No materials found'"
+                            :item-props="(item) => ({ key: item.id, id: 'material-opt-' + item.id })"
+                        >
+                             <template #item="{ props, item }">
+                                <!-- Removed :title to hide the raw material ID -->
+                                <v-list-item v-bind="props">
+                                    
+                                    <!-- Replaces the top title layer with your custom layout -->
+                                    <template #title>
+                                        <div class="font-weight-bold">
+                                            {{ item.raw.bu_material }} - {{ item.raw.plant?.plant_code || item.raw.plant_code }}
+                                        </div>
+                                    </template>
+
+                                    <!-- Replaces the bottom subtitle layer -->
+                                    <template #subtitle>
+                                        <div class="text-caption text-wrap">
+                                            {{ item.raw.description }}
+                                        </div>
+                                    </template>
+
+                                </v-list-item>
+                            </template>
+                        </v-autocomplete>
                     </v-col>
                     <v-col cols="12" md="6">
                         <DateTimePicker v-model="manualBatchUpdateForm.mfg_date"
