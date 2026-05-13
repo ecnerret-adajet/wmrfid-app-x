@@ -70,6 +70,7 @@
                     elevation="2"
                     :id="'tr-card-' + (item.transfer_request ? item.transfer_request.id : item.id)"
                 >
+                    <!-- tr-card-{{ (item.transfer_request ? item.transfer_request.id : item.id) }} -->
                     <!-- Header -->
                     <div class="d-flex justify-space-between align-center mb-2">
                         <div class="font-weight-bold d-flex align-center">
@@ -91,22 +92,33 @@
                     
                     <!-- Body -->
                     <div class="mb-2">
-                        <div class="font-weight-bold">{{ item.physical_id }}</div>
+                        <div class="d-flex align-center">
+                            <div class="font-weight-bold mr-4">
+                                {{ item.physical_id }}
+                            </div>
+                            <v-chip
+                                size="small"
+                                color="warning"
+                                v-if="item.transfer_request?.is_loose"
+                            >
+                                Loose Pallet
+                            </v-chip>
+                        </div>
                         <div v-if="item.batch" class="text-primary">
                             {{ item.batch }}
                         </div>
                     </div>
-
+                   
                     <!-- TO Section -->
                     <div v-if="item.status_text !== 'Pending'" class="d-flex flex-column align-center">
-                        <div class="d-flex justify-space-between align-center w-100 mb-2">
-                            <div>
-                            <div class="text-black font-weight-bold d-flex align-center">
-                                TO Number
-                                <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
-                                <span class="ml-3">{{ (item.transfer_order?.created_at || item.created_at) ? moment(item.transfer_order?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
-                            </div>
-                            <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id || item.transfer_order_id }}</div>
+                        <div v-if="item.transfer_order || item.transfer_order_id" class="d-flex justify-space-between align-center w-100 mb-2">
+                            <div >
+                                <div class="text-black font-weight-bold d-flex align-center">
+                                    TO Number
+                                    <v-icon class="ml-3" icon="ri-calendar-2-line" size="24"></v-icon>
+                                    <span class="ml-3">{{ (item.transfer_order?.created_at || item.created_at) ? moment(item.transfer_order?.created_at || item.created_at).format('MMM D, YYYY h:mm A') : '' }}</span>
+                                </div>
+                                <div class="font-weight-medium">{{ item.transfer_order?.transfer_order_id || item.transfer_order_id }}</div>
                             </div>
                             <v-chip
                             size="small"
@@ -116,6 +128,8 @@
                             {{ item.transfer_order?.status_text || item.status_text }}
                             </v-chip>
                         </div>
+
+                        
 
                         <v-sheet v-if="(item.has_wrapping_area || item.transfer_request?.has_wrapping_area) && (item.status_text === 'For Wrapping' || item.transfer_request?.status_text === 'For Wrapping')" class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
                             <div class="d-flex justify-space-between align-center mb-1">
@@ -131,7 +145,22 @@
                             </div>
                         </v-sheet>
 
-                        <v-sheet v-if="(item.status_text !== 'Invalid Request' && (!item.transfer_request || item.transfer_request.status_text !== 'Invalid Request'))"  class="w-100 pa-2 mb-2" color="#f5f5f5" rounded>
+                        <v-sheet
+                            v-if="
+                                item.status_text !== 'Invalid Request' &&
+                                item.status_text !== 'Inline Rejected' &&
+                                (
+                                !item.transfer_request ||
+                                (
+                                    item.transfer_request.status_text !== 'Invalid Request' &&
+                                    item.transfer_request.status_text !== 'Inline Rejected'
+                                )
+                                )
+                            "
+                            class="w-100 pa-2 mb-2"
+                            color="#f5f5f5"
+                            rounded
+                        >   
                             <div class="d-flex justify-space-between align-center mb-1">
                                 <span>Assigned Bin #:</span>
                                 <span class="font-weight-medium">
@@ -161,8 +190,6 @@
                                     {{ (item.putaway_completion_date || item.transfer_request?.putaway_completion_date) ? moment(item.putaway_completion_date || item.transfer_request?.putaway_completion_date).format('MMM D, YYYY h:mm A') : '' }}
                                 </span>
                             </div>
-                         
-                            
                         </v-sheet>
 
                         <v-sheet v-if="item.status_text === 'Invalid Request' || item.transfer_request?.status_text === 'Invalid Request'"  class="w-100 pa-2 mb-2" color="#F75959" rounded>
@@ -173,7 +200,7 @@
                             color="info"
                             block
                             class="mt-1"
-                            @click="handleQrScan(item, 'wrapping')"
+                            @click="handleWrappingScanning(item)"
                             prepend-icon="mdi-qrcode-scan"
                         >
                             Scan Wrapping Area QR
@@ -182,7 +209,7 @@
                             color="primary"
                             block
                             class="mt-1"
-                            @click="handleQrScan(item, 'bin')"
+                            @click="handleBinScanning(item)"
                             prepend-icon="mdi-qrcode-scan"
                         >
                             Scan Bin QR
@@ -203,9 +230,9 @@
                             block
                             :loading="selectedTransferRequest === (item.transfer_request?.transfer_request_id || item.transfer_request_id)"
                             class="mt-1"
-                            @click="generateTransferOrder(item)"
+                            @click="handleScanGenerateTransferOrder(item)"
                         >
-                            Generate Transfer Order
+                            Scan Pallet QR to Generate TO
                         </v-btn>
                         <v-sheet v-else-if="item.is_bin_transfer" class="w-100 pa-2 mb-2" color="#FFB400" rounded>
                             <span>Pending TO Approval</span>
@@ -231,6 +258,14 @@
             @close="showScanner = false"
             @scan-result="handleScanResult($event)"
         />
+
+        <VueQrCodeReader
+            v-if="showQrCodeScanner"
+            :type="scanType"
+            @close="showQrCodeScanner = false"
+            @scan-result="handleQrScanResult($event)"
+        />
+
         <DefaultModal
             :show="showErrorModal"
             dialog-title="QR Scan Error"
@@ -484,8 +519,45 @@
             </div>
         </DefaultModal>
 
+        <DefaultModal
+            :show="showPalletStatusModal"
+            dialog-title="Pallet Status"
+            max-width="500px"
+            @close="showPalletStatusModal = false"
+        >
+            <div v-if="palletStatusResult">
+                <div class="text-h5 font-weight-bold mb-2">TR Ref #: <span class="font-weight-medium">{{ palletStatusResult.transfer_request?.transfer_request_id }}</span></div>
+                <div class="text-h5 font-weight-bold mb-2">Physical ID: <span class="font-weight-medium">{{ palletStatusResult.transfer_request?.physical_id }}</span></div>
+                <div class="text-h5 font-weight-bold mb-2">Batch: <span class="font-weight-medium">{{ palletStatusResult.transfer_request?.batch }}</span></div>
+                <v-radio-group v-model="palletStatusRadio">
+                    <v-radio label="Full" value="Full" />
+                    <v-radio label="Empty" value="Empty" />
+                    <v-radio label="Loose" value="Loose" />
+                    <v-radio label="In-line Rejected" value="In-line Rejected" />
+                </v-radio-group>
+                <div v-if="palletStatusRadio === 'Loose'" class="mt-2">
+                    <v-text-field
+                        v-model.number="looseCount"
+                        label="Loose Count"
+                        type="number"
+                        min="1"
+                        max="40"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                    />
+                </div>
+                <div class="d-flex ga-2 mt-4 justify-end">
+                    <v-btn variant="outlined" @click="showPalletStatusModal = false">Cancel</v-btn>
+                    <v-btn color="primary" variant="elevated" @click="confirmPalletStatus">Confirm</v-btn>
+                </div>
+            </div>
+        </DefaultModal>
+
         <Loader :show="isLoading || transferRequestsStore.loading" />
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+
+
     </v-container>
     
 </template>
@@ -503,7 +575,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ScannerModal from './ScannerModal.vue';
-
+import VueQrCodeReader from './VueQrCodeReader.vue';
 
 function syncTransferRequests() {
     const plant_code = route.params.plant_code;
@@ -641,49 +713,85 @@ watch(selectedStatus, (newStatus) => {
 });
 
 const showScanner = ref(false);
-const scanType = ref('pallet');
+const scanType = ref('generate_to');
 const scanResult = ref(null);
 const selectedTransferRequest = ref(null);
+const showQrCodeScanner = ref(false);
 
-async function generateTransferOrder(item) {
+async function generateTransferOrder(item, qr_text, palletStatus, looseCount) {
     const plant_code = route.params.plant_code;
     const sloc = route.params.sloc;
     const forklift = route.params.forklift;
     if (!plant_code || !sloc || !forklift) return;
     selectedTransferRequest.value = item.transfer_request_id;
     try {
-        const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id);
-        // Wait for the store to refresh
-        if (selectedStatus.value === 'Pending' || selectedStatus.value === 'Invalid Request') {
-            await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
-        } else {
-            await transferRequestsStore.fetchTransferOrders(plant_code, sloc, forklift);
-        }
-        // Find the updated item
-        const itemsArr = transferRequestsStore.items?.transfer_requests || transferRequestsStore.items?.transfer_orders || [];
-        const updated = itemsArr.find(tr => tr.id === item.id);
+        const result = await transferRequestsStore.generateTransferOrder(plant_code, sloc, forklift, item.id, qr_text, palletStatus, looseCount);
+        await transferRequestsStore.fetchTransferRequests(plant_code, sloc, forklift);
+        let updated = transferRequestsStore.items?.transfer_requests?.find(tr => tr.id === item.id);
         if (updated) {
-            // Set the filter to the new status
-            selectedStatus.value = updated.status_text;
-            // Scroll to the card after DOM update
+            if (
+                updated.status_text === 'Inline Rejected' ||
+                updated.status_text === 'Invalid Request' 
+            ) {
+                selectedStatus.value = 'Invalid Request';
+            } else {
+                selectedStatus.value = updated.status_text;
+            }
             setTimeout(() => {
                 const el = document.getElementById('tr-card-' + updated.id);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 300);
-
+        }
+        console.log(result);
+        if (result?.success) {
+            if (result?.status === 'In-line Rejected') {
+                toast.message = 'TR #' + result.transfer_request?.transfer_request_id + ' marked as In-line Rejected.';
+                toast.color = 'success';
+                toast.show = true;
+            } else if (result?.status === 'Empty') {
+                toast.message = 'TR #' + result.transfer_request?.transfer_request_id + ' marked as Empty.';
+                toast.color = 'success';
+                toast.show = true;
+            } else {
+                toast.message = 'Transfer Order generated successfully for TR #' + result.transfer_request?.transfer_request_id;
+                toast.color = 'success';
+                toast.show = true;
+            }
         }
     } catch (err) {
         if (err?.response?.status === 401) {
             errorMessageTitle.value = 'Not Authorized';
             errorMessage.value = 'Your session may have expired. Please log in again.';
             showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'Pallet not found.') {
+            errorMessageTitle.value = 'Pallet not found.';
+            errorMessage.value = 'Please scan a valid pallet QR code.';
+            showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'No Assigned Bin' ) {
             errorMessageTitle.value = 'Error'
             errorMessage.value = 'No assigned bin. Contact IT regarding putaway strategy.'
             showErrorModal.value = true
+        } else if (err?.response?.data?.message === 'No Loose Area') {
+            errorMessageTitle.value = 'Loose Area Missing';
+            errorMessage.value = 'No bin assigned for loose pallet area. Please raise to IT for assistance.';
+            showErrorModal.value = true;
+        } else if (err?.response?.data?.message === 'TR exists') {
+            errorMessageTitle.value = 'Transfer Request Already Exists';
+            if (err.response.data?.error) {
+                errorMessage.value = `Transfer Request already exists for this batch and pallet. TR Ref #: ${err.response.data.error}`;
+            } else {
+                errorMessage.value = 'A transfer request already exists for this pallet and batch. Please check the existing transfer requests.';
+            }
+            showErrorModal.value = true;
+        } else {
+            errorMessageTitle.value = 'An unexpected error occurred.'
+            errorMessage.value = 'Please scan a valid pallet QR code.'
+            showErrorModal.value = true
         }
     } finally {
         selectedTransferRequest.value = null;
+        palletStatusRadio.value = null;
+        showPalletStatusModal.value = false;
     }
 }
 
@@ -757,7 +865,7 @@ const confirmWrapping = async (text) => {
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Already on wrapping Area') {
             errorMessageTitle.value = 'Wrapping not yet detected';
-            errorMessage.value = 'Wrapping completion not yet detected. If completed, raise to IT for assistance.';
+            errorMessage.value = 'Wrapping completion not yet detected. Please spin the pallet again to re-scan the wrapping RFID tag. If error persists, please raise to IT for assistance.';
             showErrorModal.value = true;
         } else if (err?.response?.data?.message === 'Pallet is already wrapped.') {
             errorMessageTitle.value = 'Pallet Already Wrapped';
@@ -797,7 +905,7 @@ const confirmPutaway = async (text) => {
             sloc: route.params.sloc,
             forklift: route.params.forklift,
             physical_id: selectedTransferRequest.value.physical_id,
-            transfer_request_id: selectedTransferRequest.value?.transfer_request_id || selectedTransferRequest.value.id,
+            transfer_request_id: selectedTransferRequest.value?.transfer_request?.id,
             qr_text: text
         });
         if (response?.data?.success) {
@@ -1034,6 +1142,70 @@ const switchCamera = () => {
     else {
         useFront.value = true;
     }
+}
+
+
+const qr_scan_result = ref(null);
+const showPalletStatusModal = ref(false);
+const palletStatusResult = ref(null);
+const palletStatusRadio = ref('Full');
+const looseCount = ref(1);
+
+const handleQrScanResult = async (data) => {
+    qr_scan_result.value = data;
+    console.log('QR Scan Result:', data);
+    if (data.type === 'generate_to') {
+        // Call check-pallet-status API
+        try {
+            isLoading.value = true;
+            const plant_code = route.params.plant_code;
+            const sloc = route.params.sloc;
+            const forklift = route.params.forklift;
+            const qr_text = data.data;
+            const response = await ApiService.post(
+                `rfid/pallet/${plant_code}/${sloc}/${forklift}/check-pallet-status`,
+                { transfer_request_id: selectedTransferRequest.value?.id, qr_text }
+            );
+            palletStatusResult.value = response.data;
+            palletStatusRadio.value = 'Full';
+            looseCount.value = 1;
+            showPalletStatusModal.value = true;
+        } catch (err) {
+            errorMessageTitle.value = 'Check Pallet Status Error';
+            errorMessage.value = err?.response?.data?.message || 'An unexpected error occurred.';
+            showErrorModal.value = true;
+        } finally {
+            isLoading.value = false;
+        }
+    } else if (scanType.value === 'wrapping') {
+        await confirmWrapping(data.data);
+    } else if (scanType.value === 'bin') {
+        await confirmPutaway(data.data);
+    } else {
+        console.error('Unknown scan type:', scanType.value);
+    }
+}
+
+const handleScanGenerateTransferOrder = (item) => {
+    selectedTransferRequest.value = item;
+    scanType.value = 'generate_to';
+    showQrCodeScanner.value = true
+}
+
+const handleWrappingScanning = (item) => {
+    selectedTransferRequest.value = item;
+    scanType.value = 'wrapping';
+    showQrCodeScanner.value = true
+}
+
+const handleBinScanning = (item) => {
+    selectedTransferRequest.value = item;
+    scanType.value = 'bin';
+    showQrCodeScanner.value = true
+}
+
+const confirmPalletStatus = async () => {
+    generateTransferOrder(selectedTransferRequest.value, qr_scan_result.value?.data, palletStatusRadio.value, looseCount.value);
 }
 
 </script>

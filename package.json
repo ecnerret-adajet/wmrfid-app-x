@@ -40,6 +40,7 @@
         "vue-grid-layout-v3": "^3.1.2",
         "vue-multiselect": "^3.2.0",
         "vue-prism-component": "^2.0.0",
+        "vue-qrcode-reader": "^5.7.3",
         "vue-router": "^4.5.0",
         "vue-zoomable": "^1.2.8",
         "vue3-apexcharts": "1.5.2",

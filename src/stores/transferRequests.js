@@ -60,14 +60,14 @@ export const useTransferRequestsStore = defineStore('transferRequests', {
       this.loading = false
     },
 
-    async generateTransferOrder(plant_code, sloc, forkliftId, transferRequestId) {
+    async generateTransferOrder(plant_code, sloc, forkliftId, transferRequestId, qr_text, palletStatus, looseCount) {
       this.loading = true
       this.error = null
       try {
         ApiService.setHeader();
         const { data } = await ApiService.post(
           `rfid/pallet/${plant_code}/${sloc}/${forkliftId}/generate-transfer-order`,
-          { transfer_request_id: transferRequestId }
+          { transfer_request_id: transferRequestId, qr_text: qr_text, pallet_status: palletStatus, loose_count: looseCount }
         );
         this.transferOrderResponse = data;
 

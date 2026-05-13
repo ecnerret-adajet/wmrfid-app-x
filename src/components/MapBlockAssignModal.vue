@@ -2,11 +2,9 @@
 import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import { debounce } from 'lodash';
-import Moment from 'moment';
 import { onMounted, reactive, ref } from 'vue';
 import BlockQrCodeModal from './BlockQrCodeModal.vue';
 import DefaultModal from './DefaultModal.vue';
-import SearchInput from './SearchInput.vue';
 import Toast from './Toast.vue';
 
 const emits = defineEmits(['close', 'assign-success', 'actionSuccess']);
@@ -93,12 +91,12 @@ const layerHeaders = [
 ]
 
 onMounted(() => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: 'updated_at', order: 'desc' }],
-        search: searchValue.value
-    });
+    // loadItems({
+    //     page: page.value,
+    //     itemsPerPage: itemsPerPage.value,
+    //     sortBy: [{ key: 'updated_at', order: 'desc' }],
+    //     search: searchValue.value
+    // });
 })
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -439,7 +437,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
                                 </div>
                             </v-col>
                             <v-col cols="1">
-                                <v-menu location="start">
+                                <!-- <v-menu location="start">
                                     <template v-slot:activator="{ props }">
                                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props"
                                             color="grey"></v-btn>
@@ -450,7 +448,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
                                             <v-list-item-title>{{ item.title }}</v-list-item-title>
                                         </v-list-item>
                                     </v-list>
-                                </v-menu>
+                                </v-menu> -->
                             </v-col>
                         </v-row>
                         <VDivider v-if="index !== block.layers - 1" color="white"/>
@@ -523,7 +521,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
 
             </template>
         </VList>
-        <SearchInput @update:search="handleSearch" placeholder="Search inventory" />
+        <!-- <SearchInput @update:search="handleSearch" placeholder="Search inventory" /> -->
         <div v-if="enableBinTransfer" class="d-flex justify-between align-center mb-4">
             <div class="text-h5 font-weight-medium text-grey-700">
                 {{ binTransferDetails }}
@@ -534,7 +532,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
             </v-btn>
         </div>
 
-        <VDataTableServer v-if="enableBinTransfer" v-model:items-per-page="layersItemsPerPage" :headers="layerHeaders"
+        <!-- <VDataTableServer v-if="enableBinTransfer" v-model:items-per-page="layersItemsPerPage" :headers="layerHeaders"
             :items="layerItems" :items-length="totalLayerItems" :loading="layersLoading" item-value="id"
             :search="layerSearchValue" @update:options="loadAvailableBlocks" class="text-no-wrap">
 
@@ -561,9 +559,9 @@ function onQrGenerated({ block_id, qr_code_path }) {
                     </td>
                 </tr>
             </template>
-        </VDataTableServer>
+        </VDataTableServer> -->
 
-        <VDataTableServer v-else  :headers="headers" :items="serverItems"
+        <!-- <VDataTableServer v-else  :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" :search="searchValue"
             @update:options="loadItems" class="text-no-wrap" :items-per-page-options="[]">
 
@@ -594,7 +592,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
                     </td>
                 </tr>
             </template>
-        </VDataTableServer>
+        </VDataTableServer> -->
 
         <div class="d-flex justify-end align-center mt-4">
             <v-btn color="secondary" variant="outlined" @click="closeModal" class="px-12 mr-3">Close</v-btn>
@@ -650,7 +648,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
 </template>
 <style scoped>
 .layer-1 {
-    background-color: #a18940;
+    background-color: #ebc965;
     color: white;
 }
 

@@ -23,7 +23,8 @@ const props = defineProps({
         type: String,
         default: ''
     },
-    plantsOption: Array
+    plantsOption: Array,
+    storageSectionsOption: Array,
 });
 
 const editDialog = ref(false);
@@ -50,9 +51,10 @@ const multipleMaterialModal = reactive({
 const headers = computed(() => {
     const baseHeaders = [
         { title: '', key: 'details', align: 'center', sortable: false },
-        { title: 'WAREHOUSE', key: 'name', },
+        { title: 'WAREHOUSE', key: 'name', align: 'center' },
         { title: 'CODE', key: 'code', align: 'center' },
         { title: 'WAREHOUSE NO.', key: 'warehouse_number', align: 'center' },
+        { title: 'STORAGE SECTION', key: 'storage_section', align: 'center' },
         { title: 'PLANT', key: 'plant_id', align: 'center' },
         // { title: 'STORAGE LAYERS', key: 'layer_count', align: 'center', sortable: false },
         { title: 'LAST UPDATED AT', key: 'updated_at', align: 'center' },
@@ -125,16 +127,17 @@ const editItem = (item) => {
     form.value.code = item.code;
     form.value.plant_id = item.plant_id;
     form.value.layer_count = item.layer_count;
+    form.value.storage_section_id = item.storage_section_id;
     errorMessage.value = '';
     editDialog.value = true;
 }
-
 
 const handleUpdate = async () => {
     isLoading.value = true;
     toast.value.show = false
     try {
         const response = await ApiService.put(`warehouse/${selectedWarehouse.value.id}/update`, form.value)
+
         isLoading.value = false;
         editDialog.value = false
         loadItems({
@@ -145,10 +148,20 @@ const handleUpdate = async () => {
         });
         toast.value.message = 'Warehouse updated successfully!'
         toast.value.show = true;
+
+        console.log('Update response:', response);
     } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
-        console.error('Error updating:', error);
-        isLoading.value = false;
+        console.log(error?.response?.data)
+        if (error?.response?.data?.message === 'Unable to update storage section.') {
+            errorMessage.value = error?.response?.data?.error || 'An unexpected error occurred.'
+            isLoading.value = false;
+        } else {
+            errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+            console.error('Error updating:', error);
+            isLoading.value = false;
+        }
+    } finally { 
+        
     }
 }
 
@@ -167,6 +180,7 @@ const form = ref({
     'code': null,
     'plant_id': null,
     'layer_count': null,
+    'storage_section_id': null
 });
 
 const viewMap = (item) => {
@@ -179,7 +193,6 @@ const viewMap = (item) => {
             path: `/warehouse-map/${item.plant_code}/${generateSlug(item.name)}`,
         });
     }
-
 }
 
 const handleAllowMultiple = async () => {
@@ -256,32 +269,8 @@ const handleAction = async (sloc, action) => {
     if (action.key == 'view_details') {
         showSlocDetails.value = true;
     } else if (action.key == 'view_storage_bins') {
-        // Fetch storage sections from API before showing dialog
-        showStorageBinDialog.value = false;
-        selectedStorageSection.value = null;
-        storageSectionOptions.value = [];
-        try {
-            pageLoading.value = true;
-            const response = await ApiService.get(`warehouse/${sloc.id}/get-storage-sections`);
-            // Assume response.data is an array of sections with id and name
-            storageSectionOptions.value = (response.data || []).map(section => ({
-                label: section.name || section.label || 'Section',
-                value: section.id || section.value
-            }));
-        } catch (e) {
-            storageSectionOptions.value = [];
-        } finally {
-            pageLoading.value = false;
-        }
-        showStorageBinDialog.value = true;
-    }
-}
-
-function confirmStorageSection() {
-    showStorageBinDialog.value = false;
-    if (selectedSloc.value && selectedStorageSection.value) {
         router.push({
-            path: `/warehouse/${selectedSloc.value.plant_code}/${selectedSloc.value.code || selectedSloc.value.sloc || selectedSloc.value.id}/${selectedStorageSection.value}/storage-bins`
+            path: `/warehouse/${selectedSloc.value.plant_code}/${selectedSloc.value.code || selectedSloc.value.sloc || selectedSloc.value.id}/${selectedSloc.value.storage_section?.id}/storage-bins`
         });
     }
 }
@@ -350,6 +339,10 @@ defineExpose({
             {{ item.plant?.name }}
         </template>
 
+        <template #item.storage_section="{ item }">
+            {{ item.storage_section?.name || '' }}
+        </template>
+
         <template #item.created_at="{ item }">
             {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
         </template>
@@ -362,6 +355,10 @@ defineExpose({
         <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-center align-center">
 
+                <!-- <IconBtn  size="small"
+                    @click="editItem(item)">
+                    <VIcon icon="ri-pencil-line" />
+                </IconBtn> -->
                 <IconBtn v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin" size="small"
                     @click="editItem(item)">
                     <VIcon icon="ri-pencil-line" />
@@ -394,6 +391,16 @@ defineExpose({
                     :rules="[value => !!value || 'Name is required']" />
                 <v-text-field class="mt-6" density="compact" label="Code" v-model="form.code"
                     :rules="[value => !!value || 'Code is required']" />
+                <v-select
+                    class="mt-6"
+                    label="Storage Section"
+                    density="compact"
+                    :items="storageSectionsOption"
+                    item-title="name"
+                    item-value="id"
+                    v-model="form.storage_section_id"
+                    clearable
+                />
             </v-form>
             <VAlert v-if="errorMessage" class="mt-4" color="error" variant="tonal">
                 {{ errorMessage }}
@@ -424,34 +431,6 @@ defineExpose({
                 </PrimaryButton>
             </div>
         </v-sheet>
-    </v-dialog>
-
-
-    <!-- Storage Bin Dialog -->
-    <v-dialog v-model="showStorageBinDialog" max-width="500px">
-        <v-card class="pa-4">
-            <v-card-title class="d-flex justify-space-between align-center">
-                <span class="text-h6">Select Storage Section</span>
-                <v-btn icon="ri-close-line" variant="text" @click="showStorageBinDialog = false"></v-btn>
-            </v-card-title>
-            <v-card-text>
-                <v-select
-                    v-model="selectedStorageSection"
-                    :items="storageSectionOptions"
-                    item-title="label"
-                    item-value="value"
-                    label="Storage Section"
-                    density="compact"
-                    outlined
-                />
-            </v-card-text>
-            <v-card-actions class="justify-end">
-                <v-btn color="secondary" variant="outlined" @click="showStorageBinDialog = false">Cancel</v-btn>
-                <PrimaryButton @click="confirmStorageSection" color="primary" :disabled="!selectedStorageSection">
-                    Confirm
-                </PrimaryButton>
-            </v-card-actions>
-        </v-card>
     </v-dialog>
 
     <v-dialog v-if="selectedSloc" v-model="showSlocDetails" max-width="1500px">
