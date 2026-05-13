@@ -138,7 +138,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
         })
         .then((response) => {
-            const { table, statistics, tag_types, materials } = response.data
+            const { table, statistics, tag_types } = response.data
             
             totalItems.value = table.total;
             serverItems.value = table.data
@@ -152,8 +152,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                     title: item.title 
                 }))
             ];
-
-            materialsOption.value = materials
 
             pageLoading.value = false
         })
@@ -225,7 +223,29 @@ const handleViewBatch = (inventory) => {
     router.push(`/inventories/${inventory.batch}`);
 }
 
-const changeBatch = () => {
+const changeBatch = async () => {
+    // material_is_loading.value = true;
+    // console.log('Selected items for batch change:', selectedItems.value);
+    // try {
+    //     const token = JwtService.getToken();
+    //     const response = await axios.get(`inventories/get-materials-dropdown`, {
+    //         params: {
+    //             filters: filters
+    //         },
+    //         headers: {
+    //             Authorization: `Bearer ${token}`
+    //         }
+    //     });
+    //     console.log(response)
+    //     const { materials } = response.data;
+    //     materialsOption.value = materials
+
+    // } catch (error) {
+    // } finally {
+    //     material_is_loading.value = false;
+    //     changeBatchModal.value = true;
+    // }
+
     changeBatchModal.value = true;
 }
 
@@ -290,6 +310,42 @@ const exportData = async () => {
     }
 }
 
+const selectedMaterialId = ref(null);
+const isMaterialsLoading = ref(false);
+let debounceTimeout = null;
+
+// Core dynamic fetch function
+const fetchMaterials = async (searchQuery = '') => {
+    isMaterialsLoading.value = true;
+    try {
+        const response = await ApiService.query('inventories/get-materials-dropdown', {
+            params: {
+                search: searchQuery,
+                limit: searchQuery ? null : 10 // Fetch 20 items initially, remove limit on active search entries
+            }
+        });
+        
+        // Populate the autocomplete selections list
+        materialsOption.value = response.data.materials;
+    } catch (error) {
+        console.error('Failed fetching materials:', error);
+    } finally {
+        isMaterialsLoading.value = false;
+    }
+};
+
+// Listen to input mutations with a 300ms delay threshold
+const handleSearchInput = (value) => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        fetchMaterials(value);
+    }, 300);
+};
+
+onMounted(() => {
+    fetchMaterials();
+});
+
 </script>
 
 <template>
@@ -304,7 +360,7 @@ const exportData = async () => {
                             </VCol>
                             <VCol class="d-flex flex-column">
                                 <span class="text-medium-emphasis font-weight-medium">{{ inventory?.storage_location?.plant?.plant_code}}</span>
-                                <div class="text-subtitle-1 font-weight-thin">{{ inventory?.storage_location?.plant?.name}}</div>
+                                <div class="text-subtitle-1">{{ inventory?.storage_location?.plant?.name}}</div>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -315,7 +371,7 @@ const exportData = async () => {
                             </VCol>
                             <VCol class="d-flex flex-column">
                                 <span class="text-medium-emphasis font-weight-medium">{{ inventory?.storage_location?.code}}</span>
-                                <div class="text-subtitle-1 font-weight-thin">{{ inventory?.storage_location?.name }}</div>
+                                <div class="text-subtitle-1">{{ inventory?.storage_location?.name }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -330,6 +386,17 @@ const exportData = async () => {
                             </VCol>
                             <VCol class="d-inline-flex align-center">
                                 <span class="font-weight-medium text-grey-700">{{ inventory?.batch }}</span>
+                            </VCol>
+                        </VRow>
+                    </VCol>
+                    <VCol md="6" class="table-cell d-inline-flex">
+                        <VRow class="table-row">
+                            <VCol cols="4" class="d-inline-flex align-start">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700" style="margin-top: 1px;">Material</span>
+                            </VCol>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{ inventory?.material?.bu_material}}</span>
+                                <div class="text-subtitle-1">{{ inventory?.material?.description }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -362,7 +429,7 @@ const exportData = async () => {
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Total Quantity
+                            Total Pallets
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
                             {{ totalQuantity || 0 }}
@@ -395,7 +462,7 @@ const exportData = async () => {
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Loaded Items
+                            Loaded Pallets
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
                             {{ loadedItemsTotal || 0 }}
@@ -405,7 +472,7 @@ const exportData = async () => {
                     </v-card>
                 </v-col>
             
-                <v-col cols="3">
+                <!-- <v-col cols="3">
                     <v-card
                         class="px-4 py-2 bg-white border"
                         elevation="0"
@@ -437,7 +504,7 @@ const exportData = async () => {
                         </div>
                         </div>
                     </v-card>
-                </v-col>
+                </v-col> -->
                 <v-col cols="3">
                     <v-card
                         class="px-4 py-2 bg-white border"
@@ -462,7 +529,7 @@ const exportData = async () => {
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Available Items
+                            Available Pallets
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
                             {{ availableTotal || 0 }}
@@ -545,7 +612,8 @@ const exportData = async () => {
                             </template>
 
                             <template #item.material_id="{ item }">
-                                {{ item.material?.description }}
+                                <span class="font-weight-bold">{{ item.material?.bu_material }}</span><br />
+                                <span v-if="item.material" class="text-subtitle-1">{{ item.material?.description }}</span>
                             </template>
 
                             <template #item.physical_id="{ item }">
@@ -562,7 +630,7 @@ const exportData = async () => {
 
                             <template #item.is_wrapped="{ item }">
                                 <div class="d-flex justify-center align-center">
-                                    <i v-if="item.is_wrapped" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
+                                    <i v-if="item.wrapped_datetime" style="font-size: 30px; background-color: green;" class="ri-checkbox-circle-line"></i>
                                     <i v-else style="font-size: 30px; background-color: #FF4C51;"  class="ri-close-circle-line"></i>
                                 </div>
                             </template>
@@ -587,9 +655,12 @@ const exportData = async () => {
                             </template>
 
                             <template #item.commodity_status="{ item }">
-                                <span class="font-weight-bold">
-                                    {{ item.commodity_status?.name ?? '' }}
-                                </span>
+                                <v-chip v-if="item.commodity_status_id === 4 || item.commodity_status_id === '4'" size="small" color="error" text-color="white">Pending</v-chip>
+                                <v-chip v-else-if="item.commodity_status_id === 3 || item.commodity_status_id === '3'" size="small" color="warning" text-color="white">For QI</v-chip>
+                                <v-chip v-else-if="item.commodity_status_id === 2 || item.commodity_status_id === '2'" size="small" color="secondary-darken-1" text-color="white">For RTM</v-chip>
+                                <v-chip v-else-if="item.commodity_status_id === 1 || item.commodity_status_id === '1'" size="small" color="primary" text-color="white">Good</v-chip>
+                                <v-chip v-else-if="item.commodity_status_id === 6 || item.commodity_status_id === '6'" size="small" color="info" text-color="white">Wrapped</v-chip>
+                                <span v-else>-</span>
                             </template>
 
                             <template #item.bin_location="{ item }">
@@ -612,13 +683,42 @@ const exportData = async () => {
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-select
-                            label="Select Material"
-                            density="compact"
-                            :items="materialsOption"
+                        <v-autocomplete
                             v-model="batchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']"
-                        />
+                            :items="materialsOption"
+                            :loading="isMaterialsLoading"
+                            item-title="description"
+                            item-value="id"
+                            label="Select Material"
+                            :custom-filter="() => true"
+                            density="compact"
+                            clearable
+                            @update:search="handleSearchInput"
+                            :no-data-text="isMaterialsLoading ? 'Searching items...' : 'No materials found'"
+                            :item-props="(item) => ({ key: item.id, id: 'material-opt-' + item.id })"
+                        >
+                            <!-- Optional layout enhancement to show both structural code and description labels -->
+                             <template #item="{ props, item }">
+                                <!-- Removed :title to hide the raw material ID -->
+                                <v-list-item v-bind="props">
+                                    
+                                    <!-- Replaces the top title layer with your custom layout -->
+                                    <template #title>
+                                        <div class="font-weight-bold">
+                                            {{ item.raw.bu_material }} - {{ item.raw.plant?.plant_code || item.raw.plant_code }}
+                                        </div>
+                                    </template>
+
+                                    <!-- Replaces the bottom subtitle layer -->
+                                    <template #subtitle>
+                                        <div class="text-caption text-wrap">
+                                            {{ item.raw.description }}
+                                        </div>
+                                    </template>
+
+                                </v-list-item>
+                            </template>
+                        </v-autocomplete>
                     </v-col>
                     <v-col cols="12" md="6">
                         <DatePicker
