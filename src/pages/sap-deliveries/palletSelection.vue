@@ -151,6 +151,24 @@ const proceedReserve = async () => {
             return
         }
 
+        const totalAllocated = distributedPallets.value.reduce((t, p) => t + (p.take_quantity || 0), 0)
+        const item = store.selectedDeliveryItem
+        if (item) {
+            if (!item.delivery_reserved_orders) item.delivery_reserved_orders = []
+            distributedPallets.value.forEach(p => {
+                item.delivery_reserved_orders.push({
+                    pallet_physical_id: p.physical_id,
+                    commodity_batch_code: p.batch,
+                    manufacturing_date: p.mfg_date,
+                    total_qty: p.take_quantity,
+                    is_stock_exception: store.activeTab !== 'available_stocks',
+                    item_number: item.item_number,
+                })
+            })
+            item.total_reserved_pallets = (parseInt(item.total_reserved_pallets) || 0) + totalAllocated
+            item.open_quantity = Math.max(0, (parseInt(item.open_quantity) || 0) - totalAllocated)
+        }
+
         emit('reserve-success')
     } catch (e) {
         console.error(e)

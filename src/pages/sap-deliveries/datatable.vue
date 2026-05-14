@@ -233,7 +233,7 @@ defineExpose({ loadItems, applyFilters })
                     <v-toolbar-title class="text-h5 font-weight-bold">Delivery Details</v-toolbar-title>
                     <template #append>
                         <v-btn @click="closeDialog" color="secondary" variant="outlined" class="mr-2">
-                            Cancel
+                            Close
                         </v-btn>
                     </template>
                 </v-toolbar>
