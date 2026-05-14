@@ -4,7 +4,9 @@
       "Bash(npm install:*)",
       "Bash(npm list:*)",
       "Bash(node -e \"const b = require\\('./node_modules/@zxing/browser/esm/index.js'\\); console.log\\(Object.keys\\(b\\)\\)\")",
-      "PowerShell(Rename-Item \"d:\\\\laragon\\\\www\\\\wmrfid-app-x\\\\src\\\\pages\\\\fumigation\\\\FumigationGoodMovementDatatable.vue\" \"FumigationEntriesDataTable.vue\")"
+      "PowerShell(Rename-Item \"d:\\\\laragon\\\\www\\\\wmrfid-app-x\\\\src\\\\pages\\\\fumigation\\\\FumigationGoodMovementDatatable.vue\" \"FumigationEntriesDataTable.vue\")",
+      "Bash(git ls-tree *)",
+      "Bash(git checkout *)"
     ]
   }
 }
