@@ -28,7 +28,6 @@ const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at');
-const allStorageLocations = ref([]); // all slocs
 const storageLocations = ref([]); // filtered slocs based on plant_code
 const plantsOption = ref([]);
 
@@ -226,7 +225,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { table, statistics, tag_types, storage_locations, plants } = response.data;
+        const { table, statistics, tag_types, plants } = response.data;
         totalItems.value = table.total;
         serverItems.value = table.data;
 
@@ -235,11 +234,6 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             title: item.title,
             name: item.title
         }));
-
-        allStorageLocations.value = storage_locations;
-
-        // Apply initial filter (if any plant_code is already selected)
-        updateFilteredStorageLocations();
 
         plantsOption.value = plants.map(item => ({
             value: item.plant_code,
@@ -301,9 +295,12 @@ const proceedRegister = () => {
             console.error("Tag Type and Plant is not selected.");
             return; // Return early if form values are not set
         }
-
+        console.log(form.storage_location_id)
+        console.log(storageLocations.value)
         let tagType = tagTypesOption.value.find(item => item.value === form.tag_type_id);
-        let storageLocation = storageLocations.value.find(item => item.value === form.storage_location_id);
+        let storageLocation = storageLocations.value.find(
+            item => (item.value || item.id) === form.storage_location_id
+        );
         let plant = plantsOption.value.find(item => item.value === form.plant_code);
 
         if (!tagType || !plant) {
@@ -314,7 +311,7 @@ const proceedRegister = () => {
         const slugType = generateSlug(tagType.name);
         const slugPlant = generateSlug(plant.value);
         const slugLocation = storageLocation?.name ? generateSlug(storageLocation.name) : null;
-
+       
         if (tagType.name && plant.value) {
             // Construct the path depending on whether location is set
             const path = slugLocation
@@ -419,29 +416,6 @@ const handleManualBatch = async () => {
     }
 }
 
-const updateFilteredStorageLocations = () => {
-    if (form.plant_code) {
-        storageLocations.value = allStorageLocations.value
-            .filter(loc => loc.plant_code === form.plant_code)
-            .map(loc => ({
-                value: loc.id,
-                title: loc.name,
-                name: loc.name
-            }));
-
-        // Optionally reset invalid selection
-        if (!storageLocations.value.some(loc => loc.value === form.storage_location_id)) {
-            form.storage_location_id = null;
-        }
-    } else {
-        storageLocations.value = allStorageLocations.value.map(loc => ({
-            value: loc.id,
-            title: loc.name,
-            name: loc.name
-        }));
-    }
-};
-
 const taggingModal = ref(false);
 const taggingLoading = ref(false);
 const handleTagAsWeak = () => {
@@ -543,9 +517,35 @@ const exportData = async () => {
 
 // Auto-update when plant_code changes
 watch(() => form.plant_code, () => {
-    updateFilteredStorageLocations();
+   
 });
 
+watch(() => form.plant_code, async (newPlantCode) => {
+    // Reset selected location when plant changes
+    form.storage_location_id = null; 
+    
+    if (!newPlantCode) {
+        storageLocations.value = [];
+        return;
+    }
+
+    try {
+        // Option A: Fetch from API based on selected plant
+        const response = await fetchStorageLocationsFromAPI(newPlantCode);
+        storageLocations.value = response.data; 
+        
+    } catch (error) {
+        console.error("Failed to load storage locations:", error);
+        storageLocations.value = [];
+    }
+});
+
+const fetchStorageLocationsFromAPI = (plantCode) => {
+    const token = JwtService.getToken();
+    return axios.get(`storage-locations/${plantCode}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+};
 const qrModal = ref(false);
 const qrTarget = ref({ physicalId: null, hasExistingQr: false });
 
@@ -1010,9 +1010,16 @@ onMounted(() => {
                     </v-select>
                 </div>
                 <div class="mt-4">
-                    <label class="font-weight-bold">Location</label>
-                    <v-select class="mt-1" label="Select Location" density="compact" :items="storageLocations"
-                        v-model="form.storage_location_id">
+                    <label class="font-weight-bold">Storage Location</label>
+                    <v-select 
+                        class="mt-1" 
+                        label="Select Location" 
+                        density="compact"  
+                        :items="storageLocations"
+                        v-model="form.storage_location_id"
+                        :item-title="item => `${item.code} - ${item.name}`"
+                        item-value="id"
+                    >
                     </v-select>
                 </div>
                 <div class="d-flex justify-end align-center mt-8">
