@@ -158,12 +158,12 @@ const closeDialog = () => {
     showDeliveryItems.value = false
     currentView.value = 'items'
     store.reset()
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: 'created_at', order: 'desc' }],
-        search: props.search,
-    })
+    // loadItems({
+    //     page: page.value,
+    //     itemsPerPage: itemsPerPage.value,
+    //     sortBy: [{ key: 'created_at', order: 'desc' }],
+    //     search: props.search,
+    // })
 }
 
 const expirationChecking = date => {
@@ -229,10 +229,12 @@ defineExpose({ loadItems, applyFilters })
 
             <!-- View 1: Delivery Items -->
             <template v-if="currentView === 'items'">
-                <v-toolbar color="primary">
+                <v-toolbar color="white" border="b">
                     <v-toolbar-title class="text-h5 font-weight-bold">Delivery Details</v-toolbar-title>
                     <template #append>
-                        <v-btn icon="ri-close-line" @click="closeDialog" />
+                        <v-btn @click="closeDialog" color="secondary" variant="outlined" class="mr-2">
+                            Cancel
+                        </v-btn>
                     </template>
                 </v-toolbar>
 

@@ -388,7 +388,7 @@ const proceedReserve = async () => {
             </tbody>
             <tbody v-else>
                 <tr style="height: 150px">
-                    <td colspan="7" class="text-center text-h4 text-grey-500">No selected pallets yet --</td>
+                    <td colspan="7" class="text-center text-h4 text-grey-500">No selected pallets yet -- Assign Pallet from the Warehouse Map below first.</td>
                 </tr>
             </tbody>
         </v-table>
