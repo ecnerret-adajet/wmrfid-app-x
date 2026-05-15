@@ -74,6 +74,7 @@ onMounted(() => {
     fetchDropdownData()
 })
 
+const storageSectionsOption = ref([])
 const fetchDropdownData = async () => {
     pageLoading.value = true;
     try {
@@ -87,13 +88,15 @@ const fetchDropdownData = async () => {
             }
         });
 
-        const { plants } = response.data
+        const { plants, storage_sections } = response.data
 
         plantsOption.value = plants.map(item => ({
             value: item.plant_code,
             title: item.name,
             name: item.name
         }));
+
+        storageSectionsOption.value = storage_sections
 
     } catch (error) {
         console.log(error);
@@ -144,7 +147,9 @@ const exportData = async () => {
     </div>
 
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" :search="searchValue" />
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+            :search="searchValue" :storage-sections-option="storageSectionsOption"
+        />
     </VCard>
 
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Materials'">

@@ -46,6 +46,7 @@ const selectedBlock = reactive({
     layers: [],
     data: null
 })
+const selectedStatus = ref(null);
 
 const toast = ref({
     message: '',
@@ -59,27 +60,68 @@ const handleSearch = debounce((search) => {
 
 const isFiltering = computed(() => searchValue.value.trim() !== '');
 
-const isMatch = (item) => {
-    const search = searchValue.value.toLowerCase();
+// Evaluates text match state
+const matchesSearchText = (item) => {
+    if (!searchValue.value || searchValue.value.trim() === '') return true;
+    
+    const search = searchValue.value.toLowerCase().trim();
     if (item.type === 'block') {
-        return item.lot?.label?.toLowerCase().includes(search);
+        return item.lot?.label?.toLowerCase().includes(search) || 
+               item.label?.toLowerCase().includes(search); // Extends search matching to block labels too
     } else if (item.type === 'lot') {
         return item.label?.toLowerCase().includes(search);
     }
     return false;
 };
 
-const filteredLayout = computed(() =>
-    state.layout.map(item => {
-        const matched = isMatch(item);
+// Evaluates status match state
+const matchesStatusFilter = (item) => {
+    if (selectedStatus.value === null || selectedStatus.value === undefined) return true;
+    
+    // Always keep structural Lot headers matching to preserve top-level map grid canvas layout context
+    if (item.type === 'lot') return true; 
+
+    const targetStatus = selectedStatus.value;
+    const isFumigation = item.under_fumigation === true || 
+                         item.under_fumigation === 1 || 
+                         item.under_fumigation === '1' ||
+                         item.under_fumigation === 'true';
+
+    const isInspection = item.for_quality_inspection === true || 
+                         item.for_quality_inspection === 1 || 
+                         item.for_quality_inspection === '1' ||
+                         item.for_quality_inspection === 'true';
+
+    if (targetStatus === 7) {
+        return isFumigation; // Under Fumigation
+    } else if (targetStatus === 3) {
+        return isInspection; // For Quality Inspection
+    } else if (targetStatus === 1) {
+        return !isFumigation && !isInspection; // Good: Neither condition is active
+    }
+
+    return false;
+};
+
+// Unified computed tracking property
+const filteredLayout = computed(() => {
+    const hasSearchText = searchValue.value && searchValue.value.trim() !== '';
+    const hasStatusFilter = selectedStatus.value !== null && selectedStatus.value !== undefined;
+    const isAnyFilterActive = hasSearchText || hasStatusFilter;
+
+    return state.layout.map(item => {
+        // Must clear both text AND status checks to stay highlighted
+        const textMatched = matchesSearchText(item);
+        const statusMatched = matchesStatusFilter(item);
+        const fullyMatched = textMatched && statusMatched;
+
         return {
             ...item,
-            dimmed: isFiltering.value && !matched,
-            clickable: matched || !isFiltering.value
+            dimmed: isAnyFilterActive && !fullyMatched,
+            clickable: fullyMatched || !isAnyFilterActive
         };
-    })
-);
-
+    });
+});
 
 onMounted(() => {
     state.index = state.layout.length;
@@ -114,8 +156,9 @@ const fetchStorageLocationInformation = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
-            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
             under_fumigation: item.under_fumigation,
+            for_quality_inspection: item.for_quality_inspection,
+            allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
             // for_quality_inspection: item.for_quality_inspection,
             max_layer_count: item.max_layer_count || 3,
             legend_only: item.legend_only == 1 ? true : false,
@@ -130,8 +173,6 @@ const fetchStorageLocationInformation = async () => {
         mapLoading.value = false;
     }
 };
-
-
 
 const handleBlockClick = (item) => {
     selectedBlock.data = item;
@@ -175,10 +216,21 @@ const handleEditMap = () => {
     });
 }
 
+const statusOption = [
+    { title: 'Good', label: 'Good', value: 1 },
+    { title: 'Under Fumigation', label: 'Under Fumigation', value: 7 },
+    { title: 'For Quality Inspection', label: 'For Quality Inspection', value: 3 },
+];
+
+const handleFilterStatus = (statusValue) => {
+    selectedStatus.value = statusValue;
+    isFiltered.value = statusValue !== null && statusValue !== undefined;
+};
+
 </script>
 
 <template>
-    <v-card elevation="2" class="mx-4 mt-4 px-3 py-4" style="border-radius: 0px !important;">
+    <v-card elevation="2" class="mx-4 mt-4 px-3 py-2 sticky-top-card" style="border-radius: 0px !important;">
         <v-card-title class="d-flex justify-space-between align-center">
             <div class="d-inline-flex align-center">
                 <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line"
@@ -194,8 +246,8 @@ const handleEditMap = () => {
             </div>
         </v-card-title>
 
-        <v-card-text class="mt-4">
-            <VList lines="one" density="compact" class="mt-4">
+        <v-card-text>
+            <VList lines="one" density="compact">
                 <VListItem>
                     <VRow class="table-row" no-gutters>
                         <VCol md="6" class="table-cell d-inline-flex">
@@ -233,16 +285,12 @@ const handleEditMap = () => {
                     <VRow class="table-row" no-gutters>
                         <VCol md="6" class="table-cell d-inline-flex">
                             <VRow class="table-row">
-                                <VCol cols="4" class="d-inline-flex align-center">
+                                <VCol cols="6" class="d-inline-flex align-center">
                                     <span class="text-h6 text-uppercase font-weight-black "
                                         style="margin-top: 1px;">Location: </span>
                                         <span class="font-weight-medium ml-3">
                                             {{ storageLocationModel?.plant?.city ?? '--' }}
                                         </span>
-                                </VCol>
-                                <VCol class="d-inline-flex align-center">
-                                    <span class="font-weight-medium">
-                                    </span>
                                 </VCol>
                             </VRow>
                         </VCol>
@@ -266,18 +314,7 @@ const handleEditMap = () => {
 
                 <!-- Add item as needed  -->
             </VList>
-        </v-card-text>
-        <div class="d-flex justify-end">
-            <!-- <v-btn color="primary-light" @click="smartAssignModal = true" class="px-8 mr-6 text-grey-100">
-                Smart Assign
-            </v-btn> -->
-        </div>
-    </v-card>
-    <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
-    <div v-else>
-        <v-card elevation="2" class="mx-4 mt-2">
-            <!-- Main content  -->
-            <div class="d-flex align-center justify-space-between px-4">
+            <div class="d-flex align-center justify-space-between pl-4 pr-1">
                 <!-- Legend  -->
                 <div class="d-flex align-center">
                     <template v-for="(layer, index) in layersData" :key="index">
@@ -308,9 +345,26 @@ const handleEditMap = () => {
                 </div>
 
                 <div class="d-flex align-center">
+                    <v-select class="mr-2" style="min-width: 300px;" clearable label="Filter by Status" density="compact"
+                        :items="statusOption" v-model="selectedStatus" @update:model-value="handleFilterStatus" 
+                    />
+
                     <SearchInput style="min-width: 300px;" placeholder="Filter by lot" @update:search="handleSearch" />
                 </div>
             </div>
+        </v-card-text>
+        <div class="d-flex justify-end">
+            <!-- <v-btn color="primary-light" @click="smartAssignModal = true" class="px-8 mr-6 text-grey-100">
+                Smart Assign
+            </v-btn> -->
+        </div>
+        <!-- Main content  -->
+        
+    </v-card>
+    <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
+    <div v-else>
+        <v-card elevation="2" class="mx-4 mt-2">
+            
 
 
             <!-- Map area  -->
@@ -442,10 +496,6 @@ const handleEditMap = () => {
     background-color: #f0edf2;
 }
 
-.under-fumigation {
-    background-color: #f7897e;
-}
-
 .vue-grid-layout {
     margin: 0;
     padding: 5px;
@@ -494,5 +544,14 @@ const handleEditMap = () => {
     border: 1px solid black;
     margin-top: 10px;
     padding: 1px;
+}
+
+.sticky-top-card {
+    position: sticky;
+    top: 0;
+    z-index: 100; /* Keeps info header above warehouse grid layers */
+    background-color: white !important;
+    border-radius: 0px !important;
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.1) !important;
 }
 </style>

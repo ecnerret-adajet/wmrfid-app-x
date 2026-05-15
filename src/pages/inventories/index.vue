@@ -12,7 +12,6 @@ import { useRouter } from 'vue-router';
 import batchDetails from './batchDetails.vue';
 
 const pageLoading = ref(false);
-const storageLocations = ref([]);
 const plantsOptions = ref([]);
 const statisticsData = ref(null);
 
@@ -44,14 +43,8 @@ const loadData = async () => {
             }
         });
 
-        const { storage_locations, statistics, plants } = response.data;
+        const { statistics, plants } = response.data;
         statisticsData.value = statistics;
-        
-        storageLocations.value = storage_locations.map(item => ({
-            value: item.id,
-            title: item.name,
-            name: item.name
-        }));
 
         plantsOptions.value = plants
             .filter(item => item.name !== null)
@@ -115,7 +108,7 @@ const headers = [
         align: 'center'
     },
     {
-        title: 'TOTAL QUANTITY',
+        title: 'TOTAL PALLETS',
         key: 'total_count',
         align: 'center'
     },
@@ -272,15 +265,18 @@ const exportData = async () => {
             </template>
 
             <template #item.plant_id="{ item }">
-                {{ item.storage_location?.plant?.name }}
+                <span class="font-weight-bold">{{ item.storage_location?.plant?.plant_code }}</span><br />
+                <span v-if="item.storage_location?.plant" class="text-subtitle-1">{{ item.storage_location?.plant?.name }}</span>
             </template>
 
             <template #item.storage_location_id="{ item }">
-                {{ item.storage_location?.name }}
+                <span class="font-weight-bold">{{ item.storage_location?.code }}</span><br />
+                <span v-if="item.storage_location" class="text-subtitle-1">{{ item.storage_location?.name }}</span>
             </template>
 
             <template #item.material_id="{ item }">
-                {{ item.material?.description }}
+                <span class="font-weight-bold">{{ item.material?.bu_material }}</span><br />
+                <span v-if="item.material" class="text-subtitle-1">{{ item.material?.description }}</span>
             </template>
 
             <template #item.age="{ item }" class="d-flex align-center justify-center">
