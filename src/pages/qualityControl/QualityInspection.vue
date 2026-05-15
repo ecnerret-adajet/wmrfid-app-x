@@ -443,7 +443,7 @@
                 </div>
                 <div v-else class="d-flex ga-2 mt-4">
                     <video ref="video" autoplay playsinline width="100%"></video>
-                    <canvas ref="canvas" style="display:none;"></canvas>
+                    <canvas ref="canvas" style="display: none;"></canvas>
                 </div>
 
                 
@@ -483,7 +483,7 @@ import DefaultModal from '@/components/DefaultModal.vue';
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { usequalityControlStore } from '@/stores/qualityControlStore';
+import { useQualityControlStore } from '@/stores/qualityControlStore';
 import { debounce } from 'lodash';
 import moment from 'moment';
 import { storeToRefs } from 'pinia';
@@ -532,7 +532,7 @@ const selectedStatus = ref('Pending')
 
 // Pinia store usage
 const route = useRoute();
-const qualityControlStore = usequalityControlStore();
+const qualityControlStore = useQualityControlStore();
 const { items, loading, error } = storeToRefs(qualityControlStore);
 const showErrorModal = ref(false)
 const errorMessageTitle = ref('')
@@ -1009,6 +1009,6 @@ const switchCamera = () => {
 
 <style scoped>
 .pending-color {
-    background-color: #2196F3; /* Blue for pending */
+  background-color: #2196f3; /* Blue for pending */
 }
 </style>

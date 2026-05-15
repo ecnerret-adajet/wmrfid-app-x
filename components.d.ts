@@ -45,7 +45,6 @@ declare module 'vue' {
     TotalBatchesToday: typeof import('./src/components/dashboard/TotalBatchesToday.vue')['default']
     TotalInventoryItems: typeof import('./src/components/dashboard/TotalInventoryItems.vue')['default']
     UnauthorizedPage: typeof import('./src/components/UnauthorizedPage.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
     WarehouseUtilization: typeof import('./src/components/dashboard/WarehouseUtilization.vue')['default']
   }
 }
