@@ -186,6 +186,17 @@ export const routes = [
             },
         },
         {
+            path: 'sap-deliveries',
+            name: 'sap-deliveries',
+            component: () => import('@/pages/sap-deliveries/index.vue'),
+            meta: {
+              pageTitle: "SAP Deliveries",
+              breadcrumbs: [
+                  { label: "SAP Deliveries", link: "/sap-deliveries" },
+              ],
+            },
+        },
+        {
             path: 'transfer-orders',
             name: 'transfer-orders',
             component: () => import('@/pages/transfers/index.vue'),

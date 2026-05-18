@@ -1,0 +1,163 @@
+<script setup>
+import Moment from 'moment';
+
+const props = defineProps({
+    deliveryData: Object,
+    selectedDeliveryItem: Object
+})
+
+</script>
+
+<template>
+    <VList lines="one" density="compact">
+        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis" >Delivery Number</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="font-weight-medium text-medium-emphasis">{{ deliveryData.delivery_document || null }}</span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Item No.</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="font-weight-medium text-medium-emphasis">
+                                {{ selectedDeliveryItem.item_number }}
+                            </span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Material Code</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="font-weight-medium text-medium-emphasis">
+                                {{  selectedDeliveryItem.material_number ? parseInt(selectedDeliveryItem.material_number) : null }}
+                            </span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Party</span>
+                        </VCol>
+                        <VCol class="d-flex flex-column">
+                            <span class="text-medium-emphasis font-weight-medium">{{ deliveryData?.ship_to_name }}</span>
+                            <div class="text-subtitle-1 font-weight-thin">{{ deliveryData?.ship_to_customer }}</div>
+                        </VCol>
+                    </VRow>
+                </VCol>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow  class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Material</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="font-weight-medium text-medium-emphasis">{{ selectedDeliveryItem.material_description }}</span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+        <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis " >Ship-to-Address</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">{{ deliveryData?.ship_to_address }}</span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis ">Plant & Storage Location</span>
+                        </VCol>
+                        <VCol class="d-flex flex-column">
+                            <span class="text-medium-emphasis">{{ selectedDeliveryItem?.plant }}</span>
+                            <div class="text-subtitle-1 font-weight-thin">{{ selectedDeliveryItem?.storage_location }}</div>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+        <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Delivery Date</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">
+                                {{ deliveryData?.delivery_date ? Moment(deliveryData?.delivery_date).format('MMMM D, YYYY') : '' }}
+                            </span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis" >Required Quantity</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">
+                                {{ selectedDeliveryItem?.delivery_quantity || 0 }}
+                                {{ selectedDeliveryItem?.sales_unit }}(S)
+                            </span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+        <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+            <VRow class="table-row" no-gutters>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">{{ deliveryData?.age?.from }} - {{ deliveryData?.age?.to }} Days</span>
+
+                        </VCol>
+                    </VRow>
+                </VCol>
+                <VCol md="6" class="table-cell d-inline-flex">
+                    <VRow class="table-row">
+                        <VCol cols="4" class="d-inline-flex align-center">
+                            <span class="text-h6 font-weight-bold text-high-emphasis" >Open Quantity</span>
+                        </VCol>
+                        <VCol class="d-inline-flex align-center">
+                            <span class="text-medium-emphasis">
+                                {{ deliveryData?.open_quantity || 0 }}
+                                {{ selectedDeliveryItem?.sales_unit }}(S)
+                            </span>
+                        </VCol>
+                    </VRow>
+                </VCol>
+            </VRow>
+        </VListItem>
+    </VList>
+</template>

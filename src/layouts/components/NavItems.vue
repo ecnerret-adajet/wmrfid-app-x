@@ -139,6 +139,8 @@ const proceedMapping = () => {
         :item="{ title: 'Good Receipt List', icon: 'ri-file-list-line', to: '/goods-receipt' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries' }" />
+    <VerticalNavLink v-if="authUserCan('view.deliveries')"
+        :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-archive-line', to: '/sap-deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.sto')"
         :item="{ title: 'Transfer Orders', icon: 'ri-shuffle-line', to: '/transfer-orders' }" />
     <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
