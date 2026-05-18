@@ -9,7 +9,7 @@ import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
 import Moment from 'moment';
-import { reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VTextarea } from 'vuetify/components';
 
@@ -237,10 +237,10 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         }
     })
         .then((response) => {
-            const { table, statistics, tag_types, materials } = response.data
+            const { table, statistics, tag_types } = response.data
             totalItems.value = table.total;
             serverItems.value = table.data
-
+         
             statisticsData.value = statistics
 
             tagTypesOption.value = [
@@ -250,11 +250,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
                     title: item.title
                 }))
             ];
-
-            materialsOption.value = materials.map(item => ({
-                value: item.id,
-                title: `${item.plant_code} - ${item.code} - ${item.description}`
-            }));
 
             pageLoading.value = false
         })
@@ -318,12 +313,15 @@ const clearChangeBatch = () => {
     batchUpdateForm.batch = null;
     batchUpdateForm.reason = null;
     batchUpdateForm.miller_name = null;
+    materialsOption.value = [];
+    fetchMaterials();
 }
 
 const handleChangeBatch = async () => {
     changeBatchLoading.value = true;
     toast.value.show = false;
     batchUpdateForm.selectedRfid = selectedItems.value
+   
     try {
         const response = await ApiService.post('inventories/batch-update', batchUpdateForm)
         changeBatchLoading.value = false;
@@ -342,6 +340,9 @@ const handleChangeBatch = async () => {
         errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
         changeBatchLoading.value = false;
+    } finally {
+        materialsOption.value = []
+        fetchMaterials();
     }
 }
 
@@ -435,6 +436,10 @@ const getCommodityStatusColor = (name) => {
 }
 
 const isSelectable = (item) => {
+    if (activeTab.value !== 'quality-inspection') {
+        return true;
+    }
+
     return item.inventory?.commodity_status?.slug === 'quality-inspection' || item.inventory?.commodity_status?.name === 'Quality Inspection'
 }
 
@@ -469,6 +474,40 @@ const handleWrongPallet = async () => {
 }
 
 
+const isMaterialsLoading = ref(false);
+let debounceTimeout = null;
+
+// Core dynamic fetch function
+const fetchMaterials = async (searchQuery = '') => {
+    isMaterialsLoading.value = true;
+    try {
+        const response = await ApiService.query('inventories/get-materials-dropdown', {
+            params: {
+                search: searchQuery,
+                limit: searchQuery ? null : 10 
+            }
+        });
+        
+        // Populate the autocomplete selections list
+        materialsOption.value = response.data.materials;
+    } catch (error) {
+        console.error('Failed fetching materials:', error);
+    } finally {
+        isMaterialsLoading.value = false;
+    }
+};
+
+// Listen to input mutations with a 300ms delay threshold
+const handleSearchInput = (value) => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        fetchMaterials(value);
+    }, 300);
+};
+
+onMounted(() => {
+    fetchMaterials();
+});
 </script>
 
 <template>
@@ -509,11 +548,10 @@ const handleWrongPallet = async () => {
                 <VRow class="table-row" no-gutters>
                     <VCol md="6" class="table-cell d-inline-flex">
                         <VRow class="table-row">
-                            <VCol cols="4" class="d-inline-flex align-center">
-                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
-                                    style="margin-top: 1px;">Batch</span>
+                            <VCol cols="4" class="d-inline-flex">
+                                <span class="text-h6 text-uppercase font-weight-bold text-grey-700">Batch</span>
                             </VCol>
-                            <VCol class="d-inline-flex align-center">
+                            <VCol class="d-inline-flex">
                                 <span class="font-weight-medium text-grey-700">{{ productionRun?.COMMODITY
                                 }}</span>
                             </VCol>
@@ -521,13 +559,15 @@ const handleWrongPallet = async () => {
                     </VCol>
                     <VCol md="6" class="table-cell d-inline-flex">
                         <VRow class="table-row">
-                            <VCol cols="4" class="d-inline-flex align-center">
+                            <VCol cols="4" class="d-inline-flex align-start">
                                 <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
                                     style="margin-top: 1px;">Material</span>
                             </VCol>
-                            <VCol class="d-inline-flex align-center">
-                                <span class="font-weight-medium text-grey-700">{{ productionRun?.material?.description
-                                }}</span>
+                            <VCol class="d-flex flex-column">
+                                <span class="text-medium-emphasis font-weight-medium">{{
+                                    productionRun?.material?.description }}</span>
+                                <div class="text-subtitle-1 font-weight-thin">{{
+                                    productionRun?.material?.bu_material }}</div>
                             </VCol>
                         </VRow>
                     </VCol>
@@ -550,7 +590,7 @@ const handleWrongPallet = async () => {
                             </div>
                             <div>
                                 <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                                    Total Count
+                                    Total Bags
                                 </span>
                                 <div class="text-h4 font-weight-bold text-primary mt-1">
                                     {{ statisticsData?.total_quantity || 0 }}
@@ -659,7 +699,7 @@ const handleWrongPallet = async () => {
                 <v-card-text class="mx-2">
                     <v-tabs v-model="activeTab" color="primary" class="mb-4">
                         <v-tab value="batch_details">Batch Details</v-tab>
-                        <v-tab value="quality_inspection">
+                        <v-tab v-if="authUserCan('can.view.quality.control')" value="quality_inspection">
                             Quality Inspection
                             <v-badge v-if="qualityInspectionItems.length > 0"
                                 :content="qualityInspectionItems.length"
@@ -685,7 +725,7 @@ const handleWrongPallet = async () => {
                                         Change Batch
                                     </v-btn>
 
-                                    <v-btn @click="openQualityInspection" :disabled="selectedItems.length === 0"
+                                    <v-btn v-if="authUserCan('can.view.quality.control')" @click="openQualityInspection" :disabled="selectedItems.length === 0"
                                         class="px-5 ml-2" type="button" color="success">
                                         Quality Inspection
                                     </v-btn>
@@ -752,7 +792,7 @@ const handleWrongPallet = async () => {
                         </v-window-item>
 
                         <!-- Quality Inspection Tab -->
-                        <v-window-item value="quality_inspection">
+                        <v-window-item  value="quality_inspection">
                             <div>
                                 <div class="mb-4 d-flex align-center">
                                     <v-btn variant="text" prepend-icon="ri-arrow-left-line" color="primary"
@@ -843,9 +883,46 @@ const handleWrongPallet = async () => {
             <v-form @submit.prevent="handleChangeBatch">
                 <v-row>
                     <v-col cols="12" md="6">
-                        <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
+                        <!-- <v-autocomplete label="Select Material" density="compact" item-title="title" item-value="value"
                             :items="materialsOption" v-model="batchUpdateForm.material_id"
-                            :rules="[value => !!value || 'Please select an item from the list']" />
+                            :rules="[value => !!value || 'Please select an item from the list']" /> -->
+
+                        <v-autocomplete
+                            v-model="batchUpdateForm.material_id"
+                            :items="materialsOption"
+                            :loading="isMaterialsLoading"
+                            item-title="description"
+                            item-value="id"
+                            label="Select Material"
+                            :custom-filter="() => true"
+                            density="compact"
+                            clearable
+                            @update:search="handleSearchInput"
+                            :no-data-text="isMaterialsLoading ? 'Searching items...' : 'No materials found'"
+                            :item-props="(item) => ({ key: item.id, id: 'material-opt-' + item.id })"
+                        >
+                             <template #item="{ props, item }">
+                                <!-- Removed :title to hide the raw material ID -->
+                                <v-list-item v-bind="props">
+                                    
+                                    <!-- Replaces the top title layer with your custom layout -->
+                                    <template #title>
+                                        <div class="font-weight-bold">
+                                            {{ item.raw.bu_material }} - {{ item.raw.plant?.plant_code || item.raw.plant_code }}
+                                        </div>
+                                    </template>
+
+                                    <!-- Replaces the bottom subtitle layer -->
+                                    <template #subtitle>
+                                        <div class="text-caption text-wrap">
+                                            {{ item.raw.description }}
+                                        </div>
+                                    </template>
+
+                                </v-list-item>
+                            </template>
+                        </v-autocomplete>
+                        
                     </v-col>
                     <v-col cols="12" md="6">
                         <DatePicker v-model="batchUpdateForm.mfg_date" placeholder="Select Manufacturing Date" />

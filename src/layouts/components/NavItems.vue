@@ -28,7 +28,7 @@ const mappingLocation = ref(null)
 const router = useRouter();
 
 onMounted(() => {
-    fetchRfidRegistrationData();
+    // fetchRfidRegistrationData();
 })
 
 const form = ref({
