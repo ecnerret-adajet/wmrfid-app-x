@@ -24,6 +24,11 @@ const filters = ref(null)
 const showPalletsDialog = ref(false)
 const selectedRow = ref(null)
 
+const cancelConfirmDialog = ref(false)
+const isCancelling = ref(false)
+const cancelError = ref(null)
+const rowToCancel = ref(null)
+
 const headers = [
     { title: 'DELIVERY', key: 'delivery_document', sortable: false },
     { title: 'ITEM NO.', key: 'delivery_item_number' },
@@ -33,6 +38,8 @@ const headers = [
     { title: 'RESERVED PALLETS', key: 'total_reserved_pallets', align: 'center' },
     { title: 'TOTAL QTY', key: 'total_qty', align: 'center' },
     { title: 'SAP SERVER', key: 'sap_server', align: 'center', sortable: false },
+    { title: 'PICKING STATUS', key: 'picking_status', align: 'center', sortable: false },
+    { title: 'STATUS', key: 'status', align: 'center', sortable: false },
     { title: 'ACTION', key: 'action', align: 'center', sortable: false },
 ]
 
@@ -45,7 +52,20 @@ const palletHeaders = [
     { title: 'Item No.', key: 'delivery_item_number', align: 'center' },
     { title: 'Mfg Date', key: 'manufacturing_date' },
     { title: 'Loaded', key: 'is_loaded', align: 'center' },
+    { title: 'Status', key: 'status', align: 'center' },
 ]
+
+const getRowStatus = item => {
+    if (item.cancelled_at) return { label: 'Cancelled', color: 'error' }
+    const hasPartialCancel = (item.reserved_pallets ?? []).some(p => p.cancelled_at)
+    if (hasPartialCancel) return { label: 'Partial Cancelled', color: 'warning' }
+    return { label: 'Reserved', color: 'success' }
+}
+
+const getPalletStatus = pallet => {
+    if (pallet.cancelled_at) return { label: 'Cancelled', color: 'error' }
+    return { label: 'Reserved', color: 'success' }
+}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     if (!filters.value) return
@@ -87,12 +107,50 @@ const applyFilters = data => {
     })
 }
 
-const actionList = [{ title: 'View Pallets', key: 'view_pallets' }]
+const actionList = [
+    { title: 'View Pallets', key: 'view_pallets' },
+    { title: 'Cancel Reservation', key: 'cancel_reservation' },
+]
 
 const handleAction = (item, action) => {
     if (action.key === 'view_pallets') {
         selectedRow.value = item
         showPalletsDialog.value = true
+    } else if (action.key === 'cancel_reservation') {
+        rowToCancel.value = item
+        cancelError.value = null
+        cancelConfirmDialog.value = true
+    }
+}
+
+const cancelReservation = async () => {
+    if (!rowToCancel.value) return
+
+    const item = rowToCancel.value
+    const deliveryDocument = item.reserved_pallets?.[0]?.delivery_document
+    const batches = (item.reserved_pallets ?? []).map(p => ({ batch: p.commodity_batch_code }))
+
+    const payload = new FormData()
+    payload.append('delivery_document', deliveryDocument)
+    payload.append('delivery_item_number', item.delivery_item_number)
+    payload.append('batches', JSON.stringify(batches))
+    if (item.sap_server) {
+        payload.append('sap_server', item.sap_server)
+    }
+
+    isCancelling.value = true
+    cancelError.value = null
+
+    try {
+        await ApiService.post('deliveries/delivery-order-cancel', payload)
+        cancelConfirmDialog.value = false
+        rowToCancel.value = null
+        applyFilters(filters.value)
+    } catch (error) {
+        const errors = error.response?.data?.errors
+        cancelError.value = Array.isArray(errors) ? errors.join(', ') : 'Failed to cancel reservation.'
+    } finally {
+        isCancelling.value = false
     }
 }
 
@@ -149,12 +207,27 @@ defineExpose({ loadItems, applyFilters })
         </template>
 
         <template #item.total_qty="{ item }">
-            {{ item.total_qty }} 
+            {{ item.total_qty }} {{ item.uom }}
         </template>
 
         <template #item.sap_server="{ item }">
             <v-chip size="small" color="secondary" variant="tonal">
                 {{ item.sap_server }}
+            </v-chip>
+        </template>
+
+        <template #item.picking_status="{ item }">
+            <span v-if="item.sap_delivery?.picking_status">{{ item.sap_delivery.picking_status }}</span>
+            <span v-else class="text-medium-emphasis">—</span>
+        </template>
+
+        <template #item.status="{ item }">
+            <v-chip
+                size="small"
+                :color="getRowStatus(item).color"
+                variant="tonal"
+            >
+                {{ getRowStatus(item).label }}
             </v-chip>
         </template>
 
@@ -180,15 +253,15 @@ defineExpose({ loadItems, applyFilters })
     </VDataTableServer>
 
     <!-- Reserved Pallets Dialog -->
-    <v-dialog v-model="showPalletsDialog" max-width="1000" scrollable>
-        <v-card>
-            <v-toolbar color="primary" density="compact">
-                <v-toolbar-title class="text-body-1 font-weight-bold text-white">
+    <v-dialog v-model="showPalletsDialog" max-width="1300" scrollable>
+        <v-card max-height="70vh">
+            <v-toolbar color="white"  border="b" density="compact">
+                <v-toolbar-title class="text-body-1 font-weight-bold">
                     Reserved Pallets — Item {{ selectedRow?.delivery_item_number }}
-                    <span class="ml-2 text-caption opacity-80">{{ selectedRow?.material_description }}</span>
+                    <span class="ml-2 text-caption text-medium-emphasis">{{ selectedRow?.material_description }}</span>
                 </v-toolbar-title>
                 <template #append>
-                    <v-btn icon="ri-close-line" variant="text" color="white" @click="closePalletsDialog" />
+                    <v-btn icon="ri-close-line" variant="text" color="black" @click="closePalletsDialog" />
                 </template>
             </v-toolbar>
 
@@ -206,7 +279,7 @@ defineExpose({ loadItems, applyFilters })
                             <td class="font-weight-medium">{{ pallet.pallet_physical_id }}</td>
                             <td>{{ pallet.pallet_code }}</td>
                             <td>{{ pallet.commodity_batch_code }}</td>
-                            <td class="text-center">{{ pallet.total_qty }}</td>
+                            <td class="text-center">{{ pallet.total_qty }} {{ pallet.uom }}</td>
                             <td>{{ pallet.delivery_document }}</td>
                             <td class="text-center">{{ pallet.delivery_item_number }}</td>
                             <td>{{ pallet.manufacturing_date }}</td>
@@ -217,6 +290,15 @@ defineExpose({ loadItems, applyFilters })
                                     variant="tonal"
                                 >
                                     {{ pallet.is_loaded ? 'Loaded' : 'Pending' }}
+                                </v-chip>
+                            </td>
+                            <td class="text-center">
+                                <v-chip
+                                    size="x-small"
+                                    :color="getPalletStatus(pallet).color"
+                                    variant="tonal"
+                                >
+                                    {{ getPalletStatus(pallet).label }}
                                 </v-chip>
                             </td>
                         </tr>
@@ -231,6 +313,37 @@ defineExpose({ loadItems, applyFilters })
 
             <v-card-actions class="justify-end">
                 <v-btn color="secondary" variant="outlined" @click="closePalletsDialog">Close</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <!-- Cancel Reservation Confirmation Dialog -->
+    <v-dialog v-model="cancelConfirmDialog" max-width="480" persistent>
+        <v-card>
+            <v-card-title class="text-h6 pa-4">Cancel Reservation</v-card-title>
+            <v-card-text class="pb-2">
+                Are you sure you want to cancel the reservation for delivery
+                <strong>{{ rowToCancel?.reserved_pallets?.[0]?.delivery_document }}</strong>
+                item <strong>{{ rowToCancel?.delivery_item_number }}</strong>?
+                This will unreserve all {{ rowToCancel?.total_reserved_pallets }} pallet(s).
+            </v-card-text>
+            <v-alert
+                v-if="cancelError"
+                type="error"
+                variant="tonal"
+                class="mx-4 mb-2"
+                density="compact"
+            >
+                {{ cancelError }}
+            </v-alert>
+            <v-card-actions class="justify-end pa-4 pt-2">
+                <v-btn variant="outlined" color="secondary" :disabled="isCancelling" @click="cancelConfirmDialog = false">Dismiss</v-btn>
+                <v-btn color="error" variant="flat" :loading="isCancelling" @click="cancelReservation">
+                    <template #loader>
+                        <v-progress-circular indeterminate color="white" size="20" width="2" />
+                    </template>
+                    Cancel Reservation
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
