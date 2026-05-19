@@ -575,13 +575,13 @@ const dateFilters = [
             Export
         </v-btn>
 
-        <v-btn v-if="authUserCan('create.production.runs')" class="d-flex align-center" prepend-icon="ri-add-line"
+        <!-- <v-btn v-if="authUserCan('create.production.runs')" class="d-flex align-center" prepend-icon="ri-add-line"
             @click="dialogVisible = true">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
             Add Manual Run
-        </v-btn>
+        </v-btn> -->
 
         <v-btn variant="outlined" color="primary-light" class="d-flex align-center" prepend-icon="ri-play-circle-line"
             @click="showRecentProduced">
@@ -786,7 +786,7 @@ const dateFilters = [
             </template>
 
             <template #item.inventory_log_count="{ item }">
-                {{ item.inventory_logs.length }}
+                {{ item.inventory_logs?.length }}
             </template>
 
             <template #item.sap_count="{ item }">

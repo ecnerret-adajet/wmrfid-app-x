@@ -252,13 +252,15 @@ const loadItems = async ({ page, itemsPerPage, sortBy }) => {
                 :items="serverItems" :items-length="totalItems" item-value="id" @update:options="loadItems"
                 class="text-no-wrap">
                 <template #item.plant_id="{ item }">
-                    {{ item.plant?.name }}
+                    <span class="font-weight-bold">{{ item.plant?.plant_code }}</span><br />
+                    <span v-if="item.plant" class="text-subtitle-1">{{ item.plant?.name }}</span>
                 </template>
                 <template #item.batch="{ item }">
                     {{ item.COMMODITY }}
                 </template>
                 <template #item.material_id="{ item }">
-                    {{ item.material?.description }}
+                    <span class="font-weight-bold">{{ item.material?.bu_material }}</span><br />
+                    <span v-if="item.material" class="text-subtitle-1">{{ item.material?.description }}</span>
                 </template>
                 <template #item.start_date_time="{ item }">
                     {{ item.START_T ? Moment(item.START_T).format('MMMM D, YYYY h:mm A') : '' }}
