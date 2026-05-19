@@ -197,6 +197,17 @@ export const routes = [
             },
         },
         {
+            path: 'reserved-delivery-orders',
+            name: 'reserved-delivery-orders',
+            component: () => import('@/pages/reserved-delivery-orders/index.vue'),
+            meta: {
+              pageTitle: "Reserved Delivery Orders",
+              breadcrumbs: [
+                  { label: "Reserved Delivery Orders", link: "/reserved-delivery-orders" },
+              ],
+            },
+        },
+        {
             path: 'transfer-orders',
             name: 'transfer-orders',
             component: () => import('@/pages/transfers/index.vue'),

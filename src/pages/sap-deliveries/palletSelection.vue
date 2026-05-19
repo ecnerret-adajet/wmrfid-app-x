@@ -129,6 +129,7 @@ const proceedReserve = async () => {
     formData.append('denominator', store.selectedDeliveryItem?.denominator)
     formData.append('plant', store.selectedDeliveryItem?.plant)
     formData.append('sloc', store.selectedDeliveryItem?.storage_location)
+    formData.append('sales_unit', store.selectedDeliveryItem?.sales_unit)
     formData.append('mode', store.activeTab)
     formData.append('stock_exception', store.activeTab !== 'available_stocks')
     formData.append('batches', JSON.stringify(distributedPallets.value))
