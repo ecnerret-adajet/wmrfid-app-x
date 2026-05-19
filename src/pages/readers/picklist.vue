@@ -286,6 +286,7 @@ const displayPlateNumber = computed(() => {
     return shipmentData.shipment?.plate_number_1 ||
         shipmentData.shipment?.plate_number_2 ||
         shipmentData.shipment?.plate_number_3 ||
+        shipmentData.shipment?.plate_number_4 ||
         ""; // Default value if none exist
 });
 
