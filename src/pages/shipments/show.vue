@@ -136,6 +136,16 @@ const isStatusMatched = computed(() => {
     return shipmentData.value?.shipment?.bu_overall_status === shipmentData.value?.shipment?.alc_overall_status;
 });
 
+const reservedPallets = computed(() => {
+    return serverItems.value.flatMap(delivery =>
+        (delivery.items ?? []).flatMap(item =>
+            (item.delivery_reserved_orders ?? []).flatMap(order =>
+                order.reserved_pallets ?? []
+            )
+        )
+    )
+});
+
 const syncingLoading = ref(false)
 const syncStatus = async () => {
     syncingLoading.value = true;
@@ -335,6 +345,46 @@ const syncStatus = async () => {
                     </div>
                 </v-card-text>
             </v-card> -->
+        </div>
+
+        <div>
+            <v-card class="mt-2">
+                <v-card-text class="mx-2">
+                    <h4 class="text-h4 font-weight-black text-primary">Reserved Pallets</h4>
+                    <div class="mt-2">
+                        <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+                        <v-table v-else>
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Batch</th>
+                                    <th class="text-left">Physical ID</th>
+                                    <th class="text-center">Item No.</th>
+                                    <th class="text-left">Material Code</th>
+                                    <th class="text-left">Description</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-left">Scanned QR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(pallet, index) in reservedPallets" :key="index">
+                                    <td>{{ pallet.batch }}</td>
+                                    <td>{{ pallet.pallet_physical_id }}</td>
+                                    <td class="text-center">{{ pallet.delivery_item_number }}</td>
+                                    <td>{{ pallet.material_code }}</td>
+                                    <td>{{ pallet.material_description }}</td>
+                                    <td class="text-center">{{ pallet.total_qty }}</td>
+                                    <td>{{ pallet.scanned_qr }}</td>
+                                </tr>
+                                <tr v-if="!reservedPallets.length">
+                                    <td colspan="7" class="text-center text-medium-emphasis py-4">
+                                        No reserved pallets found.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </div>
+                </v-card-text>
+            </v-card>
         </div>
 
         <div>
