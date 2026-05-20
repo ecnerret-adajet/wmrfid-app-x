@@ -60,7 +60,6 @@ const otherStocks = ref([
 
 <template>
     <DefaultModal 
-        :dialog-title="`${deliveryData?.delivery_document} - Reserved Pallets`" 
         :show="show" 
         @close="handleClose" 
         min-height="auto"
@@ -69,7 +68,7 @@ const otherStocks = ref([
     >
         <v-card>
             <div class="d-flex justify-space-between align-center px-4 mt-4">
-                <h4 class="text-h4 mx-4 font-weight-black text-primary">Delivery Details</h4>
+                <h4 class="text-h4 mx-4 font-weight-black text-primary">Batch Picking</h4>
             </div>
             <v-card-title>
                 <VList lines="one"  density="compact" class="mt-4">
