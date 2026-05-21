@@ -122,7 +122,6 @@ const proceedReserve = async () => {
         toast.value.show = true;
         return;
     }
-    console.log(stoBatchPickingStore.stoDetails)
 
     let formData = new FormData();
     formData.append('po_number', stoBatchPickingStore.stoDetails?.po_number);
@@ -138,6 +137,10 @@ const proceedReserve = async () => {
     formData.append('stock_exception', stoBatchPickingStore.activeTab !== 'available_stocks');
     formData.append(`batches`, JSON.stringify(distributedPallets.value));
     formData.append('sap_server', stoBatchPickingStore.stoDetails?.sap_server);
+    formData.append('transport_number', stoBatchPickingStore.selectedTransport?.transport?.transport_number);
+    formData.append('plate_number', stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number);
+    formData.append('driver_name', stoBatchPickingStore.selectedTransport?.transport?.driver?.full_name);
+
 
     try {
         submitProposalLoading.value = true;

@@ -1,11 +1,15 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import moment from 'moment';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import BatchPick from './batchPick.vue';
+
+const stoBatchPickingStore = useStoBatchPickingStore();
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -147,15 +151,54 @@ const applyFilters = (data) => {
     });
 }
 const viewReservedPallets = ref(false);
+const viewTransports = ref(false);
+const transports = ref([]);
 const handleAction = (sto, action) => {
     stoData.value = sto;
     if (action == 'batch_pick') {
-        showReservedPallets.value = true;
+        // showReservedPallets.value = true;
+        viewTransports.value = true;
+        fetchTransports()
     } else if (action == 'view_reserved_pallets') {
         viewReservedPallets.value = true;
     }
 
 }
+
+const transportLoading = ref(false)
+const fetchTransports = async (searchQuery = '') => {
+    transportLoading.value = true;
+    try {
+        const response = await ApiService.query(`transfer-orders/get-transports/${stoData?.value?.po_number}/${stoData?.value?.po_item}`, {
+
+        });
+        transports.value = response.data.transports;
+        console.log(transports.value)
+    } catch (error) {
+        console.error('Failed fetching transports:', error);
+    } finally {
+        transportLoading.value = false;
+    }
+};
+
+const handleSelectBatch = () => {
+    viewTransports.value = false;
+
+    const selectedTransport = transports.value?.find(
+        (item) => item.id === selectedTransportId.value
+    );
+    stoBatchPickingStore.selectedTransport = selectedTransport;
+
+    showReservedPallets.value = true;
+}
+
+const selectedTransportId = ref(null);
+
+watch(() => viewTransports.value, (isOpen) => {
+    if (!isOpen) {
+        selectedTransportId.value = null;
+    }
+});
 
 const calculateAge = (date) => {
     if (!date) return '';
@@ -164,6 +207,12 @@ const calculateAge = (date) => {
     const days = now.diff(mfgDate, 'days');
     return days;
 };
+
+function batchPickClose() {
+    selectedTransportId.value = null;
+    stoData.value = null;
+    showReservedPallets.value = false
+}
 
 defineExpose({
     loadItems,
@@ -307,7 +356,7 @@ defineExpose({
         </template>
     </VDataTableServer>
 
-    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+    <v-dialog v-model="viewReservedPallets" max-width="1300px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
@@ -319,20 +368,24 @@ defineExpose({
                 <v-table density="compact" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
+                            <th>Transport Number</th>
+                            <th>Driver Name</th>
+                            <th>Plate Number</th>
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
                             <th class="text-center">Quantity ({{ stoData?.uom }})</th>
-                            <th class="text-center">Age</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="(item, index) in stoData?.reserved_pallets">
+                            <td>{{ item.transport_number }}</td>
+                            <td>{{ item.driver_name }}</td>
+                            <td>{{ item.plate_number }}</td>
                             <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.batch }}</td>
                             <td>{{ item.manufacturing_date }}</td>
                             <td class="text-center">{{ item.total_qty }} {{ stoData?.uom }}</td>
-                            <td class="text-center">{{ calculateAge(item.manufacturing_date) }}</td>
                         </tr>
                     </tbody>
                 </v-table>
@@ -346,8 +399,71 @@ defineExpose({
         </v-card>
     </v-dialog>
 
+    <v-dialog v-model="viewTransports" max-width="1500px">
+        <v-skeleton-loader v-if="transportLoading" type="article"></v-skeleton-loader>
+        <v-card v-else elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Select Transport
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="viewTransports = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <!-- FIX: Wrap table in a single radio group component to restrict selection context -->
+                <v-radio-group v-model="selectedTransportId" hide-details class="w-100">
+                    <v-table density="compact" class="elevation-0 border mx-4">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 60px;"></th>
+                                <th>Transport Number</th>
+                                <th>Driver</th>
+                                <th>Plate Number</th>
+                                <th>Batch</th>
+                                <th>Transport Entry Qty</th>
+                                <th>Reserved Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 1. Show the transport rows if data exists -->
+                            <template v-if="transports && transports.length > 0">
+                                <tr v-for="(item, index) in transports" :key="index">
+                                    <td class="text-center">
+                                        <v-radio :value="item.id" color="primary" density="compact"
+                                            class="d-inline-flex justify-center"></v-radio>
+                                    </td>
+                                    <td>{{ item.transport?.transport_number }}</td>
+                                    <td>{{ item.transport?.driver?.full_name }}</td>
+                                    <td>{{ item.transport?.vehicle?.plate_number }}</td>
+                                    <td>{{ item.batch }}</td>
+                                    <td>{{ numberWithComma(item.qty) }} {{ stoData?.uom }}</td>
+                                    <td>{{ numberWithComma(item.origin_qty) }} {{ stoData?.uom }}</td>
+                                </tr>
+                            </template>
+
+                            <!-- 2. Fallback empty state row -->
+                            <tr v-else>
+                                <td colspan="7" class="text-center text-grey-darken-1 py-8">
+                                    <v-icon icon="ri-truck-line" size="large" class="mb-1 mr-2"></v-icon>
+                                    No transport data found for this item.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </v-radio-group>
+
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewTransports = false"
+                        type="button">Close</v-btn>
+                    <!-- Disabled button rule if nothing is picked yet -->
+                    <v-btn color="primary" class="ml-3" @click="handleSelectBatch" :disabled="!selectedTransportId"
+                        type="button">Select Batch</v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
     <!-- Show Reserved Pallets Modal -->
-    <BatchPick :show="showReservedPallets" :sto-data="stoData" @close="showReservedPallets = false" />
+    <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" />
 
     <Toast :show="toast.show" :message="toast.message" />
 

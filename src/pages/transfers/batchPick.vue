@@ -179,7 +179,7 @@ const selectPallets = () => {
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">{{ parseInt(stoData?.material_code, 10)
-                                            }}</span>
+                                        }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -232,7 +232,7 @@ const selectPallets = () => {
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">{{ stoData?.supplying_order_plant?.plant_code
-                                            }} - {{ stoData?.supplying_order_plant?.name }}</span>
+                                        }} - {{ stoData?.supplying_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -243,7 +243,7 @@ const selectPallets = () => {
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">{{ stoData?.receiving_order_plant?.plant_code
-                                            }} - {{ stoData?.receiving_order_plant?.name }}</span>
+                                        }} - {{ stoData?.receiving_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -270,7 +270,7 @@ const selectPallets = () => {
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">{{ stoData?.receiving_storage_location?.code
-                                            }} - {{ stoData?.receiving_storage_location?.name }}</span>
+                                        }} - {{ stoData?.receiving_storage_location?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -315,18 +315,73 @@ const selectPallets = () => {
                         </VRow>
                     </VListItem>
 
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Transport No.</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ stoBatchPickingStore.selectedTransport?.transport?.transport_number }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Vehicle</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number
+                                            }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Driver</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ stoBatchPickingStore.selectedTransport?.transport?.driver?.full_name }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Transport QTY</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ numberWithComma(stoBatchPickingStore.selectedTransport?.qty) }} {{
+                                                stoData?.uom }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
 
                     <!-- Add item as needed  -->
                 </VList>
             </v-card-title>
             <v-divider class="my-4"></v-divider>
-
-            <v-card-text>
+            <v-skeleton-loader v-if="pageLoading" type="article"></v-skeleton-loader>
+            <v-card-text v-else>
                 <div v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" class="mt-4">
                     <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs" hide-slider>
-                        <v-tab value="other_stocks" class="text-h5">
-                            Transports
-                        </v-tab>
                         <v-tab value="available_stocks" class="text-h5">
                             Available Stocks
                         </v-tab>
