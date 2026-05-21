@@ -57,11 +57,22 @@ watch(() => props.stoData, async (newData) => {
         }
 
         try {
+
+            // 1. Fetch header details and open quantity first
             await stoBatchPickingStore.fetchHeaderDetails(params);
-            await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
-            // await stoBatchPickingStore.fetchOtherAvailableCommodities(delParams);
             await stoBatchPickingStore.fetchOpenQuantity(openQuantityParams);
-            
+
+            // 2. Check the store's state for the open quantity balance
+            // Change ".openQuantity" to match your Pinia store's exact state variable name
+            if (stoBatchPickingStore.stoDetails?.open_quantity > 0) {
+                await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
+            }
+
+            // await stoBatchPickingStore.fetchHeaderDetails(params);
+            // await stoBatchPickingStore.fetchOpenQuantity(openQuantityParams);
+            // await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
+            // await stoBatchPickingStore.fetchOtherAvailableCommodities(delParams);
+
         } catch (error) {
             console.error("Failed to fetch picking data:", error);
         } finally {
@@ -92,7 +103,7 @@ const activeTab = ref('available_stocks');
 const selectPallets = () => {
     let selectedBatchData = [];
 
-    
+
     toast.value.show = false;
     if (stoBatchPickingStore.activeTab === 'available_stocks') {
         selectedBatchData = stoBatchPickingStore.availableStocks
@@ -103,7 +114,7 @@ const selectPallets = () => {
                 bags_quantity: stock.split_qty_bag
             }));
     } else {
-        
+
         if (stoBatchPickingStore.customerApprovalFile === null) {
             toast.value.color = 'error';
             toast.value.message = 'Please select customer approval document.';
@@ -151,28 +162,24 @@ const selectPallets = () => {
 </script>
 
 <template>
-    <DefaultModal 
-        :show="show" 
-        @close="handleClose" 
-        min-height="auto"
-        class="position-absolute d-flex align-center justify-center" 
-        :fullscreen="true"
-    >
+    <DefaultModal :show="show" @close="handleClose" min-height="auto"
+        class="position-absolute d-flex align-center justify-center" :fullscreen="true">
         <v-card>
             <div class="d-flex justify-space-between align-center px-4 mt-4">
                 <h4 class="text-h4 mx-4 font-weight-black text-primary">Batch Picking</h4>
             </div>
             <v-card-title>
-                <VList lines="one"  density="compact" class="mt-4">
+                <VList lines="one" density="compact" class="mt-4">
                     <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
-                        <VRow  class="table-row" no-gutters>
+                        <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Material Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ parseInt(stoData?.material_code, 10)  }}</span>
+                                        <span class="text-medium-emphasis">{{ parseInt(stoData?.material_code, 10)
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -182,7 +189,7 @@ const selectPallets = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">PO Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ stoData?.po_number  }}</span>
+                                        <span class="text-medium-emphasis">{{ stoData?.po_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -193,7 +200,8 @@ const selectPallets = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Material Description</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Material
+                                            Description</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">{{ stoData?.material_description }}</span>
@@ -214,7 +222,7 @@ const selectPallets = () => {
                             </VCol>
                         </VRow>
                     </VListItem>
-                    
+
                     <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
@@ -223,7 +231,8 @@ const selectPallets = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Plant</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoData?.supplying_order_plant?.plant_code  }} - {{ stoData?.supplying_order_plant?.name }}</span>
+                                        <span class="text-medium-emphasis">{{ stoData?.supplying_order_plant?.plant_code
+                                            }} - {{ stoData?.supplying_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -233,7 +242,8 @@ const selectPallets = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Plant</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoData?.receiving_order_plant?.plant_code  }} - {{ stoData?.receiving_order_plant?.name }}</span>
+                                        <span class="text-medium-emphasis">{{ stoData?.receiving_order_plant?.plant_code
+                                            }} - {{ stoData?.receiving_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -248,7 +258,8 @@ const selectPallets = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Sloc</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoData?.issuing_storage_location?.code  }} - {{ stoData?.issuing_storage_location?.name }}</span>
+                                        <span class="text-medium-emphasis">{{ stoData?.issuing_storage_location?.code }}
+                                            - {{ stoData?.issuing_storage_location?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -258,7 +269,8 @@ const selectPallets = () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Sloc</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoData?.receiving_storage_location?.code  }} - {{ stoData?.receiving_storage_location?.name }}</span>
+                                        <span class="text-medium-emphasis">{{ stoData?.receiving_storage_location?.code
+                                            }} - {{ stoData?.receiving_storage_location?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -270,24 +282,31 @@ const selectPallets = () => {
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">PO Item Quantity</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">PO Item
+                                            Quantity</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">
-                                            {{ Number(stoData?.qty ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                                            {{ Number(stoData?.qty ?? 0).toLocaleString('en-US', {
+                                                minimumFractionDigits: 2, maximumFractionDigits: 2
+                                            }) }}
                                             {{ stoData?.commercial_uom?.commercial_uom }}
                                         </span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
-                                  <VRow class="table-row">
+                                <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Open Quantity</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">
-                                            {{ Number(stoBatchPickingStore?.stoDetails?.open_quantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                                            {{ Number(stoBatchPickingStore?.stoDetails?.open_quantity ??
+                                                0).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }) }}
                                             {{ stoData?.commercial_uom?.commercial_uom }}
                                         </span>
                                     </VCol>
@@ -295,118 +314,128 @@ const selectPallets = () => {
                             </VCol>
                         </VRow>
                     </VListItem>
-                
-                   
+
+
                     <!-- Add item as needed  -->
                 </VList>
             </v-card-title>
             <v-divider class="my-4"></v-divider>
 
             <v-card-text>
-                <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs" hide-slider>
-                    <v-tab value="available_stocks" class="text-h5">
-                        Available Stocks
-                    </v-tab>
-                    <v-tab value="other_stocks" class="text-h5">
-                        Other Stocks
-                    </v-tab>
-                </v-tabs>
-                <v-tabs-window v-model="activeTab" class="mt-4">
-                    <v-tabs-window-item value="available_stocks">
-                        <v-table density="compact" class="stock-table elevation-0">
-                            <thead>
-                                <tr>
-                                    <th>Batch Code</th>
-                                    <th>Mfg Date</th>
-                                    <th>Expiration Date</th>
-                                    <th>Age</th>
-                                    <th>Avail. Qty</th>
-                                    <th>Avail Pallets</th>
-                                    <th>Split Qty</th>
-                                    <th>Min. Pallet</th>
-                                    <th>Min. Qty</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(item, index) in stoBatchPickingStore.availableStocks" :key="index" :class="{ 'selected-row': item.selected }">
-                                    <td>{{ item.BATCH }}</td>
-                                    <td>
-                                        {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : ''}}
-                                    </td>
-                                    <td :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
-                                        {{ item.SLED_STR }}
-                                    </td>
-                                    <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
-                                     <!-- Avail Quantity  -->
-                                    <td>
-                                        {{ numberWithComma(item.BAG) }}
-                                        {{ item.BASE_UOM }}
-                                    </td>
-                                    <!-- AVAIL PALLETS  -->
-                                    <td>
-                                        {{ item.inventory.length }} PALLET(s)
-                                    </td>
-                                    <!-- Split QTY  -->
-                                    <td> {{ numberWithComma(item.split_qty_bag) }} {{ item.BASE_UOM }}</td>
+                <div v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" class="mt-4">
+                    <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs" hide-slider>
+                        <v-tab value="other_stocks" class="text-h5">
+                            Transports
+                        </v-tab>
+                        <v-tab value="available_stocks" class="text-h5">
+                            Available Stocks
+                        </v-tab>
+                    </v-tabs>
+                    <v-tabs-window v-model="activeTab" class="mt-4">
+                        <v-tabs-window-item value="available_stocks">
+                            <v-table density="compact" class="stock-table elevation-0">
+                                <thead>
+                                    <tr>
+                                        <th>Batch Code</th>
+                                        <th>Mfg Date</th>
+                                        <th>Expiration Date</th>
+                                        <th>Age</th>
+                                        <th>Avail. Qty</th>
+                                        <th>Avail Pallets</th>
+                                        <th>Split Qty</th>
+                                        <th>Min. Pallet</th>
+                                        <th>Min. Qty</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in stoBatchPickingStore.availableStocks" :key="index"
+                                        :class="{ 'selected-row': item.selected }">
+                                        <td>{{ item.BATCH }}</td>
+                                        <td>
+                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                        </td>
+                                        <td
+                                            :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
+                                            {{ item.SLED_STR }}
+                                        </td>
+                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                        <!-- Avail Quantity  -->
+                                        <td>
+                                            {{ numberWithComma(item.BAG) }}
+                                            {{ item.BASE_UOM }}
+                                        </td>
+                                        <!-- AVAIL PALLETS  -->
+                                        <td>
+                                            {{ item.inventory.length }} PALLET(s)
+                                        </td>
+                                        <!-- Split QTY  -->
+                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ item.BASE_UOM }}</td>
 
-                                    <td class="text-uppercase"
-                                        :class="{ 'text-error': item.saved_reserved != null }">
-                                        {{ item.split_qty_pallets }}
-                                        Pallet
-                                    </td>
-                                    <td>{{ item.inventory_qty }} {{ item.BASE_UOM }}</td>
-                                    <td>
-                                        <v-checkbox v-model="item.is_selected" hide-details
-                                            :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                            density="compact">
-                                        </v-checkbox>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-tabs-window-item>
+                                        <td class="text-uppercase"
+                                            :class="{ 'text-error': item.saved_reserved != null }">
+                                            {{ item.split_qty_pallets }}
+                                            Pallet
+                                        </td>
+                                        <td>{{ item.inventory_qty }} {{ item.BASE_UOM }}</td>
+                                        <td>
+                                            <v-checkbox v-model="item.is_selected" hide-details
+                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                                density="compact">
+                                            </v-checkbox>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-tabs-window-item>
 
-                    <v-tabs-window-item value="other_stocks">
-                        <v-table density="compact" class="stock-table elevation-0">
-                            <thead>
-                                <tr>
-                                    <th>Batch Code</th>
-                                    <th>Mfg Date</th>
-                                    <th>Expiration Date</th>
-                                    <th>Age</th>
-                                    <th>Avail. Qty</th>
-                                    <th>Avail Pallets</th>
-                                    <th>Split Qty</th>
-                                    <th>Min. Pallet</th>
-                                    <th>Min. Qty</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(item, index) in stoBatchPickingStore.otherStocks" :key="index" :class="{ 'selected-row': item.selected }">
-                                    <td>{{ item.batch_code }}</td>
-                                    <td>{{ item.mfg_date }}</td>
-                                    <td>{{ item.expiration_date }}</td>
-                                    <td>{{ item.age }}</td>
-                                    <td>{{ item.avail_qty }}</td>
-                                    <td>{{ item.avail_pallets }}</td>
-                                    <td>{{ item.split_qty }}</td>
-                                    <td>{{ item.min_pallet }}</td>
-                                    <td>{{ item.min_qty }}</td>
-                                    <td>
-                                        <v-checkbox v-model="item.selected" hide-details density="compact"></v-checkbox>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-tabs-window-item>
-                </v-tabs-window>
+                        <v-tabs-window-item value="other_stocks">
+                            <v-table density="compact" class="stock-table elevation-0">
+                                <thead>
+                                    <tr>
+                                        <th>Batch Code</th>
+                                        <th>Mfg Date</th>
+                                        <th>Expiration Date</th>
+                                        <th>Age</th>
+                                        <th>Avail. Qty</th>
+                                        <th>Avail Pallets</th>
+                                        <th>Split Qty</th>
+                                        <th>Min. Pallet</th>
+                                        <th>Min. Qty</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in stoBatchPickingStore.otherStocks" :key="index"
+                                        :class="{ 'selected-row': item.selected }">
+                                        <td>{{ item.batch_code }}</td>
+                                        <td>{{ item.mfg_date }}</td>
+                                        <td>{{ item.expiration_date }}</td>
+                                        <td>{{ item.age }}</td>
+                                        <td>{{ item.avail_qty }}</td>
+                                        <td>{{ item.avail_pallets }}</td>
+                                        <td>{{ item.split_qty }}</td>
+                                        <td>{{ item.min_pallet }}</td>
+                                        <td>{{ item.min_qty }}</td>
+                                        <td>
+                                            <v-checkbox v-model="item.selected" hide-details
+                                                density="compact"></v-checkbox>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </v-table>
+                        </v-tabs-window-item>
+                    </v-tabs-window>
+                </div>
+                <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
+                    <span class="text-h3 text-primary">Reserved</span>
+                </div>
 
-                 <!-- Action Buttons -->
+                <!-- Action Buttons -->
                 <div class="d-flex justify-end mt-4 pa-4">
                     <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back</v-btn>
-                    <v-btn color="primary" @click="selectPallets" type="button">Select Pallets</v-btn>
+                    <v-btn color="primary" v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0"
+                        @click="selectPallets" type="button">Select Pallets</v-btn>
                 </div>
             </v-card-text>
         </v-card>
@@ -418,9 +447,11 @@ const selectPallets = () => {
 
 <style scoped>
 .custom-tabs {
-  border-bottom: none !important;
-  box-shadow: none !important; /* if there's a shadow */
+    border-bottom: none !important;
+    box-shadow: none !important;
+    /* if there's a shadow */
 }
+
 .delivery-details {
     margin-bottom: 8px;
 }

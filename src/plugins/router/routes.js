@@ -500,7 +500,7 @@ export const routes = [
         {
             path: '/batch-picking/:po_number/:po_item/sto-pallet-selection',
             name: 'sto-pallet-selection',
-            component: () => import('@/pages/batch-picking/palletPicking.vue'), 
+            component: () => import('@/pages/transfers/palletPicking.vue'), 
             meta: {
                 pageTitle: "Pallet Selection - Batch Picking"
             },

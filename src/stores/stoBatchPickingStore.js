@@ -10,7 +10,7 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
     const headerDetailsLoading = ref(false);
     const loadingAvailableStocks = ref(false);
     const loadingOtherStocks = ref(false)
-    const selectedDeliveryItem = ref(null);
+    const selectedPoItem = ref(null);
     const product_age = ref({ from: null, to: null }); 
     const availableStocks = ref([]); 
     const otherStocks = ref([])
@@ -59,8 +59,8 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
                 po_item: params.po_item,
                 po_number: params.po_number,
                 po_quantity: params.po_quantity,
-                sloc: params.storage_location,
-                plant_code: params.plant
+                sloc: params.sloc,
+                plant_code: params.plant_code
             }, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -205,7 +205,7 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
         fetchHeaderDetails,
         loadingAvailableStocks,
         headerDetailsLoading,
-        selectedDeliveryItem,
+        selectedPoItem,
         activeTab,
         customerApprovalFile,
         customerApprovalRemarks,

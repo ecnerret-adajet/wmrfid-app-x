@@ -1,7 +1,7 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
 import JwtService from '@/services/JwtService';
-import { useBatchPickingStore } from '@/stores/batchPickingStore';
+import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import axios from 'axios';
 import moment from 'moment';
 import { onMounted, ref } from 'vue';
@@ -10,12 +10,13 @@ import WarehouseMap from './warehouseMap.vue';
 
 const route = useRoute();
 const router = useRouter();
-const batchPickingStore = useBatchPickingStore();
+const stoBatchPickingStore = useStoBatchPickingStore();
 
-const do_number = route.params.do_number;
+const po_number = route.params.po_number;
+const po_item = route.params.po_item
 const showLostDetails = ref(false);
 onMounted(() => {
-    if (batchPickingStore.batchList.length === 0) {
+    if (stoBatchPickingStore.batchList.length === 0) {
         showLostDetails.value = true;
     }
 })
@@ -27,8 +28,8 @@ function removeLeadingZeros(value) {
 
 function redirectPage() {
     router.push({
-        name: 'batch-picking',
-        params: { do_number: do_number }
+        name: 'transfer-orders',
+        // params: { po_number: po_number }
     });
 }
 
@@ -41,10 +42,10 @@ const selectedBatch = ref(null);
 function batchSelected(batch) {
     selectedBatch.value = batch;
     if (batch === null) {
-        batchPickingStore.setBatches(batchPickingStore.originalBatchList);
+        stoBatchPickingStore.setBatches(stoBatchPickingStore.originalBatchList);
         return;
     }
-    batchPickingStore.setBatches([batch]);
+    stoBatchPickingStore.setBatches([batch]);
 }
 
 const calculateAge = (date) => {
@@ -62,7 +63,7 @@ const handleSelectedPalletsUpdate = (pallets) => {
 };
 
 const computedBatchList = computed(() => {
-    return batchPickingStore.originalBatchList.map(batch => {
+    return stoBatchPickingStore.originalBatchList.map(batch => {
         // Count how many pallets from this batch are in parentSelectedPallets
         const countInTable = parentSelectedPallets.value.filter(
             pallet => pallet.batch === batch.BATCH
@@ -80,7 +81,7 @@ const computedBatchList = computed(() => {
 });
 
 const distributedPallets = computed(() => {
-    let remaining = batchPickingStore.deliveryDetails?.open_quantity;
+    let remaining = stoBatchPickingStore.stoDetails?.open_quantity;
     return parentSelectedPallets.value.map(item => {
         // Assume item.quantity is the max available for this pallet
         const maxTake = item.quantity || 0;
@@ -92,6 +93,7 @@ const distributedPallets = computed(() => {
         };
     });
 });
+
 
 const toast = ref({
     message: 'Pallet selected',
@@ -120,28 +122,28 @@ const proceedReserve = async () => {
         toast.value.show = true;
         return;
     }
+    console.log(stoBatchPickingStore.stoDetails)
 
     let formData = new FormData();
-    formData.append('do_number', batchPickingStore.deliveryDetails?.do_number);
-    formData.append('material_name', batchPickingStore.selectedDeliveryItem?.material_description);
-    formData.append('material_code', removeLeadingZeros(batchPickingStore.selectedDeliveryItem.material_number));
-    formData.append('delivery_document', batchPickingStore.selectedDeliveryItem?.delivery_document);
-    formData.append('item_number', batchPickingStore.selectedDeliveryItem?.item_number);
-    formData.append('delivery_quantity', batchPickingStore.selectedDeliveryItem?.delivery_quantity);
-    formData.append('numerator', batchPickingStore.selectedDeliveryItem?.numerator);
-    formData.append('denominator', batchPickingStore.selectedDeliveryItem?.denominator);
-    formData.append('plant', batchPickingStore.selectedDeliveryItem?.plant);
-    formData.append('sloc', batchPickingStore.selectedDeliveryItem?.storage_location);
-    formData.append('mode', batchPickingStore.activeTab);
-    formData.append('stock_exception', batchPickingStore.activeTab !== 'available_stocks');
+    formData.append('po_number', stoBatchPickingStore.stoDetails?.po_number);
+    formData.append('po_item', stoBatchPickingStore.stoDetails?.po_item);
+    formData.append('material_name', stoBatchPickingStore.stoDetails?.material_description);
+    formData.append('material_code', removeLeadingZeros(stoBatchPickingStore.stoDetails.material_code));
+    formData.append('qty', stoBatchPickingStore.stoDetails?.qty);
+    formData.append('numerator', stoBatchPickingStore.stoDetails?.numerator);
+    formData.append('denominator', stoBatchPickingStore.stoDetails?.denominator);
+    formData.append('plant', stoBatchPickingStore.stoDetails?.supplying_plant);
+    formData.append('sloc', stoBatchPickingStore.stoDetails?.issuing_sloc_sto);
+    formData.append('mode', stoBatchPickingStore.activeTab);
+    formData.append('stock_exception', stoBatchPickingStore.activeTab !== 'available_stocks');
     formData.append(`batches`, JSON.stringify(distributedPallets.value));
-    formData.append('sap_server', batchPickingStore.selectedDeliveryItem?.sap_server);
+    formData.append('sap_server', stoBatchPickingStore.stoDetails?.sap_server);
 
     try {
         submitProposalLoading.value = true;
         const token = JwtService.getToken();
         const { data } = await axios.post(
-            `deliveries/delivery-order-proposed`,
+            `transfer-orders/transfer-order-proposed`,
             formData,
             {
                 headers: {
@@ -160,13 +162,7 @@ const proceedReserve = async () => {
                 toast.value.color = 'error';
                 toast.value.message = batchPickError;
                 toast.value.show = true;
-                // loadItems({
-                //     page: page.value,
-                //     itemsPerPage: itemsPerPage.value,
-                //     sortBy: [{key: 'created_at', order: 'desc'}],
-                //     search: props.search
-                // });
-                // closeModal()
+
             }
 
             return;
@@ -174,23 +170,9 @@ const proceedReserve = async () => {
 
         // Proceed normally if successful
         if (data.success) {
-
-            const fetchParams = {
-                delivery_document: batchPickingStore.selectedDeliveryItem?.delivery_document,
-                item_number: batchPickingStore.selectedDeliveryItem?.item_number,
-                delivery_quantity: batchPickingStore.selectedDeliveryItem?.delivery_quantity,
-                storage_location: batchPickingStore.selectedDeliveryItem?.storage_location,
-                plant: batchPickingStore.selectedDeliveryItem?.plant,
-            };
-
-            // Wait for both to finish before routing
-            // await batchPickingStore.fetchOpenQuantity(fetchParams);
-            await batchPickingStore.fetchHeaderDetails({ do_number: do_number });
-
             // Now redirect
             router.push({
-                name: 'batch-picking',
-                params: { do_number: do_number }
+                name: 'transfer-orders',
             });
         }
 
@@ -212,131 +194,164 @@ const proceedReserve = async () => {
                     Pallet Selection
                 </div>
                 <div>
-                    <v-btn @click="redirectPage" class="mr-2" color="secondary" variant="outlined">Back to Delivery
-                        Item</v-btn>
+                    <v-btn @click="redirectPage" class="mr-2" color="secondary" variant="outlined">Back</v-btn>
                     <v-btn :loading="submitProposalLoading" @click="proceedReserve" color="primary">Proceed
                         Reserve</v-btn>
                 </div>
             </v-card-title>
             <v-card-text>
                 <VList lines="one" density="compact">
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">ALC Delivery</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Material Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{
-                                            batchPickingStore.deliveryDetails?.do_number }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            parseInt(stoBatchPickingStore?.stoDetails?.material_code, 10) }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">BU Delivery</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">PO Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{
-                                            batchPickingStore.deliveryDetails?.customer_delivery?.delivery_document ||
-                                            null }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.po_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                         </VRow>
                     </VListItem>
-                    <VListItem style="padding-top: 4px; padding-bottom: 0px; margin-top: 5px;">
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis ">Ship-to-Party</span>
-                                    </VCol>
-                                    <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis font-weight-medium">{{
-                                            batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_name }}</span>
-                                        <div class="text-subtitle-1 font-weight-thin">{{
-                                            batchPickingStore.deliveryDetails?.customer_delivery?.ship_to_customer }}
-                                        </div>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Material</span>
-                                    </VCol>
-                                    <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis font-weight-medium">{{
-                                            batchPickingStore.selectedDeliveryItem?.material_description }}</span>
-                                        <div class="text-subtitle-1 font-weight-thin">{{
-                                            removeLeadingZeros(batchPickingStore.selectedDeliveryItem?.material_number)
-                                            }}</div>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Plant</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Material
+                                            Description</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
                                         <span class="text-medium-emphasis">{{
-                                            batchPickingStore.selectedDeliveryItem?.plant_model?.plant_code }} - {{
-                                                batchPickingStore.selectedDeliveryItem?.plant_model?.name }}</span>
+                                            stoBatchPickingStore?.stoDetails?.material_description }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Storage
-                                            Location</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">PO Item No.</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{
-                                            batchPickingStore.selectedDeliveryItem?.storage_location_model?.code }} - {{
-                                                batchPickingStore.selectedDeliveryItem?.storage_location_model?.name
-                                            }}</span>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Required Quantity
+                                        <span class="text-medium-emphasis">
+                                            {{ stoBatchPickingStore?.stoDetails?.po_item }}
                                         </span>
                                     </VCol>
-                                    <VCol class="d-inline-flex align-center">
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row ">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Plant</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">{{
-                                            batchPickingStore.selectedDeliveryItem?.delivery_quantity }}</span>
+                                            stoBatchPickingStore?.stoDetails?.supplying_order_plant?.plant_code }} - {{
+                                                stoBatchPickingStore?.stoDetails?.supplying_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
                                     <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">Age</span>
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Plant</span>
                                     </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ batchPickingStore?.product_age?.from }} -
-                                            {{ batchPickingStore?.product_age?.to }} Days</span>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.receiving_order_plant?.plant_code }} - {{
+                                                stoBatchPickingStore?.stoDetails?.receiving_order_plant?.name }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
                         </VRow>
                     </VListItem>
-                    <VListItem style="padding-top: 0px; padding-bottom: 0px;">
+
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row ">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Sloc</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.issuing_storage_location?.code }} - {{
+                                                stoBatchPickingStore?.stoDetails?.issuing_storage_location?.name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Sloc</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.receiving_storage_location?.code }} - {{
+                                                stoBatchPickingStore?.stoDetails?.receiving_storage_location?.name }}</span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <VListItem style="padding-top: 0px !important; padding-bottom: 0px !important;">
+                        <VRow class="table-row" no-gutters>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">PO Item
+                                            Quantity</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ Number(stoBatchPickingStore?.stoDetails?.qty ??
+                                                0).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }) }}
+                                            {{ stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                            <VCol md="6" class="table-cell d-inline-flex">
+                                <VRow class="table-row">
+                                    <VCol cols="4" class="d-inline-flex align-center">
+                                        <span class="text-h6 font-weight-bold text-high-emphasis">Open Quantity</span>
+                                    </VCol>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis">
+                                            {{ Number(stoBatchPickingStore?.stoDetails?.open_quantity ??
+                                                0).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }) }}
+                                            {{ stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom }}
+                                        </span>
+                                    </VCol>
+                                </VRow>
+                            </VCol>
+                        </VRow>
+                    </VListItem>
+                    <!-- <VListItem style="padding-top: 0px; padding-bottom: 0px;">
                         <VRow class="table-row" no-gutters>
                             <VCol md="6" class="table-cell d-inline-flex">
                                 <VRow class="table-row">
@@ -362,7 +377,7 @@ const proceedReserve = async () => {
                                 </VRow>
                             </VCol>
                         </VRow>
-                    </VListItem>
+                    </VListItem> -->
                     <VListItem style="padding-top: 0px; padding-bottom: 0px;">
                         <VRow class="table-row" no-gutters>
                             <VCol md="12" class="table-cell d-inline-flex">
@@ -398,8 +413,8 @@ const proceedReserve = async () => {
                             <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
-                            <th class="text-center">Current Quantity</th>
-                            <th class="text-center">Allocated Quantity</th>
+                            <th class="text-center">CURRENT QTY ({{ stoBatchPickingStore.stoDetails?.uom }})</th>
+                            <th class="text-center">Allocated Quantity ({{ stoBatchPickingStore.stoDetails?.uom }})</th>
                             <th class="text-sm text-center">Age</th>
                             <th class="text-end"></th>
                         </tr>
@@ -433,10 +448,10 @@ const proceedReserve = async () => {
                 </div>
 
                 <div class="mt-3 mx-4">
-                    <WarehouseMap v-if="batchPickingStore.selectedDeliveryItem"
-                        :plantCode="batchPickingStore.selectedDeliveryItem?.plant"
-                        :selected-batches="batchPickingStore.batchList" :selectedPallets="parentSelectedPallets"
-                        :storageLocation="batchPickingStore.selectedDeliveryItem?.storage_location"
+                    <WarehouseMap v-if="stoBatchPickingStore.stoDetails"
+                        :plantCode="stoBatchPickingStore.stoDetails?.supplying_plant"
+                        :selected-batches="stoBatchPickingStore.batchList" :selectedPallets="parentSelectedPallets"
+                        :storageLocation="stoBatchPickingStore.stoDetails?.issuing_sloc_sto"
                         @update:selectedPallets="handleSelectedPalletsUpdate" />
                 </div>
             </v-card-text>
@@ -452,7 +467,7 @@ const proceedReserve = async () => {
             </v-card-title>
             <v-card-text>
                 <div class="px-4 mt-4 mx-2 text-h5">
-                    An error occured while fetching the data. You will be redirected to the batch selection page.
+                    An error occured while fetching the data. You will be redirected to the transfer orders page.
                 </div>
                 <div class="d-flex justify-end mt-8">
                     <v-btn color="primary" @click="redirectPage" type="button">Confirm</v-btn>
@@ -480,8 +495,8 @@ const proceedReserve = async () => {
                             <th class="text-center">Age</th>
                         </tr>
                     </thead>
-                    <tbody v-if="batchPickingStore.selectedDeliveryItem?.reserved_pallets?.length > 0">
-                        <tr v-for="(item, index) in batchPickingStore.selectedDeliveryItem?.reserved_pallets">
+                    <tbody v-if="stoBatchPickingStore.stoDetails?.reserved_pallets?.length > 0">
+                        <tr v-for="(item, index) in stoBatchPickingStore.stoDetails?.reserved_pallets">
                             <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.commodity_batch_code }}</td>
                             <td>{{ item.manufacturing_date }}</td>
