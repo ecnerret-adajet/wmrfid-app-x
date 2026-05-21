@@ -1,5 +1,4 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { ref } from 'vue';
@@ -27,7 +26,7 @@ const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
 const showDeliveryItems = ref(false);
 const showReservedPallets = ref(false);
-const deliveryData = ref([]);
+const stoData = ref([]);
 
 const headers = [
     {
@@ -151,15 +150,9 @@ const actionList = [
     { title: 'Batch Picking', key: 'batch_pick' },
 ]
 
-const handleViewDelivery = (delivery) => {
-    router.push(`/deliveries/${delivery.delivery_document}`);
-}
 
-const handleAction = (delivery, action) => {
-    deliveryData.value = delivery;
-    if(action.key == 'view_delivery_items') {
-        showDeliveryItems.value = true;
-    }
+const handleAction = (sto, action) => {
+    stoData.value = sto;
     if(action.key == 'batch_pick') {
         showReservedPallets.value = true;
     }
@@ -283,7 +276,7 @@ defineExpose({
 
     <!-- Actions -->
     <template #item.action="{ item }">
-        <!-- <div class="d-flex justify-center gap-1">
+        <div class="d-flex justify-center gap-1">
             <v-menu location="end"> 
                 <template v-slot:activator="{ props }">
                     <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
@@ -299,43 +292,14 @@ defineExpose({
                 </v-list-item>
                 </v-list>
             </v-menu>
-        </div> -->
+        </div>
     </template>
     </VDataTableServer>
-
-    <!-- Delivery items modal -->
-    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
-        class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
-        <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>Item No.</th>
-                        <th>Sloc</th>
-                        <th>Material</th>
-                        <th>Material Desc</th>
-                        <th>Quantity</th>
-                        <th>UOM</th>
-                        <th>Batch</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in deliveryData?.items" :key="index">
-                        <td>{{ item.item }}</td>
-                        <td>{{ item.storage_location_id }}</td>
-                        <td>{{ item.material }}</td>
-                        <td>{{ item.material_desc }} </td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.base_uom }}</td>
-                        <td>{{ item.batch_item_number }}</td>
-                    </tr>
-                </tbody>
-            </v-table>
-    </DefaultModal>
 
     <!-- Show Reserved Pallets Modal -->
     <BatchPick 
         :show="showReservedPallets" 
-        :delivery-data="deliveryData" 
+        :sto-data="stoData" 
         @close="showReservedPallets = false"
     />
 

@@ -498,6 +498,15 @@ export const routes = [
         },
 
         {
+            path: '/batch-picking/:po_number/:po_item/sto-pallet-selection',
+            name: 'sto-pallet-selection',
+            component: () => import('@/pages/batch-picking/palletPicking.vue'), 
+            meta: {
+                pageTitle: "Pallet Selection - Batch Picking"
+            },
+        },
+
+        {
             path: '/:plant_code/:sloc/:forklift/qc-inspection',
             name: 'qc-inspection',
             component: () => import('@/pages/qualityControl/QcInspection.vue'),
