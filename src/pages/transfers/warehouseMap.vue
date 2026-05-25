@@ -42,7 +42,7 @@ const emit = defineEmits(['update:selectedPallets']);
 const assignPallet = (inventory) => {
     toast.value.show = false
     const existingPallet = selectedPallets.value.find(p => p.physical_id === inventory.physical_id);
-   
+
     if (existingPallet) {
         // Pallet found, so remove it and show a removal message.
         selectedPallets.value = selectedPallets.value.filter(p => p.physical_id !== inventory.physical_id);
@@ -50,19 +50,19 @@ const assignPallet = (inventory) => {
         toast.value.color = 'warning'; // Or a different color like 'warning'
         toast.value.show = true;
     } else {
-        
+
         const batch = props.selectedBatches.find(b => b.BATCH === inventory.batch);
-        
+
         if (batch) {
             // Count how many pallets from this batch are already selected.
             const selectedCountForBatch = selectedPallets.value.filter(p => p.batch === inventory.batch).length;
 
             // Check if adding this pallet will exceed the batch's limit.
             if (selectedCountForBatch >= batch.pallet_quantity) {
-                toast.value.message = `Cannot add more than ${batch.pallet_quantity} pallets for batch ${inventory.batch}.`;
+                toast.value.message = `Cannot add more than ${batch.pallet_quantity} pallet(s) for batch ${inventory.batch}.`;
                 toast.value.color = 'error';
                 toast.value.show = true;
-                return; 
+                return;
             }
         }
 
@@ -174,10 +174,9 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 <template>
     <div class="grid-scroll-wrapper">
         <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
-        <GridLayout class="border mt-2 grid-layout" v-model:layout="filteredLayout"
-            v-else :col-num="130" :row-height="25" style="min-height: 200px;"
-            :is-draggable="false" :is-resizable="false" :responsive="false" :vertical-compact="false"
-            :prevent-collision="true" :use-css-transforms="true" :margin="[2, 0]">
+        <GridLayout class="border mt-2 grid-layout" v-model:layout="filteredLayout" v-else :col-num="130"
+            :row-height="25" style="min-height: 200px;" :is-draggable="false" :is-resizable="false" :responsive="false"
+            :vertical-compact="false" :prevent-collision="true" :use-css-transforms="true" :margin="[2, 0]">
             <GridItem v-for="item in filteredLayout" :key="item.i" :static="item.static" :x="item.x" :y="item.y"
                 :w="item.w" :h="item.h" :i="item.i" :min-w="2.5" :min-h="2" :class="{
                     'cursor-pointer': item.type !== 'lot' && item.clickable,
@@ -191,11 +190,9 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                     'empty-layer': item.type !== 'lot' && item.inventoriesCount === 0,
                     'dimmed-block': item.dimmed,
                     'highlighted-block': !item.dimmed
-                }" @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)"
-                :is-resizable="false">
+                }" @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)" :is-resizable="false">
 
-                <div v-if="item.type === 'lot' && (item.legend_only || item.legend_only === true)"
-                    class="legend-text">
+                <div v-if="item.type === 'lot' && (item.legend_only || item.legend_only === true)" class="legend-text">
                     {{ item.label }}
                 </div>
 
@@ -220,14 +217,11 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                 <div class="px-4 mt-4 mx-2 text-h5">
                     <VList class="py-0 mt-3" lines="two" border rounded density="compact">
                         <template v-for="(layer, index) of selectedBlock.layers" :key="layer.layer_name">
-                            <VListItem
-                                class="py-0 px-0"
-                                :class="[
-                                    selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
-                                    layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
-                                ]"
-                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))"
-                            >
+                            <VListItem class="py-0 px-0" :class="[
+                                selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
+                                layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
+                            ]"
+                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))">
                                 <template v-if="layer.assigned_inventory">
                                     <VListItem :class="[layer.layer_class,
                                     (selectedLayerIndex === index) ? 'highlighted-item' : '']">
@@ -235,25 +229,28 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                             <div class="assigned-info text-h5 text-grey-800 ">
                                                 <div class="assigned-row">
                                                     <span class="label">Batch: </span>
-                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
+                                                    <span class="value font-weight-bold">{{
+                                                        layer.assigned_inventory?.batch }}</span>
                                                 </div>
                                                 <div class="assigned-row">
                                                     <span class="label">Physical ID: </span>
-                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.physical_id }}</span>
+                                                    <span class="value font-weight-bold">{{
+                                                        layer.assigned_inventory?.physical_id }}</span>
                                                 </div>
                                                 <div class="assigned-row">
                                                     <span class="label">Quantity: </span>
-                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.quantity }}</span>
+                                                    <span class="value font-weight-bold">{{
+                                                        layer.assigned_inventory?.quantity }}</span>
                                                 </div>
                                             </div>
                                         </VListItemTitle>
                                         <template #append>
                                             <div class="d-flex gap-1">
-                                                <v-btn
-                                                    @click="assignPallet(layer.assigned_inventory)"
-                                                    :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'"
-                                                >
-                                                    {{ isSelected(layer.assigned_inventory) ? 'Selected' : '&nbsp Assign &nbsp' }}
+                                                <v-btn @click="assignPallet(layer.assigned_inventory)"
+                                                    :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'">
+                                                    {{
+                                                        isSelected(layer.assigned_inventory) ? 'Selected' : 'Assign'
+                                                    }}
                                                 </v-btn>
                                             </div>
                                         </template>
@@ -263,7 +260,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                 <template v-if="!layer.assigned_inventory">
                                     <VListItem>
                                         <VListItemTitle>
-                                            <span :class="selectedLayerIndex === index ? 'text-grey-100' : 'text-grey-700'"
+                                            <span
+                                                :class="selectedLayerIndex === index ? 'text-grey-100' : 'text-grey-700'"
                                                 class="text-h5 font-weight-bold">Empty</span>
                                         </VListItemTitle>
                                     </VListItem>
@@ -279,7 +277,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
             </v-card-text>
         </v-card>
     </v-dialog>
-    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 
 <style scoped>

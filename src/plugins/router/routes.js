@@ -553,9 +553,18 @@ export const routes = [
     },
     {
         path: '/reader/picklist/:reader/:bay',
+        name: 'shipment-picklist',
         component: () => import('@/pages/readers/picklist.vue'), 
         meta: {
             pageTitle: "Picklist"
+        },
+    },
+    {
+        path: '/reader/sto-picklist/:reader/:bay',
+        name: 'sto-picklist',
+        component: () => import('@/pages/readers/transfer.vue'), 
+        meta: {
+            pageTitle: "Transfer Order"
         },
     },
     {
