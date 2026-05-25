@@ -498,6 +498,15 @@ export const routes = [
         },
 
         {
+            path: '/batch-picking/:po_number/:po_item/sto-pallet-selection',
+            name: 'sto-pallet-selection',
+            component: () => import('@/pages/transfers/palletPicking.vue'), 
+            meta: {
+                pageTitle: "Pallet Selection - Batch Picking"
+            },
+        },
+
+        {
             path: '/:plant_code/:sloc/:forklift/qc-inspection',
             name: 'qc-inspection',
             component: () => import('@/pages/qualityControl/QcInspection.vue'),
@@ -544,9 +553,18 @@ export const routes = [
     },
     {
         path: '/reader/picklist/:reader/:bay',
+        name: 'shipment-picklist',
         component: () => import('@/pages/readers/picklist.vue'), 
         meta: {
             pageTitle: "Picklist"
+        },
+    },
+    {
+        path: '/reader/sto-picklist/:reader/:bay',
+        name: 'sto-picklist',
+        component: () => import('@/pages/readers/transfer.vue'), 
+        meta: {
+            pageTitle: "Transfer Order"
         },
     },
     {
