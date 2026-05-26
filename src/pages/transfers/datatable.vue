@@ -214,6 +214,23 @@ function batchPickClose() {
     showReservedPallets.value = false
 }
 
+function handleUpdated(){
+    selectedTransportId.value = null;
+    stoData.value = null;
+    showReservedPallets.value = false
+
+      // Close dialog modal view layer immediately
+    toast.value.color = 'success';
+    toast.value.message = 'Transfer order proposal saved successfully.';
+    toast.value.show = true;
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: props.search
+    });
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -436,7 +453,7 @@ defineExpose({
                                     <td>{{ item.transport?.vehicle?.plate_number }}</td>
                                     <td>{{ item.batch }}</td>
                                     <td>{{ numberWithComma(item.qty) }} {{ stoData?.uom }}</td>
-                                    <td>{{ numberWithComma(item.origin_qty) }} {{ stoData?.uom }}</td>
+                                    <td>{{ numberWithComma(item.reserved_qty) }} {{ stoData?.uom }}</td>
                                 </tr>
                             </template>
 
@@ -463,9 +480,10 @@ defineExpose({
     </v-dialog>
 
     <!-- Show Reserved Pallets Modal -->
-    <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" />
+    <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" @updated="handleUpdated"/>
 
-    <Toast :show="toast.show" :message="toast.message" />
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+
 
 </template>
 
