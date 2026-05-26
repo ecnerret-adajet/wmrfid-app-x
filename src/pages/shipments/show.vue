@@ -117,10 +117,11 @@ onMounted(async () => {
 });
 
 const displayPlateNumber = computed(() => {
-    return shipmentData.value?.shipment?.plate_number_1 ||
-        shipmentData.value?.shipment?.plate_number_2 ||
-        shipmentData.value?.shipment?.plate_number_3 ||
-        "N/A"; // Default value if none exist
+    return shipmentData.shipment?.plate_number_1 ||
+        shipmentData.shipment?.plate_number_2 ||
+        shipmentData.shipment?.plate_number_3 ||
+        shipmentData.shipment?.plate_number_4 ||
+        ""; // Default value if none exist
 });
 
 const handleViewDelivery = (delivery) => {

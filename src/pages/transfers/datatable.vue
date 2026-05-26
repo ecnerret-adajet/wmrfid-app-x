@@ -1,11 +1,15 @@
 <script setup>
-import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
+import moment from 'moment';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
-import ReservedPallets from './reservedPallets.vue';
+import BatchPick from './batchPick.vue';
+
+const stoBatchPickingStore = useStoBatchPickingStore();
 const emits = defineEmits(['pagination-changed']);
 
 const props = defineProps({
@@ -27,7 +31,7 @@ const sortQuery = ref('-created_at'); // Default sort
 const filters = ref(null);
 const showDeliveryItems = ref(false);
 const showReservedPallets = ref(false);
-const deliveryData = ref([]);
+const stoData = ref([]);
 
 const headers = [
     {
@@ -39,33 +43,25 @@ const headers = [
     {
         title: 'PO ITEM',
         key: 'po_item',
+        align: 'center',
     },
     {
         title: 'PO NUMBER',
         key: 'po_number',
     },
     {
-        title: 'Type',
-        key: 'type',
-        align: 'center',
-        sortable: false,
-    },
-    {
         title: 'Material',
         key: 'material',
         sortable: false,
+        width: '50px'
     },
     {
-        title: 'Storage Location',
-        key: 'storage_location',
+        title: 'From',
+        key: 'from_plant_sloc',
     },
     {
-        title: 'Supplying Plant',
-        key: 'supplying_plant',
-    },
-    {
-        title: 'Plant',
-        key: 'plant',
+        title: 'To',
+        key: 'to_plant_sloc',
     },
     {
         title: 'UOM',
@@ -79,7 +75,7 @@ const headers = [
     },
     {
         title: 'GI qty',
-        key: 'gi_qty',
+        key: 'gi_quantity',
         align: 'center',
         sortable: false,
     },
@@ -90,26 +86,22 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'Status',
-        key: 'status',
+        title: 'GR qty',
+        key: 'gr_quantity',
         align: 'center',
         sortable: false,
     },
     {
-        title: 'Release Ind.',
-        key: 'release_indicator',
+        title: 'GR Remaining qty',
+        key: 'gr_remaining_qty',
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'SAP Server',
-        key: 'sap_server',
-    },
-    
+
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-    
+
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -121,7 +113,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query('datatable/purchase-orders',{
+    ApiService.query('datatable/purchase-orders', {
         params: {
             page,
             itemsPerPage,
@@ -129,7 +121,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             search: props.search,
             filters: filters.value
         }
-        })
+    })
         .then((response) => {
             totalItems.value = response.data.total;
             serverItems.value = response.data.data
@@ -154,28 +146,72 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{key: 'created_at', order: 'desc'}],
+        sortBy: [{ key: 'created_at', order: 'desc' }],
         search: props.search
     });
 }
+const viewReservedPallets = ref(false);
+const viewTransports = ref(false);
+const transports = ref([]);
+const handleAction = (sto, action) => {
+    stoData.value = sto;
+    if (action == 'batch_pick') {
+        // showReservedPallets.value = true;
+        viewTransports.value = true;
+        fetchTransports()
+    } else if (action == 'view_reserved_pallets') {
+        viewReservedPallets.value = true;
+    }
 
-const actionList = [
-    { title: 'View Delivery Items', key: 'view_delivery_items' },
-    { title: 'Reserve Pallets', key: 'reserved_pallets' },
-]
-
-const handleViewDelivery = (delivery) => {
-    router.push(`/deliveries/${delivery.delivery_document}`);
 }
 
-const handleAction = (delivery, action) => {
-    deliveryData.value = delivery;
-    if(action.key == 'view_delivery_items') {
-        showDeliveryItems.value = true;
+const transportLoading = ref(false)
+const fetchTransports = async (searchQuery = '') => {
+    transportLoading.value = true;
+    try {
+        const response = await ApiService.query(`transfer-orders/get-transports/${stoData?.value?.po_number}/${stoData?.value?.po_item}`, {
+
+        });
+        transports.value = response.data.transports;
+        console.log(transports.value)
+    } catch (error) {
+        console.error('Failed fetching transports:', error);
+    } finally {
+        transportLoading.value = false;
     }
-    if(action.key == 'reserved_pallets') {
-        showReservedPallets.value = true;
+};
+
+const handleSelectBatch = () => {
+    viewTransports.value = false;
+
+    const selectedTransport = transports.value?.find(
+        (item) => item.id === selectedTransportId.value
+    );
+    stoBatchPickingStore.selectedTransport = selectedTransport;
+
+    showReservedPallets.value = true;
+}
+
+const selectedTransportId = ref(null);
+
+watch(() => viewTransports.value, (isOpen) => {
+    if (!isOpen) {
+        selectedTransportId.value = null;
     }
+});
+
+const calculateAge = (date) => {
+    if (!date) return '';
+    const now = moment();
+    const mfgDate = moment(date);
+    const days = now.diff(mfgDate, 'days');
+    return days;
+};
+
+function batchPickClose() {
+    selectedTransportId.value = null;
+    stoData.value = null;
+    showReservedPallets.value = false
 }
 
 defineExpose({
@@ -185,142 +221,255 @@ defineExpose({
 </script>
 
 <template>
+    <VDataTableServer v-model:items-per-page="itemsPerPage" fixed-header :headers="headers" :items="serverItems"
+        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems">
+        <template class="font-weight-black" v-slot:header.remaining_qty="{ header }">
+            <span>REMAINING</span><br />
+            <span>QTY</span>
+        </template>
 
-    <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        :headers="headers"
-        :items="serverItems"
-        :items-length="totalItems"
-        :loading="loading"
-        item-value="id"
-        :search="search"
-        @update:options="loadItems"
-        class="text-no-wrap"
-    >
+        <template class="font-weight-black" v-slot:header.gr_remaining_qty="{ header }">
+            <span>REMAINING</span><br />
+            <span>GR QTY</span>
+        </template>
 
-    <template #item.delivery_document="{ item }">
-        <span @click="handleViewDelivery(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
-            {{ item.delivery_document }}
-        </span>
-    </template>
+        <template #item.po_item="{ item }">
+            <span class="font-weight-bold mb-1">{{ item.po_item }}</span><br />
+            <v-chip v-if="item.rfid_batch_picking_status === 'Reserved'" size="x-small" label color="primary"
+                variant="tonal">Reserved</v-chip>
+            <v-chip v-else-if="item.rfid_batch_picking_status === 'Pending'" size="x-small" label color="warning"
+                variant="tonal">Pending</v-chip>
+            <v-chip v-else-if="item.rfid_batch_picking_status === 'Partial'" size="x-small" label color="info"
+                variant="tonal">Pending</v-chip>
+        </template>
 
-    <template #item.type="{ item }">
-        Stock Transfer Order 
-        <!-- TODO:: Confirm value -->
-    </template>
+        <template #item.material="{ item }">
+            <div class="d-flex flex-column py-3 text-sm">
+                <span class="font-weight-bold" v-if="item.material_code">{{ parseInt(item.material_code, 10) }}</span>
+                <span v-if="item.material_description">{{ item.material_description }}</span>
+            </div>
+        </template>
 
-    <template #item.material="{ item }">
-        <div class="d-flex flex-column py-3">
-            <span class="font-weight-bold">{{ item.material_code }}</span>
-            <span>{{ item.material_description }}</span>
-        </div>
-    </template>
+        <template #item.from_plant_sloc="{ item }">
+            <div class="d-flex flex-column mt-1">
+                <span class="font-weight-bold text-sm">{{ item.supplying_order_plant?.plant_code }}</span>
+                <span class="text-sm">{{ item.supplying_order_plant?.name }}</span>
+            </div>
+            <div class="d-flex flex-column py-1">
+                <span class="font-weight-bold text-sm">{{ item.issuing_storage_location?.code }}</span>
+                <span class="text-sm">{{ item.issuing_storage_location?.name }}</span>
+            </div>
+        </template>
 
-    <template #item.plant="{ item }">
-        <div class="d-flex flex-column py-3">
-            <span class="font-weight-bold">{{ item.plant?.plant_code }}</span>
-            <span>{{ item.plant?.name }}</span>
-        </div>
-    </template>
+        <template #item.to_plant_sloc="{ item }">
+            <div class="d-flex flex-column mt-1">
+                <span class="font-weight-bold text-sm">{{ item.receiving_order_plant?.plant_code }}</span>
+                <span class="text-sm">{{ item.receiving_order_plant?.name }}</span>
+            </div>
+            <div class="d-flex flex-column py-1">
+                <span class="font-weight-bold text-sm">{{ item.receiving_storage_location?.code }}</span>
+                <span class="text-sm">{{ item.receiving_storage_location?.name }}</span>
+            </div>
+        </template>
 
-    <template #item.supplying_plant="{ item }">
-        <div class="d-flex flex-column py-3">
-            <span class="font-weight-bold">{{ item.supplying_plant?.plant_code }}</span>
-            <span>{{ item.supplying_plant?.name }}</span>
-        </div>
-    </template>
+        <template #item.po_number="{ item }">
+            <div class="d-flex flex-column py-3">
+                <span class="font-weight-bold">{{ item.po_number }}</span>
+                <span><small class="text-gray-400 text-muted">{{ item.purchase_order?.created_on }}</small></span>
+            </div>
+        </template>
 
-    <template #item.ship_to_customer="{ item }">
-        {{ item.ship_to_customer }}
-    </template>
+        <template #item.storage_location="{ item }">
+            <div class="d-flex flex-column py-3">
+                <span class="font-weight-bold">{{ item.storage_location?.code }}</span>
+                <span>{{ item.storage_location?.name }}</span>
+            </div>
+        </template>
 
-    <template #item.shipment_number="{ item }">
-        {{ item.shipment_number }}
-    </template>
+        <template v-slot:[`item.po_qty`]="{ item }">
+            <span>
+                {{ Number(item.qty ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                }}
+            </span>
+        </template>
 
-    <template #item.storage_location="{ item }">
-        <div class="d-flex flex-column py-3">
-            <span class="font-weight-bold">{{ item.storage_location?.code }}</span>
-            <span>{{ item.storage_location?.name }}</span>
-        </div>
-    </template>
 
-    <template #item.items="{ item }">
-        {{ item.items.length }}
-    </template>
+        <template v-slot:[`item.gi_quantity`]="{ item }">
+            <span>
+                {{ Number(item.gi_quantity ?? 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) }}
+            </span>
+        </template>
 
-    <template #item.po_qty="{ item }">
-        {{ item.quantity }}
-    </template>
+        <template v-slot:[`item.remaining_qty`]="{ item }">
+            <span>
+                {{ Number(item.current_quantity ?? 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) }}
+            </span>
+        </template>
 
-    <template #item.release_indicator="{ item }">
-        {{ item.purchase_order?.release_indicator }}
-    </template>
+        <template v-slot:[`item.gr_quantity`]="{ item }">
+            <span>
+                {{ Number(item.gr_quantity ?? 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) }}
+            </span>
+        </template>
 
-    <!-- Actions -->
-    <template #item.action="{ item }">
-        <div class="d-flex justify-center gap-1">
-            <v-menu location="end"> 
-                <template v-slot:activator="{ props }">
-                    <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
-                </template>
-                <v-list>
-                <v-list-item
-                    @click="handleAction(item, action)"
-                    v-for="(action, i) in actionList"
-                        :key="i"
-                        :value="i"
-                    >
-                    <v-list-item-title>{{ action.title }}</v-list-item-title>
-                </v-list-item>
-                </v-list>
-            </v-menu>
-        </div>
-    </template>
+        <template v-slot:[`item.gr_remaining_qty`]="{ item }">
+            <span>
+                {{ Number(item.gr_current_quantity ?? 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) }}
+            </span>
+        </template>
+
+        <template #item.uom="{ item }">
+            {{ item.commercial_uom?.commercial_uom }}
+        </template>
+
+        <template #item.release_indicator="{ item }">
+            {{ item.purchase_order?.release_indicator }}
+        </template>
+
+        <!-- Actions -->
+        <template #item.action="{ item }">
+            <div class="d-flex justify-center gap-1">
+                <v-menu location="end">
+                    <template v-slot:activator="{ props }">
+                        <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                    </template>
+                    <v-list>
+                        <v-list-item v-if="item.open_quantity > 0" @click="handleAction(item, 'batch_pick')">Batch
+                            Picking</v-list-item>
+                        <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
+                            @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
+                    </v-list>
+                </v-menu>
+            </div>
+        </template>
     </VDataTableServer>
 
-    <!-- Delivery items modal -->
-    <DefaultModal :dialog-title="`${deliveryData?.delivery_document} - Delivery Items`" :show="showDeliveryItems" @close="showDeliveryItems = false" min-height="auto"
-        class="position-absolute d-flex align-center justify-center"  :fullscreen="true">
-        <v-table class="mt-4">
-                <thead>
-                    <tr>
-                        <th>Item No.</th>
-                        <th>Sloc</th>
-                        <th>Material</th>
-                        <th>Material Desc</th>
-                        <th>Quantity</th>
-                        <th>UOM</th>
-                        <th>Batch</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in deliveryData?.items" :key="index">
-                        <td>{{ item.item }}</td>
-                        <td>{{ item.storage_location_id }}</td>
-                        <td>{{ item.material }}</td>
-                        <td>{{ item.material_desc }} </td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.base_uom }}</td>
-                        <td>{{ item.batch_item_number }}</td>
-                    </tr>
-                </tbody>
-            </v-table>
-    </DefaultModal>
+    <v-dialog v-model="viewReservedPallets" max-width="1300px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Reserved Pallets
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <v-table density="compact" class="elevation-0 border mx-4">
+                    <thead>
+                        <tr>
+                            <th>Transport Number</th>
+                            <th>Driver Name</th>
+                            <th>Plate Number</th>
+                            <th>Physical ID</th>
+                            <th>Batch Code</th>
+                            <th>Mfg Date</th>
+                            <th class="text-center">Quantity ({{ stoData?.uom }})</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in stoData?.reserved_pallets">
+                            <td>{{ item.transport_number }}</td>
+                            <td>{{ item.driver_name }}</td>
+                            <td>{{ item.plate_number }}</td>
+                            <td>{{ item.pallet_physical_id }}</td>
+                            <td>{{ item.batch }}</td>
+                            <td>{{ item.manufacturing_date }}</td>
+                            <td class="text-center">{{ item.total_qty }} {{ stoData?.uom }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
+                        type="button">Close</v-btn>
+                    <!-- <v-btn color="error" class="ml-3" @click="handleCancelProposal" type="button">Cancel
+                        Reservation</v-btn> -->
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="viewTransports" max-width="1500px">
+        <v-skeleton-loader v-if="transportLoading" type="article"></v-skeleton-loader>
+        <v-card v-else elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Select Transport
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="viewTransports = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <!-- FIX: Wrap table in a single radio group component to restrict selection context -->
+                <v-radio-group v-model="selectedTransportId" hide-details class="w-100">
+                    <v-table density="compact" class="elevation-0 border mx-4">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 60px;"></th>
+                                <th>Transport Number</th>
+                                <th>Driver</th>
+                                <th>Plate Number</th>
+                                <th>Batch</th>
+                                <th>Transport Entry Qty</th>
+                                <th>Reserved Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 1. Show the transport rows if data exists -->
+                            <template v-if="transports && transports.length > 0">
+                                <tr v-for="(item, index) in transports" :key="index">
+                                    <td class="text-center">
+                                        <v-radio :value="item.id" color="primary" density="compact"
+                                            class="d-inline-flex justify-center"></v-radio>
+                                    </td>
+                                    <td>{{ item.transport?.transport_number }}</td>
+                                    <td>{{ item.transport?.driver?.full_name }}</td>
+                                    <td>{{ item.transport?.vehicle?.plate_number }}</td>
+                                    <td>{{ item.batch }}</td>
+                                    <td>{{ numberWithComma(item.qty) }} {{ stoData?.uom }}</td>
+                                    <td>{{ numberWithComma(item.origin_qty) }} {{ stoData?.uom }}</td>
+                                </tr>
+                            </template>
+
+                            <!-- 2. Fallback empty state row -->
+                            <tr v-else>
+                                <td colspan="7" class="text-center text-grey-darken-1 py-8">
+                                    <v-icon icon="ri-truck-line" size="large" class="mb-1 mr-2"></v-icon>
+                                    No transport data found for this item.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </v-radio-group>
+
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewTransports = false"
+                        type="button">Close</v-btn>
+                    <!-- Disabled button rule if nothing is picked yet -->
+                    <v-btn color="primary" class="ml-3" @click="handleSelectBatch" :disabled="!selectedTransportId"
+                        type="button">Select Batch</v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
 
     <!-- Show Reserved Pallets Modal -->
-    <ReservedPallets 
-        :show="showReservedPallets" 
-        :delivery-data="deliveryData" 
-        @close="showReservedPallets = false"
-    />
+    <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" />
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" />
 
 </template>
 
 <style scoped>
-
 .hover-underline {
     position: relative;
     text-decoration: none;
@@ -330,9 +479,9 @@ defineExpose({
     content: "";
     position: absolute;
     left: 0;
-    bottom: 1px; 
+    bottom: 1px;
     width: 100%;
-    height: 1px; 
-    background-color: #00833c; 
+    height: 1px;
+    background-color: #00833c;
 }
 </style>
