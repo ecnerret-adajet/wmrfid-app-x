@@ -854,7 +854,7 @@ onMounted(() => {
 
                                     <template #item.line="{ item }">
                                         <div v-if="item.plc_run">
-                                            {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? null }}
+                                            {{ item.plc_run?.SILO ?? item.plc_run?.Section ?? item.plc_run?.PACKING_NO ?? null }}
                                         </div>
                                     </template>
 
