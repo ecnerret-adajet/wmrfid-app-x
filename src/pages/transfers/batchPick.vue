@@ -25,6 +25,7 @@ const toast = ref({
 });
 
 const pageLoading = ref(false);
+const loading = ref(false);
 
 onMounted(async () => {
     // fetchPallets()
@@ -36,7 +37,7 @@ onMounted(async () => {
         };
 
         await stoBatchPickingStore.fetchHeaderDetails(params);
-        
+
         const openQuantityParams = {
             po_number: po_number,
             po_item: po_item,
@@ -86,80 +87,39 @@ const expirationChecking = (date) => {
 const emit = defineEmits(['close', 'updated']);
 
 const selectBatchDialog = ref(false)
-function selectBatch() 
-{
+function selectBatch() {
     selectBatchDialog.value = true;
 }
 
 const handleClose = () => {
-    console.log('close')
     stoBatchPickingStore.selectedBatchCode = null;
     stoBatchPickingStore.selectedBatchPalletCount = 0;
+    stoBatchPickingStore.availableStocks.forEach(item => {
+        item.is_selected = false;
+    });
     selectBatchDialog.value = false
 };
 
 const activeTab = ref('available_stocks');
-const selectPallets = async () => {
+const reserveBatch = async () => {
     let selectedBatchData = [];
     toast.value.show = false;
 
-    // Get the currently selected batch code identifier from your radio group
-    const selectedCode = stoBatchPickingStore.selectedBatchCode;
+    const noBatchSelected = stoBatchPickingStore.availableStocks?.length === 0 ||
+        stoBatchPickingStore.availableStocks.every(item => !item.is_selected);
 
-    if (!selectedCode) {
+    if (noBatchSelected) {
         toast.value.color = 'error';
         toast.value.message = 'No batch selected. Please select a batch.';
         toast.value.show = true;
         return;
     }
 
-    let targetedPalletCount = 0;
-
-    if (stoBatchPickingStore.activeTab === 'available_stocks') {
-        // Find the single matching record in the array
-        const matchedStock = stoBatchPickingStore.availableStocks.find(stock => stock.BATCH === selectedCode);
-        
-        if (matchedStock) {
-            targetedPalletCount = matchedStock.split_qty_pallets; 
-            selectedBatchData.push({
-                BATCH: matchedStock.BATCH,
-                pallet_quantity: matchedStock.split_qty_pallets,
-                bags_quantity: matchedStock.split_qty_bag
-            });
-        }
-    } else {
-        if (stoBatchPickingStore.customerApprovalFile === null) {
-            toast.value.color = 'error';
-            toast.value.message = 'Please select customer approval document.';
-            toast.value.show = true;
-            return;
-        }
-
-        // Find the single matching record in the alternative array
-        const matchedStock = stoBatchPickingStore.otherStocks.find(stock => stock.BATCH === selectedCode);
-        
-        if (matchedStock) {
-            targetedPalletCount = matchedStock.split_qty_pallets;
-            selectedBatchData.push({
-                BATCH: matchedStock.BATCH,
-                pallet_quantity: matchedStock.split_qty_pallets,
-                bags_quantity: matchedStock.split_qty_bag
-            });
-        }
-    }
+    selectedBatchData = stoBatchPickingStore.availableStocks.filter(item => item.is_selected);
 
     if (selectedBatchData.length === 0) {
         toast.value.color = 'error';
         toast.value.message = 'No selected batches.';
-        toast.value.show = true;
-        return;
-    }
-
-    const totalSelectedBags = selectedBatchData.reduce((sum, batch) => sum + Number(batch.bags_quantity), 0);
-
-    if (totalSelectedBags > stoBatchPickingStore.stoDetails?.open_quantity) {
-        toast.value.color = 'error';
-        toast.value.message = 'Bags on selected pallet exceeds open quantity.';
         toast.value.show = true;
         return;
     }
@@ -172,73 +132,11 @@ const selectPallets = async () => {
     );
 
     stoBatchPickingStore.selectedTransport = selectedTransport;
-    await fetchPallets()
 
-    const limit = Number(targetedPalletCount) || 0;
-    
-    if (limit > 0 && availablePallets.value?.length > 0) {
-        // Slice available items from index 0 up to your limit threshold
-        const defaultSelection = availablePallets.value.slice(0, limit);
-        
-        // Map the sliced row objects directly to your v-data-table v-model state
-        selectedPalletIds.value = defaultSelection.map(pallet => pallet.id);
-        console.log('Checked row IDs set directly in method:', selectedPalletIds.value);
-    } else {
-        selectedPalletIds.value = [];
-    }
-
-    selectPalletDialogVisible.value = true;
+    await handleSave();
 }
 
-const headers = [
-    { title: 'Physical ID', key: 'physical_id' },
-    { title: 'Batch', key: 'batch' },
-    { title: 'Quantity', key: 'quantity' },
-    { title: 'Mfg Date', key: 'mfg_date', sortable: false }
-];
-
-const addedPallets = ref([]);
-const selectedPallet = ref(null)
-const selectPalletDialogVisible = ref(false)
-const loading = ref(false)
-const availablePallets = ref([]);
-const palletsLoading = ref(false);
-const selectedPalletIds = ref(['3548'])
-
-const fetchPallets = async () => {
-    palletsLoading.value = true;
-    try {
-        const batchKeys = stoBatchPickingStore.originalBatchList.map(item => item.BATCH);
-        const batchString = batchKeys.join(','); 
-      
-        const response = await ApiService.query('transfer-orders/get-pallets', {
-            params: {
-                batch: batchString  
-            }
-        });
-        
-        // Populate the autocomplete selections list
-        availablePallets.value = response.data.data;
-        console.log(availablePallets.value)
-        console.log(response.data)
-    } catch (error) {
-        console.error('Failed fetching pallets:', error);
-    } finally {
-        palletsLoading.value = false;
-    }
-};
-
-
 const handleSave = async () => {
-    // 1. Validation Guard: Check if list selection is empty
-    if (addedPallets.value.length === 0) {
-        toast.value.message = 'No pallets selected to reserve.';
-        toast.value.color = 'error';
-        toast.value.show = true;
-        return;
-    }
-
-    // 2. Initialize and Populate FormData matching your exact reference requirements
     let formData = new FormData();
     formData.append('po_number', stoBatchPickingStore.stoDetails?.po_number ?? '');
     formData.append('po_item', stoBatchPickingStore.stoDetails?.po_item ?? '');
@@ -251,10 +149,10 @@ const handleSave = async () => {
     formData.append('sloc', stoBatchPickingStore.stoDetails?.issuing_sloc_sto ?? '');
     formData.append('mode', stoBatchPickingStore.activeTab ?? '');
     formData.append('stock_exception', stoBatchPickingStore.activeTab !== 'available_stocks');
-    
+
     // Pass the computed allocation matrix safely serialized as a string JSON payload
-    formData.append('batches', JSON.stringify(distributedPallets.value));
-    
+    formData.append('batches', JSON.stringify(stoBatchPickingStore.batchList));
+
     formData.append('sap_server', stoBatchPickingStore.stoDetails?.sap_server ?? '');
     formData.append('transport_number', stoBatchPickingStore.selectedTransport?.transport?.transport_number ?? '');
     formData.append('plate_number', stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number ?? '');
@@ -262,11 +160,11 @@ const handleSave = async () => {
 
     try {
         // Adjust variable tracking key state to match whatever button :loading bind handles
-        loading.value = true; 
-        
+        loading.value = true;
+
         // Grab token securely from auth layers
         const token = JwtService.getToken();
-        
+
         // Execute endpoint transmission
         const { data } = await axios.post(
             `transfer-orders/transfer-order-proposed`,
@@ -283,7 +181,7 @@ const handleSave = async () => {
         if (!data.success) {
             console.log(data.errors);
             const batchPickError = data.errors?.length > 0 ? data.errors[0] : 'Validation failed on proposal creation.';
-            
+
             toast.value.color = 'error';
             toast.value.message = batchPickError;
             toast.value.show = true;
@@ -299,7 +197,7 @@ const handleSave = async () => {
 
             await stoBatchPickingStore.fetchHeaderDetails(params);
 
-            selectPalletDialogVisible.value = false
+
             const openQuantityParams = {
                 po_number: po_number,
                 po_item: po_item,
@@ -307,7 +205,7 @@ const handleSave = async () => {
                 plant_code: stoBatchPickingStore.stoDetails?.supplying_plant,
                 sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto
             }
-                
+
             await stoBatchPickingStore.fetchOpenQuantity(openQuantityParams);
 
             const availableParams = {
@@ -363,11 +261,9 @@ const fetchTransports = async (searchQuery = '') => {
     }
 };
 
-function cancelPalletSelection() 
-{
+function cancelPalletSelection() {
     selectedPallet.value = null;
     addedPallets.value = [];
-    selectPalletDialogVisible.value = false;
 }
 
 const cancelTableHeaders = [
@@ -379,8 +275,7 @@ const cancelTableHeaders = [
 const cancelReservationDialogVisible = ref(false)
 const cancelLoading = ref(false)
 const selectedTransactionItem = ref(null);
-function cancelReservation(item)
-{
+function cancelReservation(item) {
     selectedTransactionItem.value = item
     cancelReservationDialogVisible.value = true;
 }
@@ -400,7 +295,7 @@ const executeCancel = async () => {
     toast.value.show = false;
     try {
         const response = await ApiService.post(`transfer-orders/transfer-order-remove`, formData);
-      
+
         if (response.data?.success) {
             const params = {
                 po_number: po_number,
@@ -416,7 +311,7 @@ const executeCancel = async () => {
                 plant_code: stoBatchPickingStore.stoDetails?.supplying_plant,
                 sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto
             }
-                
+
             await stoBatchPickingStore.fetchOpenQuantity(openQuantityParams);
 
             const availableParams = {
@@ -440,10 +335,10 @@ const executeCancel = async () => {
         } else {
             console.log(response)
             toast.value.color = 'error';
-            toast.value.message = response.data?.message || 'An error encountered while cancelling batch reservation.' ;
+            toast.value.message = response.data?.message || 'An error encountered while cancelling batch reservation.';
             toast.value.show = true;
         }
-        
+
     } catch (error) {
         console.error('Error updating:', error);
     } finally {
@@ -474,8 +369,9 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Material Code</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ parseInt(stoBatchPickingStore?.stoDetails?.material_code, 10)
-                                        }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            parseInt(stoBatchPickingStore?.stoDetails?.material_code, 10)
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -485,7 +381,8 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">PO Number</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.po_number }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.po_number }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -500,7 +397,8 @@ const executeCancel = async () => {
                                             Description</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.material_description }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.material_description }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -527,8 +425,10 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Plant</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.supplying_order_plant?.plant_code
-                                        }} - {{ stoBatchPickingStore?.stoDetails?.supplying_order_plant?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.supplying_order_plant?.plant_code
+                                            }} - {{ stoBatchPickingStore?.stoDetails?.supplying_order_plant?.name
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -538,8 +438,10 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Plant</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.receiving_order_plant?.plant_code
-                                        }} - {{ stoBatchPickingStore?.stoDetails?.receiving_order_plant?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.receiving_order_plant?.plant_code
+                                            }} - {{ stoBatchPickingStore?.stoDetails?.receiving_order_plant?.name
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -554,8 +456,10 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Supplying Sloc</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.issuing_storage_location?.code }}
-                                            - {{ stoBatchPickingStore?.stoDetails?.issuing_storage_location?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.issuing_storage_location?.code }}
+                                            - {{ stoBatchPickingStore?.stoDetails?.issuing_storage_location?.name
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -565,8 +469,10 @@ const executeCancel = async () => {
                                         <span class="text-h6 font-weight-bold text-high-emphasis">Receiving Sloc</span>
                                     </VCol>
                                     <VCol class="d-flex flex-column">
-                                        <span class="text-medium-emphasis">{{ stoBatchPickingStore?.stoDetails?.receiving_storage_location?.code
-                                        }} - {{ stoBatchPickingStore?.stoDetails?.receiving_storage_location?.name }}</span>
+                                        <span class="text-medium-emphasis">{{
+                                            stoBatchPickingStore?.stoDetails?.receiving_storage_location?.code
+                                            }} - {{ stoBatchPickingStore?.stoDetails?.receiving_storage_location?.name
+                                            }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -583,9 +489,10 @@ const executeCancel = async () => {
                                     </VCol>
                                     <VCol class="d-flex flex-column">
                                         <span class="text-medium-emphasis">
-                                            {{ Number(stoBatchPickingStore?.stoDetails?.qty ?? 0).toLocaleString('en-US', {
-                                                minimumFractionDigits: 2, maximumFractionDigits: 2
-                                            }) }}
+                                            {{ Number(stoBatchPickingStore?.stoDetails?.qty ??
+                                                0).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2, maximumFractionDigits: 2
+                                                }) }}
                                             {{ stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom }}
                                         </span>
                                     </VCol>
@@ -625,7 +532,7 @@ const executeCancel = async () => {
                             </VCol>
                         </VRow>
                     </VListItem> -->
-                 
+
                 </VList>
             </v-card-title>
             <v-divider class="my-4"></v-divider>
@@ -658,9 +565,12 @@ const executeCancel = async () => {
                                     <td>{{ item.transport?.vehicle?.plate_number }}</td>
                                     <td>{{ item.batch }}</td>
                                     <td>{{ numberWithComma(item.qty) }} {{ stoBatchPickingStore?.stoDetails?.uom }}</td>
-                                    <td>{{ numberWithComma(item.reserved_qty) }} {{ stoBatchPickingStore?.stoDetails?.uom }}</td>
+                                    <td>{{ numberWithComma(item.reserved_qty) }} {{
+                                        stoBatchPickingStore?.stoDetails?.uom }}</td>
                                     <td>
-                                        <v-btn v-if="parseFloat(item.reserved_qty) > 0" @click="cancelReservation(item)" size="x-small" class="text-xs" variant="outlined" width="120" color="error">Cancel Reserve</v-btn>
+                                        <v-btn v-if="parseFloat(item.reserved_qty) > 0" @click="cancelReservation(item)"
+                                            size="x-small" class="text-xs" variant="outlined" width="120"
+                                            color="error">Cancel Reserve</v-btn>
                                     </td>
                                 </tr>
                             </template>
@@ -677,8 +587,10 @@ const executeCancel = async () => {
                 </v-radio-group>
                 <!-- Action Buttons -->
                 <div class="d-flex justify-end mt-4 pa-4">
-                    <v-btn color="primary" :disabled="selectedTransportId == null" v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0"
-                        @click="selectBatch" type="button">Select Batch</v-btn>
+                    <v-btn color="primary" :disabled="selectedTransportId == null"
+                        v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" @click="selectBatch"
+                        type="button">Select
+                        Batch</v-btn>
                 </div>
             </v-card-text>
         </v-card>
@@ -701,67 +613,59 @@ const executeCancel = async () => {
                 </v-tabs>
                 <v-tabs-window v-model="activeTab" class="mt-4">
                     <v-tabs-window-item value="available_stocks">
-                         <v-radio-group v-model="stoBatchPickingStore.selectedBatchCode" hide-details>
-                            <v-table density="compact" class="stock-table elevation-0">
-                                <thead>
-                                    <tr>
-                                        <th>Batch Code</th>
-                                        <th>Mfg Date</th>
-                                        <th>Expiration Date</th>
-                                        <th>Age</th>
-                                        <th>Avail. Qty</th>
-                                        <th>Avail Pallets</th>
-                                        <th>Split Qty</th>
-                                        <th>Min. Pallet</th>
-                                        <th>Remain. Qty</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(item, index) in stoBatchPickingStore.availableStocks" :key="index"
-                                        :class="{ 'selected-row': item.selected }">
-                                        <td>{{ item.BATCH }}</td>
-                                        <td>
-                                            {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
-                                        </td>
-                                        <td
-                                            :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
-                                            {{ item.SLED_STR }}
-                                        </td>
-                                        <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
-                                        <!-- Avail Quantity  -->
-                                        <td>
-                                            {{ numberWithComma(item.BAG) }}
-                                            {{ item.BASE_UOM }}
-                                        </td>
-                                        <!-- AVAIL PALLETS  -->
-                                        <td>
-                                            {{ item.inventory.length }} PALLET(s)
-                                        </td>
-                                        <!-- Split QTY  -->
-                                        <td> {{ numberWithComma(item.split_qty_bag) }} {{ item.BASE_UOM }}</td>
+                        <v-table density="compact" class="stock-table elevation-0">
+                            <thead>
+                                <tr>
+                                    <th>Batch Code</th>
+                                    <th>Mfg Date</th>
+                                    <th>Expiration Date</th>
+                                    <th>Age</th>
+                                    <th>Avail. Qty</th>
+                                    <th>Avail Pallets</th>
+                                    <!-- <th>Split Qty</th> -->
+                                    <!-- <th>Min. Pallet</th> -->
+                                    <!-- <th>Remain. Qty</th> -->
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in stoBatchPickingStore.availableStocks" :key="index"
+                                    :class="{ 'selected-row': item.selected }">
+                                    <td>{{ item.BATCH }}</td>
+                                    <td>
+                                        {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
+                                    </td>
+                                    <td :class="{ 'text-error font-weight-bold': expirationChecking(item.SLED_STR) }">
+                                        {{ item.SLED_STR }}
+                                    </td>
+                                    <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
+                                    <!-- Avail Quantity  -->
+                                    <td>
+                                        {{ numberWithComma(item.BAG) }}
+                                        {{ item.BASE_UOM }}
+                                    </td>
+                                    <!-- AVAIL PALLETS  -->
+                                    <td>
+                                        {{ item.inventory.length }} PALLET(s)
+                                    </td>
+                                    <!-- Split QTY  -->
+                                    <!-- <td> {{ numberWithComma(item.split_qty_bag) }} {{ item.BASE_UOM }}</td> -->
 
-                                        <td class="text-uppercase"
-                                            :class="{ 'text-error': item.saved_reserved != null }">
-                                            {{ item.split_qty_pallets }}
-                                            Pallet
-                                        </td>
-                                        <td>{{ item.inventory_qty }} {{ item.BASE_UOM }}</td>
-                                        <td>
-                                            <!-- <v-checkbox v-model="item.is_selected" hide-details
-                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                                density="compact">
-                                            </v-checkbox> -->
-                                            <v-radio 
-                                                :value="item.BATCH" 
-                                                :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR)"
-                                                density="compact">
-                                            </v-radio>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </v-table>
-                        </v-radio-group>
+                                    <!-- <td class="text-uppercase"
+                                        :class="{ 'text-error': item.saved_reserved != null }">
+                                        {{ item.split_qty_pallets }}
+                                        Pallet
+                                    </td>
+                                    <td>{{ item.inventory_qty }} {{ item.BASE_UOM }}</td> -->
+                                    <td>
+                                        <v-checkbox v-model="item.is_selected" hide-details
+                                            :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
+                                            density="compact">
+                                        </v-checkbox>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
                     </v-tabs-window-item>
                 </v-tabs-window>
             </div>
@@ -772,121 +676,14 @@ const executeCancel = async () => {
             <!-- Action Buttons -->
             <div class="d-flex justify-end mt-4 pa-4">
                 <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back</v-btn>
-                <v-btn color="primary" :disabled="stoBatchPickingStore.selectedBatchCode == null" v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0"
-                    @click="selectPallets" type="button">Select Pallets</v-btn>
+                <v-btn color="primary" :disabled="!stoBatchPickingStore.availableStocks.some(item => item.is_selected)"
+                    v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" @click="reserveBatch"
+                    type="button">Reserve Batch</v-btn>
             </div>
         </v-card>
     </v-dialog>
 
-    <v-dialog v-model="selectPalletDialogVisible" max-width="1000px" scrollable>
-        <v-card class="d-flex flex-column" height="600px">
-            <v-card-title class="d-flex justify-space-between align-center pa-4">
-                <span class="text-h5">Assign Pallets</span>
-                <v-btn icon="ri-close-line" variant="text" @click="selectPalletDialogVisible = false"></v-btn>
-            </v-card-title>
-
-            <v-divider></v-divider>
-            
-            <v-card-text class="flex-grow-1 overflow-y-auto">
-                <div class="mb-4 pa-3 bg-grey-lighten-4 rounded">
-                   <div class="d-flex justify-space-between align-center">
-                        <div>
-                            <div class="mb-2"><strong>Receiving Plant:</strong> {{
-                                stoBatchPickingStore?.stoDetails?.receiving_order_plant?.plant_code }} - {{
-                                    stoBatchPickingStore?.stoDetails?.receiving_order_plant?.name }}
-                            </div>
-                            <div class="mb-2"><strong>Receiving Sloc:</strong> {{
-                                stoBatchPickingStore?.stoDetails?.receiving_storage_location?.code }} - {{
-                                    stoBatchPickingStore?.stoDetails?.receiving_storage_location?.name }} 
-                            </div>
-                            <div class="mb-2"><strong>Material:</strong> {{ removeLeadingZeros(stoBatchPickingStore?.stoDetails?.material_code) }} - 
-                                {{ stoBatchPickingStore?.stoDetails?.material_description }}
-                            </div>
-                            
-                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
-                                <strong>Transport:</strong>
-                                {{ stoBatchPickingStore.selectedTransport?.transport?.transport_number }}
-                            </div>
-
-                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
-                                <strong>Plate Number:</strong>
-                                {{ stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number }}
-                            </div>
-
-                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
-                                <strong>Driver:</strong>
-                                {{ stoBatchPickingStore.selectedTransport?.transport?.driver?.full_name }}
-                            </div>
-
-                            <div class="d-flex align-center flex-wrap gap-1 mt-1">
-                                <strong>Batch:</strong>
-                                <v-chip
-                                    v-for="(batchItem, index) in stoBatchPickingStore.originalBatchList"
-                                    :key="index"
-                                    color="primary"
-                                    variant="tonal"
-                                    size="small"
-                                    class="ml-1"
-                                >
-                                    {{ batchItem.BATCH }} 
-                                    <v-avatar right class="bg-primary-darken-1 white--text ml-2 px-2" size="16">
-                                        {{ batchItem.pallet_quantity }}
-                                    </v-avatar>
-                                </v-chip>
-                            </div>
-                        </div>
-                   </div>
-                </div>
-
-                <v-data-table
-                    v-model="selectedPalletIds"
-                    :headers="headers"
-                    :items="availablePallets"
-                    class="elevation-1 border rounded"
-                    :loading="palletsLoading"
-                    show-select
-                    density="compact"
-                    item-value="id"
-                >   
-                     <!-- <template #item.data-table-select="{ item, isSelected, toggleSelect }">
-                        <v-checkbox-btn
-                            :model-value="isSelected"
-                            :disabled="!isSelected && selectedPalletIds.length >= (stoBatchPickingStore.selectedBatchPalletCount || 0)"
-                            @update:model-value="toggleSelect"
-                        ></v-checkbox-btn>
-                    </template> -->
-                    <template #item.mfg_date="{ item }">
-                        <span>{{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}</span>
-                    </template>
-                    <template #item.actions="{ item }">
-                        <v-btn 
-                            icon="ri-delete-bin-line" 
-                            size="small" 
-                            :color="item.is_assigned ? 'error' : 'warning'" 
-                            variant="text" 
-                            :title="item.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
-                            @click="removePallet(item)"
-                        ></v-btn>
-                    </template>
-                    <template #no-data>
-                        <div class="pa-4 text-center text-grey">
-                            No pallets found with batch <strong>{{ stoBatchPickingStore.selectedBatchCode }}</strong>
-                        </div>
-                    </template>
-                </v-data-table>
-            </v-card-text>
-
-            <v-divider></v-divider>
-
-            <v-card-actions class="pa-4">
-                <v-spacer></v-spacer>
-                <v-btn variant="outlined" @click="cancelPalletSelection">Cancel</v-btn>
-                <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading">Save</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
-
-    <v-dialog  v-model="cancelReservationDialogVisible" max-width="850px" persistent>
+    <v-dialog v-model="cancelReservationDialogVisible" max-width="850px" persistent>
         <v-card class="pa-4" rounded="lg" elevation="24">
             <!-- Header Section -->
             <div class="text-center w-100">
@@ -895,21 +692,22 @@ const executeCancel = async () => {
                     Cancel Batch Reservation?
                 </v-card-title>
             </div>
-            
+
             <div class="d-flex justify-space-between align-center px-4 pb-4">
                 <div>
-                    <div class="mb-2"><strong>PO Number:</strong> 
-                        {{po_number}}
+                    <div class="mb-2"><strong>PO Number:</strong>
+                        {{ po_number }}
                     </div>
-                    <div class="mb-2"><strong>PO Item:</strong> 
-                        {{po_item}}
+                    <div class="mb-2"><strong>PO Item:</strong>
+                        {{ po_item }}
                     </div>
                 </div>
             </div>
 
             <!-- Context Alert Message -->
             <v-card-text class="text-body-1 text-center text-medium-emphasis px-4 pb-4">
-                Are you sure you want to cancel? The following reserved pallets will be made available again for other orders.
+                Are you sure you want to cancel? The following reserved pallets will be made available again for other
+                orders.
             </v-card-text>
 
             <!-- Pallets To Be Released Table -->
@@ -917,21 +715,14 @@ const executeCancel = async () => {
                 <div class="text-subtitle-2 font-weight-bold mb-1 text-grey-darken-2">
                     Pallets to release:
                 </div>
-                <v-data-table
-                    :headers="cancelTableHeaders"
-                    :items="stoBatchPickingStore?.stoDetails?.reserved_pallets"
-                    class="elevation-0 border rounded"
-                    density="compact"
-                    hide-default-footer
-                    disable-pagination
-                    max-height="200px"
-                    fixed-header
-                >
+                <v-data-table :headers="cancelTableHeaders" :items="stoBatchPickingStore?.stoDetails?.reserved_pallets"
+                    class="elevation-0 border rounded" density="compact" hide-default-footer disable-pagination
+                    max-height="200px" fixed-header>
                     <!-- Formatting Quantity with a generic fallback Unit -->
                     <template #item.quantity="{ item }">
                         {{ item.total_qty }}
                     </template>
-                    
+
                     <!-- Formatting Manufacturing Date if available -->
                     <template #item.mfg_date="{ item }">
                         {{ item.manufacturing_date || '—' }}
@@ -944,9 +735,9 @@ const executeCancel = async () => {
                     </template>
                 </v-data-table>
             </div>
-            
+
             <v-divider class="mx-4 mb-4"></v-divider>
-            
+
             <!-- Action Control Tray -->
             <v-card-actions class="justify-end gap-2 px-4 pb-2">
                 <v-btn variant="outlined" @click="cancelReservationDialogVisible = false">
