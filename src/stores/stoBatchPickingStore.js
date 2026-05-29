@@ -18,6 +18,8 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
     const activeTab = ref('available_stocks');
     const customerApprovalFile = ref(null);
     const customerApprovalRemarks = ref('');
+    const selectedBatchCode = ref(null);
+    const selectedBatchPalletCount = ref(null)
 
     function setBatches(batches) {
         batchList.value = batches;
@@ -211,6 +213,8 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
         customerApprovalFile,
         customerApprovalRemarks,
         resetActiveTab,
-        selectedTransport
+        selectedTransport,
+        selectedBatchCode,
+        selectedBatchPalletCount
     };
 });
