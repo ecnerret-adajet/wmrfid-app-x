@@ -9,6 +9,7 @@ import axios from 'axios';
 import Moment from 'moment';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { VNumberInput } from 'vuetify/labs/VNumberInput';
 
 const route = useRoute();
 const router = useRouter();
@@ -59,10 +60,9 @@ onMounted(async () => {
 
         // 2. Check the store's state for the open quantity balance
         // Change ".openQuantity" to match your Pinia store's exact state variable name
-        if (stoBatchPickingStore.stoDetails?.open_quantity > 0) {
-            await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
-        }
-
+       
+        await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
+        
         await fetchTransports();
 
     } catch (error) {
@@ -88,6 +88,12 @@ const emit = defineEmits(['close', 'updated']);
 
 const selectBatchDialog = ref(false)
 function selectBatch() {
+    const selectedTransport = transports.value?.find(
+        (item) => item.id === selectedTransportId.value
+    );
+
+    stoBatchPickingStore.selectedTransport = selectedTransport;
+
     selectBatchDialog.value = true;
 }
 
@@ -101,42 +107,70 @@ const handleClose = () => {
 };
 
 const activeTab = ref('available_stocks');
+
 const reserveBatch = async () => {
-    let selectedBatchData = [];
+    pageLoading.value = true;
     toast.value.show = false;
 
-    const noBatchSelected = stoBatchPickingStore.availableStocks?.length === 0 ||
-        stoBatchPickingStore.availableStocks.every(item => !item.is_selected);
+    // 1. Filter out only the raw checked pallet records selected by the user
+    const selectedPalletsData = availablePallets.value.filter(pallet => 
+        selectedPalletIds.value.includes(Number(pallet.id))
+    );
 
-    if (noBatchSelected) {
+    if (!selectedPalletsData || selectedPalletsData.length === 0) {
         toast.value.color = 'error';
-        toast.value.message = 'No batch selected. Please select a batch.';
+        toast.value.message = 'No pallets selected. Please allocate pallets to a batch.';
         toast.value.show = true;
+        pageLoading.value = false;
         return;
     }
 
-    selectedBatchData = stoBatchPickingStore.availableStocks.filter(item => item.is_selected);
+    const selectedBatchData = stoBatchPickingStore.availableStocks.filter(
+        item => parseInt(item.reserved_pallets, 10) > 0
+    );
 
     if (selectedBatchData.length === 0) {
         toast.value.color = 'error';
         toast.value.message = 'No selected batches.';
         toast.value.show = true;
+        pageLoading.value = false;
         return;
     }
 
+    // 2. Prepare variables for conditional UOM weight conversion
+    const uom = String(stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom || '').toUpperCase();
+    const num = parseFloat(stoBatchPickingStore.stoDetails?.numerator) || 50;
+    const den = parseFloat(stoBatchPickingStore.stoDetails?.denominator) || 1;
+    const bagWeightMultiplier = den > 0 ? (num / den) : num;
+    
+    // Sync state summaries back into the local Pinia store structures
     stoBatchPickingStore.setBatches(selectedBatchData);
     stoBatchPickingStore.setOriginalBatchList(selectedBatchData);
 
-    const selectedTransport = transports.value?.find(
-        (item) => item.id === selectedTransportId.value
-    );
+    // 3. Format the final payload matrix array mapping variables explicitly onto each record line
+    const formattedBatchesForBackend = selectedPalletsData.map(pallet => {
+        const currentBatchCode = pallet.BATCH || pallet.batch;
+        
+        // Determine base quantity from inventory fields (supporting quantity or qty fallback properties)
+        const baseInventoryQty = parseFloat(pallet.quantity ?? 0);
+        
+        // Convert to KG if required, otherwise preserve the raw bag inventory coun
+        const finalTakeQuantity = uom === 'KG' ? (baseInventoryQty * bagWeightMultiplier) : baseInventoryQty;
 
-    stoBatchPickingStore.selectedTransport = selectedTransport;
+        return {
+            id: pallet.id,
+            BATCH: currentBatchCode,
+            MANUF_DATE: pallet.MANUF_DATE || pallet.mfg_date, 
+            MANUF_DATE_STR: pallet.MANUF_DATE_STR || pallet.mfg_date || '', 
+            rfid_code: pallet.rfid_code || pallet.RFID_CODE || '',
+            physical_id: pallet.physical_id || '',
+            material_id: pallet.material_id || '',
+            
+            // Evaluates and scales individual pallet record weights dynamically to match backend trait rules
+            take_quantity: finalTakeQuantity
+        };
+    });
 
-    await handleSave();
-}
-
-const handleSave = async () => {
     let formData = new FormData();
     formData.append('po_number', stoBatchPickingStore.stoDetails?.po_number ?? '');
     formData.append('po_item', stoBatchPickingStore.stoDetails?.po_item ?? '');
@@ -151,18 +185,14 @@ const handleSave = async () => {
     formData.append('stock_exception', stoBatchPickingStore.activeTab !== 'available_stocks');
 
     // Pass the computed allocation matrix safely serialized as a string JSON payload
-    formData.append('batches', JSON.stringify(stoBatchPickingStore.batchList));
+    formData.append('batches', JSON.stringify(formattedBatchesForBackend));
 
     formData.append('sap_server', stoBatchPickingStore.stoDetails?.sap_server ?? '');
     formData.append('transport_number', stoBatchPickingStore.selectedTransport?.transport?.transport_number ?? '');
     formData.append('plate_number', stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number ?? '');
     formData.append('driver_name', stoBatchPickingStore.selectedTransport?.transport?.driver?.full_name ?? '');
-
+    
     try {
-        // Adjust variable tracking key state to match whatever button :loading bind handles
-        loading.value = true;
-
-        // Grab token securely from auth layers
         const token = JwtService.getToken();
 
         // Execute endpoint transmission
@@ -177,7 +207,6 @@ const handleSave = async () => {
             }
         );
 
-        // 3. Handle Backend Failure Operations 
         if (!data.success) {
             console.log(data.errors);
             const batchPickError = data.errors?.length > 0 ? data.errors[0] : 'Validation failed on proposal creation.';
@@ -188,15 +217,9 @@ const handleSave = async () => {
             return;
         }
 
-        // 4. Handle Success Navigation Step
         if (data.success) {
-            const params = {
-                po_number: po_number,
-                po_item: po_item
-            };
-
+            const params = { po_number: po_number, po_item: po_item };
             await stoBatchPickingStore.fetchHeaderDetails(params);
-
 
             const openQuantityParams = {
                 po_number: po_number,
@@ -205,7 +228,6 @@ const handleSave = async () => {
                 plant_code: stoBatchPickingStore.stoDetails?.supplying_plant,
                 sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto
             }
-
             await stoBatchPickingStore.fetchOpenQuantity(openQuantityParams);
 
             const availableParams = {
@@ -216,12 +238,7 @@ const handleSave = async () => {
                 sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto,
                 material_code: stoBatchPickingStore.stoDetails?.material_code
             }
-
-            // 2. Check the store's state for the open quantity balance
-            // Change ".openQuantity" to match your Pinia store's exact state variable name
-            if (stoBatchPickingStore.stoDetails?.open_quantity > 0) {
-                await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
-            }
+            await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
 
             toast.value.color = 'success';
             toast.value.message = 'Transfer order batch reservation saved successfully.';
@@ -236,17 +253,18 @@ const handleSave = async () => {
         toast.value.message = 'An unexpected connection error occurred while parsing operations.';
         toast.value.show = true;
     } finally {
-        loading.value = false;
         selectBatchDialog.value = false;
-        selectedTransportId.value = null;
-        selectedTransactionItem.value = null
+        selectPalletDialogVisible.value = false;
+        pageLoading.value = false;
+        if (typeof selectedTransportId !== 'undefined') selectedTransportId.value = null;
+        if (typeof selectedTransactionItem !== 'undefined') selectedTransactionItem.value = null;
     }
-
 }
 
 const transports = ref([]);
 const transportLoading = ref(false)
 const viewReservedPallets = ref(false);
+
 const fetchTransports = async (searchQuery = '') => {
     transportLoading.value = true;
     try {
@@ -262,8 +280,8 @@ const fetchTransports = async (searchQuery = '') => {
 };
 
 function cancelPalletSelection() {
-    selectedPallet.value = null;
-    addedPallets.value = [];
+    // selectedPallet.value = null;
+    // addedPallets.value = [];
 }
 
 const cancelTableHeaders = [
@@ -275,19 +293,32 @@ const cancelTableHeaders = [
 const cancelReservationDialogVisible = ref(false)
 const cancelLoading = ref(false)
 const selectedTransactionItem = ref(null);
-function cancelReservation(item) {
-    selectedTransactionItem.value = item
+const selectedTransportGroup = ref(null);
+async function cancelReservation(item, group) {
     cancelReservationDialogVisible.value = true;
-}
+    reservedLoading.value = true;
+    try {
+        const response = await ApiService.query(`transfer-orders/get-reserved-pallets/${item.purchase_order_item?.po_number}/${item.purchase_order_item?.po_item}/${item.batch}`, {
 
+        });
+        reservedPallets.value = response.data.reserved_pallets;
+    } catch (error) {
+        console.error('Failed fetching reserved_pallets:', error);
+    } finally {
+        reservedLoading.value = false;
+    }
+
+    selectedTransactionItem.value = item
+    selectedTransportGroup.value = group
+}
 
 const executeCancel = async () => {
     let formData = new FormData();
     formData.append('po_number', stoBatchPickingStore.stoDetails?.po_number ?? '');
     formData.append('po_item', stoBatchPickingStore.stoDetails?.po_item ?? '');
     formData.append('batch', selectedTransactionItem.value?.batch);
-    formData.append('transport_id', selectedTransactionItem.value?.transport_id);
-    formData.append('transaction_item_id', selectedTransactionItem.value?.transaction_item_id);
+    formData.append('transport_id', selectedTransportGroup.value?.transport_id);
+    formData.append('transaction_item_id', selectedTransportGroup.value?.transaction_item_id);
     formData.append('plant', stoBatchPickingStore.stoDetails?.supplying_plant ?? '');
     formData.append('sloc', stoBatchPickingStore.stoDetails?.issuing_sloc_sto ?? '');
 
@@ -323,9 +354,7 @@ const executeCancel = async () => {
                 material_code: stoBatchPickingStore.stoDetails?.material_code
             }
 
-            if (stoBatchPickingStore.stoDetails?.open_quantity > 0) {
-                await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
-            }
+            await stoBatchPickingStore.fetchAvailableCommodities(availableParams);
 
             toast.value.color = 'success';
             toast.value.message = 'Batch reservation cancelled successfully.';
@@ -346,8 +375,156 @@ const executeCancel = async () => {
         selectedTransportId.value = null;
         selectedTransactionItem.value = null
         cancelReservationDialogVisible.value = false;
-        addedPallets.value = []
-        search.value = null
+    }
+}
+
+// Ensures users can't manually type values outside valid inventory bounds
+const validatePalletInput = (item) => {
+    if (item.reserved_pallets > item.inventory.length) {
+        item.reserved_pallets = item.inventory.length;
+    }
+    if (item.reserved_pallets < 0 || !item.reserved_pallets) {
+        item.reserved_pallets = 0;
+    }
+};
+
+// Computed check replacement for the Reserve Button disabled state
+const isReadyToReserve = computed(() => {
+    // Array safety check
+    if (!stoBatchPickingStore.availableStocks) return false;
+
+    // Must have at least one selected item that ALSO has a pallet count > 0
+    return stoBatchPickingStore.availableStocks.some(item => {
+        const hasValidPallets = item.reserved_pallets !== null && 
+                                item.reserved_pallets !== undefined && 
+                                Number(item.reserved_pallets) > 0;
+                                
+        return hasValidPallets;
+    });
+});
+
+const selectPalletDialogVisible = ref(false);
+const selectPallets = async() => {
+    const chosenBatches = stoBatchPickingStore.availableStocks
+        .filter(item => parseInt(item.reserved_pallets, 10) > 0)
+        .map(item => item.BATCH);
+
+    const batchString = chosenBatches.join(',');
+
+    await fetchPallets(batchString);
+
+    selectBatchDialog.value = false; 
+    
+    selectPalletDialogVisible.value = true;
+}
+
+const availablePallets = ref([]);
+const selectedPalletIds = ref([]);
+
+const fetchPallets = async (batchString) => {
+    pageLoading.value = true;
+    try {
+      
+        const response = await ApiService.query('transfer-orders/get-pallets', {
+            params: {
+                batch: batchString  
+            }
+        });
+        
+        const fetchedItems = response.data.data || [];
+        availablePallets.value = fetchedItems;
+
+        // Container to accumulate the correct contextual pallet IDs
+        const autoSelectedIds = [];
+
+        // 1. Get all batches that have an active pallet reservation count
+        const activeBatches = stoBatchPickingStore.availableStocks.filter(
+            item => parseInt(item.reserved_pallets, 10) > 0
+        );
+
+         // 2. Distribute the limits strictly mapped by batch name
+        activeBatches.forEach(batchRow => {
+            const batchLimit = parseInt(batchRow.reserved_pallets, 10);
+            
+            // Filter out only the incoming API items belonging to THIS specific batch
+            // Note: Update 'item.BATCH' or 'item.batch' to match your API response schema exactly
+            const matchingPalletsForBatch = fetchedItems.filter(
+                item => item.BATCH === batchRow.BATCH || item.batch === batchRow.BATCH
+            );
+
+            // Slice only up to this specific batch's requested pallet allocation limit
+            const slicedPallets = matchingPalletsForBatch.slice(0, batchLimit);
+            
+            // Map to IDs and push to the master tracking collection
+            slicedPallets.forEach(pallet => autoSelectedIds.push(Number(pallet.id)));
+        });
+
+        selectedPalletIds.value = autoSelectedIds;
+
+    } catch (error) {
+        console.error('Failed fetching pallets:', error);
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
+const headers = [
+    { title: 'Physical ID', key: 'physical_id' },
+    { title: 'Batch', key: 'batch' },
+    { title: 'Quantity', key: 'quantity' },
+    { title: 'Mfg Date', key: 'mfg_date', sortable: false }
+];
+
+const totalReservedQuantity = computed(() => {
+    if (!availablePallets.value || !selectedPalletIds.value.length) return 0;
+
+    // 1. Filter out only the selected pallet records
+    const activeSelectedPallets = availablePallets.value.filter(pallet => {
+        const palletId = pallet.id ?? pallet.value;
+        return selectedPalletIds.value.includes(Number(palletId));
+    });
+
+    // 2. Sum up total bags from selected rows
+    const totalBags = activeSelectedPallets.reduce((sum, pallet) => {
+        return sum + (parseFloat(pallet.quantity ?? pallet.qty) || 0);
+    }, 0);
+
+    // 3. Check the target commercial unit measurement
+    const uom = String(stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom || '').toUpperCase();
+    if (uom === 'KG') {
+        const num = parseFloat(stoBatchPickingStore.stoDetails?.numerator) || 50;
+        const den = parseFloat(stoBatchPickingStore.stoDetails?.denominator) || 1;
+
+        // Run the math formula locally to bypass the missing store function error
+        const bagWeightMultiplier = den > 0 ? (num / den) : num;
+
+        return totalBags * bagWeightMultiplier;
+    }
+
+    return totalBags;
+});
+
+const reservedPalletsHeaders = [
+    { title: 'Physical ID', key: 'physical_id' },
+    { title: 'Batch', key: 'batch' },
+    { title: 'Quantity', key: 'quantity' },
+    { title: 'Mfg Date', key: 'mfg_date', sortable: false }
+];
+
+const reservedLoading = ref(false);
+const reservedPallets = ref([])
+const viewReserved = async (item) => {
+    viewReservedPallets.value = true;
+    reservedLoading.value = true;
+    try {
+        const response = await ApiService.query(`transfer-orders/get-reserved-pallets/${item.purchase_order_item?.po_number}/${item.purchase_order_item?.po_item}/${item.batch}`, {
+
+        });
+        reservedPallets.value = response.data.reserved_pallets;
+    } catch (error) {
+        console.error('Failed fetching reserved_pallets:', error);
+    } finally {
+        reservedLoading.value = false;
     }
 }
 
@@ -518,21 +695,6 @@ const executeCancel = async () => {
                         </VRow>
                     </VListItem>
 
-                    <!-- <VListItem v-if="stoBatchPickingStore?.stoDetails?.reserved_pallets?.length > 0" class="mt-2"  style="padding-top: 0px !important; padding-bottom: 0px !important;">
-                        <VRow class="table-row" no-gutters>
-                            <VCol md="6" class="table-cell d-inline-flex">
-                                <VRow class="table-row">
-                                    <VCol cols="4" class="d-inline-flex align-center">
-                                        <span class="text-h6 font-weight-bold text-high-emphasis">View Reserved Pallets</span>
-                                    </VCol>
-                                    <VCol class="d-flex flex-column">
-                                        <v-btn @click="viewReservedPallets" size="small" variant="outlined" width="120" color="primary">View</v-btn>
-                                    </VCol>
-                                </VRow>
-                            </VCol>
-                        </VRow>
-                    </VListItem> -->
-
                 </VList>
             </v-card-title>
             <v-divider class="my-4"></v-divider>
@@ -546,8 +708,8 @@ const executeCancel = async () => {
                                 <th>Transport Number</th>
                                 <th>Driver</th>
                                 <th>Plate Number</th>
-                                <th>Batch</th>
                                 <th>Transport Entry Qty</th>
+                                <th>Batch</th>
                                 <th>Reserved Qty</th>
                                 <th class="text-center"></th>
                             </tr>
@@ -555,24 +717,55 @@ const executeCancel = async () => {
                         <tbody>
                             <!-- 1. Show the transport rows if data exists -->
                             <template v-if="transports && transports.length > 0">
-                                <tr v-for="(item, index) in transports" :key="index">
-                                    <td class="text-center">
-                                        <v-radio :value="item.id" color="primary" density="compact"
-                                            class="d-inline-flex justify-center"></v-radio>
-                                    </td>
-                                    <td>{{ item.transport?.transport_number }}</td>
-                                    <td>{{ item.transport?.driver?.full_name }}</td>
-                                    <td>{{ item.transport?.vehicle?.plate_number }}</td>
-                                    <td>{{ item.batch }}</td>
-                                    <td>{{ numberWithComma(item.qty) }} {{ stoBatchPickingStore?.stoDetails?.uom }}</td>
-                                    <td>{{ numberWithComma(item.reserved_qty) }} {{
-                                        stoBatchPickingStore?.stoDetails?.uom }}</td>
-                                    <td>
-                                        <v-btn v-if="parseFloat(item.reserved_qty) > 0" @click="cancelReservation(item)"
-                                            size="x-small" class="text-xs" variant="outlined" width="120"
-                                            color="error">Cancel Reserve</v-btn>
-                                    </td>
-                                </tr>
+                                <!-- Master Loop: Iterates through each unique Transport Group -->
+                                <template v-for="(group, groupIndex) in transports" :key="'group-' + groupIndex">
+                                    <!-- Inner Loop: Iterates through the batches assigned to this transport -->
+                                    <tr v-for="(item, itemIndex) in group.transport_transaction_items" :key="'item-' + item.id">
+                                        
+                                        <!-- FIXED: Radio Selection Button only renders ONCE per transport group -->
+                                        <!-- It binds to transaction_item_id or transport_id instead of the raw pallet item id -->
+                                        <td v-if="itemIndex === 0" :rowspan="group.transport_transaction_items.length" class="text-center">
+                                            <v-radio 
+                                                :value="group.transport_id" 
+                                                color="primary" 
+                                                density="compact"
+                                                class="d-inline-flex justify-center"
+                                            ></v-radio>
+                                        </td>
+
+                                        <!-- Merged Transport Headers -->
+                                        <td v-if="itemIndex === 0" :rowspan="group.transport_transaction_items.length">
+                                            {{ group.transport?.transport_number }}
+                                        </td>
+                                        <td v-if="itemIndex === 0" :rowspan="group.transport_transaction_items.length">
+                                            {{ group.transport?.driver?.full_name || (group.transport?.driver?.first_name + ' ' + group.transport?.driver?.last_name) }}
+                                        </td>
+                                        <td v-if="itemIndex === 0" :rowspan="group.transport_transaction_items.length">
+                                            {{ group.transport?.vehicle?.plate_number }}
+                                        </td>
+                                        
+                                        <!-- Entry Quantity Header Column -->
+                                        <td v-if="itemIndex === 0" :rowspan="group.transport_transaction_items.length">
+                                            {{ numberWithComma(item.qty) }} {{ stoBatchPickingStore?.stoDetails?.uom }}
+                                        </td>
+
+                                        <!-- Batch Metrics Columns (Rendered on EVERY individual row line) -->
+                                        <td>{{ item.batch }}</td>
+                                        <td>
+                                            {{ numberWithComma(item.reserved_qty) }} {{ stoBatchPickingStore?.stoDetails?.uom }}
+                                        </td>
+                                        
+                                        <!-- Actions Column (Rendered on EVERY individual row line next to its respective batch metrics) -->
+                                        <td>
+                                            <v-btn v-if="parseFloat(item.reserved_qty) > 0" @click="cancelReservation(item, group)"
+                                                size="x-small" class="text-xs" variant="outlined" 
+                                                color="error">Cancel Reserve</v-btn>
+                                            <v-btn v-if="parseFloat(item.reserved_qty) > 0" @click="viewReserved(item, group)"
+                                                size="x-small" class="text-xs ml-2" variant="outlined" 
+                                                color="info">View Reserve</v-btn>
+                                        </td>
+                                    </tr>
+                                </template>
                             </template>
 
                             <!-- 2. Fallback empty state row -->
@@ -587,8 +780,7 @@ const executeCancel = async () => {
                 </v-radio-group>
                 <!-- Action Buttons -->
                 <div class="d-flex justify-end mt-4 pa-4">
-                    <v-btn color="primary" :disabled="selectedTransportId == null"
-                        v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" @click="selectBatch"
+                    <v-btn color="primary" :disabled="selectedTransportId == null" @click="selectBatch"
                         type="button">Select
                         Batch</v-btn>
                 </div>
@@ -604,8 +796,8 @@ const executeCancel = async () => {
             </v-card-title>
 
             <v-divider></v-divider>
-
-            <div v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" class="mt-4">
+        
+            <div class="mt-4 flex-grow-1 overflow-y-auto">
                 <v-tabs v-model="activeTab" bg-color="transparent" variant="tonal" class="custom-tabs" hide-slider>
                     <v-tab value="available_stocks" class="text-h5">
                         Available Stocks
@@ -622,15 +814,14 @@ const executeCancel = async () => {
                                     <th>Age</th>
                                     <th>Avail. Qty</th>
                                     <th>Avail Pallets</th>
-                                    <!-- <th>Split Qty</th> -->
-                                    <!-- <th>Min. Pallet</th> -->
-                                    <!-- <th>Remain. Qty</th> -->
-                                    <th></th>
+                                    <!-- New Column Header -->
+                                    <th style="width: 150px;">Reserve Pallets</th>
+                                    <!-- <th></th> -->
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(item, index) in stoBatchPickingStore.availableStocks" :key="index"
-                                    :class="{ 'selected-row': item.selected }">
+                                    :class="{ 'selected-row': item.is_selected }">
                                     <td>{{ item.BATCH }}</td>
                                     <td>
                                         {{ item.MANUF_DATE ? Moment(item.MANUF_DATE).format('MMMM D, YYYY') : '' }}
@@ -639,29 +830,29 @@ const executeCancel = async () => {
                                         {{ item.SLED_STR }}
                                     </td>
                                     <td>{{ numberWithComma(item.AGE) }} DAY(S)</td>
-                                    <!-- Avail Quantity  -->
                                     <td>
                                         {{ numberWithComma(item.BAG) }}
                                         {{ item.BASE_UOM }}
                                     </td>
-                                    <!-- AVAIL PALLETS  -->
                                     <td>
                                         {{ item.inventory.length }} PALLET(s)
                                     </td>
-                                    <!-- Split QTY  -->
-                                    <!-- <td> {{ numberWithComma(item.split_qty_bag) }} {{ item.BASE_UOM }}</td> -->
-
-                                    <!-- <td class="text-uppercase"
-                                        :class="{ 'text-error': item.saved_reserved != null }">
-                                        {{ item.split_qty_pallets }}
-                                        Pallet
-                                    </td>
-                                    <td>{{ item.inventory_qty }} {{ item.BASE_UOM }}</td> -->
-                                    <td>
-                                        <v-checkbox v-model="item.is_selected" hide-details
-                                            :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
-                                            density="compact">
-                                        </v-checkbox>
+                                    <!-- New Reserve Pallets Input Column -->
+                                    <td class="py-2">
+                                        <v-number-input
+                                            v-model="item.reserved_pallets"
+                                            :reverse="false"
+                                            controlVariant="default"
+                                            label=""
+                                            :hideInput="false"
+                                            :inset="false"
+                                            density="compact"
+                                            hide-details
+                                            variant="outlined"
+                                            :min="0"
+                                            :max="item.inventory.length"
+                                            @update:model-value="validatePalletInput(item)"
+                                        ></v-number-input>
                                     </td>
                                 </tr>
                             </tbody>
@@ -669,17 +860,131 @@ const executeCancel = async () => {
                     </v-tabs-window-item>
                 </v-tabs-window>
             </div>
-            <div v-else style="display: flex; justify-content: center; align-items: center; height: 100px;">
-                <span class="text-h3 text-primary">Reserved</span>
-            </div>
 
             <!-- Action Buttons -->
             <div class="d-flex justify-end mt-4 pa-4">
                 <v-btn variant="outlined" color="grey" class="mr-2" @click="handleClose">Back</v-btn>
-                <v-btn color="primary" :disabled="!stoBatchPickingStore.availableStocks.some(item => item.is_selected)"
-                    v-if="parseInt(stoBatchPickingStore.stoDetails?.open_quantity) > 0" @click="reserveBatch"
-                    type="button">Reserve Batch</v-btn>
+                <v-btn color="primary"  :disabled="!isReadyToReserve" @click="selectPallets"
+                        type="button">Select Pallets</v-btn>
             </div>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="selectPalletDialogVisible" max-width="1000px" scrollable>
+        <v-card class="d-flex flex-column" height="600px">
+            <v-card-title class="d-flex justify-space-between align-center pa-4">
+                <span class="text-h5">Assign Pallets</span>
+                <v-btn icon="ri-close-line" variant="text" @click="selectPalletDialogVisible = false"></v-btn>
+            </v-card-title>
+
+            <v-divider></v-divider>
+            
+            <v-card-text class="flex-grow-1 overflow-y-auto">
+                <div class="mb-4 pa-3 bg-grey-lighten-4 rounded">
+                   <div class="d-flex justify-space-between align-center">
+                        <div>
+                            <div class="mb-2"><strong>Receiving Plant:</strong> {{
+                                stoBatchPickingStore?.stoDetails?.receiving_order_plant?.plant_code }} - {{
+                                    stoBatchPickingStore?.stoDetails?.receiving_order_plant?.name }}
+                            </div>
+                            <div class="mb-2"><strong>Receiving Sloc:</strong> {{
+                                stoBatchPickingStore?.stoDetails?.receiving_storage_location?.code }} - {{
+                                    stoBatchPickingStore?.stoDetails?.receiving_storage_location?.name }} 
+                            </div>
+                            <div class="mb-2"><strong>Material:</strong> {{ removeLeadingZeros(stoBatchPickingStore?.stoDetails?.material_code) }} - 
+                                {{ stoBatchPickingStore?.stoDetails?.material_description }}
+                            </div>
+                            
+                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
+                                <strong>Transport:</strong>
+                                {{ stoBatchPickingStore.selectedTransport?.transport?.transport_number }}
+                            </div>
+
+                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
+                                <strong>Plate Number:</strong>
+                                {{ stoBatchPickingStore.selectedTransport?.transport?.vehicle?.plate_number }}
+                            </div>
+
+                            <div v-if="stoBatchPickingStore.selectedTransport" class="mb-2" >
+                                <strong>Driver:</strong>
+                                {{ stoBatchPickingStore.selectedTransport?.transport?.driver?.full_name }}
+                            </div>
+
+                             <div class="d-flex align-center flex-wrap gap-1 mt-1">
+                                <strong>Batch:</strong>
+                                <template v-for="(batchItem, index) in stoBatchPickingStore.availableStocks" :key="index">
+                                    <v-chip
+                                        v-if="parseInt(batchItem.reserved_pallets, 10) > 0"
+                                        color="primary"
+                                        variant="tonal"
+                                        size="small"
+                                        class="ml-1"
+                                    >
+                                        {{ batchItem.BATCH }} 
+                                        <!-- Reflects the actual reserved pallet quantity specified by the user -->
+                                        <v-avatar right class="bg-primary-darken-1 white--text ml-2 px-2" size="16">
+                                            {{ batchItem.reserved_pallets }}
+                                        </v-avatar>
+                                    </v-chip>
+                                </template>
+                            </div>
+                            <div class="mt-2">
+                                <strong>Open Quantity:</strong>
+                                <span class="text-error ml-2">
+                                    {{ Number(stoBatchPickingStore?.stoDetails?.open_quantity ??
+                                                0).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }) }}
+                                    {{ stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom }}
+                                </span>
+                            </div>
+                            <div class="mt-2">
+                                <strong>Reserved Quantity:</strong>
+                                <span class="text-success font-weight-bold ml-2">
+                                    {{ Number(totalReservedQuantity).toLocaleString('en-US', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }) }}
+                                    {{ stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom }}
+                                </span>
+                            </div>
+                        </div>
+                   </div>
+                </div>
+
+                <v-data-table
+                    v-model="selectedPalletIds"
+                    :headers="headers"
+                    :items="availablePallets"
+                    class="elevation-1 border rounded"
+                    show-select
+                    density="compact"
+                    item-value="id"
+                >   
+                    <template #item.mfg_date="{ item }">
+                        <span>{{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}</span>
+                    </template>
+
+                    <template #item.quantity="{ item }">
+                        <span>{{ item.quantity }} {{stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom}}</span>
+                    </template>
+
+                    <template #no-data>
+                        <div class="pa-4 text-center text-grey">
+                            No pallets found with selected batch(es)
+                        </div>
+                    </template>
+                </v-data-table>
+            </v-card-text>
+
+            <v-divider></v-divider>
+
+            <v-card-actions class="pa-4">
+                <v-spacer></v-spacer>
+                <v-btn variant="outlined" @click="cancelPalletSelection">Cancel</v-btn>
+                <v-btn color="primary" variant="elevated" @click="reserveBatch" :loading="loading">Save</v-btn>
+            </v-card-actions>
         </v-card>
     </v-dialog>
 
@@ -715,19 +1020,24 @@ const executeCancel = async () => {
                 <div class="text-subtitle-2 font-weight-bold mb-1 text-grey-darken-2">
                     Pallets to release:
                 </div>
-                <v-data-table :headers="cancelTableHeaders" :items="stoBatchPickingStore?.stoDetails?.reserved_pallets"
-                    class="elevation-0 border rounded" density="compact" hide-default-footer disable-pagination
-                    max-height="200px" fixed-header>
-                    <!-- Formatting Quantity with a generic fallback Unit -->
-                    <template #item.quantity="{ item }">
-                        {{ item.total_qty }}
+                <v-data-table
+                    :headers="reservedPalletsHeaders"
+                    :items="reservedPallets"
+                    :loading="reservedLoading"
+                    class="elevation-1 border rounded"
+                    density="compact"
+                >   
+                    <template #item.physical_id="{ item }">
+                        <span>{{ item.pallet_physical_id }} </span>
                     </template>
 
-                    <!-- Formatting Manufacturing Date if available -->
                     <template #item.mfg_date="{ item }">
-                        {{ item.manufacturing_date || '—' }}
+                        <span>{{ item.manufacturing_date ? Moment(item.manufacturing_date).format('MMM D, YYYY') : '' }}</span>
                     </template>
 
+                    <template #item.quantity="{ item }">
+                        <span>{{ item.total_qty }} {{stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom}}</span>
+                    </template>
                     <template #no-data>
                         <div class="pa-2 text-center text-grey text-caption">
                             No active staging records selected.
@@ -747,6 +1057,50 @@ const executeCancel = async () => {
                     Yes, Release & Discard
                 </v-btn>
             </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Reserved Pallets
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+
+                <v-data-table
+                    :headers="reservedPalletsHeaders"
+                    :items="reservedPallets"
+                    :loading="reservedLoading"
+                    class="elevation-1 border rounded"
+                    density="compact"
+                >   
+                    <template #item.physical_id="{ item }">
+                        <span>{{ item.pallet_physical_id }} </span>
+                    </template>
+
+                    <template #item.mfg_date="{ item }">
+                        <span>{{ item.manufacturing_date ? Moment(item.manufacturing_date).format('MMM D, YYYY') : '' }}</span>
+                    </template>
+
+                    <template #item.quantity="{ item }">
+                        <span>{{ item.total_qty }} {{stoBatchPickingStore?.stoDetails?.commercial_uom?.commercial_uom}}</span>
+                    </template>
+
+                    <template #no-data>
+                        <div class="pa-4 text-center text-grey">
+                            No pallets found with selected batch(es)
+                        </div>
+                    </template>
+                </v-data-table>
+
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
+                        type="button">Close</v-btn>
+                </div>
+            </v-card-text>
         </v-card>
     </v-dialog>
 
@@ -831,5 +1185,25 @@ const executeCancel = async () => {
 
 .selected-row {
     background-color: #e8f5e9;
+}
+
+/* 2. Add sharp vertical lines between EVERY column */
+.v-table tbody tr td {
+    border-right: 1px solid #e0e0e0 !important;
+}
+
+/* 3. Strip the very last right wall border to keep the grid boundary clean */
+.v-table tbody tr td:last-child {
+    border-right: none !important;
+}
+
+/* 4. Draw a distinct horizontal divider ONLY at the very bottom of each transport group */
+.transport-group-row:last-child td {
+    border-bottom: 2px solid #b0bec5 !important; /* Slightly darker line to anchor the group */
+}
+
+/* 5. Highlight the full collective block container on hover states */
+.transport-group-container:hover td {
+    background-color: #f8f9fa !important;
 }
 </style>

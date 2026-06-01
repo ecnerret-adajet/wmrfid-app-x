@@ -215,6 +215,7 @@ export const useStoBatchPickingStore = defineStore('batches', () => {
         resetActiveTab,
         selectedTransport,
         selectedBatchCode,
-        selectedBatchPalletCount
+        selectedBatchPalletCount,
+
     };
 });
