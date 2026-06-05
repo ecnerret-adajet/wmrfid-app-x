@@ -60,7 +60,6 @@ const fetchRfidRegistrationData = async () => {
 };
 
 
-
 const proceedMapping = () => {
     if (mappingModalForm.value.isValid) {
         let storageLocation = storageLocations.value.find(item => item.value === mappingLocation.value);
@@ -230,7 +229,7 @@ const proceedMapping = () => {
         }" />
     </VerticalNavGroup>
 
-    <VerticalNavGroup v-if="authUserCan('view.weak.pallets') || authUserCan('view.readers.report')"
+    <VerticalNavGroup v-if="authUserCan('view.weak.pallets') || authUserCan('view.readers.report') || authUserCan('view.putaway.report')"
         :item="{ title: 'RFID Reports', icon: 'ri-file-chart-line' }">
         <VerticalNavLink v-if="authUserCan('view.weak.pallets')" :item="{
             title: 'Weak Pallets',
@@ -242,8 +241,14 @@ const proceedMapping = () => {
             href: '/reports/readers-report',
             to: '/reports/readers-report',
         }" />
+
+        
     </VerticalNavGroup>
 
+    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report')"
+        :item="{ heading: 'Reports' }" />
+    <VerticalNavLink v-if="authUserCan('view.putaway.report')"
+        :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->

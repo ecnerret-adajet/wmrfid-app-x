@@ -381,6 +381,17 @@ export const routes = [
               ],
             },
         },
+                {
+                        path: 'reports/putaway',
+                        name: 'putaway-report',
+                        component: () => import('@/pages/reports/putaway/Index.vue'),
+                        meta: {
+                            pageTitle: "Putaway Report",
+                            breadcrumbs: [
+                                    { label: "Putaway Report", link: "/reports/putaway" },
+                            ],
+                        },
+                },
         {
             path: 'view-inversions',
             name: 'view-inversions',
