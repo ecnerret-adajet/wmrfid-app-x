@@ -13,7 +13,6 @@ const searchValue = ref('');
 const datatableRef = ref(null);
 const isLoading = ref(false);
 const plantsOption = ref([])
-const statisticsData = ref(null)
 
 const toast = ref({
     message: 'Success!',
@@ -32,6 +31,7 @@ const filters = reactive({
     specific_date: null,
 });
 
+const activeView = ref('table')
 
 const clearFilters = () => {
     filters.created_at = null;
@@ -60,9 +60,8 @@ const fetchDropdownData = async () => {
         }
 
         const preReqData = await ApiService.get(endpoint);
-        const { plants, statistics, shifts_dropdown } = preReqData.data;
+        const { plants, shifts_dropdown } = preReqData.data;
 
-        statisticsData.value = statistics;
         plantsOption.value = plants.map(item => ({
             value: item.plant_code,
             title: `${item.plant_code} - ${item.name}`, 
@@ -119,7 +118,7 @@ const dateFilters = [
 
 const baseHeaders = [
     { title: 'PLANT', key: 'plant_id', fixed: true, align: 'start', width: 65, sortable: false },
-    { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 120, sortable: false },
+    { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 100, sortable: false },
     { title: 'BATCH', key: 'batch', fixed: true, width: 120, sortable: false },
     { title: 'TR NO.', key: 'tr_no', fixed: true, width: 120, sortable: false },
     { title: 'TO NO.', key: 'to_no', fixed: true, width: 120, sortable: false },
@@ -160,6 +159,8 @@ const kpi = ref({
     qr_wrapping_putaway: { max: null, min: null, avg: null, count: null },
 });
 
+const chartKpis = ref(null)
+
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
     loading.value = true
     if (sortBy && sortBy.length > 0) {
@@ -193,6 +194,10 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             if (payload.table) {
                 serverItems.value = payload.table.data;   // Current page raw line records array
                 totalItems.value = payload.table.total;   // Total absolute matched lines for footer
+            }
+
+            if (payload.chart_kpis) {
+                chartKpis.value = payload.chart_kpis;
             }
 
             loading.value = false;
@@ -255,144 +260,183 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             Search
         </v-btn>
     </div>
+    <v-tabs
+        v-model="activeView"
+        color="primary"
+    >
+        <v-tab value="table">
+            <v-icon start>ri-table-line</v-icon>
+            Table View
+        </v-tab>
 
-    <VCard>
-        <VDataTableServer
-            v-model:items-per-page="itemsPerPage"
-            :headers="headers"
-            :items="serverItems"
-            :items-length="totalItems"
-            :loading="loading"
-            item-value="id"
-            @update:options="loadItems"
-            class="text-no-wrap fixed-column-table"
-        >
-            <template #header.physical_id="{ column }">
-                    <span>PHYSICAL</span><br/>
-                    <span>ID</span>
-            </template>
-            <template #header.tr_to_creation="{ column }">
-                <div class="d-flex flex-column py-2" style="line-height: 1.2;">
-                    <span class="mb-1">{{ column.title }}</span>
-                    <span class="text-caption text-medium-emphasis">Max: {{ kpi?.tr_to_creation?.max }}</span>
-                    <span class="text-caption text-medium-emphasis">Min: {{ kpi?.tr_to_creation?.min }}</span>
-                    <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.tr_to_creation?.avg }}</span>
-                    <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.tr_to_creation?.count }}</span>
-                </div>
-            </template>
+        <v-tab value="graph">
+            <v-icon start>ri-bar-chart-line</v-icon>
+            Graph View
+        </v-tab>
+    </v-tabs>
+    <v-window v-model="activeView">
+        <v-window-item value="table">
+            <VCard>
+                <VDataTableServer
+                    v-model:items-per-page="itemsPerPage"
+                    :headers="headers"
+                    :items="serverItems"
+                    :items-length="totalItems"
+                    :loading="loading"
+                    item-value="id"
+                    @update:options="loadItems"
+                    class="text-no-wrap fixed-column-table"
+                >
+                    <template #header.physical_id="{ column }">
+                            <span>PHYSICAL</span><br/>
+                            <span>ID</span>
+                    </template>
+                    <template #header.tr_to_creation="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.tr_to_creation?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.tr_to_creation?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.tr_to_creation?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.tr_to_creation?.count }}</span>
+                        </div>
+                    </template>
 
-            <template #header.to_creation_rfid_wrapping="{ column }">
-                <div class="d-flex flex-column py-2" style="line-height: 1.2;">
-                    <span class="mb-1">{{ column.title }}</span>
-                    <span class="text-caption text-medium-emphasis">Max: {{ kpi?.to_creation_rfid_wrapping?.max }}</span>
-                    <span class="text-caption text-medium-emphasis">Min: {{ kpi?.to_creation_rfid_wrapping?.min }}</span>
-                    <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.to_creation_rfid_wrapping?.avg }}</span>
-                    <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.to_creation_rfid_wrapping?.count }}</span>
-                </div>
-            </template>
+                    <template #header.to_creation_rfid_wrapping="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.to_creation_rfid_wrapping?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.to_creation_rfid_wrapping?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.to_creation_rfid_wrapping?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.to_creation_rfid_wrapping?.count }}</span>
+                        </div>
+                    </template>
 
-            <template #header.rfid_wrapping_wrapping_completion_date="{ column }">
-                <div class="d-flex flex-column py-2" style="line-height: 1.2;">
-                    <span class="mb-1">{{ column.title }}</span>
-                    <span class="text-caption text-medium-emphasis">Max: {{ kpi?.rfid_wrapping_wrapping_completion_date?.max }}</span>
-                    <span class="text-caption text-medium-emphasis">Min: {{ kpi?.rfid_wrapping_wrapping_completion_date?.min }}</span>
-                    <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.rfid_wrapping_wrapping_completion_date?.avg }}</span>
-                    <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.rfid_wrapping_wrapping_completion_date?.count }}</span>
-                </div>
-            </template>
+                    <template #header.rfid_wrapping_wrapping_completion_date="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.rfid_wrapping_wrapping_completion_date?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.rfid_wrapping_wrapping_completion_date?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.rfid_wrapping_wrapping_completion_date?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.rfid_wrapping_wrapping_completion_date?.count }}</span>
+                        </div>
+                    </template>
 
-            <template #header.tr_creation_putaway="{ column }">
-                <div class="d-flex flex-column py-2" style="line-height: 1.2;">
-                    <span class="mb-1">{{ column.title }}</span>
-                    <span class="text-caption text-medium-emphasis">Max: {{ kpi?.tr_creation_putaway?.max }}</span>
-                    <span class="text-caption text-medium-emphasis">Min: {{ kpi?.tr_creation_putaway?.min }}</span>
-                    <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.tr_creation_putaway?.avg }}</span>
-                    <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.tr_creation_putaway?.count }}</span>
-                </div>
-            </template>
+                    <template #header.tr_creation_putaway="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.tr_creation_putaway?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.tr_creation_putaway?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.tr_creation_putaway?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.tr_creation_putaway?.count }}</span>
+                        </div>
+                    </template>
 
-            <template #header.qr_wrapping_putaway="{ column }">
-                <div class="d-flex flex-column py-2" style="line-height: 1.2;">
-                    <span class="mb-1">{{ column.title }}</span>
-                    <span class="text-caption text-medium-emphasis">Max: {{ kpi?.qr_wrapping_putaway?.max }}</span>
-                    <span class="text-caption text-medium-emphasis">Min: {{ kpi?.qr_wrapping_putaway?.min }}</span>
-                    <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.qr_wrapping_putaway?.avg }}</span>
-                    <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.qr_wrapping_putaway?.count }}</span>
-                </div>
-            </template>
+                    <template #header.qr_wrapping_putaway="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.qr_wrapping_putaway?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.qr_wrapping_putaway?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.qr_wrapping_putaway?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{ kpi?.qr_wrapping_putaway?.count }}</span>
+                        </div>
+                    </template>
 
-            <template #item.tr_to_creation="{ item }">
-                 <v-chip v-if="item.status == 7 || item.status == 5" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.tr_to_creation }}</span>
-            </template>
+                    <template #item.tr_to_creation="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.tr_to_creation === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.tr_to_creation }}</span>
+                    </template>
 
-             <template #item.to_creation_rfid_wrapping="{ item }">
-                 <v-chip v-if="item.status == 7 || item.status == 5 || item.to_creation_rfid_wrapping === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.to_creation_rfid_wrapping }}</span>
-            </template>
+                    <template #item.to_creation_rfid_wrapping="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.to_creation_rfid_wrapping === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.to_creation_rfid_wrapping }}</span>
+                    </template>
 
-            <template #item.rfid_wrapping_putaway="{ item }">
-                 <v-chip v-if="item.status == 7 || item.status == 5 || item.rfid_wrapping_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping_putaway }}</span>
-            </template>
+                    <template #item.rfid_wrapping_putaway="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.rfid_wrapping_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping_putaway }}</span>
+                    </template>
 
-            <template #item.wrapping_completion_date="{ item }">
-                <v-chip v-if="item.status == 7 || item.status == 5 || item.wrapping_completion_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.wrapping_completion_date }}</span>
-            </template>
+                    <template #item.wrapping_completion_date="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.wrapping_completion_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.wrapping_completion_date }}</span>
+                    </template>
 
-            <template #item.tr_creation_putaway="{ item }">
-                <v-chip v-if="item.status == 7 || item.status == 5 || item.tr_creation_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.tr_creation_putaway }}</span>
-            </template>
+                    <template #item.tr_creation_putaway="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.tr_creation_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.tr_creation_putaway }}</span>
+                    </template>
 
-            <template #item.rfid_wrapping_wrapping_completion_date="{ item }">
-                <v-chip v-if="item.status == 7 || item.status == 5 || item.rfid_wrapping_wrapping_completion_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping_wrapping_completion_date }}</span>
-            </template>
+                    <template #item.rfid_wrapping_wrapping_completion_date="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.rfid_wrapping_wrapping_completion_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping_wrapping_completion_date }}</span>
+                    </template>
 
-            <template #item.rfid_wrapping="{ item }">
-                <v-chip v-if="item.rfid_wrapping === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping }}</span>
-            </template>
+                    <template #item.rfid_wrapping="{ item }">
+                        <v-chip v-if="item.rfid_wrapping === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.rfid_wrapping }}</span>
+                    </template>
 
-            <template #item.putaway_date="{ item }">
-                <v-chip v-if="item.putaway_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.putaway_date }}</span>
-            </template>
+                    <template #item.putaway_date="{ item }">
+                        <v-chip v-if="item.putaway_date === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.putaway_date }}</span>
+                    </template>
 
-            <template #item.qr_wrapping_putaway="{ item }">
-                <v-chip v-if="item.status == 7 || item.status == 5 || item.qr_wrapping_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
-                <span v-else class="text-caption text-medium-emphasis">{{ item.qr_wrapping_putaway }}</span>
-            </template>
+                    <template #item.qr_wrapping_putaway="{ item }">
+                        <v-chip v-if="item.status == 7 || item.status == 5 || item.qr_wrapping_putaway === 'Invalid'" size="small" color="error" text-color="white">Invalid</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.qr_wrapping_putaway }}</span>
+                    </template>
 
-            <template #item.plant_id="{ item }">
-                {{ item.plant_code }}
-            </template>
+                    <template #item.plant_id="{ item }">
+                        {{ item.plant_code }}
+                    </template>
 
-            <template #item.batch="{ item }">
-                {{ item.batch }}
-            </template>
+                    <template #item.batch="{ item }">
+                        {{ item.batch }}
+                    </template>
 
-            <template #item.created_at="{ item }">
-                {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
-            </template>
+                    <template #item.created_at="{ item }">
+                        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
+                    </template>
 
-            <template #item.updated_at="{ item }">
-                {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
-            </template>
+                    <template #item.updated_at="{ item }">
+                        {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
+                    </template>
 
-            <template #item.status="{ item }">
-                <v-chip v-if="item.status == 1" size="small" color="warning" style="width: 100px; justify-content: center;" text-color="white">Pending</v-chip>
-                <v-chip v-else-if="item.status == 2" size="small" color="info" style="width: 100px; justify-content: center;" text-color="white">For Wrapping</v-chip>
-                <v-chip v-else-if="item.status == 3" size="small" color="success" style="width: 100px; justify-content: center;" text-color="white">For Putaway</v-chip>
-                <v-chip v-else-if="item.status == 4" size="small" color="primary" style="width: 100px; justify-content: center;" text-color="white">Completed</v-chip>
-                <v-chip v-else-if="item.status == 7 || item.status == 5" size="small" color="error" style="width: 100px; justify-content: center;" text-color="white">Invalid</v-chip>
-            </template>
+                    <template #item.status="{ item }">
+                        <v-chip v-if="item.status == 1" size="small" color="warning" style="width: 100px; justify-content: center;" text-color="white">Pending</v-chip>
+                        <v-chip v-else-if="item.status == 2" size="small" color="info" style="width: 100px; justify-content: center;" text-color="white">For Wrapping</v-chip>
+                        <v-chip v-else-if="item.status == 3" size="small" color="success" style="width: 100px; justify-content: center;" text-color="white">For Putaway</v-chip>
+                        <v-chip v-else-if="item.status == 4" size="small" color="primary" style="width: 100px; justify-content: center;" text-color="white">Completed</v-chip>
+                        <v-chip v-else-if="item.status == 7 || item.status == 5" size="small" color="error" style="width: 100px; justify-content: center;" text-color="white">Invalid</v-chip>
+                    </template>
 
-        </VDataTableServer>
-    </VCard>
+                </VDataTableServer>
+            </VCard>
+        </v-window-item>
+        <v-window-item value="graph">
+            <VCard>
+                <VCardTitle>
+                </VCardTitle>
 
+                <!-- <VCardText> -->
+                    <!-- <PutawayChart :data="chartKpis" /> -->
+                <!-- </VCardText> -->
+                <VCardText class="d-flex flex-column align-center justify-center pa-10">
+                    <v-icon size="64" color="grey-lighten-1" icon="ri-bar-chart-2-line">
+                    </v-icon>
+
+                    <div class="text-h6 mt-4 text-medium-emphasis">
+                        Graph View Coming Soon
+                    </div>
+
+                    <div class="text-caption text-medium-emphasis">
+                        We’re working on visual analytics for process performance
+                    </div>
+                </VCardText>
+            </VCard>
+        </v-window-item>
+    </v-window>
+    
     <Toast :show="toast.show" :message="toast.message"/>
 </template>
 <style scoped>
