@@ -1030,9 +1030,11 @@ const dateFilters = [
                                         <span class="text-h6 text-uppercase font-weight-bold text-grey-700"
                                             style="margin-top: 1px;">Material</span>
                                     </VCol>
-                                    <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">{{
-                                            selectedProductionRun.material?.description }}</span>
+                                    <VCol class="d-flex flex-column">
+                                        <span class="text-medium-emphasis font-weight-medium">{{
+                                        selectedProductionRun?.material?.description }}</span>
+                                        <div class="text-subtitle-1 font-weight-thin">{{
+                                        selectedProductionRun?.material?.bu_material }}</div>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1062,9 +1064,9 @@ const dateFilters = [
                                             style="margin-top: 1px;">Line</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-grey-700">{{
-                                            selectedProductionRun.SILO.trim()
-                                            }}</span>
+                                        <span class="font-weight-medium text-grey-700">
+                                              {{ selectedProductionRun.plc_run?.SILO ?? selectedProductionRun.plc_run?.Section ?? selectedProductionRun.plc_run?.PACKING_NO ?? null }}
+                                        </span>
                                     </VCol>
                                 </VRow>
                             </VCol>

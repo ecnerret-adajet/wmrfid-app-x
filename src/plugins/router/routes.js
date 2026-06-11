@@ -381,6 +381,17 @@ export const routes = [
               ],
             },
         },
+                {
+                        path: 'reports/putaway',
+                        name: 'putaway-report',
+                        component: () => import('@/pages/reports/putaway/Index.vue'),
+                        meta: {
+                            pageTitle: "Putaway Report",
+                            breadcrumbs: [
+                                    { label: "Putaway Report", link: "/reports/putaway" },
+                            ],
+                        },
+                },
         {
             path: 'view-inversions',
             name: 'view-inversions',
@@ -496,13 +507,20 @@ export const routes = [
                 pageTitle: "Pallet Selection - Batch Picking"
             },
         },
-
         {
-            path: '/batch-picking/:po_number/:po_item/sto-pallet-selection',
+            path: '/sto-batch-picking/:po_number/:po_item',
+            name: 'sto-batch-picking',
+            component: () => import('@/pages/transfers/batchPick.vue'), 
+            meta: {
+                pageTitle: "STO - Batch Picking"
+            },
+        },
+        {
+            path: '/sto-batch-picking/:po_number/:po_item/sto-pallet-selection',
             name: 'sto-pallet-selection',
             component: () => import('@/pages/transfers/palletPicking.vue'), 
             meta: {
-                pageTitle: "Pallet Selection - Batch Picking"
+                pageTitle: "Pallet Selection - Pallet Selection"
             },
         },
 
@@ -669,6 +687,15 @@ export const routes = [
             pageTitle: "Batch Picking"
         },
     },
+    {
+        path: '/sto-picking',
+        name: 'sto-batch-picking-auth-checking',
+        component: () => import('@/pages/transfers/authChecking.vue'), 
+        meta: {
+            pageTitle: "STO Batch Picking"
+        },
+    },
+
     // {
     //     path: '/batch-picking/:do_number',
     //     name: 'batch-picking',
