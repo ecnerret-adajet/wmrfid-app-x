@@ -28,6 +28,7 @@ const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 const filters = ref(null)
+const pendingDeliveryId = ref(null)
 
 // Dialog view state: 'items' | 'batch-selection' | 'pallet-selection'
 const showDeliveryItems = ref(false)
@@ -85,6 +86,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search, plant_code }) => {
             totalItems.value = response.data.total
             serverItems.value = response.data.data
             loading.value = false
+
+            if (pendingDeliveryId.value !== null) {
+                const refreshed = serverItems.value.find(d => d.id === pendingDeliveryId.value)
+                if (refreshed) store.deliveryData = refreshed
+                pendingDeliveryId.value = null
+            }
+
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search })
         })
         .catch(error => console.error(error))
@@ -160,6 +168,7 @@ const handleSelectPallets = () => {
 }
 
 const handleReserveSuccess = () => {
+    pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
     store.reset()
     loadItems({
