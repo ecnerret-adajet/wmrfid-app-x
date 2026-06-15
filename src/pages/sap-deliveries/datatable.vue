@@ -41,8 +41,24 @@ const headers = [
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
+    { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
     { title: 'ACTION', key: 'action', align: 'center', sortable: false },
 ]
+
+const getDeliveryPalletStatus = delivery => {
+    const items = delivery.delivery_items ?? []
+    if (items.length === 0) return { label: 'No Items', color: 'default' }
+
+    const fullyReserved = items.filter(
+        i => i.delivery_reserved_orders?.length > 0 &&
+             parseInt(i.total_reserved_pallets) >= parseInt(i.delivery_quantity)
+    ).length
+    const hasAnyReserved = items.some(i => i.delivery_reserved_orders?.length > 0)
+
+    if (fullyReserved === items.length) return { label: 'Reserved', color: 'success' }
+    if (hasAnyReserved) return { label: 'Partial', color: 'info' }
+    return { label: 'No Pallet', color: 'warning' }
+}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search, plant_code }) => {
     if (!filters.value) return
@@ -201,6 +217,17 @@ defineExpose({ loadItems, applyFilters })
         <template #item.picking_status="{ item }">{{ item.picking_status }}</template>
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>
+
+        <template #item.pallet_status="{ item }">
+            <v-chip
+                size="small"
+                :color="getDeliveryPalletStatus(item).color"
+                variant="tonal"
+                class="text-uppercase"
+            >
+                {{ getDeliveryPalletStatus(item).label }}
+            </v-chip>
+        </template>
 
         <template #item.action="{ item }">
             <div class="d-flex justify-center gap-1">
