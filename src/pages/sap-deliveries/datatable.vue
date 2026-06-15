@@ -42,7 +42,7 @@ const headers = [
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
-    { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
+    // { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
     { title: 'ACTION', key: 'action', align: 'center', sortable: false },
 ]
 
@@ -155,8 +155,15 @@ const openBatchSelection = async item => {
 }
 
 const backToDeliveryItems = () => {
+    pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
     store.selectedDeliveryItem = null
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'created_at', order: 'desc' }],
+        search: props.search,
+    })
 }
 
 const backToBatchSelection = () => {
@@ -227,7 +234,7 @@ defineExpose({ loadItems, applyFilters })
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>
 
-        <template #item.pallet_status="{ item }">
+        <!-- <template #item.pallet_status="{ item }">
             <v-chip
                 size="small"
                 :color="getDeliveryPalletStatus(item).color"
@@ -236,7 +243,7 @@ defineExpose({ loadItems, applyFilters })
             >
                 {{ getDeliveryPalletStatus(item).label }}
             </v-chip>
-        </template>
+        </template> -->
 
         <template #item.action="{ item }">
             <div class="d-flex justify-center gap-1">
@@ -312,6 +319,20 @@ defineExpose({ loadItems, applyFilters })
                                     <td class="text-center">{{ store.deliveryData?.goods_issue_status }}</td>
                                     <td class="text-center">
                                         <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) == 0"
+                                            color="warning"
+                                            content="No Pallet"
+                                            class="text-uppercase"
+                                            inline
+                                        />
+                                        <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) > 0"
+                                            color="success"
+                                            content="Reserved"
+                                            class="text-uppercase"
+                                            inline
+                                        />
+                                         <!-- <v-badge
                                             v-if="!item.delivery_reserved_orders || item.delivery_reserved_orders.length === 0"
                                             color="warning"
                                             content="No Pallet"
@@ -324,7 +345,7 @@ defineExpose({ loadItems, applyFilters })
                                             content="Reserved"
                                             class="text-uppercase"
                                             inline
-                                        />
+                                        /> -->
                                         <div v-else class="d-flex flex-column py-3">
                                             <v-badge
                                                 color="info"
