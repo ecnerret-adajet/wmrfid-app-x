@@ -326,9 +326,16 @@ defineExpose({ loadItems, applyFilters })
                                             inline
                                         />
                                         <v-badge
-                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) > 0"
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) == parseInt(item.delivery_quantity)"
                                             color="success"
                                             content="Reserved"
+                                            class="text-uppercase"
+                                            inline
+                                        />
+                                        <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) < parseInt(item.delivery_quantity)"
+                                            color="info"
+                                            content="Partially Reserved"
                                             class="text-uppercase"
                                             inline
                                         />
@@ -346,7 +353,7 @@ defineExpose({ loadItems, applyFilters })
                                             class="text-uppercase"
                                             inline
                                         /> -->
-                                        <div v-else class="d-flex flex-column py-3">
+                                        <!-- <div v-else class="d-flex flex-column py-3">
                                             <v-badge
                                                 color="info"
                                                 content="Partially Reserved"
@@ -357,7 +364,7 @@ defineExpose({ loadItems, applyFilters })
                                                 {{ item.total_reserved_pallets }} out of
                                                 {{ item.delivery_quantity }} {{ item.sales_unit }}(S)
                                             </span>
-                                        </div>
+                                        </div> -->
                                     </td>
                                     <td class="text-center">
                                         <v-btn
