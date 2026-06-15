@@ -318,7 +318,7 @@ defineExpose({ loadItems, applyFilters })
                                     <td class="text-center">{{ store.deliveryData?.picking_status }}</td>
                                     <td class="text-center">{{ store.deliveryData?.goods_issue_status }}</td>
                                     <td class="text-center">
-                                        <v-badge
+                                        <!-- <v-badge
                                             v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) == 0"
                                             color="warning"
                                             content="No Pallet"
@@ -338,8 +338,8 @@ defineExpose({ loadItems, applyFilters })
                                             content="Partially Reserved"
                                             class="text-uppercase"
                                             inline
-                                        />
-                                         <!-- <v-badge
+                                        /> -->
+                                         <v-badge
                                             v-if="!item.delivery_reserved_orders || item.delivery_reserved_orders.length === 0"
                                             color="warning"
                                             content="No Pallet"
@@ -352,8 +352,8 @@ defineExpose({ loadItems, applyFilters })
                                             content="Reserved"
                                             class="text-uppercase"
                                             inline
-                                        /> -->
-                                        <!-- <div v-else class="d-flex flex-column py-3">
+                                        />
+                                        <div v-else class="d-flex flex-column py-3">
                                             <v-badge
                                                 color="info"
                                                 content="Partially Reserved"
@@ -364,7 +364,7 @@ defineExpose({ loadItems, applyFilters })
                                                 {{ item.total_reserved_pallets }} out of
                                                 {{ item.delivery_quantity }} {{ item.sales_unit }}(S)
                                             </span>
-                                        </div> -->
+                                        </div>
                                     </td>
                                     <td class="text-center">
                                         <v-btn
