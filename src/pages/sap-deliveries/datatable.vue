@@ -39,6 +39,7 @@ const toast = ref({ message: '', color: 'success', show: false })
 const headers = [
     { title: 'DELIVERY NUMBER', key: 'delivery_document' },
     { title: 'CUSTOMER', key: 'customer', sortable: false },
+    { title: 'DELIVERY DATE', key: 'delivery_date' },
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
@@ -230,6 +231,7 @@ defineExpose({ loadItems, applyFilters })
             </div>
         </template>
 
+        <template #item.delivery_date="{ item }">{{ item.delivery_date }}</template>
         <template #item.picking_status="{ item }">{{ item.picking_status }}</template>
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>
