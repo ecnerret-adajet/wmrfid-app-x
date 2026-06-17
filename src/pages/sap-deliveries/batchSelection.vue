@@ -44,13 +44,13 @@ const selectPallets = () => {
         return
     }
 
-    const openQty = store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity ?? 0
-    const totalBags = selectedBatchData.reduce((sum, b) => sum + Number(b.bags_quantity), 0)
+    // const openQty = store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity ?? 0
+    // const totalBags = selectedBatchData.reduce((sum, b) => sum + Number(b.bags_quantity), 0)
 
-    if (totalBags > openQty) {
-        toast.value = { message: 'Bags on selected pallets exceeds open quantity.', color: 'error', show: true }
-        return
-    }
+    // if (totalBags > openQty) {
+    //     toast.value = { message: 'Bags on selected pallets exceeds open quantity.', color: 'error', show: true }
+    //     return
+    // }
 
     store.setBatches(selectedBatchData)
     store.setOriginalBatchList(selectedBatchData)
