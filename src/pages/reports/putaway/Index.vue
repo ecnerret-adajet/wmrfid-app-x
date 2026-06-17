@@ -101,7 +101,7 @@ const handleSearch = () => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        sortBy: [{ key: 'created_at', order: 'desc' }],
         filters: filters,
         search: searchValue.value
     });
