@@ -28,6 +28,7 @@ const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 const filters = ref(null)
+const pendingDeliveryId = ref(null)
 
 // Dialog view state: 'items' | 'batch-selection' | 'pallet-selection'
 const showDeliveryItems = ref(false)
@@ -41,8 +42,24 @@ const headers = [
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
+    // { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
     { title: 'ACTION', key: 'action', align: 'center', sortable: false },
 ]
+
+const getDeliveryPalletStatus = delivery => {
+    const items = delivery.delivery_items ?? []
+    if (items.length === 0) return { label: 'No Items', color: 'default' }
+
+    const fullyReserved = items.filter(
+        i => i.delivery_reserved_orders?.length > 0 &&
+             parseInt(i.total_reserved_pallets) >= parseInt(i.delivery_quantity)
+    ).length
+    const hasAnyReserved = items.some(i => i.delivery_reserved_orders?.length > 0)
+
+    if (fullyReserved === items.length) return { label: 'Reserved', color: 'success' }
+    if (hasAnyReserved) return { label: 'Partial', color: 'info' }
+    return { label: 'No Pallet', color: 'warning' }
+}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search, plant_code }) => {
     if (!filters.value) return
@@ -69,6 +86,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search, plant_code }) => {
             totalItems.value = response.data.total
             serverItems.value = response.data.data
             loading.value = false
+
+            if (pendingDeliveryId.value !== null) {
+                const refreshed = serverItems.value.find(d => d.id === pendingDeliveryId.value)
+                if (refreshed) store.deliveryData = refreshed
+                pendingDeliveryId.value = null
+            }
+
             emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search })
         })
         .catch(error => console.error(error))
@@ -131,8 +155,15 @@ const openBatchSelection = async item => {
 }
 
 const backToDeliveryItems = () => {
+    pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
     store.selectedDeliveryItem = null
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'created_at', order: 'desc' }],
+        search: props.search,
+    })
 }
 
 const backToBatchSelection = () => {
@@ -144,6 +175,7 @@ const handleSelectPallets = () => {
 }
 
 const handleReserveSuccess = () => {
+    pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
     store.reset()
     loadItems({
@@ -201,6 +233,17 @@ defineExpose({ loadItems, applyFilters })
         <template #item.picking_status="{ item }">{{ item.picking_status }}</template>
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>
+
+        <!-- <template #item.pallet_status="{ item }">
+            <v-chip
+                size="small"
+                :color="getDeliveryPalletStatus(item).color"
+                variant="tonal"
+                class="text-uppercase"
+            >
+                {{ getDeliveryPalletStatus(item).label }}
+            </v-chip>
+        </template> -->
 
         <template #item.action="{ item }">
             <div class="d-flex justify-center gap-1">
@@ -275,7 +318,28 @@ defineExpose({ loadItems, applyFilters })
                                     <td class="text-center">{{ store.deliveryData?.picking_status }}</td>
                                     <td class="text-center">{{ store.deliveryData?.goods_issue_status }}</td>
                                     <td class="text-center">
+                                        <!-- <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) == 0"
+                                            color="warning"
+                                            content="No Pallet"
+                                            class="text-uppercase"
+                                            inline
+                                        />
                                         <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) == parseInt(item.delivery_quantity)"
+                                            color="success"
+                                            content="Reserved"
+                                            class="text-uppercase"
+                                            inline
+                                        />
+                                        <v-badge
+                                            v-if="parseInt(store.deliveryData?.open_quantity ?? store.selectedDeliveryItem?.open_quantity) < parseInt(item.delivery_quantity)"
+                                            color="info"
+                                            content="Partially Reserved"
+                                            class="text-uppercase"
+                                            inline
+                                        /> -->
+                                         <v-badge
                                             v-if="!item.delivery_reserved_orders || item.delivery_reserved_orders.length === 0"
                                             color="warning"
                                             content="No Pallet"
