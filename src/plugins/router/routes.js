@@ -288,6 +288,17 @@ export const routes = [
             },
         },
         {
+            path: 'rfid/washed-pallets',
+            name: 'rfid-washed-pallets',
+            component: () => import('@/pages/washed-pallets/index.vue'),
+            meta: {
+                pageTitle: "Washed Pallets - RFID Master",
+                breadcrumbs: [
+                    { label: "Washed Pallets", link: "/rfid/washed-pallets" },
+                ],
+            },
+        },
+        {
             path: 'rfid/tonner-bags',
             name: 'rfid-tonner-bags',
             component: () => import('@/pages/rfid-tonner-bags/index.vue'),
