@@ -799,6 +799,18 @@ const cancelCreateFumigation = () => {
                         class="text-uppercase"
                         inline
                 ></v-badge>
+                <v-badge v-else-if="item.status == 'ended'"
+                        color="success"
+                        :content="item.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
+                <v-badge v-else-if="item.status == 'cancelled'"
+                        color="danger"
+                        :content="item.status"
+                        class="text-uppercase"
+                        inline
+                ></v-badge>
             </template>
 
             <!-- <template #item.action="{ item }">
