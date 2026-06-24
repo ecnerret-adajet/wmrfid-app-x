@@ -193,6 +193,11 @@ const proceedMapping = () => {
             href: '/rfid/pallets',
             to: '/rfid/pallets',
         }" />
+        <VerticalNavLink v-if="authUserCan('view.rfid')" :item="{
+            title: 'Washed Pallets',
+            href: '/rfid/washed-pallets',
+            to: '/rfid/washed-pallets',
+        }" />
         <VerticalNavLink v-if="authUserCan('view.rfid.tonner.bags')" :item="{
             title: 'Tonner Bags',
             href: '/rfid/tonner-bags',
