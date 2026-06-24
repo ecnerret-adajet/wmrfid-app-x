@@ -221,6 +221,9 @@ const createFumigateForm = reactive({
 
 const fumigateModal = ref(false);
 const detailsModal = ref(false);
+const endFumigationModal = ref(false);
+const endFumigationItem = ref(null);
+const endFumigationLoading = ref(false);
 const selectedFumigationRequest = ref(null)
 
 const openDetailsModal = (item) => {
@@ -279,6 +282,38 @@ const handleFumigate = async () => {
     } catch (error) {
         console.error('Error submitting:', error);
         fumigateLoading.value = false;
+    }
+}
+
+const openEndFumigationDialog = (item) => {
+    endFumigationItem.value = item;
+    endFumigationModal.value = true;
+}
+
+const confirmEndFumigation = async () => {
+    endFumigationLoading.value = true;
+    toast.show = false;
+
+    try {
+        await ApiService.post(`fumigations/end-fumigation/${endFumigationItem.value.id}`)
+        endFumigationLoading.value = false;
+        toast.message = 'Fumigation ended successfully';
+        toast.color = 'success';
+        toast.show = true;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: searchValue.value
+        });
+        endFumigationModal.value = false;
+        endFumigationItem.value = null;
+    } catch (error) {
+        console.error('Error ending fumigation:', error);
+        endFumigationLoading.value = false;
+        toast.message = error.response?.data?.message || 'Failed to end fumigation';
+        toast.color = 'error';
+        toast.show = true;
     }
 }
 
@@ -785,13 +820,19 @@ const cancelCreateFumigation = () => {
                     >
                         <VIcon icon="ri-eye-line" />
                     </IconBtn>
-                    <!-- Add role allowed for editing fumigation  -->
-                    <IconBtn v-if="authUserCan('update.fumigation.requests')"
-                        size="small"
-                        @click="editItem(item)"
-                    >
-                        <VIcon icon="ri-pencil-line" />
-                    </IconBtn>
+                    <v-menu v-if="authUserCan('update.fumigation.requests')" location="end">
+                        <template v-slot:activator="{ props }">
+                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey" size="small"></v-btn>
+                        </template>
+                        <v-list>
+                            <v-list-item @click="editItem(item)">
+                                <v-list-item-title>Edit</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item @click="openEndFumigationDialog(item)">
+                                <v-list-item-title>End Fumigation</v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-menu>
                 </div>
             </template>
 
@@ -908,6 +949,34 @@ const cancelCreateFumigation = () => {
                 </v-form>
             </v-card-text>
 
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="endFumigationModal" max-width="500px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center px-6 pt-6 pb-2">
+                <div class="d-flex align-center gap-2">
+                    <i class="ri-error-warning-line text-warning text-h4"></i>
+                    <span class="text-h5 font-weight-bold">End Fumigation</span>
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="endFumigationModal = false" />
+            </v-card-title>
+            <v-card-text class="px-6 pt-4">
+                <p class="text-body-1">
+                    Are you sure you want to end this fumigation for
+                    <strong>{{ endFumigationItem?.delivery_document ?? '—' }}</strong>?
+                </p>
+                <p class="text-body-2 text-medium-emphasis mt-2">
+                    This action will mark the fumigation as completed and cannot be undone.
+                </p>
+            </v-card-text>
+            <v-divider />
+            <v-card-actions class="justify-end px-6 py-3">
+                <v-btn variant="outlined" @click="endFumigationModal = false" class="mr-3">Cancel</v-btn>
+                <PrimaryButton color="warning" @click="confirmEndFumigation" :loading="endFumigationLoading">
+                    End Fumigation
+                </PrimaryButton>
+            </v-card-actions>
         </v-card>
     </v-dialog>
 
