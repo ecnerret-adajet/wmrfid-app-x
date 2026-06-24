@@ -3,6 +3,8 @@
         <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
         <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
         <h4 class="text-h5 font-weight-bold mb-2">Warehouse # : <span class="font-bold text-primary">{{ storageLocation?.warehouse_number }}</span></h4>
+        <h4 class="text-h5 font-weight-bold mb-2">No of Entries : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
+        
         <div class="d-flex gap-4 align-center justify-center mb-2">
             <VTextField v-model="searchValue" label="Search" placeholder="Search bin" append-inner-icon="ri-search-line"
                 single-line hide-details density="compact" class="flex-grow-1" />
@@ -24,12 +26,12 @@
                 density="compact" :items="availabilityOptions" v-model="filters.availability"
                 :rules="[value => value !== undefined || 'Please select an item from the list']">
             </v-select> -->
-            <v-btn class="d-flex align-center" color="info" prepend-icon="ri-add-line" @click="showModal = true">
+            <!-- <v-btn class="d-flex align-center" color="info" prepend-icon="ri-add-line" @click="showModal = true">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
                 </template>
                 Create Transfer Request
-            </v-btn>
+            </v-btn> -->
             <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
@@ -461,7 +463,7 @@ watch(destinationSection, async (newVal) => {
     pageLoading.value = true;
     try {
       const token = JwtService.getToken();
-      const response = await axios.get(`/warehouse/bin-transfer/get-destination-bins/${blockId}/${lotId}/`, {
+      const response = await axios.get(`/warehouse/bin-transfer/get-destination-bins//${plantCode}/${sloc}${blockId}/`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -524,7 +526,7 @@ async function submitTransfer() {
         pageLoading.value = true;
 
         const response = await ApiService.post(
-            `/warehouse/bin-transfer/store-request`,
+            `/warehouse/bin-transfer/store-request-web`,
             {
                 from_section_id: selectedSection.value.id || selectedSection.value,
                 from_block_id: selectedBin.value.id || selectedBin.value,
@@ -597,7 +599,7 @@ const fetchSectionBin = async (sectionId) => {
     pageLoading.value = true;
     try {
         const token = JwtService.getToken();
-        const response = await axios.get(`/warehouse/bin-transfer/get-bin-options/${sectionId}`, {
+        const response = await axios.get(`/warehouse/bin-transfer/get-bin-options/${plantCode}/${sloc}/${sectionId}`, {
             params: {
                 filters: filters
             },
@@ -698,7 +700,7 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         });
 
         const { table } = response.data;
-        console.log(table);
+   
         totalItems.value = table.total;
         serverItems.value = table.data;
 

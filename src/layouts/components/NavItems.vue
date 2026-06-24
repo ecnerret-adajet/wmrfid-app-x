@@ -161,7 +161,7 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" /> -->
      <VerticalNavLink v-if="authUserCan('can.view.bin.transfer.requests')"
-        :item="{ title: 'Bin Transfer', icon: 'ri-box-2-line', to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/bin-transfer` }" />
+        :item="{ title: 'Bin to Bin', icon: 'ri-box-2-line', to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/bin-transfer` }" />
      <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
         :item="{ title: 'Putaway', icon: 'ri-database-2-line', 
         to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qr-putaway` }" />
