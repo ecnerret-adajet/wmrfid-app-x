@@ -2,6 +2,7 @@
 import DatePicker from '@/components/DatePicker.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { ref } from 'vue';
 
@@ -29,6 +30,8 @@ const filters = reactive({
     status_type: null,
     date_range_preset: 'today',
     specific_date: null,
+    wrapping_type: 'All',
+    weak_pallet_type: 'All'
 });
 
 const activeView = ref('table')
@@ -42,6 +45,7 @@ const clearFilters = () => {
     filters.status_type = null;
     filters.date_range_preset = 'today';
     filters.specific_date = null;
+    filters.wrapping_type = 'rfid'
 };
 
 onMounted(() => {
@@ -78,24 +82,21 @@ const fetchDropdownData = async () => {
 
 const exportLoading = ref(false);
 const exportData = async () => {
-    // try {
-    //     exportLoading.value = true;
-    //     await exportExcel({
-    //         url: `/export/production-lines`,
-    //         params: {
-    //             plant_code: filters.plant_code,
-    //             created_at: filters.created_at,
-    //             updated_at: filters.updated_at,
-    //         },
-    //         filename: 'production-lines.xlsx',
-    //     });
-    // } catch (error) {
-    //     console.error('Export error:', error);
-    // } finally {
-    //     exportLoading.value = false;
-    // }
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/reports/putaway/export`,
+            params: {
+                filters: filters
+            },
+            filename: 'putaway-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
 }
-
 
 const handleSearch = () => {
     loadItems({
@@ -248,18 +249,43 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         </v-select>
 
         <!-- Action Buttons -->
-        <!-- <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
-Export
-</v-btn> -->
+            Export
+        </v-btn> 
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
             Search
         </v-btn>
+    </div>
+
+    <div class="d-flex mb-4 gap-4">
+        <!-- Wrapping Filter -->
+        <v-select style="max-width: 270px;" class="flex-grow-1 align-center mt-1" label="Filter by Wrapping"
+            density="compact" :items="[
+                { title: 'All', value: null },
+                { title: 'RFID', value: 1 },
+                { title: 'Manual Wrapping', value: 2 }
+            ]" v-model="filters.wrapping_type">
+        </v-select>
+
+        <!-- Wrapping Filter -->
+        <v-select 
+            style="max-width: 270px;" 
+            class="flex-grow-1 align-center mt-1" 
+            label="Filter by Pallet Condition"
+            density="compact" 
+            :items="[
+                { title: 'All', value: null },
+                { title: 'Weak Pallet', value: 1 },
+                { title: 'Normal Pallet', value: 2 } 
+            ]" 
+            v-model="filters.weak_pallet_type">
+        </v-select>
     </div>
     <v-tabs v-model="activeView" color="primary">
         <v-tab value="table">
@@ -425,6 +451,29 @@ Export
                         <v-chip v-if="item.status == 7 || item.status == 5 || item.qr_wrapping_putaway === 'Invalid'"
                             size="small" color="error" text-color="white">Invalid</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.qr_wrapping_putaway }}</span>
+                    </template>
+
+                    <template #item.physical_id="{ item }">
+                        <template v-if="item.weak_pallet_log">
+                            <!-- If manually wrapped, wrap inside a tooltip -->
+                            <v-tooltip v-if="item.weak_pallet_log" location="top">
+                                <template #activator="{ props }">
+                                    <span v-bind="props"
+                                        class="text-caption text-error font-weight-bold cursor-pointer">
+                                        {{ item.physical_id }}
+                                    </span>
+                                </template>
+                                <span v-if="item.weak_pallet_log?.user">Weak Pallet Tagged by {{ item.weak_pallet_log?.user?.name
+                                    }}</span>
+                            </v-tooltip>
+
+                            <!-- Standard rendering if NOT manually wrapped -->
+                            <span v-else class="text-caption text-medium-emphasis">
+                                {{ item.rfid_wrapping }}
+                            </span>
+                        </template>
+                        <span v-else>{{ item.physical_id }}</span>
+
                     </template>
 
                     <template #item.plant_id="{ item }">
