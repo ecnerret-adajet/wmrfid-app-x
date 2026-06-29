@@ -39,6 +39,7 @@ const toast = ref({ message: '', color: 'success', show: false })
 const headers = [
     { title: 'DELIVERY NUMBER', key: 'delivery_document' },
     { title: 'CUSTOMER', key: 'customer', sortable: false },
+    { title: 'DELIVERY DATE', key: 'delivery_date' },
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
@@ -230,6 +231,7 @@ defineExpose({ loadItems, applyFilters })
             </div>
         </template>
 
+        <template #item.delivery_date="{ item }">{{ item.delivery_date }}</template>
         <template #item.picking_status="{ item }">{{ item.picking_status }}</template>
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>
@@ -340,14 +342,14 @@ defineExpose({ loadItems, applyFilters })
                                             inline
                                         /> -->
                                          <v-badge
-                                            v-if="!item.delivery_reserved_orders || item.delivery_reserved_orders.length === 0"
+                                            v-if="item.total_reserved_qty === 0"
                                             color="warning"
                                             content="No Pallet"
                                             class="text-uppercase"
                                             inline
                                         />
                                         <v-badge
-                                            v-else-if="parseInt(item.total_reserved_pallets) === parseInt(item.delivery_quantity)"
+                                            v-else-if="parseInt(item.total_reserved_qty) === parseInt(item.delivery_quantity)"
                                             color="success"
                                             content="Reserved"
                                             class="text-uppercase"
@@ -361,7 +363,7 @@ defineExpose({ loadItems, applyFilters })
                                                 inline
                                             />
                                             <span class="mt-1">
-                                                {{ item.total_reserved_pallets }} out of
+                                                {{ item.total_reserved_qty }} out of
                                                 {{ item.delivery_quantity }} {{ item.sales_unit }}(S)
                                             </span>
                                         </div>
@@ -372,6 +374,7 @@ defineExpose({ loadItems, applyFilters })
                                             color="primary-light"
                                             variant="outlined"
                                             size="small"
+                                            :disabled="parseInt(item.total_reserved_qty) === parseInt(item.delivery_quantity)"
                                             :loading="isLoading && store.selectedDeliveryItem?.id === item.id"
                                         >
                                             Select Batch
