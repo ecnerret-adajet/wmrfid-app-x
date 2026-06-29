@@ -54,7 +54,7 @@
                 <template #item.transfer_request_id="{ item }">
                     <span>{{ item.transfer_request_id }}</span><br />
                     <span v-if="item.transfer_request" class="text-subtitle-1">
-                      {{ item.transfer_request ? moment(item.transfer_request.created_at).format('MMM D, YYYY h:mm A') : '-' }}
+                      {{ item.transfer_request ? moment(item.transfer_request.created_at).format('MM/DD/YY hh:mmA') : '-' }}
                     </span>
                 </template>
 
@@ -62,7 +62,7 @@
                     <div v-if="item.transfer_request?.transfer_order">
                       <span>{{ item.transfer_request?.transfer_order?.transfer_order_id }}</span><br />
                       <span v-if="item.transfer_request?.transfer_order" class="text-subtitle-1">
-                        {{ item.transfer_request?.transfer_order ? moment(item.transfer_request?.transfer_order.created_at).format('MMM D, YYYY h:mm A') : '-' }}
+                        {{ item.transfer_request?.transfer_order ? moment(item.transfer_request?.transfer_order.created_at).format('MM/DD/YY hh:mmA') : '-' }}
                       </span>
                     </div>
                     <div v-else>
@@ -86,6 +86,15 @@
                     </v-chip>
                 </template>
 
+                <template #item.putaway_status="{ item }">
+                   <v-chip v-if="item.transfer_request?.status === 4 || item.transfer_request?.status === '4'" size="small" dark color="success">
+                        Completed
+                    </v-chip>
+                    <v-chip v-else size="small" dark color="info">
+                        For Putaway
+                    </v-chip>
+                </template>
+
                 <template #item.from_location="{ item }">
                     <span>{{ item.from_block?.lot?.label }}-{{ item.from_block?.label }}</span><br />
                     <span v-if="item.from_block" class="text-subtitle-1">
@@ -94,14 +103,21 @@
                 </template>
               
                 <template #item.to_location="{ item }">
-                    <span>{{ item.to_block?.lot?.label }}-{{ item.to_block?.label }}</span><br />
-                    <span v-if="item.to_block" class="text-subtitle-1">
+                    <span>{{ item.designated_block?.lot?.label }}-{{ item.designated_block?.label }}</span><br />
+                    <span v-if="item.designated_block" class="text-subtitle-1">
                       Layer {{ item.to_layer_position ?? '-'}}
                     </span>
                 </template>
 
                 <template #item.actions="{ item }">
                     <v-btn v-if="item.status === 1 || item.status === '1'" icon="ri-file-check-line" size="30" @click="approveRequest(item)" color="primary"></v-btn>
+                </template>
+
+                <template #item.created_by="{ item }">
+                    <span>{{ item.requested_by?.name}}</span><br />
+                    <span v-if="item.requested_by" class="text-subtitle-1">
+                      {{ item.created_at ? moment(item.created_at).format('MM/DD/YY hh:mmA') : '-' }}
+                    </span>
                 </template>
             </VDataTableServer>
         </VCard>
@@ -352,7 +368,7 @@
               </div>
               <div class="mb-4">
                 <div class="text-caption text-medium-emphasis mb-1">To Location</div>
-                <div class="font-weight-bold">{{ approveItem?.to_block?.lot?.label }}-{{ approveItem?.to_block?.label }} (Layer {{ approveItem?.to_layer_position ?? '-' }})</div>
+                <div class="font-weight-bold">{{ approveItem?.designated_block?.lot?.label }}-{{ approveItem?.designated_block?.label }} (Layer {{ approveItem?.to_layer_position ?? '-' }})</div>
               </div>
             </v-card-text>
             <v-divider />
@@ -651,13 +667,15 @@ const headers = computed(() => {
       { title: 'TO Ref #', key: 'transfer_order_id', align: 'start', sortable: false },
       { title: 'Physical', key: 'physical_id', align: 'start', sortable: false },
       { title: 'Batch', key: 'batch', align: 'start', sortable: false },
-      { title: 'Status', key: 'status', align: 'start', sortable: false },
+      { title: 'Req. Status', key: 'status', align: 'start', sortable: false },
+      { title: 'Putaway Status', key: 'putaway_status', align: 'start', sortable: false },
       { title: 'From Location', key: 'from_location', align: 'start', sortable: false },
       { title: 'To Location', key: 'to_location', align: 'start', sortable: false },
+      { title: 'Created By', key: 'created_by', align: 'start', sortable: false },
     ];
 
     if (authUserCan('can.approve.bin.transfer.requests')) {
-        baseHeaders.splice(7, 0, {
+        baseHeaders.splice(9, 0, {
             title: 'Actions',
             key: 'actions',
             align: 'center',
