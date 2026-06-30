@@ -1,6 +1,8 @@
 <script setup>
 import ApiService from '@/services/ApiService';
-import { computed, onMounted, ref } from 'vue';
+import DateRangePicker from '@/components/DateRangePicker.vue';
+import FilteringModal from '@/components/FilteringModal.vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -13,6 +15,26 @@ const sloc = route.params.sloc;
 const s_section = route.params.storage_section;
 
 const searchValue = ref('');
+
+const filterModalVisible = ref(false);
+const batchOptions = ref([]);
+
+const filters = reactive({
+    date_range: null,
+    batch: null,
+});
+
+const dateFilter = ref(null);
+
+const isFiltersEmpty = computed(() => {
+    return !filters.date_range && !filters.batch;
+});
+
+const dateFilterOptions = [
+    { title: 'Today', value: 'today' },
+    { title: 'Yesterday', value: 'yesterday' },
+    { title: 'Last 7 Days', value: 'last_7_days' },
+];
 
 const selectedItems = ref([]);
 const serverItems = ref([]);
@@ -36,6 +58,7 @@ const headers = [
 
 onMounted(() => {
     fetchStorageLocationDetails();
+    fetchBatches();
 })
 
 const fetchStorageLocationDetails = async () => {
@@ -49,6 +72,64 @@ const fetchStorageLocationDetails = async () => {
         pageLoading.value = false;
     }
 };
+
+const fetchBatches = async () => {
+    try {
+        const response = await ApiService.get(`quality-control/batches/${plantCode}/${sloc}`);
+        batchOptions.value = response.data.map(item => ({
+            value: item.batch,
+            title: item.batch,
+        }));
+    } catch (error) {
+        console.log(error);
+    }
+};
+
+const filterModalOpen = () => {
+    if (!filterModalVisible.value) {
+        filterModalVisible.value = true;
+    }
+};
+
+const applyFilter = () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [],
+    });
+    filterModalVisible.value = false;
+};
+
+const resetFilter = () => {
+    clearFilters();
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [],
+    });
+    filterModalVisible.value = false;
+};
+
+const clearFilters = () => {
+    filters.date_range = null;
+    filters.batch = null;
+};
+
+watch(() => dateFilter.value, () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [],
+    });
+});
+
+watch(() => filters.batch, () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [],
+    });
+});
 
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     loading.value = true;
@@ -75,6 +156,8 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
             itemsPerPage: perPage,
             sort: sortQuery.value,
             search: searchValue.value,
+            filters: filters,
+            date_filter: dateFilter.value,
         }
     })
         .then((response) => {
@@ -209,7 +292,7 @@ defineExpose({ loadItems, selectedItems });
             <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
             <h4 class="text-h5 font-weight-bold mb-2">Total for Quality Inspection : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
         </div>
-        <div class="d-flex gap-4 align-center justify-center mb-2">
+        <div class="d-flex flex-wrap gap-4 align-center justify-center mb-2">
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -221,6 +304,38 @@ defineExpose({ loadItems, selectedItems });
                 class="flex-grow-1"
                 @keyup.enter="handleSearch"
             />
+
+            <v-select
+                style="max-width: 200px;"
+                class="flex-grow-1 align-center"
+                density="compact"
+                :items="dateFilterOptions"
+                v-model="dateFilter"
+                label="Date Filter"
+                clearable
+            />
+
+            <v-select
+                style="max-width: 250px;"
+                class="flex-grow-1 align-center"
+                density="compact"
+                :items="batchOptions"
+                v-model="filters.batch"
+                label="Batch"
+                clearable
+            />
+
+            <v-btn
+                class="d-flex align-center"
+                prepend-icon="ri-equalizer-line"
+                @click="filterModalOpen"
+            >
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Filter
+            </v-btn>
+
             <v-btn
                 class="d-flex align-center"
                 prepend-icon="ri-search-eye-line"
@@ -381,6 +496,25 @@ defineExpose({ loadItems, selectedItems });
                 </v-card-actions>
             </v-card>
         </v-dialog>
+
+        <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Quality Inspection'">
+            <template #default>
+                <v-form>
+                    <div class="mt-4">
+                        <label class="font-weight-bold">Date Range</label>
+                        <DateRangePicker class="mt-1" v-model="filters.date_range" placeholder="Select Date Range" />
+                    </div>
+
+                    <div class="d-flex justify-end align-center mt-8">
+                        <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
+                        <v-btn class="px-12" type="button" color="primary" :disabled="isFiltersEmpty" @click="applyFilter">
+                            Apply Filter
+                        </v-btn>
+                    </div>
+                </v-form>
+            </template>
+        </FilteringModal>
+
         <VCard>
             <VDataTableServer
                 v-model:items-per-page="itemsPerPage"
