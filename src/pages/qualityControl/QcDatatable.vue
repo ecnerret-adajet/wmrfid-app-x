@@ -58,7 +58,7 @@ const headers = [
 
 onMounted(() => {
     fetchStorageLocationDetails();
-    fetchBatches();
+    // fetchBatches();
 })
 
 const fetchStorageLocationDetails = async () => {
@@ -73,17 +73,17 @@ const fetchStorageLocationDetails = async () => {
     }
 };
 
-const fetchBatches = async () => {
-    try {
-        const response = await ApiService.get(`quality-control/batches/${plantCode}/${sloc}`);
-        batchOptions.value = response.data.map(item => ({
-            value: item.batch,
-            title: item.batch,
-        }));
-    } catch (error) {
-        console.log(error);
-    }
-};
+// const fetchBatches = async () => {
+//     try {
+//         const response = await ApiService.get(`quality-control/batches/${plantCode}/${sloc}`);
+//         batchOptions.value = response.data.map(item => ({
+//             value: item.batch,
+//             title: item.batch,
+//         }));
+//     } catch (error) {
+//         console.log(error);
+//     }
+// };
 
 const filterModalOpen = () => {
     if (!filterModalVisible.value) {
@@ -140,7 +140,7 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
 
     if (!plant_code || !sloc || !forklift) {
         loading.value = false;
-        return;
+        return Promise.resolve();
     }
 
     if (sortBy && sortBy.length > 0) {
@@ -150,7 +150,7 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
         sortQuery.value = '-created_at';
     }
 
-    ApiService.query(`for-quality-inspection/${plant_code}/${sloc}/${forklift}`, {
+    return ApiService.query(`for-quality-inspection/${plant_code}/${sloc}/${forklift}`, {
         params: {
             page: pageVal,
             itemsPerPage: perPage,
@@ -267,10 +267,10 @@ const confirmQualityInspection = async (method) => {
         } else {
             dialogAlert.value = { show: true, type: 'success', message: 'Quality inspection confirmed successfully!' };
             simulateCompleted.value = false;
+            inspectionDialog.value = false;
+            await loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] });
             selectedItems.value = [];
             emits('update:selected', []);
-            inspectionDialog.value = false;
-            loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] });
         }
     } catch (error) {
         dialogAlert.value = {
