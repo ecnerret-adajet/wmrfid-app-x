@@ -1,7 +1,7 @@
 <script setup>
-import ApiService from '@/services/ApiService';
 import DateRangePicker from '@/components/DateRangePicker.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
+import ApiService from '@/services/ApiService';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
@@ -267,9 +267,10 @@ const confirmQualityInspection = async (method) => {
         } else {
             dialogAlert.value = { show: true, type: 'success', message: 'Quality inspection confirmed successfully!' };
             simulateCompleted.value = false;
+            selectedItems.value = [];
+            emits('update:selected', []);
             inspectionDialog.value = false;
             loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] });
-            selectedItems.value = [];
         }
     } catch (error) {
         dialogAlert.value = {
@@ -296,7 +297,7 @@ defineExpose({ loadItems, selectedItems });
             <VTextField
                 v-model="searchValue"
                 label="Search"
-                placeholder="Search pallet, batch..."
+                placeholder="Search Batch, Pallet"
                 append-inner-icon="ri-search-line"
                 single-line
                 hide-details
@@ -305,7 +306,7 @@ defineExpose({ loadItems, selectedItems });
                 @keyup.enter="handleSearch"
             />
 
-            <v-select
+            <!-- <v-select
                 style="max-width: 200px;"
                 class="flex-grow-1 align-center"
                 density="compact"
@@ -313,9 +314,9 @@ defineExpose({ loadItems, selectedItems });
                 v-model="dateFilter"
                 label="Date Filter"
                 clearable
-            />
+            /> -->
 
-            <v-select
+            <!-- <v-select
                 style="max-width: 250px;"
                 class="flex-grow-1 align-center"
                 density="compact"
@@ -323,9 +324,9 @@ defineExpose({ loadItems, selectedItems });
                 v-model="filters.batch"
                 label="Batch"
                 clearable
-            />
+            /> -->
 
-            <v-btn
+            <!-- <v-btn
                 class="d-flex align-center"
                 prepend-icon="ri-equalizer-line"
                 @click="filterModalOpen"
@@ -334,7 +335,7 @@ defineExpose({ loadItems, selectedItems });
                     <v-icon color="white"></v-icon>
                 </template>
                 Filter
-            </v-btn>
+            </v-btn> -->
 
             <v-btn
                 class="d-flex align-center"
