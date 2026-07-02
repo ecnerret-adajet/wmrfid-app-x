@@ -190,6 +190,7 @@ const grGiSlipNumber = ref('');
 const refDocNumber = ref('');
 const postingDate = ref(new Date().toISOString().split('T')[0]);
 const qualityInspectionStatus = ref(null);
+const ticketRange = ref('');
 const qualityInspectionStatusOptions = [
     { title: 'Good', value: 'good' },
     { title: 'For RTM', value: 'for-rtm' },
@@ -209,6 +210,7 @@ const openInspectionDialog = () => {
     refDocNumber.value = '';
     postingDate.value = new Date().toISOString().split('T')[0];
     qualityInspectionStatus.value = null;
+    ticketRange.value = '';
     simulateCompleted.value = false;
     simulationErrors.value = [];
     chunkResults.value = [];
@@ -231,6 +233,7 @@ const confirmQualityInspection = async (method) => {
             plant_code: storageLocation.value?.plant?.plant_code,
             storage_location_id: storageLocation.value?.id,
             type: 'qc-inspection',
+            ticket_range: ticketRange.value,
             items: selectedItems.value.map(item => ({
                 physical_id: item.physical_id,
                 rfid_code: item.rfid_code,
@@ -494,6 +497,15 @@ defineExpose({ loadItems, selectedItems });
                         :items="qualityInspectionStatusOptions"
                         item-title="title"
                         item-value="value"
+                        density="compact"
+                        variant="outlined"
+                        class="mb-4"
+                        hide-details="auto"
+                    />
+                    <VTextField
+                        v-model="ticketRange"
+                        label="Ticket Range"
+                        placeholder="Enter Ticket Range"
                         density="compact"
                         variant="outlined"
                         class="mb-4"
