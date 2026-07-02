@@ -1,6 +1,7 @@
 <script setup>
+import { useAuthorization } from '@/composables/useAuthorization'
 import ApiService from '@/services/ApiService'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { VDataTableServer } from 'vuetify/components'
 
 const emits = defineEmits(['pagination-changed'])
@@ -11,6 +12,8 @@ const props = defineProps({
         default: '',
     },
 })
+
+const { authUserCan } = useAuthorization()
 
 const isLoading = ref(false)
 const serverItems = ref([])
@@ -107,10 +110,15 @@ const applyFilters = data => {
     })
 }
 
-const actionList = [
-    { title: 'View Pallets', key: 'view_pallets' },
-    { title: 'Cancel Reservation', key: 'cancel_reservation' },
-]
+const actionList = computed(() => {
+    const actions = [{ title: 'View Pallets', key: 'view_pallets' }]
+
+    if (authUserCan('can.cancel.reservation.pallet')) {
+        actions.push({ title: 'Cancel Reservation', key: 'cancel_reservation' })
+    }
+
+    return actions
+})
 
 const handleAction = (item, action) => {
     if (action.key === 'view_pallets') {
