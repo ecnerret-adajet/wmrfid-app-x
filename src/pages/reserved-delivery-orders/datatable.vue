@@ -45,7 +45,7 @@ const headers = [
 
 const palletHeaders = [
     { title: 'Physical ID', key: 'pallet_physical_id' },
-    { title: 'Pallet Code', key: 'pallet_code' },
+    { title: 'Location', key: 'location' },
     { title: 'Batch Code', key: 'commodity_batch_code' },
     { title: 'Qty', key: 'total_qty', align: 'center' },
     { title: 'Delivery Doc', key: 'delivery_document' },
@@ -277,7 +277,7 @@ defineExpose({ loadItems, applyFilters })
                     <tbody>
                         <tr v-for="pallet in selectedRow?.reserved_pallets" :key="pallet.id">
                             <td class="font-weight-medium">{{ pallet.pallet_physical_id }}</td>
-                            <td>{{ pallet.pallet_code }}</td>
+                            <td>{{ pallet.block?.lot?.label }} - {{ pallet.block?.label }}</td>
                             <td>{{ pallet.commodity_batch_code }}</td>
                             <td class="text-center">{{ pallet.total_qty }} {{ pallet.uom }}</td>
                             <td>{{ pallet.delivery_document }}</td>
