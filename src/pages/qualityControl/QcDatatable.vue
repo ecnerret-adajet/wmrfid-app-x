@@ -233,7 +233,7 @@ const confirmQualityInspection = async (method) => {
             plant_code: storageLocation.value?.plant?.plant_code,
             storage_location_id: storageLocation.value?.id,
             type: 'qc-inspection',
-            ticket_range: ticketRange.value,
+            // ticket_range: ticketRange.value,
             items: selectedItems.value.map(item => ({
                 physical_id: item.physical_id,
                 rfid_code: item.rfid_code,
@@ -502,7 +502,7 @@ defineExpose({ loadItems, selectedItems });
                         class="mb-4"
                         hide-details="auto"
                     />
-                    <VTextField
+                    <!-- <VTextField
                         v-model="ticketRange"
                         label="Ticket Range"
                         placeholder="Enter Ticket Range"
@@ -510,7 +510,7 @@ defineExpose({ loadItems, selectedItems });
                         variant="outlined"
                         class="mb-4"
                         hide-details="auto"
-                    />
+                    /> -->
                     <div class="d-flex gap-3 mb-4">
                         <v-card
                             variant="tonal"
