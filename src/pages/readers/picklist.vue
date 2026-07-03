@@ -99,6 +99,18 @@ const onPicklistLogsEvent = (data) => {
         processedEpcs.value[key] = true;
 
         if (batch && (is_loaded == false || is_loaded == 0)) {
+            const readingStatus = data.picklistLog?.antenna_log?.reading_status;
+            const isFumigated = readingStatus === 'fumigated';
+          
+            if (isFumigated) {
+                // Extract the physical ID from the nested inventory object
+                const physicalId = data.picklistLog.inventory?.physical_id || 'Unknown';
+                
+                errorMessage.value = `Pallet ID ${physicalId} is currently fumigated and cannot be loaded.`;
+                dialogVisible.value = true;
+                return;
+            }
+
             const normalizedBatch = String(batch).trim();
 
             const delivery = shipmentData.deliveries.find(d => String(d.batch).trim() === normalizedBatch);
@@ -628,17 +640,8 @@ const goToNextCarouselPage = () => {
                                             <span class="text-h6 text-uppercase ml-3 font-weight-black "
                                                 style="margin-top: 1px;">Gate in</span>
                                         </VCol>
-                                        <VCol md="4" class="d-inline-flex align-center">
+                                        <VCol md="6" class="d-inline-flex align-center">
                                             <span class="font-weight-bold"> {{shipmentData.shipment?.gate_in ? Moment(shipmentData.shipment?.gate_in).format('MMM D, YYYY hh:mm A') : ''}}</span>
-                                        </VCol>
-                                        <VCol md="1" class="d-inline-flex align-center">
-                                            <VTooltip location="top">
-                                                <template #activator="{ props }">
-                                                    <VIcon class="clickable-icon" v-bind="props" size="30"
-                                                        color="primary" icon="ri-refresh-fill" @click="refreshData" />
-                                                </template>
-                                                <span>Refresh Data</span>
-                                            </VTooltip>
                                         </VCol>
                                     </VRow>
                                 </VCol>
