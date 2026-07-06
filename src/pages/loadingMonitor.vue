@@ -182,48 +182,110 @@
           </div>
 
           <!-- Card Body -->
-          <div class="card-body">
-            <div class="info-row">
-              <span class="info-label">Driver</span>
-              <span
-                class="info-value"
-                :class="{ 'text-empty': !card.driver_name }"
+          <template v-if="isCardEmpty(card)">
+            <div class="card-empty-state">
+              <svg
+                class="empty-bay-icon"
+                viewBox="0 0 80 60"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
               >
-                {{ card.driver_name || '—' }}
-              </span>
+                <!-- Cargo box -->
+                <rect
+                  x="4"
+                  y="10"
+                  width="40"
+                  height="28"
+                  rx="3"
+                />
+                <!-- Cab -->
+                <path d="M44 18 L58 18 L66 28 L66 38 L44 38 Z" />
+                <!-- Windshield -->
+                <path d="M49 20 L56 20 L62 28 L49 28 Z" />
+                <!-- Wheels -->
+                <circle
+                  cx="18"
+                  cy="44"
+                  r="5"
+                />
+                <circle
+                  cx="56"
+                  cy="44"
+                  r="5"
+                />
+                <!-- Dots indicating awaiting -->
+                <circle
+                  cx="18"
+                  cy="20"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx="26"
+                  cy="20"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx="34"
+                  cy="20"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+              </svg>
+              <span class="empty-bay-label">Awaiting Assignment</span>
             </div>
-            <div class="info-row">
-              <span class="info-label">Plate</span>
-              <span
-                class="info-value"
-                :class="{ 'text-empty': !card.plate_number }"
-              >
-                {{ card.plate_number || '—' }}
-              </span>
+          </template>
+          <template v-else>
+            <div class="card-body">
+              <div class="info-row">
+                <span class="info-label">Driver</span>
+                <span
+                  class="info-value"
+                  :class="{ 'text-empty': !card.driver_name }"
+                >
+                  {{ card.driver_name || '—' }}
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Plate</span>
+                <span
+                  class="info-value"
+                  :class="{ 'text-empty': !card.plate_number }"
+                >
+                  {{ card.plate_number || '—' }}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <!-- Card Footer -->
-          <div class="card-footer">
-            <div class="time-block">
-              <span class="time-label">Load Start</span>
-              <span
-                class="time-value"
-                :class="{ 'text-empty': !card.load_start_datetime }"
-              >
-                {{ formatDateTime(card.load_start_datetime) }}
-              </span>
+            <!-- Card Footer -->
+            <div class="card-footer">
+              <div class="time-block">
+                <span class="time-label">Load Start</span>
+                <span
+                  class="time-value"
+                  :class="{ 'text-empty': !card.load_start_datetime }"
+                >
+                  {{ formatDateTime(card.load_start_datetime) }}
+                </span>
+              </div>
+              <div class="time-block">
+                <span class="time-label">Load End</span>
+                <span
+                  class="time-value"
+                  :class="{ 'text-empty': !card.load_end_datetime }"
+                >
+                  {{ formatDateTime(card.load_end_datetime) }}
+                </span>
+              </div>
             </div>
-            <div class="time-block">
-              <span class="time-label">Load End</span>
-              <span
-                class="time-value"
-                :class="{ 'text-empty': !card.load_end_datetime }"
-              >
-                {{ formatDateTime(card.load_end_datetime) }}
-              </span>
-            </div>
-          </div>
+          </template>
         </div>
       </div>
     </div>
@@ -288,6 +350,9 @@ const formatStatus = status => {
   
   return labels[status] || (status || '').toUpperCase()
 }
+
+const isCardEmpty = card =>
+  !card.driver_name && !card.plate_number && !card.load_start_datetime && !card.load_end_datetime
 
 const fetchData = async () => {
   try {
@@ -690,6 +755,31 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 8px;
   background: #151f2c;
+}
+
+/* ── Empty Bay State ── */
+.card-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+  gap: 14px;
+}
+
+.empty-bay-icon {
+  width: 80px;
+  height: 60px;
+  color: #37474f;
+  opacity: 0.8;
+}
+
+.empty-bay-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #546e7a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* ── Error / Empty State ── */
