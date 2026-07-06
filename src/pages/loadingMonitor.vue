@@ -4,10 +4,10 @@
     <header class="monitor-header">
       <div class="header-content">
         <div class="header-left">
-          <!-- <h1 class="header-title">
-            {{ groupName }}
-          </h1> -->
-          <span class="header-subtitle">Loading Monitor</span>
+          <h1 class="header-title">
+            Loading Monitor
+          </h1>
+          <!-- <span class="header-subtitle">Loading Monitor</span> -->
         </div>
         <div class="header-right">
           <div class="refresh-info">
@@ -350,7 +350,7 @@ onBeforeUnmount(() => {
 .monitor-screen {
   width: 100%;
   min-height: 100vh;
-  background: #111921;
+  background: #f3f3f3;
   color: #e0e0e0;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   display: flex;
