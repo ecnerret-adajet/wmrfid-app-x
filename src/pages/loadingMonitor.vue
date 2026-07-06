@@ -172,7 +172,7 @@
         >
           <!-- Card Header -->
           <div class="card-header">
-            <span class="bay-label">Bay {{ card.bay_no }}</span>
+            <span class="bay-label">{{ card.reader_name }}</span>
             <span
               class="status-chip"
               :class="`chip-${card.status}`"
@@ -350,8 +350,8 @@ onBeforeUnmount(() => {
 .monitor-screen {
   width: 100%;
   min-height: 100vh;
-  background: #f8f9fa;
-  color: #212529;
+  background: #111921;
+  color: #e0e0e0;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
@@ -360,13 +360,13 @@ onBeforeUnmount(() => {
 /* ── Header ── */
 .monitor-header {
   flex-shrink: 0;
-  background: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
+  background: #1a2332;
+  border-bottom: 1px solid #263448;
   padding: 20px 28px;
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .header-content {
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: clamp(1.5rem, 2.5vw, 2.2rem);
   font-weight: 700;
-  color: #212529;
+  color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
 
 .header-subtitle {
   font-size: clamp(0.75rem, 1vw, 0.95rem);
-  color: #757575;
+  color: #78909c;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  color: #757575;
+  color: #78909c;
   font-size: 0.85rem;
 }
 
@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
 .refresh-countdown {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #1565c0;
+  color: #42a5f5;
   font-variant-numeric: tabular-nums;
   min-width: 1.8ch;
   text-align: center;
@@ -437,16 +437,16 @@ onBeforeUnmount(() => {
 
 .refresh-unit {
   font-weight: 600;
-  color: #757575;
+  color: #78909c;
 }
 
 .refresh-btn {
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  border: 1px solid #e0e0e0;
-  background: #ffffff;
-  color: #616161;
+  border: 1px solid #37474f;
+  background: #263448;
+  color: #b0bec5;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -456,9 +456,9 @@ onBeforeUnmount(() => {
 }
 
 .refresh-btn:hover {
-  background: #f5f5f5;
-  color: #212529;
-  border-color: #bdbdbd;
+  background: #37474f;
+  color: #ffffff;
+  border-color: #546e7a;
 }
 
 .refresh-btn:disabled {
@@ -499,30 +499,16 @@ onBeforeUnmount(() => {
 
 /* ── Monitor Card ── */
 .monitor-card {
-  background: #ffffff;
+  background: #1a2332;
   border-radius: 14px;
-  border: 1px solid #e0e0e0;
-  border-left: 4px solid #bdbdbd;
+  border: 1px solid #263448;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .monitor-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* Status border accents */
-.monitor-card.status-idle {
-  border-left-color: #9e9e9e;
-}
-
-.monitor-card.status-loading {
-  border-left-color: #4caf50;
-}
-
-.monitor-card.status-completed {
-  border-left-color: #1976d2;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Card Header ── */
@@ -531,12 +517,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px 12px;
+  border-bottom: 1px solid #263448;
 }
 
 .bay-label {
   font-size: clamp(1.1rem, 1.4vw, 1.35rem);
   font-weight: 700;
-  color: #212529;
+  color: #ffffff;
   letter-spacing: 0.02em;
 }
 
@@ -552,21 +539,21 @@ onBeforeUnmount(() => {
 }
 
 .chip-idle {
-  background: #f5f5f5;
-  color: #616161;
-  border: 1px solid #e0e0e0;
+  background: #263448;
+  color: #90a4ae;
+  border: 1px solid #37474f;
 }
 
 .chip-loading {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
+  background: #1b3a2a;
+  color: #4caf50;
+  border: 1px solid #2e7d32;
 }
 
 .chip-completed {
-  background: #e3f2fd;
-  color: #1565c0;
-  border: 1px solid #bbdefb;
+  background: #1a2e42;
+  color: #42a5f5;
+  border: 1px solid #1976d2;
 }
 
 /* ── Card Body ── */
@@ -586,7 +573,7 @@ onBeforeUnmount(() => {
 .info-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #757575;
+  color: #607d8b;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   min-width: 48px;
@@ -596,23 +583,23 @@ onBeforeUnmount(() => {
 .info-value {
   font-size: clamp(0.9rem, 1.1vw, 1.05rem);
   font-weight: 600;
-  color: #212529;
+  color: #ffffff;
   word-break: break-word;
 }
 
 .info-value.text-empty {
-  color: #bdbdbd;
+  color: #546e7a;
   font-weight: 400;
 }
 
 /* ── Card Footer ── */
 .card-footer {
-  border-top: 1px solid #eeeeee;
+  border-top: 1px solid #263448;
   padding: 12px 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #fafafa;
+  background: #151f2c;
 }
 
 .time-block {
@@ -624,7 +611,7 @@ onBeforeUnmount(() => {
 .time-label {
   font-size: 0.65rem;
   font-weight: 600;
-  color: #9e9e9e;
+  color: #607d8b;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -632,12 +619,12 @@ onBeforeUnmount(() => {
 .time-value {
   font-size: clamp(0.82rem, 0.95vw, 0.9rem);
   font-weight: 600;
-  color: #424242;
+  color: #b0bec5;
   font-variant-numeric: tabular-nums;
 }
 
 .time-value.text-empty {
-  color: #bdbdbd;
+  color: #546e7a;
   font-weight: 400;
 }
 
@@ -647,7 +634,7 @@ onBeforeUnmount(() => {
 }
 
 .skel {
-  background: linear-gradient(90deg, #e0e0e0 25%, #eeeeee 50%, #e0e0e0 75%);
+  background: linear-gradient(90deg, #263448 25%, #37474f 50%, #263448 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 6px;
@@ -702,7 +689,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fafafa;
+  background: #151f2c;
 }
 
 /* ── Error / Empty State ── */
@@ -720,34 +707,34 @@ onBeforeUnmount(() => {
 .error-icon {
   width: 56px;
   height: 56px;
-  color: #bdbdbd;
+  color: #546e7a;
   margin-bottom: 20px;
 }
 
 .error-icon.empty {
-  color: #e0e0e0;
+  color: #37474f;
 }
 
 .error-title {
   margin: 0 0 8px;
   font-size: 1.3rem;
   font-weight: 700;
-  color: #616161;
+  color: #b0bec5;
 }
 
 .error-message {
   margin: 0 0 24px;
   font-size: 0.95rem;
-  color: #9e9e9e;
+  color: #78909c;
   max-width: 400px;
 }
 
 .error-retry-btn {
   padding: 10px 24px;
   border-radius: 10px;
-  border: 1px solid #e0e0e0;
-  background: #ffffff;
-  color: #424242;
+  border: 1px solid #37474f;
+  background: #263448;
+  color: #b0bec5;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -755,8 +742,9 @@ onBeforeUnmount(() => {
 }
 
 .error-retry-btn:hover {
-  background: #f5f5f5;
-  border-color: #bdbdbd;
+  background: #37474f;
+  border-color: #546e7a;
+  color: #ffffff;
 }
 
 /* ── Responsive ── */
