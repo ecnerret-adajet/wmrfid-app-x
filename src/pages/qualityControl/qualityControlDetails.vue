@@ -63,11 +63,13 @@ const qualityInspectionLoading = ref(false)
 const qualityInspectionMethod = ref('simulate')
 const simulateCompleted = ref(false)
 const simulationErrors = ref([])
+const chunkResults = ref([])
 
 const confirmQualityInspection = async (method = qualityInspectionMethod.value) => {
     qualityInspectionLoading.value = true
     toast.value.show = false
     simulationErrors.value = []
+    chunkResults.value = []
     try {
         const response = await ApiService.post('inventories/quality-inspection', {
             status: qualityInspectionStatus.value,
@@ -82,14 +84,61 @@ const confirmQualityInspection = async (method = qualityInspectionMethod.value) 
                 batch: item.batch ?? props.productionRun?.COMMODITY,
                 material_code: item.material?.bu_material,
                 entry_qty: item.quantity,
-                // entry_uom: item.uom,
-                // issuing_sloc:
-                // issuing_plant:
-                // receiving_sloc:
             }))
-        })
+        }, { timeout: 300000 })
 
-        const data = response.data;
+        const data = response.data
+
+        // Handle new synchronous chunked response format
+        if (data.results && Array.isArray(data.results)) {
+            chunkResults.value = data.results
+            const failedChunks = data.results.filter(r => r.status === 'E' || r.status === 'failed')
+            const succeededChunks = data.results.filter(r => r.status === 'S')
+
+            if (failedChunks.length > 0) {
+                simulationErrors.value = failedChunks.flatMap(r => (r.errors ?? []).map(e => e.MESSAGE))
+
+                if (method === 'simulate') {
+                    simulateCompleted.value = false
+                    toast.value.message = `Simulation completed with errors. ${succeededChunks.length} of ${data.results.length} chunk(s) succeeded.`
+                    toast.value.color = 'error'
+                } else {
+                    const totalSuccess = succeededChunks.reduce((sum, r) => sum + (r.item_count || 0), 0)
+                    toast.value.message = `QC Inspection completed with errors. ${totalSuccess} of ${data.total_items} items processed.`
+                    toast.value.color = 'warning'
+                }
+                toast.value.show = true
+                return
+            }
+
+            // All chunks succeeded
+            const docNumbers = succeededChunks
+                .filter(r => r.material_document_313 || r.material_document_315)
+                .map(r => [r.material_document_313, r.material_document_315].filter(Boolean).join(', '))
+                .join(' | ')
+
+            if (method === 'simulate') {
+                toast.value.message = 'Simulation completed. You may now confirm the quality inspection.'
+                toast.value.color = 'info'
+                toast.value.show = true
+                simulateCompleted.value = true
+                qualityInspectionMethod.value = ''
+            } else {
+                const docInfo = docNumbers ? ` Material Doc(s): ${docNumbers}` : ''
+                toast.value.message = `QC Inspection completed successfully! ${data.total_items} items processed across ${data.total_chunks} chunk(s).${docInfo}`
+                toast.value.color = 'success'
+                toast.value.show = true
+                qualityInspectionStatus.value = null
+                qualityInspectionItems.value = []
+                simulateCompleted.value = false
+                qualityInspectionMethod.value = 'simulate'
+                chunkResults.value = []
+                activeTab.value = 'batch_details'
+            }
+            return
+        }
+
+        // Legacy response format fallback
         let hasError = false;
         let errorMessages = [];
 
@@ -99,7 +148,7 @@ const confirmQualityInspection = async (method = qualityInspectionMethod.value) 
                 errorMessages.push(...data.goods_movement_313.returns.filter(r => r.MESSAGE).map(r => r.MESSAGE));
             }
         }
-        
+
         if (data.goods_movement_315 && data.goods_movement_315.status === 'E') {
             hasError = true;
             if (data.goods_movement_315.returns) {
@@ -787,7 +836,7 @@ const handleWrongPallet = async () => {
                             <div>
                                 <div class="mb-4 d-flex align-center">
                                     <v-btn variant="text" prepend-icon="ri-arrow-left-line" color="primary"
-                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate'; simulationErrors = [] }">
+                                        @click="() => { activeTab = 'batch_details'; simulateCompleted = false; qualityInspectionMethod = 'simulate'; simulationErrors = []; chunkResults = [] }">
                                         Back to Batch Details
                                     </v-btn>
                                     <v-spacer></v-spacer>
@@ -797,11 +846,46 @@ const handleWrongPallet = async () => {
                                 </div>
 
                                 <v-alert v-if="simulationErrors.length > 0" type="error" variant="tonal" class="mb-4">
-                                    <div class="text-subtitle-1 font-weight-bold mb-1">Simulation Errors:</div>
+                                    <div class="text-subtitle-1 font-weight-bold mb-1">Errors:</div>
                                     <ul class="ml-4">
                                         <li v-for="(error, index) in simulationErrors" :key="index">{{ error }}</li>
                                     </ul>
                                 </v-alert>
+
+                                <div v-if="chunkResults.length > 0" class="mb-4">
+                                    <v-card
+                                        v-for="chunk in chunkResults"
+                                        :key="chunk.chunk_index"
+                                        variant="tonal"
+                                        :color="chunk.status === 'S' ? 'success' : 'error'"
+                                        class="mb-2"
+                                        rounded="lg"
+                                    >
+                                        <v-card-text class="pa-3">
+                                            <div class="d-flex justify-space-between align-center mb-1">
+                                                <span class="font-weight-bold">
+                                                    Chunk {{ chunk.chunk_index + 1 }}
+                                                    <span class="text-medium-emphasis">({{ chunk.item_count }} items)</span>
+                                                </span>
+                                                <v-badge
+                                                    :color="chunk.status === 'S' ? 'success' : 'error'"
+                                                    :content="chunk.status === 'S' ? 'Success' : 'Failed'"
+                                                    inline
+                                                />
+                                            </div>
+                                            <div v-if="chunk.status === 'S' && (chunk.material_document_313 || chunk.material_document_315)" class="text-body-2">
+                                                <span v-if="chunk.material_document_313">Material Doc 313: <strong>{{ chunk.material_document_313 }}</strong></span>
+                                                <span v-if="chunk.material_document_315" class="ml-4">Material Doc 315: <strong>{{ chunk.material_document_315 }}</strong></span>
+                                            </div>
+                                            <div v-if="chunk.item_physical_ids && chunk.item_physical_ids.length > 0" class="text-body-2 text-medium-emphasis mt-1">
+                                                Physical IDs: {{ chunk.item_physical_ids.join(', ') }}
+                                            </div>
+                                            <ul v-if="chunk.errors && chunk.errors.length > 0" class="ml-4 mt-1">
+                                                <li v-for="(err, i) in chunk.errors" :key="i" class="text-body-2">{{ err.MESSAGE }}</li>
+                                            </ul>
+                                        </v-card-text>
+                                    </v-card>
+                                </div>
 
                                 <div class="mb-4 d-flex align-center gap-3">
                                     <v-select

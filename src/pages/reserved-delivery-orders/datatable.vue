@@ -1,6 +1,7 @@
 <script setup>
+import { useAuthorization } from '@/composables/useAuthorization'
 import ApiService from '@/services/ApiService'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { VDataTableServer } from 'vuetify/components'
 
 const emits = defineEmits(['pagination-changed'])
@@ -11,6 +12,8 @@ const props = defineProps({
         default: '',
     },
 })
+
+const { authUserCan } = useAuthorization()
 
 const isLoading = ref(false)
 const serverItems = ref([])
@@ -45,7 +48,7 @@ const headers = [
 
 const palletHeaders = [
     { title: 'Physical ID', key: 'pallet_physical_id' },
-    { title: 'Pallet Code', key: 'pallet_code' },
+    { title: 'Location', key: 'location' },
     { title: 'Batch Code', key: 'commodity_batch_code' },
     { title: 'Qty', key: 'total_qty', align: 'center' },
     { title: 'Delivery Doc', key: 'delivery_document' },
@@ -107,10 +110,15 @@ const applyFilters = data => {
     })
 }
 
-const actionList = [
-    { title: 'View Pallets', key: 'view_pallets' },
-    { title: 'Cancel Reservation', key: 'cancel_reservation' },
-]
+const actionList = computed(() => {
+    const actions = [{ title: 'View Pallets', key: 'view_pallets' }]
+
+    if (authUserCan('can.cancel.reservation.pallet')) {
+        actions.push({ title: 'Cancel Reservation', key: 'cancel_reservation' })
+    }
+
+    return actions
+})
 
 const handleAction = (item, action) => {
     if (action.key === 'view_pallets') {
@@ -277,7 +285,7 @@ defineExpose({ loadItems, applyFilters })
                     <tbody>
                         <tr v-for="pallet in selectedRow?.reserved_pallets" :key="pallet.id">
                             <td class="font-weight-medium">{{ pallet.pallet_physical_id }}</td>
-                            <td>{{ pallet.pallet_code }}</td>
+                            <td>{{ pallet.block?.lot?.label }} - {{ pallet.block?.label }}</td>
                             <td>{{ pallet.commodity_batch_code }}</td>
                             <td class="text-center">{{ pallet.total_qty }} {{ pallet.uom }}</td>
                             <td>{{ pallet.delivery_document }}</td>

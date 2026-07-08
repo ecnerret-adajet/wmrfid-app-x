@@ -65,8 +65,8 @@ class ApiService {
      * @param params: AxiosRequestConfig
      * @returns Promise<AxiosResponse>
      */
-    public static post(resource: string, params: any): Promise<AxiosResponse> {
-        return ApiService.vueInstance.axios.post(`${resource}`, params);
+    public static post(resource: string, params: any, config: any = {}): Promise<AxiosResponse> {
+        return ApiService.vueInstance.axios.post(`${resource}`, params, config);
     }
 
     /**

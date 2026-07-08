@@ -128,6 +128,7 @@ const qualityInspectionStatusOptions = [
 const simulateCompleted = ref(false)
 const simulationErrors = ref([])
 const dialogAlert = ref({ show: false, type: 'info', message: '' })
+const chunkResults = ref([])
 
 const openCreateDialog = () => {
   dispoForm.remarks = null
@@ -137,6 +138,7 @@ const openCreateDialog = () => {
   qualityInspectionStatus.value = 'for-qc-dispo'
   simulateCompleted.value = false
   simulationErrors.value = []
+  chunkResults.value = []
   dialogAlert.value = { show: false, type: 'info', message: '' }
   showCreateDialog.value = true
 }
@@ -144,6 +146,7 @@ const openCreateDialog = () => {
 const handleCreateDispo = async (method) => {
   dispoLoading.value = true
   simulationErrors.value = []
+  chunkResults.value = []
   dialogAlert.value = { show: false, type: 'info', message: '' }
 
   if (!dispoForm.remarks) {
@@ -162,7 +165,7 @@ const handleCreateDispo = async (method) => {
       status: qualityInspectionStatus.value,
       plant_code: filters.plant_code,
       storage_location_id: filters.storage_location_id,
-      from_qc_disposition: true, // default value for this instance, to default the W104 as the issuing sloc
+      from_qc_disposition: true,
       type: 'qc-disposition',
       items: selectedItems.value.map(item => ({
         physical_id: item.physical_id,
@@ -175,9 +178,51 @@ const handleCreateDispo = async (method) => {
         designated_block_id: item.block_id,
         layer_position: item.position_in_block,
       })),
-    })
+    }, { timeout: 300000 })
 
     const data = response.data
+
+    // Handle new synchronous chunked response format
+    if (data.results && Array.isArray(data.results)) {
+      chunkResults.value = data.results
+      const failedChunks = data.results.filter(r => r.status === 'E' || r.status === 'failed')
+      const succeededChunks = data.results.filter(r => r.status === 'S')
+
+      if (failedChunks.length > 0) {
+        simulationErrors.value = failedChunks.flatMap(r => (r.errors ?? []).map(e => e.MESSAGE))
+
+        if (method === 'simulate') {
+          simulateCompleted.value = false
+          dialogAlert.value = { show: true, type: 'error', message: `Simulation completed with errors. ${succeededChunks.length} of ${data.results.length} chunk(s) succeeded.` }
+        } else {
+          const totalSuccess = succeededChunks.reduce((sum, r) => sum + (r.item_count || 0), 0)
+          dialogAlert.value = { show: true, type: 'warning', message: `QC Disposition completed with errors. ${totalSuccess} of ${data.total_items} items processed.` }
+        }
+        return
+      }
+
+      // All chunks succeeded
+      const docNumbers = succeededChunks
+        .filter(r => r.material_document_313 || r.material_document_315)
+        .map(r => [r.material_document_313, r.material_document_315].filter(Boolean).join(', '))
+        .join(' | ')
+
+      if (method === 'simulate') {
+        simulateCompleted.value = true
+        dialogAlert.value = { show: true, type: 'info', message: 'Simulation completed. You may now confirm the QC disposition.' }
+      } else {
+        const docInfo = docNumbers ? ` Material Doc(s): ${docNumbers}` : ''
+        dialogAlert.value = { show: true, type: 'success', message: `QC Disposition created successfully! ${data.total_items} items processed across ${data.total_chunks} chunk(s).${docInfo}` }
+        simulateCompleted.value = false
+        showCreateDialog.value = false
+        selectedItems.value = []
+        lastOptions.value = {}
+        loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
+      }
+      return
+    }
+
+    // Legacy response format fallback
     let hasError = false
     const errorMessages = []
 
@@ -313,6 +358,41 @@ const handleCreateDispo = async (method) => {
             <li v-for="(err, i) in simulationErrors" :key="i">{{ err }}</li>
           </ul>
         </v-alert>
+
+        <div v-if="chunkResults.length > 0" class="mb-4">
+          <v-card
+            v-for="chunk in chunkResults"
+            :key="chunk.chunk_index"
+            variant="tonal"
+            :color="chunk.status === 'S' ? 'success' : 'error'"
+            class="mb-2"
+            rounded="lg"
+          >
+            <v-card-text class="pa-3">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="font-weight-bold">
+                  Chunk {{ chunk.chunk_index + 1 }}
+                  <span class="text-medium-emphasis">({{ chunk.item_count }} items)</span>
+                </span>
+                <v-badge
+                  :color="chunk.status === 'S' ? 'success' : 'error'"
+                  :content="chunk.status === 'S' ? 'Success' : 'Failed'"
+                  inline
+                />
+              </div>
+              <div v-if="chunk.status === 'S' && (chunk.material_document_313 || chunk.material_document_315)" class="text-body-2">
+                <span v-if="chunk.material_document_313">Material Doc 313: <strong>{{ chunk.material_document_313 }}</strong></span>
+                <span v-if="chunk.material_document_315" class="ml-4">Material Doc 315: <strong>{{ chunk.material_document_315 }}</strong></span>
+              </div>
+              <div v-if="chunk.item_physical_ids && chunk.item_physical_ids.length > 0" class="text-body-2 text-medium-emphasis mt-1">
+                Physical IDs: {{ chunk.item_physical_ids.join(', ') }}
+              </div>
+              <ul v-if="chunk.errors && chunk.errors.length > 0" class="ml-4 mt-1">
+                <li v-for="(err, i) in chunk.errors" :key="i" class="text-body-2">{{ err.MESSAGE }}</li>
+              </ul>
+            </v-card-text>
+          </v-card>
+        </div>
         <VTextField
           v-model="grGiSlipNumber"
           label="GR GI Slip Number"
