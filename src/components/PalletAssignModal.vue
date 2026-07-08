@@ -63,7 +63,8 @@ const fetchMaterialConversion = async () => {
         const payload = {
             material_code: props.item.MATERIAL,
             code: props.item.BATCH,
-            quantity: props.item.ENTRY_QNT
+            quantity: props.item.ENTRY_QNT,
+            uom: props.item.ENTRY_UOM
         };
         const response = await ApiService.post('/stock-transfers/get-material-conversion', payload);
         if (response.data && response.data.quantity) {
@@ -79,26 +80,6 @@ const fetchMaterialConversion = async () => {
     }
 };
 
-const fetchBlocks = async () => {
-    // Prioritize filter values, fallback to item props
-    const sloc = filters.value.storageLocation?.code || props.item?.STGE_LOC;
-    
-    if (!sloc) return;
-    
-    isLoadingBlocks.value = true;
-    try {
-        const payload = {
-            storage_location: sloc,
-            plant_code: filters.value.plant?.plant_code || props.item?.PLANT || '2155'
-        };
-        const response = await ApiService.post('/stock-transfers/get-blocks', payload);
-        availableBlocks.value = response.data; // Assuming response is array of objects { id, label, ... }
-    } catch (error) {
-        console.error('Failed to fetch blocks:', error);
-    } finally {
-        isLoadingBlocks.value = false;
-    }
-};
 
 const fetchPallets = async (query = '') => {
     isLoading.value = true;
@@ -159,7 +140,6 @@ watch(() => props.show, (newVal) => {
         selectedBlock.value = null; // Reset block selection
         maxPallets.value = 0; // Reset max pallets
         fetchPallets(); // Load initial data
-        fetchBlocks(); // Fetch blocks
         fetchMaterialConversion(); // Fetch conversion
         fetchAssignedPallets(); // Fetch existing assignments
     }
@@ -270,24 +250,6 @@ const handleSave = () => {
                         </div>
                    </div>
                 </div>
-
-                <v-row>
-                    <v-col cols="12">
-                        <v-autocomplete
-                            v-model="selectedBlock"
-                            :items="availableBlocks"
-                            :loading="isLoadingBlocks"
-                            item-title="label"
-                            item-value="id"
-                            label="Target Bin / Block"
-                            variant="outlined"
-                            density="compact"
-                            hide-details
-                            placeholder="Select Target Bin / Block"
-                            return-object
-                        ></v-autocomplete>
-                    </v-col>
-                </v-row>
 
                 <v-row align="center" class="mb-2">
                     <v-col cols="12" md="8">
