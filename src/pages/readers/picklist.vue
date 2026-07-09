@@ -101,12 +101,22 @@ const onPicklistLogsEvent = (data) => {
         if (batch && (is_loaded == false || is_loaded == 0)) {
             const readingStatus = data.picklistLog?.antenna_log?.reading_status;
             const isFumigated = readingStatus === 'fumigated';
-          
+            const isPalletNotReserved = readingStatus === 'pallet-not-reserved';
+
             if (isFumigated) {
                 // Extract the physical ID from the nested inventory object
                 const physicalId = data.picklistLog.inventory?.physical_id || 'Unknown';
                 
                 errorMessage.value = `Pallet ID ${physicalId} is currently fumigated and cannot be loaded.`;
+                dialogVisible.value = true;
+                return;
+            }
+
+            if (isPalletNotReserved) {
+                // Extract the physical ID from the nested inventory object
+                const physicalId = data.picklistLog.inventory?.physical_id || 'Unknown';
+
+                errorMessage.value = `Pallet ID ${physicalId} with Batch ${data.picklistLog.inventory?.batch} is not reserved for this shipment.`;
                 dialogVisible.value = true;
                 return;
             }

@@ -47,13 +47,19 @@ const onPicklistLogsEvent = (data) => {
     if (data.picklistLog?.antenna_log?.bay_no == bay && reader == data.picklistLog?.reader_id) {
         const readingStatus = data.picklistLog?.antenna_log?.reading_status;
         const isBatchNotExists = readingStatus === 'batch-not-exists';
+        const isPalletNotReserved = readingStatus === 'pallet-not-reserved';
         const isOverscanningDetected = readingStatus === 'overscanning-detected';
         const isUnregistered = readingStatus === 'unregistered';
         const isFumigated = readingStatus === 'fumigated';
-        const isInvalidReadingStatus = isBatchNotExists || isOverscanningDetected || isUnregistered || isFumigated;
+        const isInvalidReadingStatus = isBatchNotExists || isPalletNotReserved || isOverscanningDetected || isUnregistered || isFumigated;
 
         if (isBatchNotExists) {
             response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} does not match any batch in this shipment.`;
+            response.type = 'error';
+            response.color = 'error';
+            snackbarVisible.value = true
+        } else if (isPalletNotReserved) {
+            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} is not reserved for this shipment.`;
             response.type = 'error';
             response.color = 'error';
             snackbarVisible.value = true
@@ -247,8 +253,8 @@ watch(
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
@@ -370,8 +376,8 @@ watch(
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
