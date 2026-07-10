@@ -86,8 +86,12 @@ const handleScan = async (force = false) => {
         lastProcessedScan.value = scannedValue;
     } catch (error) {
         console.error('Error fetching pallet checker data:', error);
-        scanError.value = 'Invalid scanned value or server error. Please scan a valid pallet.';
-        scanResult.value = null;
+        scanError.value = 'Pallet not found [EPC: ' + epc + '].';
+        scanResult.value = {
+            name: '--',
+            epc,
+            current_batch: '--',
+        };
     } finally {
         isChecking.value = false;
         scanValue.value = '';
