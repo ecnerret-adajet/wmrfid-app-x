@@ -1,4 +1,5 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
 import MapBlockAssignModal from '@/components/MapBlockAssignModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import SmartAssignModal from '@/components/SmartAssignModal.vue';
@@ -47,6 +48,7 @@ const selectedBlock = reactive({
     data: null
 })
 const selectedStatus = ref(null);
+const pageLoading = ref(false);
 
 const toast = ref({
     message: '',
@@ -174,10 +176,33 @@ const fetchStorageLocationInformation = async () => {
     }
 };
 
-const handleBlockClick = (item) => {
+const handleBlockClick = async (item) => {
     selectedBlock.data = item;
-    selectedBlock.layers = item.layers;
-    openAssignModal.value = true;
+    pageLoading.value = true
+    try {
+        const lotLabel = item?.lot?.label || '';
+        const shouldForceEmptyLayers = /(wrapping|rtm|bay)/i.test(lotLabel);
+
+        if (shouldForceEmptyLayers) {
+            selectedBlock.layers = [];
+            return;
+        }
+
+        const blockId = item.id || item.block_id;
+        if (!blockId) {
+            selectedBlock.layers = item.layers || [];
+        } else {
+            const response = await axios.get(`warehouse/${blockId}/get-block-layers`);
+            const endpointLayers = response.data?.layers || response.data?.details?.layers || response.data?.data;
+            selectedBlock.layers = Array.isArray(endpointLayers) ? endpointLayers : (item.layers || []);
+        }
+    } catch (error) {
+        console.error('Error fetching block layers:', error);
+        selectedBlock.layers = item.layers || [];
+    } finally {
+        pageLoading.value = false;
+        openAssignModal.value = true;
+    }
 }
 
 const onAssignSuccess = () => {
@@ -420,6 +445,7 @@ const handleFilterStatus = (statusValue) => {
         @assign-success="onAssignSuccess" @close="smartAssignModal = false" />
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+    <Loader :show="pageLoading" />
 
 </template>
 
