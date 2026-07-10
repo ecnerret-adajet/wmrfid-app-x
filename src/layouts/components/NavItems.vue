@@ -84,6 +84,7 @@ const proceedMapping = () => {
         :item="{ title: 'Production Run', icon: 'ri-building-4-line', to: '/production-runs' }" />
     <VerticalNavLink v-if="authUserCan('view.warehouses')"
         :item="{ title: 'Warehouse', icon: 'ri-home-gear-line', to: '/warehouse' }" />
+    
     <VerticalNavLink v-if="authUserCan('view.manual.repack')"
         :item="{ title: 'Repacking', icon: 'ri-user-settings-line', to: '/repacking' }" />
 
@@ -273,6 +274,9 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
     <VerticalNavLink v-if="authUserCan('view.inventory.recon')"
         :item="{ title: 'Inventory Recon', icon: 'ri-database-2-line', to: '/inventory-recon' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.pallet.checker')"
+        :item="{ title: 'Pallet Checker', icon: 'ri-checkbox-multiple-line', to: '/pallet-checker' }" />
 
     <!-- Warehouse Mapping  -->
     <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'">

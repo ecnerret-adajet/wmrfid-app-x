@@ -650,6 +650,18 @@ export const routes = [
         },
     },
     {
+        path: '/pallet-checker',
+        name: 'pallet-checker',
+        component: () => import('@/pages/pallet-checker.vue'),
+        meta: {
+            pageTitle: "Pallet Checker",
+            breadcrumbs: [
+                { label: "Pallet Checker", link: "/pallet-checker" },
+            ],
+        },
+    },
+
+    {
         path: '/warehouse-map/:plant/:location',
         name: 'warehouse-map',
         component: () => import('@/pages/warehouse/showMap.vue'), 
