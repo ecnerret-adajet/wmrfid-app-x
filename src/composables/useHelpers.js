@@ -25,6 +25,19 @@ export const numberWithComma = (number) => {
     return '0';
 };
 
+export const numberWithCommaFixed = (number) => {
+    const parsed = Number(number);
+
+    if (!isNaN(parsed)) {
+        return parsed.toLocaleString('en-US', {
+            // Allows up to 2 decimal places if they exist, but won't force trailing zeros
+            maximumFractionDigits: 2, 
+        });
+    }
+
+    return '0';
+};
+
 
 export async function exportExcel({ url, params = {}, filename = 'export.xlsx' }) {
     try {

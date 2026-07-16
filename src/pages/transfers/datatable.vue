@@ -348,7 +348,7 @@ defineExpose({
                         <v-list-item v-if="item.open_quantity > 0" @click="handleAction(item, 'batch_pick')">Batch
                             Picking</v-list-item>
                         <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
-                            @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
+                            @click="handleAction(item, 'view_reserved_pallets')">View Reserved Batches</v-list-item>
                     </v-list>
                 </v-menu>
             </div>
@@ -359,7 +359,7 @@ defineExpose({
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
-                    Reserved Pallets
+                    Reserved Batches
                 </div>
                 <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
             </v-card-title>
@@ -370,7 +370,6 @@ defineExpose({
                             <th>Transport Number</th>
                             <th>Driver Name</th>
                             <th>Plate Number</th>
-                            <th>Physical ID</th>
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
                             <th class="text-center">Quantity ({{ stoData?.uom }})</th>
@@ -381,7 +380,6 @@ defineExpose({
                             <td>{{ item.transport_number }}</td>
                             <td>{{ item.driver_name }}</td>
                             <td>{{ item.plate_number }}</td>
-                            <td>{{ item.pallet_physical_id }}</td>
                             <td>{{ item.batch }}</td>
                             <td>{{ item.manufacturing_date }}</td>
                             <td class="text-center">{{ item.total_qty }} {{ stoData?.uom }}</td>
@@ -398,7 +396,7 @@ defineExpose({
         </v-card>
     </v-dialog>
 
-    <!-- Show Reserved Pallets Modal -->
+    <!-- Show Reserved Batches Modal -->
     <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" @updated="handleUpdated"/>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />

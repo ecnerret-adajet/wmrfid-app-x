@@ -163,6 +163,29 @@ export const routes = [
             },
         },
         {
+            path: 'goods-issue',
+            name: 'goods-issue',
+            component: () => import('@/pages/goods-issue/index.vue'),
+            meta: {
+              pageTitle: "Goods Issue List",
+              breadcrumbs: [
+                  { label: "Goods Issue List", link: "/goods-issue" },
+              ],
+            },
+        },
+        {
+            path: 'goods-issue/:id',
+            name: 'goods-issue.show',
+            component: () => import('@/pages/goods-issue/show.vue'),
+            meta: {
+                pageTitle: "Goods Issue Details",
+                breadcrumbs: (route) => [
+                    { label: "Goods Issue List", link: "/goods-issue" },
+                    { label: `${route.params.id}`, link: `/goods-issue/${route.params.id}` }
+                ],
+            },
+        },
+        {
             path: 'shipments/:shipmentNumber',
             name: 'shipments.show',
             component: () => import('@/pages/shipments/show.vue'),
