@@ -49,6 +49,7 @@ const toast = ref({
 const headers = [
     { title: 'Physical ID', key: 'name' },
     { title: 'Batch', key: 'batch' },
+    { title: 'Quantity', key: 'quantity' },
     { title: 'Actions', key: 'actions', sortable: false }
 ];
 
@@ -88,6 +89,7 @@ const fetchPallets = async (query = '') => {
             name: query, 
             page: 1,
             per_page: 20,
+            batch: props.item.BATCH,
             plant_code: filters.value.plant?.plant_code || props.item?.PLANT || '2155'
         };
         const response = await ApiService.post('/stock-transfers-issuance/pallet-list', payload);
@@ -109,7 +111,7 @@ const fetchAssignedPallets = async () => {
             material_document: props.item.MAT_DOC,
             line_item: props.item.MATDOC_ITM
         };
-        const response = await ApiService.post('/stock-transfers-issuance/get-assigned-pallets', payload);
+        const response = await ApiService.post('/stock-transfers/get-assigned-pallets', payload);
         
         if (response.data && Array.isArray(response.data)) {
             addedPallets.value = response.data.map(log => {
@@ -132,6 +134,12 @@ const debouncedFetchPallets = debounce((query) => {
 }, 500);
 
 const getPrimaryInventory = (pallet) => {
+    // console.log('Getting primary inventory for pallet:', pallet);
+    if (pallet?.inventory && typeof pallet.inventory === 'object') {
+        return pallet.inventory;
+    }
+
+    // Backward-compatible fallback for older payload shapes.
     if (Array.isArray(pallet?.inventories)) {
         return pallet.inventories[0] || null;
     }
@@ -142,8 +150,9 @@ const getPalletOptionName = pallet =>
     pallet?.rfid_pallet?.name || pallet?.name || pallet?.pallet_code || '-';
 
 const getPalletOptionBatch = pallet => {
+    console.log('Getting batch for pallet:', pallet);
     const inventory = getPrimaryInventory(pallet);
-    return inventory?.batch || pallet?.batch || '-';
+    return inventory?.batch || '-';
 };
 
 const getPalletOptionQuantity = pallet => {
