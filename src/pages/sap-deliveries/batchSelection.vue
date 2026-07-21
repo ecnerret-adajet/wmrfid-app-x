@@ -227,7 +227,8 @@ const selectPallets = () => {
                                 :key="i"
                                 :class="{
                                     'selected-row': item.is_selected,
-                                    'bg-grey-100 opacity-20': item.inventory.length === 0
+                                    // 'bg-grey-100 opacity-20': item.inventory.length === 0,
+                                    'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0,
                                 }"
                             >
                                 <td>{{ item.BATCH }}</td>
@@ -248,7 +249,7 @@ const selectPallets = () => {
                                         v-model="item.is_selected"
                                         hide-details
                                         density="compact"
-                                        :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR)"
+                                        :disabled="item.inventory.length === 0 || expirationChecking(item.SLED_STR) || item.split_qty_bag === 0"
                                     />
                                 </td>
                             </tr>
@@ -297,7 +298,8 @@ const selectPallets = () => {
                                 :key="i"
                                 :class="{
                                     'selected-row': item.is_selected,
-                                    'bg-grey-100 opacity-20': item.inventory.length === 0,
+                                    // 'bg-grey-100 opacity-20': item.inventory.length === 0
+                                    'bg-grey-100 opacity-20': item.inventory.length === 0 || item.split_qty_bag === 0,
                                 }"
                             >
                                 <td>{{ item.BATCH }}</td>
@@ -318,7 +320,7 @@ const selectPallets = () => {
                                         v-model="item.is_selected"
                                         hide-details
                                         density="compact"
-                                        :disabled="item.inventory.length === 0"
+                                        :disabled="item.inventory.length === 0 || item.split_qty_bag === 0"
                                     />
                                 </td>
                             </tr>
