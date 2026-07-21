@@ -134,6 +134,7 @@ const baseHeaders = [
     { title: 'QR Putaway Date', key: 'putaway_date', width: 120, sortable: false },
     { title: 'QR Wrapping-Putaway', key: 'qr_wrapping_putaway', sortable: false },
     { title: 'TR Creation-Putaway', key: 'tr_creation_putaway', sortable: false },
+    { title: 'Operator', key: 'operator', sortable: false },
 ]
 
 // 2. Create the computed headers layer to track totalItems state changes
@@ -503,6 +504,10 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                             style="width: 100px; justify-content: center;" text-color="white">Completed</v-chip>
                         <v-chip v-else-if="item.status == 7 || item.status == 5" size="small" color="error"
                             style="width: 100px; justify-content: center;" text-color="white">Invalid</v-chip>
+                    </template>
+
+                    <template #item.operator="{ item }">
+                        <span>{{ item.operator }}</span>
                     </template>
 
                 </VDataTableServer>
