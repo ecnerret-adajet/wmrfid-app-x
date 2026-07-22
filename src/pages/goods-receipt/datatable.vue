@@ -161,6 +161,33 @@ const formatDateTime = (date, time) => {
     return Moment(`${formattedDate} ${time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY hh:mm:ss A');
 };
 
+const getAssignedPalletCount = (item) => {
+    if (Array.isArray(item.pallet_assignment_log)) {
+        return item.pallet_assignment_log.length;
+    }
+
+    if (typeof item.pallet_assignment_log === 'number') {
+        return item.pallet_assignment_log;
+    }
+
+    if (item.pallet_assignment_log) {
+        return 1;
+    }
+
+    return 0;
+};
+
+const hasIncompletePalletAssignment = (item) => {
+    console.log('Checking incomplete pallet assignment for item:', item);
+    const assignedPalletCount = getAssignedPalletCount(item);
+    console.log('Assigned Pallet Count:', assignedPalletCount);
+    const totalItemsCount = Number(item.stock_transfer_items_count || 0);
+
+    return assignedPalletCount > 0 && totalItemsCount > assignedPalletCount;
+};
+
+const hasAssignedPallet = (item) => getAssignedPalletCount(item) > 0;
+
 
     const handleViewDetails = (item) => {
         router.push({ name: 'goods-receipt.show', params: { id: item.id } });
@@ -197,8 +224,8 @@ const formatDateTime = (date, time) => {
         </template>
 
         <template #item.pallet_assignment_log="{ item }">
-            <span :class="item.pallet_assignment_log ? 'text-success' : 'text-warning'">
-                {{ item.pallet_assignment_log ? 'Assigned Pallet' : 'Not Assigned' }}
+            <span :class="hasIncompletePalletAssignment(item) ? 'text-warning' : hasAssignedPallet(item) ? 'text-success' : 'text-error'">
+                {{ hasIncompletePalletAssignment(item) ? 'Incomplete Assign' : hasAssignedPallet(item) ? 'Assigned Pallet' : 'Not Assigned' }}
             </span>
         </template>
         

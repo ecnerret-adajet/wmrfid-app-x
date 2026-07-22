@@ -10,7 +10,8 @@ import PalletAssignModal from '@/components/PalletAssignModal.vue';
 
 const route = useRoute();
 const router = useRouter();
-const goodsReceiptData = ref(null); // Renamed from shipmentData
+const goodsReceiptData = ref(null); 
+const stockTransfer = ref(null);
 const pageLoading = ref(false);
 const id = route.params.id; // Get the ID from URL
 
@@ -33,14 +34,13 @@ const headers = [
     { title: 'Purchase Order', key: 'PO_NUMBER' },
     { title: 'Item', key: 'PO_ITEM' },
     { title: 'Ref. Doc.', key: 'REF_DOC_NO' },
-    { title: 'Quantity', key: 'ENTRY_QNT' },
-    { title: 'Base Unit', key: 'ENTRY_UOM' },
+    { title: 'Qty & UOM', key: 'ENTRY_QNT' },
+    // { title: 'Base Unit', key: 'ENTRY_UOM' },
     { title: 'Text', key: 'ITEM_TEXT' },
     { title: 'Plant', key: 'PLANT' },
-    { title: 'Storage Location', key: 'STGE_LOC' },
+    { title: 'SLoc', key: 'STGE_LOC' },
     { title: 'Batch', key: 'BATCH' },
-    { title: 'Movement Type', key: 'MOVE_TYPE' },
-    { title: 'Actions', key: 'actions', sortable: false },
+    { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
 
 const toast = ref({
@@ -48,6 +48,31 @@ const toast = ref({
     color: 'success',
     show: false
 });
+
+const getRequiredPalletCount = async (item) => {
+    const payload = {
+        material_code: item.MATERIAL,
+        code: item.BATCH,
+        quantity: item.ENTRY_QNT,
+        uom: item.ENTRY_UOM
+    };
+
+    const response = await ApiService.post('/stock-transfers/get-material-conversion', payload);
+
+    return Number(response.data?.quantity || 0);
+};
+
+const getAssignedPalletCount = async (item) => {
+    const payload = {
+        stock_transfer_id: id,
+        material_document: goodsReceiptData.value?.MAT_DOC || item.MAT_DOC,
+        line_item: item.MATDOC_ITM
+    };
+
+    const response = await ApiService.post('stock-transfers/get-assigned-pallets', payload);
+
+    return Array.isArray(response.data) ? response.data.length : 0;
+};
 
 const formatNumber = (value) => {
     if (!value) return '0';
@@ -125,7 +150,16 @@ const checkPalletStatus = async () => {
             // The API returns 1 (true) or 0 (false) directly as the response body.
             // Adjusting to check response.data directly.
             // Also keeping fallback to .assigned just in case it changes later or is inconsistent.
-            item.is_assigned = response.data === 1 || response.data === true || response.data?.assigned === true; 
+            item.is_assigned = response.data === 1 || response.data === true || response.data?.assigned === true;
+
+            const [assignedPalletCount, requiredPalletCount] = await Promise.all([
+                getAssignedPalletCount(item),
+                getRequiredPalletCount(item)
+            ]);
+
+            item.assigned_pallet_count = assignedPalletCount;
+            item.required_pallet_count = requiredPalletCount;
+            item.has_pending_pallet_assignment = assignedPalletCount > 0 && requiredPalletCount > assignedPalletCount;
         } catch (error) {
             console.error(`Failed to check pallet status for line ${item.MATDOC_ITM}`, error);
         }
@@ -137,6 +171,7 @@ const fetchStockTransferDetails = async () => {
     try {
         const response = await ApiService.get('stock-transfers', id);
         goodsReceiptData.value = response.data.header;
+        stockTransfer.value = response.data.stock_transfer;
         serverItems.value = response.data.items;
         
         // Check pallet status after loading items
@@ -166,6 +201,12 @@ const closeModal = () => {
     deliveryItemsModalOpen.value = false;
 }
 
+function removeLeadingZeros(value) {
+    if (!value) return '';
+    return value.replace(/^0+/, '');
+}
+
+
 </script>
 
 <template>
@@ -182,7 +223,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Material Document"
-                                :model-value="goodsReceiptData?.MAT_DOC || '4901390545'"
+                                :model-value="goodsReceiptData?.MAT_DOC || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -191,7 +232,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Entry Date"
-                                :model-value="goodsReceiptData?.ENTRY_DATE || '2026-02-13'"
+                                :model-value="goodsReceiptData?.ENTRY_DATE || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -200,7 +241,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Document Date"
-                                :model-value="goodsReceiptData?.DOC_DATE || '2026-02-13'"
+                                :model-value="goodsReceiptData?.DOC_DATE || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -210,7 +251,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Posting Date"
-                                :model-value="goodsReceiptData?.PSTNG_DATE || '2026-02-13'"
+                                :model-value="goodsReceiptData?.PSTNG_DATE || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -219,7 +260,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Header Text"
-                                :model-value="goodsReceiptData?.HEADER_TXT || 'transfer to w118'"
+                                :model-value="goodsReceiptData?.HEADER_TXT || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -228,7 +269,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="GR/GI Slip No."
-                                :model-value="goodsReceiptData?.VER_GR_GI_SLIP || '02/13/2026'"
+                                :model-value="goodsReceiptData?.VER_GR_GI_SLIP || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -238,7 +279,7 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Vendor"
-                                :model-value="goodsReceiptData?.vendor || ''"
+                                :model-value="goodsReceiptData?.VENDOR || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -247,7 +288,16 @@ const closeModal = () => {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="Username"
-                                :model-value="goodsReceiptData?.USERNAME || 'APP_USER'"
+                                :model-value="goodsReceiptData?.USERNAME || '-'"
+                                variant="outlined"
+                                readonly
+                                density="compact"
+                            ></v-text-field>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                             <v-text-field
+                                label="Movement Type"
+                                :model-value="stockTransfer?.movement_type || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -257,7 +307,7 @@ const closeModal = () => {
                 </v-card-text>
             </v-card-title>
         </v-card>
-        <div >
+        <div>
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <div class="mt-2">
@@ -273,19 +323,17 @@ const closeModal = () => {
 
                             <template #item="{ item }">
                                 <tr @click="handleViewDelivery(item)" class="clickable-row">
-                                    <td>{{ item.MATDOC_ITM || '0001' }}</td>
-                                    <td>{{ item.MATERIAL || '510000195' }}</td>
+                                    <td>{{ item.MATDOC_ITM || '-' }}</td>
+                                    <td>{{ removeLeadingZeros(item.MATERIAL) || '-' }}</td>
                                     <td>{{ item.PO_NUMBER }}</td>
                                     <td>{{ item.PO_ITEM }}</td>
                                     <td>{{ item.REF_DOC_NO }}</td>
-                                    <td>{{ formatNumber(item.ENTRY_QNT) }}</td>
-                                    <td>{{ item.ENTRY_UOM }}</td>
+                                    <td>{{ formatNumber(item.ENTRY_QNT) }} {{ item.ENTRY_UOM || '-' }}</td>
                                     <td>{{ item.ITEM_TEXT }}</td>
-                                    <td>{{ item.PLANT || '2115' }}</td>
-                                    <td>{{ item.STGE_LOC || 'W105' }}</td>
+                                    <td>{{ item.PLANT || '-' }}</td>
+                                    <td>{{ item.STGE_LOC || '-' }}</td>
                                     <td>{{ item.BATCH }}</td>
-                                    <td>{{ item.MOVE_TYPE || '313' }}</td>
-                                    <td>
+                                    <td class="text-center">
                                         <div class="d-flex align-center gap-2">
                                             <v-btn
                                                 v-if="!item.is_assigned && item.ENTRY_QNT > 0"
@@ -294,6 +342,14 @@ const closeModal = () => {
                                                 @click.stop="openPalletModal(item)"
                                             >
                                                 Add Pallet
+                                            </v-btn>
+                                            <v-btn
+                                                v-else-if="item.has_pending_pallet_assignment"
+                                                color="warning"
+                                                size="small"
+                                                @click.stop="openPalletModal(item)"
+                                            >
+                                                Incomplete Assign
                                             </v-btn>
                                             <v-btn
                                                 v-else-if="item.is_assigned"
@@ -326,6 +382,7 @@ const closeModal = () => {
         :stock-transfer-id="id"
         @close="closePalletModal"
         @save="savePalletAssignment"
+        @updated="fetchStockTransferDetails"
     />
 
 <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
