@@ -91,7 +91,7 @@ const closePalletModal = () => {
     selectedItemForPallet.value = null;
 };
 
-const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) => {
+const savePalletAssignment = async ({ pallets, block_id, storage_location_id, mode }) => {
     if (!selectedItemForPallet.value) return;
 
     isSaving.value = true;
@@ -109,7 +109,8 @@ const savePalletAssignment = async ({ pallets, block_id, storage_location_id }) 
         plant: selectedItemForPallet.value.PLANT,
         sloc: selectedItemForPallet.value.STGE_LOC,
         line_item: selectedItemForPallet.value.MATDOC_ITM,
-        base_unit: selectedItemForPallet.value.ENTRY_UOM
+        base_unit: selectedItemForPallet.value.ENTRY_UOM,
+        mode: mode
     };
     
     try {
@@ -379,6 +380,7 @@ function removeLeadingZeros(value) {
         :show="palletModalOpen" 
         :item="selectedItemForPallet"
         :loading="isSaving"
+        :stock-transfer="stockTransfer"
         :stock-transfer-id="id"
         @close="closePalletModal"
         @save="savePalletAssignment"

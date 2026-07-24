@@ -25,6 +25,10 @@ const props = defineProps({
     stockTransferId: {
         type: [String, Number],
         default: null
+    },
+    stockTransfer: {
+        type: Object,
+        default: null
     }
 });
 
@@ -63,10 +67,10 @@ const palletModeOptions = [
 
 const getPlantCode = () => {
     if (palletMode.value === 'pallet_inbound') {
-        return '2111';
+        return props.stockTransfer?.purchase_order?.supplying_plant;
     }
 
-    return filters.value.plant?.plant_code || props.item?.PLANT || '2155';
+    return filters.value.plant?.plant_code || props.item?.PLANT;
 };
 
 const fetchMaterialConversion = async () => {
@@ -265,7 +269,8 @@ const handleSave = () => {
     emit('save', {
         pallets: newPallets,
         block_id: selectedBlock.value?.id,
-        storage_location_id: selectedBlock.value?.storage_location_id // Optional if available in block data
+        storage_location_id: selectedBlock.value?.storage_location_id,// Optional if available in block data
+        mode: palletMode.value
     });
 };
 
