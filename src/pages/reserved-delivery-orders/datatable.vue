@@ -35,6 +35,7 @@ const rowToCancel = ref(null)
 const headers = [
     { title: 'DELIVERY', key: 'delivery_document', sortable: false },
     { title: 'ITEM NO.', key: 'delivery_item_number' },
+    { title: 'SHIPMENT', key: 'shipment_no', sortable: false },
     { title: 'MATERIAL', key: 'material', sortable: false },
     { title: 'BATCH CODE', key: 'commodity_batch_code' },
     { title: 'PLANT / SLOC', key: 'plant_sloc', sortable: false },
@@ -120,6 +121,22 @@ const actionList = computed(() => {
     return actions
 })
 
+const getActionList = (item) => {
+    const actions = [{ title: 'View Pallets', key: 'view_pallets' }]
+
+    // Check permissions
+    const hasPermission = authUserCan('can.cancel.reservation.pallet')
+    
+    // Check if picking status is NOT 'C' (handles deep nested object safety)
+    const isNotFullyPicked = item.sap_delivery?.picking_status !== 'C'
+
+    if (hasPermission && isNotFullyPicked) {
+        actions.push({ title: 'Cancel Reservation', key: 'cancel_reservation' })
+    }
+
+    return actions
+}
+
 const handleAction = (item, action) => {
     if (action.key === 'view_pallets') {
         selectedRow.value = item
@@ -182,6 +199,21 @@ defineExpose({ loadItems, applyFilters })
         @update:options="loadItems"
         class="text-no-wrap"
     >
+        <template #header.total_reserved_pallets="{ column }">
+            <span>Reserved</span><br />
+            <span>Pallets</span>
+        </template>
+
+        <template #header.picking_status="{ column }">
+            <span>Picking</span><br />
+            <span>Status</span>
+        </template>
+
+        <template #header.sap_server="{ column }">
+            <span>SAP</span><br />
+            <span>Server</span>
+        </template>
+
         <template #item.delivery_document="{ item }">
             <span class="font-weight-medium">{{ item.reserved_pallets?.[0]?.delivery_document ?? '—' }}</span>
         </template>
@@ -199,6 +231,10 @@ defineExpose({ loadItems, applyFilters })
 
         <template #item.commodity_batch_code="{ item }">
             {{ item.commodity_batch_code }}
+        </template>
+
+        <template #item.shipment_no="{ item }">
+            {{ item.sap_delivery?.shipment_no || '-' }}
         </template>
 
         <template #item.plant_sloc="{ item }">
@@ -247,7 +283,7 @@ defineExpose({ loadItems, applyFilters })
                     </template>
                     <v-list>
                         <v-list-item
-                            v-for="(action, i) in actionList"
+                            v-for="(action, i) in getActionList(item)"
                             :key="i"
                             :value="i"
                             @click="handleAction(item, action)"

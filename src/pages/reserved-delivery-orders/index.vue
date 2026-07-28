@@ -99,7 +99,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
             />
         </VCol>
         <VCol md="7">
-            <SearchInput @update:search="handleSearch" />
+            <SearchInput @update:search="handleSearch" placeholder="Search by shipment, material, DO, or by pallet ID"/>
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
             <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">

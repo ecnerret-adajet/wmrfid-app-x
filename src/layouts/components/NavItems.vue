@@ -142,7 +142,9 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-archive-line', to: '/sap-deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
-        :item="{ title: 'Reserved Pallets', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
+        :item="{ title: 'Reserved Orders', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
+    <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
+        :item="{ title: 'Reserved Pallets', icon: 'ri-stack-line', to: '/reserved-pallets' }" />
     <VerticalNavLink v-if="authUserCan('view.sto')"
         :item="{ title: 'Transfer Orders', icon: 'ri-shuffle-line', to: '/transfer-orders' }" />
     <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"

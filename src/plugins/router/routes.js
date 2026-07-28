@@ -208,6 +208,17 @@ export const routes = [
             },
         },
         {
+            path: 'reserved-pallets',
+            name: 'reserved-pallets',
+            component: () => import('@/pages/reserved-pallets/index.vue'),
+            meta: {
+              pageTitle: "Reserved Pallets",
+              breadcrumbs: [
+                  { label: "Reserved Pallets", link: "/reserved-pallets" },
+              ],
+            },
+        },
+        {
             path: 'transfer-orders',
             name: 'transfer-orders',
             component: () => import('@/pages/transfers/index.vue'),

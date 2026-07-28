@@ -689,6 +689,7 @@ const headers = computed(() => {
 const tableLoading = ref(false)
 const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
     tableLoading.value = true
+    pageLoading.value = true;
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
         sortQuery.value = `${sort.key}`;  // Default ascending order
@@ -726,10 +727,12 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
         console.log(error);
     } finally {
         tableLoading.value = false;
+        pageLoading.value = false;
     }
 }
 
 const handleSearch = () => {
+    console.log('searching')
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
