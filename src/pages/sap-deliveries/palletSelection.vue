@@ -430,7 +430,7 @@ const proceedReserve = async () => {
             <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
                     margin-right: 5px; background-color: #2196f3">
             </div>
-            Selected Pallet(s)
+            Selected Bin(s)
         </div>
 
         <!-- End Legends  -->

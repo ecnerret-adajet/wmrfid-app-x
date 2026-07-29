@@ -4,6 +4,7 @@ import Toast from '@/components/Toast.vue';
 import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -14,6 +15,7 @@ import batchDetails from './batchDetails.vue';
 const pageLoading = ref(false);
 const plantsOptions = ref([]);
 const statisticsData = ref(null);
+const authStore = useAuthStore();
 
 const toast = ref({
     message: 'New production line successfully created!',
@@ -22,8 +24,8 @@ const toast = ref({
 });
 const filters = reactive({
     storage_location_id: null,
-    plant_id: null
-})
+    plant_id: authStore.user?.assigned_plant?.id || null,
+});
 
 
 onMounted(() => {
@@ -108,6 +110,16 @@ const headers = [
         align: 'center'
     },
     {
+        title: 'RESERVED PALLETS',
+        key: 'reserved_count',
+        align: 'center'
+    },
+    {
+        title: 'AVAILABLE PALLETS',
+        key: 'available_count',
+        align: 'center'
+    },
+    {
         title: 'TOTAL PALLETS',
         key: 'total_count',
         align: 'center'
@@ -186,8 +198,10 @@ const exportData = async () => {
             params: {
                 plant_id: filters.plant_id,
                 search: searchValue.value,
+                type: 'all'
             },
             filename: 'inventories.xlsx',
+
         });
     } catch (error) {
         console.error('Export error:', error);
@@ -241,6 +255,32 @@ const exportData = async () => {
             @update:options="loadItems"
             class="text-no-wrap"
         >
+            <template #header.age="{ column }">
+                <span>Current</span><br />
+                <span>Age</span>
+            </template>
+
+            <template #header.total_count="{ column }">
+                <span>Total</span><br />
+                <span>Pallets</span>
+            </template>
+
+            <template #header.reserved_count="{ column }">
+                <span>Reserved</span><br />
+                <span>Pallets</span>
+            </template>
+            <template #header.available_count="{ column }">
+                <span>Available</span><br />
+                <span>Pallets</span>
+            </template>
+
+            <template #item.reserved_count="{ item }">
+                {{ item.reserved_pallets }}
+            </template>
+            <template #item.available_count="{ item }">
+                {{ item.available_pallets }}
+            </template>
+
             <template #item.action="{ item }">
                 <div class="d-flex justify-center gap-1">
                     <v-menu location="end"> 

@@ -46,25 +46,13 @@ const headers = [
         title: 'PHYSICAL ID',
         key: 'physical_id',
     },
-    // {
-    //     title: 'TYPE',
-    //     key: 'type',
-    //     sortable: false
-    // },
     {
         title: 'MFG DATE',
         key: 'mfg_date',
     },
     {
-        title: 'IS LOADED',
-        key: 'is_loaded',
-        align: 'center',
-        sortable: false
-    },
-    {
-        title: 'IS WRAPPED',
-        key: 'is_wrapped',
-        align: 'center',
+        title: 'AVAILABILITY',
+        key: 'availability',
         sortable: false
     },
     {
@@ -79,7 +67,7 @@ const headers = [
         align: 'center'
     },
     {
-        title: 'STATUS',
+        title: 'PALLET STATUS',
         key: 'commodity_status',
         sortable: false
     },
@@ -193,7 +181,7 @@ watch(selectedTagType, async (newVal) => {
 
 const totalQuantity = computed(() => {
     return statisticsData.value?.reduce((sum, item) => {
-        return sum + Number(item.total_quantity || 0)
+        return sum + Number(item.total_pallets || 0)
     }, 0)
 })
 
@@ -211,7 +199,13 @@ const wrappedTotal = computed(() => {
 
 const availableTotal = computed(() => {
     return statisticsData.value?.reduce((sum, item) => {
-        return sum + Number(item.available_items || 0)
+        return sum + Number(item.available_pallets || 0)
+    }, 0)
+})
+
+const reservedTotal = computed(() => {
+    return statisticsData.value?.reduce((sum, item) => {
+        return sum + Number(item.reserved_pallets || 0)
     }, 0)
 })
 
@@ -300,6 +294,7 @@ const exportData = async () => {
                     tag_type_id: selectedTagType.value
                 },
                 search: searchValue.value,
+                type: 'batch'
             },
             filename: 'inventories.xlsx',
         });
@@ -450,61 +445,28 @@ onMounted(() => {
                             style="
                             width: 48px;
                             height: 48px;
-                            background-color: #e0f2fe;
+                            background-color: #fff8e1;
                             border-radius: 12px;
                             "
                         >
                             <v-icon
-                            icon="ri-truck-line"
-                            color="info"
+                            icon="ri-phone-lock-line"
+                            color="warning"
                             size="24"
                             ></v-icon>
                         </div>
                         <div>
                             <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Loaded Pallets
+                            Reserved Pallets
                             </span>
                             <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ loadedItemsTotal || 0 }}
+                            {{ reservedTotal || 0 }}
                             </div>
                         </div>
                         </div>
                     </v-card>
                 </v-col>
-            
-                <!-- <v-col cols="3">
-                    <v-card
-                        class="px-4 py-2 bg-white border"
-                        elevation="0"
-                        style="border-radius: 4px;"
-                    >
-                        <div class="d-flex align-center">
-                        <div
-                            class="d-flex align-center justify-center mr-4"
-                            style="
-                            width: 48px;
-                            height: 48px;
-                            background-color: #e0f2fe;
-                            border-radius: 12px;
-                            "
-                        >
-                            <v-icon
-                            icon="ri-folder-5-line"
-                            color="primary"
-                            size="24"
-                            ></v-icon>
-                        </div>
-                        <div>
-                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
-                            Wrapped Items
-                            </span>
-                            <div class="text-h4 font-weight-bold text-primary mt-1">
-                            {{ wrappedTotal || 0 }}
-                            </div>
-                        </div>
-                        </div>
-                    </v-card>
-                </v-col> -->
+      
                 <v-col cols="3">
                     <v-card
                         class="px-4 py-2 bg-white border"
@@ -543,7 +505,7 @@ onMounted(() => {
         <div class="mt-4 mx-4">
             <v-card elevation="0" class="border">
                 <VRow class="mx-4">
-                    <VCol md="6">
+                    <VCol md="8">
                         <SearchInput @update:search="handleSearch"/>
                     </VCol>
                     
@@ -553,12 +515,12 @@ onMounted(() => {
                         >
                         </v-select>
                     </VCol>
-                    <VCol md="2" class="d-flex justify-center align-center">
+                    <!-- <VCol md="2" class="d-flex justify-center align-center">
                         <v-select class="mt-1" label="Filter by Sequence" density="compact"
                             :items="sequenceOption" 
                         >
                         </v-select>
-                    </VCol>
+                    </VCol> -->
                     <VCol md="2" class="d-flex justify-center align-center">
                         <v-btn block 
                             :loading="exportLoading"
@@ -578,12 +540,12 @@ onMounted(() => {
 
 
                 <v-card-text class="mx-2">
-                    <div class="mb-4 d-flex justify-between align-center">
+                    <!-- <div class="mb-4 d-flex justify-between align-center">
                         <v-spacer></v-spacer>
                         <v-btn @click="changeBatch" :disabled="selectedItems.length === 0" class="px-5" type="button" color="primary-light">
                             Change Batch
                         </v-btn>
-                    </div>
+                    </div> -->
                     <div class="mb-2" v-if="selectedItems.length > 0">
                         <span class="text-h6 font-weight-medium text-high-emphasis">
                             Selected items count: ({{ selectedItems.length }})
@@ -600,10 +562,18 @@ onMounted(() => {
                             item-value="id"
                             :search="searchValue"
                             @update:options="loadItems"
-                            show-select
-                            return-object
                             class="text-no-wrap"
                         >
+
+                            <template #header.commodity_status="{ column }">
+                                <span>Pallet</span><br />
+                                <span>Status</span>
+                            </template>
+
+                            <template #header.age="{ column }">
+                                <span>Current</span><br />
+                                <span>Age</span>
+                            </template>
 
                             <template #item.batch="{ item }">
                                 <span @click="handleViewBatch(item)" class="text-primary font-weight-bold cursor-pointer hover-underline">
@@ -661,6 +631,11 @@ onMounted(() => {
                                 <v-chip v-else-if="item.commodity_status_id === 1 || item.commodity_status_id === '1'" size="small" color="primary" text-color="white">Good</v-chip>
                                 <v-chip v-else-if="item.commodity_status_id === 6 || item.commodity_status_id === '6'" size="small" color="info" text-color="white">Wrapped</v-chip>
                                 <span v-else>-</span>
+                            </template>
+
+                            <template #item.availability="{ item }">
+                                <v-chip v-if="item.is_reserved === 1 || item.is_reserved === '1'" size="small" color="warning" text-color="white">Reserved</v-chip>
+                                <v-chip v-else size="small" color="success" text-color="white">Available</v-chip>
                             </template>
 
                             <template #item.bin_location="{ item }">
