@@ -414,6 +414,27 @@ const proceedReserve = async () => {
 
         <!-- Warehouse Map -->
         <div class="text-h5 font-weight-bold mt-4 mb-2 text-primary">Warehouse Map</div>
+
+        <!-- Legends  -->
+        <div class="d-flex align-center mb-3">
+            <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                    margin-right: 5px; background-color: #28a745">
+            </div>
+            Available
+
+            <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                    margin-right: 5px; background-color: #ffc107">
+            </div>
+            All Reserved
+
+            <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
+                    margin-right: 5px; background-color: #2196f3">
+            </div>
+            Selected Pallet(s)
+        </div>
+
+        <!-- End Legends  -->
+
         <WarehouseMap
             v-if="store.selectedDeliveryItem"
             :plantCode="store.selectedDeliveryItem?.plant"

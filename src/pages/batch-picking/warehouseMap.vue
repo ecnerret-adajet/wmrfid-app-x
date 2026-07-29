@@ -97,33 +97,76 @@ const filteredLayout = computed(() => {
     const selectedBatchesSet = new Set(props.selectedBatches.map(b => b.BATCH));
     const hasSelectedBatches = selectedBatchesSet.size > 0;
 
-    // If no batches are selected, return the layout without any modifications
+    // Create a Set of selected physical IDs for efficient pallet selection lookup
+    const selectedPalletsSet = new Set(selectedPallets.value.map(p => p.physical_id));
+
+    // If no batches are selected, return default states
     if (!hasSelectedBatches) {
-        return state.layout.map(item => ({ ...item, dimmed: false, clickable: true }));
+        return state.layout.map(item => {
+            // Even if no batch filters are on, check if this block contains manually selected pallets
+            const hasSelectedPallets = item.inventories 
+                ? item.inventories.some(inv => selectedPalletsSet.has(inv.physical_id))
+                : false;
+
+            return { 
+                ...item, 
+                dimmed: false, 
+                clickable: true, 
+                isFullyReserved: false,
+                isAvailable: false,
+                hasSelectedPallets
+            };
+        });
     }
 
-    // Filter based on selected batches
     return state.layout.map(item => {
         let matchedByBatch = false;
+        let isFullyReserved = false;
+        let hasSelectedPallets = false;
 
-        if (item.type === 'block' && item.inventories) {
-            matchedByBatch = item.inventories.some(inventory =>
+        if (item.type === 'block' && item.inventories && item.inventories.length > 0) {
+
+            // Check if any inventory item in this block has been clicked/selected by the user
+            hasSelectedPallets = item.inventories.some(inventory => 
+                selectedPalletsSet.has(inventory.physical_id)
+            );
+
+            // Get only the inventories that match the selected batches
+            const matchingInventories = item.inventories.filter(inventory =>
                 selectedBatchesSet.has(inventory.batch)
             );
-        } else {
-            matchedByBatch = false;
+
+            matchedByBatch = matchingInventories.length > 0;
+
+            // Check reservation status ONLY if the batch matches
+            if (matchedByBatch) {
+                isFullyReserved = matchingInventories.every(inventory => inventory.is_reserved === 1);
+            }
         }
 
-        const dimmed = !matchedByBatch;
+        // NEW HIERARCHY LOGIC:
+        // 1. If it has manually selected pallets, it turns BLUE (hasSelectedPallets = true).
+        //    We turn off orange/green flags for this block so styles don't conflict.
+        // 2. If not selected, and it's fully reserved, it turns ORANGE.
+        // 3. If not selected, not reserved, and batch matches, it turns GREEN.
+        const finalSelected = hasSelectedPallets;
+        const finalFullyReserved = !finalSelected && isFullyReserved;
+        const isAvailable = !finalSelected && matchedByBatch && !finalFullyReserved; 
+
+        // Keep clickable rules tied to batch matching
         const clickable = matchedByBatch;
 
         return {
             ...item,
-            dimmed,
-            clickable
+            dimmed: !matchedByBatch, 
+            clickable,
+            isFullyReserved: finalFullyReserved,
+            isAvailable,
+            hasSelectedPallets: finalSelected
         };
     });
 });
+
 
 const mapLoading = ref(false);
 const fetchStorageLocationInformation = async () => {
@@ -184,13 +227,9 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                     'bg-legend': item.type === 'lot' && (item.legend_only === true),
                     'bg-primary-light': item.type === 'lot' && !item.legend_only,
                     'under-fumigation': item.under_fumigation,
-                    'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
-                    'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
-                    'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
-                    'layer-4': item.type !== 'lot' && item.inventoriesCount === 4,
-                    'empty-layer': item.type !== 'lot' && item.inventoriesCount === 0,
-                    'dimmed-block': item.dimmed,
-                    'highlighted-block': !item.dimmed
+                    'selected-blue': item.hasSelectedPallets,
+                    'fully-reserved-block': item.isFullyReserved, /* Hierarchy Step 1: Orange */
+                    'available-green': item.isAvailable,           /* Hierarchy Step 2: Green */
                 }" @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)"
                 :is-resizable="false">
 
@@ -199,11 +238,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                     {{ item.label }}
                 </div>
 
-                <div v-else class="text" :class="{
-                    'dimmed-block': item.dimmed,
-                    'highlighted-block': !item.dimmed
-                }">
-                    {{ item.label }}
+                <div v-else class="text">
+                     {{ item.label }}
                 </div>
             </GridItem>
         </GridLayout>
@@ -215,6 +251,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Bin Information
                 </div>
+                <p class="text-h3 font-weight-black text-grey-700">{{ selectedBlock.lot?.label }} - {{ selectedBlock.label }}</p>
             </v-card-title>
             <v-card-text>
                 <div class="px-4 mt-4 mx-2 text-h5">
@@ -298,9 +335,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .dimmed-block {
-    opacity: 0.2;
+    opacity: 0.9;
     pointer-events: none;
-    transition: opacity 0.6s ease;
 }
 
 .bg-legend {
@@ -326,8 +362,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .highlighted-block {
-    opacity: 1;
     pointer-events: auto;
+    background-color: rgb(45, 71, 6);
     transition: opacity 0.6s ease;
 }
 
@@ -396,5 +432,24 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
     border: 1px solid black;
     margin-top: 10px;
     padding: 1px;
+}
+
+.fully-reserved-block {
+    background-color: #ffc107 !important; /* Amber/Yellow warning color example */
+    border: 2px solid #ff9800 !important;
+    color: #000000 !important;
+    opacity: 0.85;
+}
+
+.available-green {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.selected-blue {
+    background-color: #2196f3 !important; 
+    border: 1px solid #0d8aee !important;
+    color: #ffffff !important;
+    font-weight: bold;
 }
 </style>
