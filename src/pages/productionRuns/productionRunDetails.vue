@@ -699,12 +699,12 @@ onMounted(() => {
                 <v-card-text class="mx-2">
                     <v-tabs v-model="activeTab" color="primary" class="mb-4">
                         <v-tab value="batch_details">Batch Details</v-tab>
-                        <v-tab v-if="authUserCan('can.view.quality.control')" value="quality_inspection">
+                        <!-- <v-tab v-if="authUserCan('can.view.quality.control')" value="quality_inspection">
                             Quality Inspection
                             <v-badge v-if="qualityInspectionItems.length > 0"
                                 :content="qualityInspectionItems.length"
                                 color="primary" inline class="ml-2" />
-                        </v-tab>
+                        </v-tab> -->
                     </v-tabs>
 
                     <v-window v-model="activeTab">
@@ -725,10 +725,10 @@ onMounted(() => {
                                         Change Batch
                                     </v-btn>
 
-                                    <v-btn v-if="authUserCan('can.view.quality.control')" @click="openQualityInspection" :disabled="selectedItems.length === 0"
+                                    <!-- <v-btn v-if="authUserCan('can.view.quality.control')" @click="openQualityInspection" :disabled="selectedItems.length === 0"
                                         class="px-5 ml-2" type="button" color="success">
                                         Quality Inspection
-                                    </v-btn>
+                                    </v-btn> -->
                                 </div>
 
                                 <div class="mb-2" v-if="selectedItems.length > 0">
