@@ -25,14 +25,19 @@ const props = defineProps({
     stockTransferId: {
         type: [String, Number],
         default: null
+    },
+    stockTransfer: {
+        type: Object,
+        default: null
     }
 });
 
-const emit = defineEmits(['close', 'save']);
+const emit = defineEmits(['close', 'save', 'updated']);
 
 const dialogVisible = ref(props.show);
 const selectedPallet = ref(null);
 const addedPallets = ref([]);
+const palletMode = ref('bags_to_pallet');
 const availableBlocks = ref([]);
 const selectedBlock = ref(null);
 const isLoadingBlocks = ref(false);
@@ -47,13 +52,26 @@ const toast = ref({
 });
 
 const headers = [
-    { title: 'Pallet Code', key: 'pallet_code' },
     { title: 'Physical ID', key: 'name' },
+    { title: 'Current Batch', key: 'current_batch' },
     { title: 'Actions', key: 'actions', sortable: false }
 ];
 
 const maxPallets = ref(0);
 const materialConversionLoading = ref(false);
+
+const palletModeOptions = [
+    { title: 'Bags to Pallet', value: 'bags_to_pallet' },
+    { title: 'Pallet Inbound', value: 'pallet_inbound' }
+];
+
+const getPlantCode = () => {
+    if (palletMode.value === 'pallet_inbound') {
+        return props.stockTransfer?.purchase_order?.supplying_plant;
+    }
+
+    return filters.value.plant?.plant_code || props.item?.PLANT;
+};
 
 const fetchMaterialConversion = async () => {
     if (!props.item) return;
@@ -88,7 +106,7 @@ const fetchPallets = async (query = '') => {
             name: query, 
             page: 1,
             per_page: 20,
-            plant_code: filters.value.plant?.plant_code || props.item?.PLANT || '2155'
+            plant_code: getPlantCode()
         };
         const response = await ApiService.post('/stock-transfers/pallet-list', payload);
         availablePallets.value = response.data.data;
@@ -130,13 +148,23 @@ const debouncedFetchPallets = debounce((query) => {
     fetchPallets(query);
 }, 500);
 
+const resetPalletSelection = () => {
+    selectedPallet.value = null;
+    addedPallets.value = [];
+    search.value = '';
+};
+
+watch(palletMode, () => {
+    resetPalletSelection();
+    fetchPallets();
+});
+
 watch(() => props.show, (newVal) => {
     dialogVisible.value = newVal;
     if (newVal) {
         // Reset state when opening
-        selectedPallet.value = null;
-        addedPallets.value = []; 
-        search.value = '';
+        palletMode.value = 'bags_to_pallet';
+        resetPalletSelection();
         selectedBlock.value = null; // Reset block selection
         maxPallets.value = 0; // Reset max pallets
         fetchPallets(); // Load initial data
@@ -178,6 +206,31 @@ const addPallet = () => {
     }
 };
 
+const getPlantLabel = (palletItem) => {
+    const plant = palletItem?.plant;
+
+    if (!plant) {
+        return 'N/A';
+    }
+
+    if (typeof plant === 'string') {
+        return plant;
+    }
+
+    if (typeof plant === 'object') {
+        const code = plant.plant_code || plant.code;
+        const name = plant.name;
+
+        if (code && name) {
+            return `${code} - ${name}`;
+        }
+
+        return code || name || 'N/A';
+    }
+
+    return 'N/A';
+};
+
 const removePallet = async (item) => {
     if (item.is_assigned) {
         if (!confirm('Are you sure you want to remove this assigned pallet? This action cannot be undone.')) return;
@@ -195,6 +248,7 @@ const removePallet = async (item) => {
             
             // Remove from list
             addedPallets.value = addedPallets.value.filter(p => p.id !== item.id);
+            emit('updated');
         } catch (error) {
             console.error('Failed to remove assigned pallet:', error);
             toast.value = {
@@ -215,7 +269,8 @@ const handleSave = () => {
     emit('save', {
         pallets: newPallets,
         block_id: selectedBlock.value?.id,
-        storage_location_id: selectedBlock.value?.storage_location_id // Optional if available in block data
+        storage_location_id: selectedBlock.value?.storage_location_id,// Optional if available in block data
+        mode: palletMode.value
     });
 };
 
@@ -251,6 +306,25 @@ const handleSave = () => {
                    </div>
                 </div>
 
+                <v-row class="mb-2">
+                    <v-col cols="12">
+                        <v-radio-group
+                            v-model="palletMode"
+                            inline
+                            hide-details
+                            class="mt-0"
+                            :disabled="addedPallets.length > 0 || (maxPallets > 0 && addedPallets.length >= maxPallets)"
+                        >
+                            <v-radio
+                                v-for="option in palletModeOptions"
+                                :key="option.value"
+                                :label="option.title"
+                                :value="option.value"
+                            ></v-radio>
+                        </v-radio-group>
+                    </v-col>
+                </v-row>
+
                 <v-row align="center" class="mb-2">
                     <v-col cols="12" md="8">
                         <v-autocomplete
@@ -258,7 +332,7 @@ const handleSave = () => {
                             v-model:search="search"
                             :items="availablePallets"
                             :loading="isLoading"
-                            item-title="pallet_code"
+                            item-title="name"
                             item-value="id"
                             label="Search Pallet"
                             return-object
@@ -272,9 +346,17 @@ const handleSave = () => {
                             <template #item="{ props, item }">
                                 <v-list-item
                                     v-bind="props"
-                                    :title="item.raw.pallet_code"
-                                    :subtitle="item.raw.name"
-                                ></v-list-item>
+                                    class="pallet-option-item"
+                                    lines="three"
+                                    :title="item.raw.name || 'N/A'"
+                                >
+                                    <template #subtitle>
+                                        <div class="pallet-option-subtitle">
+                                            <div>{{ getPlantLabel(item.raw) }}</div>
+                                            <div>Current Batch: {{ item.raw.inventory?.batch || 'N/A' }}</div>
+                                        </div>
+                                    </template>
+                                </v-list-item>
                             </template>
                         </v-autocomplete>
                     </v-col>
@@ -291,6 +373,9 @@ const handleSave = () => {
                     class="elevation-1 border rounded"
                     density="compact"
                 >
+                    <template #item.current_batch="{ item }">
+                        {{ palletMode === 'pallet_inbound' ? item.inventory?.batch || '-' : '-' }}
+                    </template>
                     <template #item.actions="{ item }">
                         <v-btn 
                             icon="ri-delete-bin-line" 
@@ -322,5 +407,24 @@ const handleSave = () => {
 </template>
 
 <style scoped>
-/* Custom styles if needed */
+:deep(.pallet-option-item .v-list-item__content) {
+    overflow: visible;
+}
+
+:deep(.pallet-option-item .v-list-item-title),
+:deep(.pallet-option-item .v-list-item-subtitle) {
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+}
+
+:deep(.pallet-option-item .v-list-item-subtitle) {
+    line-clamp: unset;
+    -webkit-line-clamp: unset;
+}
+
+.pallet-option-subtitle {
+    width: 100%;
+}
 </style>
