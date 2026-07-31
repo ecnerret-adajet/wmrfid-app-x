@@ -106,7 +106,8 @@ const fetchPallets = async (query = '') => {
             name: query, 
             page: 1,
             per_page: 20,
-            plant_code: getPlantCode()
+            plant_code: getPlantCode(),
+            ...(palletMode.value === 'pallet_inbound' && { batch: props.item?.BATCH })
         };
         const response = await ApiService.post('/stock-transfers/pallet-list', payload);
         availablePallets.value = response.data.data;
