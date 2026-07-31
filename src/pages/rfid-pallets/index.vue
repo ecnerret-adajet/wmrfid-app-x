@@ -101,6 +101,7 @@ const headers = computed(() => {
         // Wrapping column will be conditionally included
         { title: 'LOADING', key: 'is_loaded', align: 'center', sortable: false },
         { title: 'LAST LOADED', key: 'last_loaded', align: 'center', sortable: false },
+        { title: 'WITH QR', key: 'with_qr', align: 'center', sortable: false },
         { title: 'ACTIONS', key: 'actions', align: 'center', sortable: false },
     ];
 
@@ -917,6 +918,14 @@ onMounted(() => {
             <template #item.is_empty="{ item }">
                 <div class="d-flex justify-center align-center">
                     <i v-if="item.is_empty" style="font-size: 30px; background-color: green;"
+                        class="ri-checkbox-circle-line"></i>
+                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                </div>
+            </template>
+
+            <template #item.with_qr="{ item }">
+                <div class="d-flex justify-center align-center">
+                    <i v-if="item.with_qr === 1 || item.with_qr === '1'" style="font-size: 30px; background-color: green;"
                         class="ri-checkbox-circle-line"></i>
                     <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
                 </div>
