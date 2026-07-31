@@ -314,7 +314,7 @@ const handleSave = () => {
                             inline
                             hide-details
                             class="mt-0"
-                            :disabled="addedPallets.length > 0 || (maxPallets > 0 && addedPallets.length >= maxPallets)"
+                            :disabled="(maxPallets > 0 && addedPallets.length >= maxPallets)"
                         >
                             <v-radio
                                 v-for="option in palletModeOptions"
