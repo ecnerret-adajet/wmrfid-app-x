@@ -53,7 +53,7 @@ const toast = ref({
 
 const headers = [
     { title: 'Physical ID', key: 'name' },
-    { title: 'Current Batch', key: 'current_batch' },
+    { title: 'Current/Last Batch', key: 'current_batch' },
     { title: 'Actions', key: 'actions', sortable: false }
 ];
 
@@ -136,7 +136,8 @@ const fetchAssignedPallets = async () => {
                     pallet_code: log.rfid_pallet?.pallet_code,
                     name: log.rfid_pallet?.name,
                     log_id: log.id,
-                    is_assigned: true
+                    is_assigned: true,
+                    batch: log.rfid_pallet?.inventory?.batch,
                 };
             }).filter(p => p.id); // Filter out any undefined pallets
         }
@@ -377,7 +378,7 @@ const handleSave = () => {
                     density="compact"
                 >
                     <template #item.current_batch="{ item }">
-                        {{ palletMode === 'pallet_inbound' ? item.inventory?.batch || '-' : '-' }}
+                        {{ item.batch || item?.inventory?.batch || '-' }}
                     </template>
                     <template #item.actions="{ item }">
                         <v-btn 
