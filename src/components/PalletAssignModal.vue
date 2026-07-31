@@ -151,7 +151,9 @@ const debouncedFetchPallets = debounce((query) => {
 
 const resetPalletSelection = () => {
     selectedPallet.value = null;
-    addedPallets.value = [];
+    if (addedPallets.value) {
+        addedPallets.value = addedPallets.value.filter(pallet => pallet.is_assigned);
+    }
     search.value = '';
 };
 
