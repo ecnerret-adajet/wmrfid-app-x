@@ -253,10 +253,13 @@ const proceedMapping = () => {
         
     </VerticalNavGroup>
 
-    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets')"
         :item="{ heading: 'Reports' }" />
     <VerticalNavLink v-if="authUserCan('view.putaway.report')"
         :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.floating.pallets')"
+        :item="{ title: 'Floating Pallets Report', icon: 'ri-safe-2-line', to: '/reports/floating-pallets' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
