@@ -270,7 +270,7 @@ function removeLeadingZeros(value) {
                         <v-col cols="12" md="4">
                              <v-text-field
                                 label="GR/GI Slip No."
-                                :model-value="goodsReceiptData?.VER_GR_GI_SLIP || '-'"
+                                :model-value="goodsReceiptData?.VER_GR_GI_SLIP || stockTransfer?.gr_gi_slip_number || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
