@@ -61,7 +61,7 @@ const fetchPallets = async (search = '') => {
     try {
         const token = JwtService.getToken();
         const payload = {
-            search: search,
+            name: search, // change for backend compatibility
             page: page.value,
             per_page: itemsPerPage.value,
         };
