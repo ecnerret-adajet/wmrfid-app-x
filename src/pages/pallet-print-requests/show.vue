@@ -31,7 +31,7 @@ const palletHeaders = [
     { title: 'PLANT', key: 'plant_code', sortable: false },
     { title: 'EPC', key: 'epc', sortable: false },
     { title: 'WITH QR', key: 'with_qr', align: 'center', sortable: false },
-    { title: 'QR PREVIEW', key: 'qr_preview', align: 'center', sortable: false },
+    // { title: 'QR PREVIEW', key: 'qr_preview', align: 'center', sortable: false },
 ];
 
 const fetchRequest = async () => {
@@ -296,7 +296,7 @@ onMounted(() => {
                             </div>
                         </template>
 
-                        <template #item.qr_preview="{ item }">
+                        <!-- <template #item.qr_preview="{ item }">
                             <div class="d-flex justify-center align-center">
                                 <v-img
                                     v-if="item.qr_code_path"
@@ -314,7 +314,7 @@ onMounted(() => {
                                 </v-img>
                                 <span v-else class="text-medium-emphasis">No QR</span>
                             </div>
-                        </template>
+                        </template> -->
                     </VDataTable>
                 </VCardText>
             </VCard>
