@@ -359,6 +359,41 @@ export const routes = [
             },
         },
         {
+            path: 'pallet-print-requests',
+            name: 'pallet-print-requests',
+            component: () => import('@/pages/pallet-print-requests/index.vue'),
+            meta: {
+                pageTitle: "Pallet Print Requests",
+                breadcrumbs: [
+                    { label: "Pallet Print Requests", link: "/pallet-print-requests" },
+                ],
+            },
+        },
+        {
+            path: 'pallet-print-requests/create',
+            name: 'pallet-print-requests.create',
+            component: () => import('@/pages/pallet-print-requests/create.vue'),
+            meta: {
+                pageTitle: "Create Print Request",
+                breadcrumbs: [
+                    { label: "Pallet Print Requests", link: "/pallet-print-requests" },
+                    { label: "Create", link: "/pallet-print-requests/create" },
+                ],
+            },
+        },
+        {
+            path: 'pallet-print-requests/:id',
+            name: 'pallet-print-requests.show',
+            component: () => import('@/pages/pallet-print-requests/show.vue'),
+            meta: {
+                pageTitle: "Print Request Details",
+                breadcrumbs: (route) => [
+                    { label: "Pallet Print Requests", link: "/pallet-print-requests" },
+                    { label: `#${route.params.id}`, link: `/pallet-print-requests/${route.params.id}` },
+                ],
+            },
+        },
+        {
             path: 'monitoring/tonner-bags',
             name: 'rfid-monitoring-tonner-bags',
             component: () => import('@/pages/rfid-monitoring-tonner-bags/index.vue'),
