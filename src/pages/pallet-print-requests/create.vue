@@ -20,6 +20,7 @@ const page = ref(1);
 const itemsPerPage = ref(50);
 
 const plantsOption = ref([]);
+const plantsLoaded = ref(false);
 const selectedPlant = ref(null);
 
 const toast = ref({
@@ -39,27 +40,20 @@ const palletHeaders = [
     { title: 'WITH QR', key: 'with_qr', align: 'center', sortable: false },
 ];
 
-const fetchPlants = async () => {
+const loadPlants = async () => {
     try {
-        const token = JwtService.getToken();
-        const response = await axios.get('/plants/get-list', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        plantsOption.value = response.data.map(item => ({
-            value: item.plant_code,
-            title: `${item.plant_code} - ${item.name}`,
-        }));
+        const response = await ApiService.get('managed-plant-storage-locations');
+        plantsOption.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.plant_code, title: item.name }));
+        plantsLoaded.value = true;
+        if (plantsOption.value.length > 0) {
+            selectedPlant.value = plantsOption.value[0].value;
+        }
     } catch (error) {
         console.error('Error fetching plants:', error);
+        plantsLoaded.value = true;
     }
-};
-
-const handlePlantChange = () => {
-    page.value = 1;
-    fetchPallets(searchQuery.value);
 };
 
 const fetchPallets = async (search = '') => {
@@ -153,8 +147,14 @@ const goBack = () => {
     router.push('/pallet-print-requests');
 };
 
-onMounted(() => {
-    fetchPlants();
+watch(selectedPlant, () => {
+    if (!plantsLoaded.value) return;
+    page.value = 1;
+    fetchPallets(searchQuery.value);
+});
+
+onMounted(async () => {
+    await loadPlants();
     fetchPallets();
 });
 </script>
@@ -183,7 +183,18 @@ onMounted(() => {
             <VCardText>
                 <!-- Search and Plant Filter -->
                 <VRow>
-                    <VCol cols="12" md="8">
+                    <VCol cols="12" md="3">
+                        <v-select
+                            v-model="selectedPlant"
+                            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+                            label="Filter by Plant"
+                            density="compact"
+                            hide-details
+                            item-title="title"
+                            item-value="value"
+                        />
+                    </VCol>
+                    <VCol cols="12" md="9">
                         <VTextField
                             v-model="searchQuery"
                             label="Search Pallets"
@@ -192,20 +203,6 @@ onMounted(() => {
                             density="compact"
                             hide-details
                             @update:model-value="handleSearchInput"
-                        />
-                    </VCol>
-                    <VCol cols="12" md="4">
-                        <v-select
-                            v-model="selectedPlant"
-                            :items="plantsOption"
-                            label="Filter by Plant"
-                            placeholder="All Plants"
-                            density="compact"
-                            hide-details
-                            clearable
-                            item-title="title"
-                            item-value="value"
-                            @update:model-value="handlePlantChange"
                         />
                     </VCol>
                 </VRow>
