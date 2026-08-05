@@ -23,7 +23,7 @@ const toast = ref({
     message: '',
     color: 'success',
     show: false
-});
+});1
 
 const palletHeaders = [
     { title: 'PHYSICAL ID', key: 'name', sortable: false },
