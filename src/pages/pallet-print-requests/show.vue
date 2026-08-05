@@ -76,7 +76,7 @@ const handleMarkAsPrinted = async () => {
 const handleDownload = async () => {
     try {
         const token = JwtService.getToken();
-        const response = await axios.get(`/api/pallet-print-requests/${requestId}/download`, {
+        const response = await axios.get(`pallet-print-requests/${requestId}/download`, {
             responseType: 'blob',
             headers: {
                 Authorization: `Bearer ${token}`

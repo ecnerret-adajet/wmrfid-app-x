@@ -19,6 +19,9 @@ const totalPallets = ref(0);
 const page = ref(1);
 const itemsPerPage = ref(50);
 
+const plantsOption = ref([]);
+const selectedPlant = ref(null);
+
 const toast = ref({
     message: '',
     color: 'success',
@@ -36,15 +39,44 @@ const palletHeaders = [
     { title: 'WITH QR', key: 'with_qr', align: 'center', sortable: false },
 ];
 
+const fetchPlants = async () => {
+    try {
+        const token = JwtService.getToken();
+        const response = await axios.get('/plants/get-list', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        plantsOption.value = response.data.map(item => ({
+            value: item.plant_code,
+            title: `${item.plant_code} - ${item.name}`,
+        }));
+    } catch (error) {
+        console.error('Error fetching plants:', error);
+    }
+};
+
+const handlePlantChange = () => {
+    page.value = 1;
+    fetchPallets(searchQuery.value);
+};
+
 const fetchPallets = async (search = '') => {
     palletsLoading.value = true;
     try {
         const token = JwtService.getToken();
-        const response = await axios.post('/pallet-registration/get-list', {
+        const payload = {
             search: search,
             page: page.value,
             per_page: itemsPerPage.value,
-        }, {
+        };
+
+        if (selectedPlant.value) {
+            payload.plant_code = selectedPlant.value;
+        }
+
+        const response = await axios.post('/pallet-registration/get-list', payload, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
@@ -122,6 +154,7 @@ const goBack = () => {
 };
 
 onMounted(() => {
+    fetchPlants();
     fetchPallets();
 });
 </script>
@@ -148,18 +181,34 @@ onMounted(() => {
 
         <VCard class="mb-4">
             <VCardText>
-                <!-- Search -->
-                <div class="mb-4">
-                    <VTextField
-                        v-model="searchQuery"
-                        label="Search Pallets"
-                        placeholder="Search by physical ID, pallet code, or plant..."
-                        append-inner-icon="ri-search-line"
-                        density="compact"
-                        hide-details
-                        @update:model-value="handleSearchInput"
-                    />
-                </div>
+                <!-- Search and Plant Filter -->
+                <VRow>
+                    <VCol cols="12" md="8">
+                        <VTextField
+                            v-model="searchQuery"
+                            label="Search Pallets"
+                            placeholder="Search by physical ID, pallet code, or plant..."
+                            append-inner-icon="ri-search-line"
+                            density="compact"
+                            hide-details
+                            @update:model-value="handleSearchInput"
+                        />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                        <v-select
+                            v-model="selectedPlant"
+                            :items="plantsOption"
+                            label="Filter by Plant"
+                            placeholder="All Plants"
+                            density="compact"
+                            hide-details
+                            clearable
+                            item-title="title"
+                            item-value="value"
+                            @update:model-value="handlePlantChange"
+                        />
+                    </VCol>
+                </VRow>
 
                 <!-- Selected Count -->
                 <div v-if="selectedPallets.length > 0" class="mb-4 px-3 py-2 bg-grey-lighten-4 rounded">
