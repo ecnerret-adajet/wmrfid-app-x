@@ -213,6 +213,11 @@ const handleDownload = async (item) => {
         };
     }
 };
+
+const handleDownloadAndMarkAsPrinted = async (item) => {
+    await handleDownload(item);
+    await handleMarkAsPrinted(item);
+};
 </script>
 
 <template>
@@ -302,11 +307,11 @@ const handleDownload = async (item) => {
                         <IconBtn
                             v-if="item.status === 'pending'"
                             size="small"
-                            title="Mark as Printed"
-                            color="success"
-                            @click="handleMarkAsPrinted(item)"
+                            title="Download & Mark as Printed"
+                            color="info"
+                            @click="handleDownloadAndMarkAsPrinted(item)"
                         >
-                            <VIcon icon="ri-printer-line" />
+                            <VIcon icon="ri-download-line" />
                         </IconBtn>
 
                         <IconBtn
