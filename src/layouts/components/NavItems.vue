@@ -161,8 +161,7 @@ const proceedMapping = () => {
             to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/fumigation`,
         }" />
     </VerticalNavGroup>
-    <!-- <VerticalNavLink
-        :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/application-requests' }" /> -->
+
      <VerticalNavLink v-if="authUserCan('can.view.bin.transfer.requests')"
         :item="{ title: 'Bin to Bin', icon: 'ri-box-2-line', to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/bin-transfer` }" />
      <VerticalNavLink v-if="authUserCan('view.putaway.screen')"
@@ -252,9 +251,9 @@ const proceedMapping = () => {
             href: '/reports/readers-report',
             to: '/reports/readers-report',
         }" />
-
-        
     </VerticalNavGroup>
+
+  
 
     <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets')"
         :item="{ heading: 'Reports' }" />
@@ -266,6 +265,11 @@ const proceedMapping = () => {
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
+
+    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets')"
+        :item="{ heading: 'Requests' }" />
+    <VerticalNavLink
+        :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/service-requests' }" />
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"

@@ -543,13 +543,13 @@ export const routes = [
         },
 
         {
-            path: 'application-requests',
-            name: 'application-requests',
+            path: 'service-requests',
+            name: 'service-requests',
             component: () => import('@/pages/applicationRequest/index.vue'),
             meta: {
-                pageTitle: "Application Requests",
+                pageTitle: "Service Requests",
                 breadcrumbs: [
-                  { label: "Application Requests", link: "/application-requests" },
+                  { label: "Service Requests", link: "/service-requests" },
               ],
             },
         },

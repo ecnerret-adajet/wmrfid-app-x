@@ -1,15 +1,65 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue'
 import Toast from '@/components/Toast.vue'
 import { numberWithComma } from '@/composables/useHelpers'
+import ApiService from '@/services/ApiService'
 import { useSapDeliveryStore } from '@/stores/sapDeliveryStore'
 import Moment from 'moment'
-import { ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
-const emit = defineEmits(['back', 'select-pallets'])
+const emit = defineEmits(['back', 'select-pallets', 'batch-exception-created'])
 
 const store = useSapDeliveryStore()
 
 const toast = ref({ message: '', color: 'success', show: false })
+const showBatchExceptionModal = ref(false)
+const createLoading = ref(false)
+
+const createForm = reactive({
+    application_request_type: 3,
+    delivery_document: null,
+    batches: [],
+    line_item: null,
+    customer_age_requirement: 'within',
+    remarks: '',
+})
+
+const hasBatchException = computed(() => Boolean(store.selectedDeliveryItem?.batch_exception))
+
+const batchExceptionRequestedBatches = computed(() => {
+    const batchException = store.selectedDeliveryItem?.batch_exception
+
+    if (!batchException) return []
+
+    const rawBatches = Array.isArray(batchException)
+        ? batchException
+        : Array.isArray(batchException.batches)
+            ? batchException.batches
+            : batchException.batch
+                ? [batchException.batch]
+                : []
+
+    return rawBatches
+        .map(batch => {
+            if (typeof batch === 'string' || typeof batch === 'number') return String(batch)
+
+            return batch?.BATCH || batch?.batch || batch?.label || batch?.value || batch?.name || null
+        })
+        .filter(Boolean)
+})
+
+const availableBatchOptions = computed(() => {
+    const batchSet = new Set(
+        store.availableStocks
+            .map(item => item.BATCH)
+            .filter(Boolean),
+    )
+
+    return Array.from(batchSet).map(batch => ({
+        title: batch,
+        value: batch,
+    }))
+})
 
 function removeLeadingZeros(value) {
     if (!value) return ''
@@ -18,6 +68,69 @@ function removeLeadingZeros(value) {
 
 const expirationChecking = date => {
     return Moment().isAfter(Moment(date).format('YYYY-MM-DD'))
+}
+
+const openBatchExceptionModal = () => {
+    createForm.application_request_type = 3
+    createForm.delivery_document = store.deliveryData?.delivery_document ?? null
+    createForm.batches = []
+    createForm.line_item = store.selectedDeliveryItem?.item_number ?? null
+    createForm.customer_age_requirement = 'within'
+    createForm.remarks = ''
+    showBatchExceptionModal.value = true
+}
+
+const closeBatchExceptionModal = () => {
+    showBatchExceptionModal.value = false
+    createForm.batches = []
+    createForm.remarks = ''
+}
+
+const createBatchExceptionRequest = async () => {
+    toast.value.show = false
+
+    if (createForm.batches.length === 0) {
+        toast.value = { message: 'Please select at least one batch.', color: 'error', show: true }
+        return
+    }
+
+    createForm.delivery_document = store.deliveryData?.delivery_document ?? null
+    createForm.line_item = store.selectedDeliveryItem?.item_number ?? null
+
+    if (!createForm.delivery_document || !createForm.line_item) {
+        toast.value = { message: 'Missing delivery information for this request.', color: 'error', show: true }
+        return
+    }
+
+    createLoading.value = true
+
+    try {
+        await ApiService.post('application-requests', {
+            application_request_type: createForm.application_request_type,
+            plant_code: store.selectedDeliveryItem?.plant ?? null,
+            delivery_document: createForm.delivery_document,
+            batches: createForm.batches,
+            line_item: createForm.line_item,
+            material_code: store.selectedDeliveryItem?.material_number ?? null,
+            customer_age_requirement: createForm.customer_age_requirement,
+            age_requirement_from: store.product_age?.from ?? null,
+            age_requirement_to: store.product_age?.to ?? null,
+            remarks: createForm.remarks,
+        })
+
+        toast.value = { message: 'Batch exception request created successfully.', color: 'success', show: true }
+        closeBatchExceptionModal()
+        emit('batch-exception-created')
+    } catch (error) {
+        console.error('Error creating batch exception request:', error)
+        toast.value = {
+            message: error.response?.data?.message || 'An error occurred while creating the batch exception request.',
+            color: 'error',
+            show: true,
+        }
+    } finally {
+        createLoading.value = false
+    }
 }
 
 const selectPallets = () => {
@@ -206,6 +319,17 @@ const selectPallets = () => {
 
                 <!-- Available Stocks tab -->
                 <v-tabs-window-item value="available_stocks">
+                    <div class="d-flex justify-end mb-3">
+                        <v-btn
+                            :color="store.selectedDeliveryItem?.batch_exception ? 'warning' : 'primary'"
+                            :variant="store.selectedDeliveryItem?.batch_exception ? 'flat' : 'outlined'"
+                            :disabled="availableBatchOptions.length === 0"
+                            @click="openBatchExceptionModal"
+                        >
+                            {{ store.selectedDeliveryItem?.batch_exception ? 'Has Batch Exception' : 'Request Batch Exception' }}
+                        </v-btn>
+                    </div>
+
                     <v-table density="compact" class="border">
                         <thead>
                             <tr>
@@ -336,6 +460,98 @@ const selectPallets = () => {
         </div>
 
     </v-container>
+
+    <DefaultModal
+        :show="showBatchExceptionModal"
+        :dialog-title="hasBatchException ? 'Batch Exception Applied' : 'Request Batch Exception'"
+        max-width="700px"
+        min-height="auto"
+        @close="closeBatchExceptionModal"
+    >
+        <template v-if="hasBatchException">
+            <v-alert type="warning" variant="tonal" class="mb-4">
+                This delivery item already has a batch exception applied.
+            </v-alert>
+
+            <v-text-field
+                label="Delivery Document"
+                density="compact"
+                :model-value="store.deliveryData?.delivery_document ?? null"
+                readonly
+            />
+
+            <v-text-field
+                class="mt-4"
+                label="Delivery Item"
+                density="compact"
+                :model-value="store.selectedDeliveryItem?.item_number ?? null"
+                readonly
+            />
+
+            <div class="mt-4">
+                <div class="text-subtitle-1 font-weight-medium mb-2">Requested Batch(es)</div>
+                <div v-if="batchExceptionRequestedBatches.length > 0" class="d-flex flex-wrap ga-2">
+                    <v-chip
+                        v-for="batch in batchExceptionRequestedBatches"
+                        :key="batch"
+                        color="warning"
+                        variant="tonal"
+                    >
+                        {{ batch }}
+                    </v-chip>
+                </div>
+                <div v-else class="text-medium-emphasis">
+                    No batch list is available for this batch exception.
+                </div>
+            </div>
+
+            <div class="d-flex justify-end mt-6">
+                <v-btn color="secondary" variant="outlined" @click="closeBatchExceptionModal">
+                    Close
+                </v-btn>
+            </div>
+        </template>
+
+        <v-form v-else @submit.prevent="createBatchExceptionRequest">
+            <v-autocomplete
+                v-model="createForm.batches"
+                label="Requested Batch(es)"
+                density="compact"
+                :items="availableBatchOptions"
+                item-title="title"
+                item-value="value"
+                chips
+                clearable
+                multiple
+            />
+
+            <v-text-field
+                class="mt-4"
+                label="Delivery Document"
+                density="compact"
+                :model-value="createForm.delivery_document"
+                readonly
+            />
+
+            <v-textarea
+                class="mt-4"
+                v-model="createForm.remarks"
+                label="Remarks (Optional)"
+                density="compact"
+                rows="3"
+                clearable
+            />
+
+            <div class="d-flex justify-end mt-6">
+                <v-btn class="mr-3" color="secondary" variant="outlined" @click="closeBatchExceptionModal">
+                    Cancel
+                </v-btn>
+                <v-btn color="primary" :loading="createLoading" @click="createBatchExceptionRequest">
+                    Submit Request
+                </v-btn>
+            </div>
+        </v-form>
+    </DefaultModal>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
