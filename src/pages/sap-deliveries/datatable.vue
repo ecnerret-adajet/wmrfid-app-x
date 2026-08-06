@@ -112,6 +112,32 @@ const applyFilters = data => {
 
 const actionList = [{ title: 'View Delivery Items', key: 'view_delivery_items' }]
 
+const buildBatchSelectionParams = item => ({
+    delivery_id: store.deliveryData?.id,
+    material_code: item.material_number,
+    delivery_document: store.deliveryData?.delivery_document,
+    item_number: item.item_number,
+    delivery_quantity: item.delivery_quantity,
+    open_quantity: item.open_quantity,
+    sales_unit: item.sales_unit,
+    storage_location: item.storage_location,
+    plant: item.plant,
+    default_pallet_quantity: item.material_model?.default_pallet_quantity,
+})
+
+const refreshSelectedDeliveryItem = async () => {
+    toast.value = { message: 'Batch exception request created successfully.', color: 'success', show: true }
+    pendingDeliveryId.value = store.deliveryData?.id
+    currentView.value = 'items'
+    store.selectedDeliveryItem = null
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'created_at', order: 'desc' }],
+        search: props.search,
+    })
+}
+
 const handleAction = (delivery, action) => {
     if (action.key === 'view_delivery_items') {
         store.deliveryData = delivery
@@ -122,21 +148,11 @@ const handleAction = (delivery, action) => {
 }
 
 const openBatchSelection = async item => {
+    console.log(item)
     store.selectedDeliveryItem = item
     store.resetActiveTab()
 
-    const params = {
-        delivery_id: store.deliveryData?.id,
-        material_code: item.material_number,
-        delivery_document: store.deliveryData?.delivery_document,
-        item_number: item.item_number,
-        delivery_quantity: item.delivery_quantity,
-        open_quantity: item.open_quantity,
-        sales_unit: item.sales_unit,
-        storage_location: item.storage_location,
-        plant: item.plant,
-        default_pallet_quantity: item.material_model?.default_pallet_quantity,
-    }
+    const params = buildBatchSelectionParams(item)
 
     isLoading.value = true
     try {
@@ -391,6 +407,7 @@ defineExpose({ loadItems, applyFilters })
             <BatchSelection
                 v-else-if="currentView === 'batch-selection'"
                 @back="backToDeliveryItems"
+                @batch-exception-created="refreshSelectedDeliveryItem"
                 @select-pallets="handleSelectPallets"
             />
 
