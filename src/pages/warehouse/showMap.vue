@@ -8,7 +8,7 @@ import { convertSlugToUpperCase } from '@/composables/useHelpers';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -65,14 +65,18 @@ const isFiltering = computed(() => searchValue.value.trim() !== '');
 // Evaluates text match state
 const matchesSearchText = (item) => {
     if (!searchValue.value || searchValue.value.trim() === '') return true;
-    
+
     const search = searchValue.value.toLowerCase().trim();
+
     if (item.type === 'block') {
-        return item.lot?.label?.toLowerCase().includes(search) || 
-               item.label?.toLowerCase().includes(search); // Extends search matching to block labels too
-    } else if (item.type === 'lot') {
-        return item.label?.toLowerCase().includes(search);
+        return (item.inventories || []).some(inventory => {
+            const matchesPhysicalId = String(inventory?.physical_id || '').toLowerCase().includes(search);
+            const matchesBatch = String(inventory?.batch || '').toLowerCase().includes(search);
+            
+            return matchesPhysicalId || matchesBatch;
+        });
     }
+
     return false;
 };
 
@@ -374,7 +378,7 @@ const handleFilterStatus = (statusValue) => {
                         :items="statusOption" v-model="selectedStatus" @update:model-value="handleFilterStatus" 
                     />
 
-                    <SearchInput style="min-width: 300px;" placeholder="Filter by lot" @update:search="handleSearch" />
+                    <SearchInput style="min-width: 300px;" placeholder="Filter by physical ID or batch" @update:search="handleSearch" />
                 </div>
             </div>
         </v-card-text>

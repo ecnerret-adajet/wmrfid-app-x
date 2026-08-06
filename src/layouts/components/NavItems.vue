@@ -225,6 +225,9 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.readers')"
         :item="{ title: 'Readers', icon: 'ri-rfid-line', to: '/readers' }" />
 
+    <VerticalNavLink v-if="authUserCan('view.rfid')"
+        :item="{ title: 'QR Print Requests', icon: 'ri-printer-line', to: '/pallet-print-requests' }" />
+
     <VerticalNavGroup v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line' }">
         <VerticalNavLink :item="{
