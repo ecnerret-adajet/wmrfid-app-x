@@ -193,31 +193,19 @@ const handleMarkAsPrinted = async (item) => {
 
 const handleDownload = async (item) => {
     try {
-        const response = await ApiService.get(
-            `pallet-print-requests/${item.id}/download`,
-            '',
-            {
-                responseType: 'blob'
-            }
-        );
-
-        // Create download URL from the blob response
-        const url = window.URL.createObjectURL(response.data);
-
+        const response = await ApiService.get(`pallet-print-requests/${item.id}/download`, '', {
+            responseType: 'blob'
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `pallet_qrcodes_${item.id}.zip`;
-
+        link.setAttribute('download', `pallet_qrcodes_${item.id}.zip`);
         document.body.appendChild(link);
         link.click();
-
-        // Cleanup
-        document.body.removeChild(link);
+        link.remove();
         window.URL.revokeObjectURL(url);
-
     } catch (error) {
-        console.error('Error downloading QR codes:', error);
-
+        console.error('Error downloading:', error);
         toast.value = {
             message: 'Failed to download QR codes.',
             color: 'error',
@@ -225,29 +213,6 @@ const handleDownload = async (item) => {
         };
     }
 };
-
-// const handleDownload = async (item) => {
-//     try {
-//         const response = await ApiService.get(`pallet-print-requests/${item.id}/download`, '', {
-//             responseType: 'blob'
-//         });
-//         const url = window.URL.createObjectURL(new Blob([response.data]));
-//         const link = document.createElement('a');
-//         link.href = url;
-//         link.setAttribute('download', `pallet_qrcodes_${item.id}.zip`);
-//         document.body.appendChild(link);
-//         link.click();
-//         link.remove();
-//         window.URL.revokeObjectURL(url);
-//     } catch (error) {
-//         console.error('Error downloading:', error);
-//         toast.value = {
-//             message: 'Failed to download QR codes.',
-//             color: 'error',
-//             show: true
-//         };
-//     }
-// };
 </script>
 
 <template>
