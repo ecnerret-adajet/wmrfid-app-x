@@ -230,6 +230,17 @@ export const routes = [
             },
         },
         {
+            path: 'stock-receiving',
+            name: 'stock-receiving',
+            component: () => import('@/pages/stock-receiving/index.vue'),
+            meta: {
+              pageTitle: "Stock Receiving",
+              breadcrumbs: [
+                  { label: "Stock Receiving", link: "/stock-receiving" },
+              ],
+            },
+        },
+        {
             path: 'sto-outbound',
             name: 'sto-outbound',
             component: () => import('@/pages/transfersOutbound/index.vue'),
