@@ -13,6 +13,8 @@ export const useSapDeliveryStore = defineStore('sap-delivery', () => {
     const originalBatchList = ref([])
     const activeTab = ref('available_stocks')
     const customerApprovalFile = ref(null)
+    const customerApprovalFileName = ref('')
+    const customerApprovalFileUrl = ref('')
     const customerApprovalRemarks = ref('')
     const loadingStocks = ref(false)
 
@@ -38,6 +40,8 @@ export const useSapDeliveryStore = defineStore('sap-delivery', () => {
         selectedDeliveryItem.value = null
         activeTab.value = 'available_stocks'
         customerApprovalFile.value = null
+        customerApprovalFileName.value = ''
+        customerApprovalFileUrl.value = ''
         customerApprovalRemarks.value = ''
     }
 
@@ -151,6 +155,8 @@ export const useSapDeliveryStore = defineStore('sap-delivery', () => {
         originalBatchList,
         activeTab,
         customerApprovalFile,
+        customerApprovalFileName,
+        customerApprovalFileUrl,
         customerApprovalRemarks,
         loadingStocks,
         setBatches,

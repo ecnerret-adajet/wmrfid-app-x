@@ -1,6 +1,8 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import { exportExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
@@ -9,6 +11,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const authStore = useAuthStore();
 
+const { authUserCan } = useAuthorization();
 const searchValue = ref('');
 const datatableRef = ref(null);
 const isLoading = ref(false);
@@ -34,7 +37,7 @@ const filters = reactive({
     updated_at: null,
     plant_code: authStore.user?.assigned_plant?.plant_code || null,
     date_filter: null,
-    status_type: null,
+    status_type: 2,
     request_type: 'All'
 });
 
@@ -426,23 +429,38 @@ const handleSearch = () => {
     });
 };
 
-const baseHeaders = [
-    { title: 'PLANT', key: 'plant_id', align: 'start', sortable: false },
-    { title: 'TYPE', key: 'type',  sortable: false, align: 'center' },
-    { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
-    { title: 'DATE REQUESTED', key: 'created_at', sortable: false },
-    { title: 'Status', key: 'status_id', sortable: false, align: 'center' },
-    { title: 'Approved By', key: 'approved_by', sortable: false, align: 'center' },
-    { title: 'Date Approved', key: 'dated_approved', sortable: false, align: 'center' },
-]
+
+const baseHeaders = computed(() => {
+    const mainHeaders = [
+       { title: 'TRANSACTION NO.', key: 'transaction_number', sortable: false },
+        { title: 'PLANT', key: 'plant_id', align: 'start', sortable: false },
+        { title: 'TYPE', key: 'type',  sortable: false, align: 'center' },
+        { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
+        { title: 'DATE REQUESTED', key: 'created_at', sortable: false },
+        { title: 'Status', key: 'status_id', sortable: false, align: 'center' },
+        { title: 'Approved By', key: 'approved_by', sortable: false, align: 'center', width: '220px' },
+        { title: 'Date Approved', key: 'dated_approved', sortable: false, align: 'center' },
+    ];
+
+    if (authUserCan('can.approve.batch.exception')) {
+        mainHeaders.splice(9, 0, {
+            title: 'Actions',
+            key: 'actions',
+            align: 'center',
+            sortable: false
+        });
+    }
+  
+    return mainHeaders;
+});
 
 // 2. Create the computed headers layer to track totalItems state changes
 const headers = computed(() => {
     if (totalItems.value === 0) {
-        // Map over headers and safely strip away the fixed constraint parameter mapping
-        return baseHeaders.map(({ fixed, ...rest }) => rest)
+        // FIX: Added .value to baseHeaders to extract the actual array layer
+        return baseHeaders.value.map(({ fixed, ...rest }) => rest)
     }
-    return baseHeaders
+    return baseHeaders.value
 })
 
 const loading = ref(true);
@@ -486,6 +504,87 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         });
 }
 
+const showApproveModal = ref(false);
+const approveItem = ref(null);
+const approveRemarks = ref('');
+const pendingRequestAction = ref('approve');
+
+const approveItemTypeLabel = computed(() => {
+    return approveItem.value?.type || 'Batch Exception';
+});
+
+function approveRequest(item) {
+    approveItem.value = item;
+    console.log(approveItem.value)
+    approveRemarks.value = '';
+    showApproveModal.value = true;
+}
+
+const pageLoading = ref(false);
+const submitProcessRequest = () => {
+    processRequest(pendingRequestAction.value);
+};
+
+async function processRequest(action) {
+    try {
+        pageLoading.value = true;
+        const statusId = action === 'approve' ? 1 : 3;
+        const payload = {
+            request_id: approveItem.value?.id,
+            status_id: statusId,
+            remarks: approveRemarks.value || null // Always pass context or null
+        };
+
+        const response = await ApiService.post(
+            `/application-requests/approve-request`,
+            payload
+        );
+
+        if (response.data?.result === 'S') {
+            toast.message = response.data?.message || 'Service Request approved!';
+            toast.color = 'success';
+            toast.show = true;
+            // Optionally reload items
+            await loadItems({
+                page: page.value,
+                itemsPerPage: itemsPerPage.value,
+                sortBy: [{ key: 'updated_at', order: 'desc' }],
+                search: searchValue.value
+            });
+            closeApproveModal();
+        } else {
+            toast.message = response.data?.message || 'Failed to approve service request.';
+            toast.color = 'error';
+            toast.show = true;
+        }
+    } catch (e) {
+        toast.message = 'Failed to approve service request.';
+        toast.color = 'error';
+        toast.show = true;
+        console.error(e);
+    } finally {
+        pageLoading.value = false;
+    }
+}
+
+function closeApproveModal() {
+    showApproveModal.value = false;
+    approveItem.value = null;
+    approveRemarks.value = '';
+    pendingRequestAction.value = 'approve';
+}
+
+const ageRequirementDisplay = computed(() => {
+    const from = approveItem.value?.application_requestable?.age_requirement_from
+    const to = approveItem.value?.application_requestable?.age_requirement_to
+
+    // If both values are missing or null, show a dash or empty string
+    if (from === null || from === undefined || to === null || to === undefined) {
+        return 'N/A'
+    }
+
+    return `${from} - ${to} days`
+})
 
 </script>
 
@@ -512,8 +611,10 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-1" label="Filter by Status"
             density="compact" :items="[
                 { title: 'All', value: null },
-                { title: 'Pending', value: 1 },
-                { title: 'Approved', value: 2 }
+                { title: 'For Approval', value: 2 },
+                { title: 'Approved', value: 1 },
+                { title: 'Rejected', value: 3 },
+                { title: 'Cancelled', value: 4 }
             ]" v-model="filters.status_type">
         </v-select>
 
@@ -554,6 +655,18 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 <span v-if="item.material" class="text-subtitle-1">{{ item.material?.description }}</span>
             </template>
 
+              <template #item.type="{ item }">
+                <div v-if="item.type === 'Batch Exception'" class="py-2">
+                    <span class="font-weight-bold">{{ item.type }}</span><br />
+                    <span class="text-subtitle-1">
+                        {{ item.application_requestable?.exception_type === 'within_age_requirement' ? 'Within Age Requirement' : 'Outside Age Requirement' }}
+                    </span>
+                </div>
+                <div v-else class="py-2">
+                    <span class="font-weight-bold">{{ item.type }}</span>
+                </div>
+            </template>
+
             <template #item.requested_by="{ item }">
                 <span>{{ item.requester?.name }}</span><br />
             </template>
@@ -572,12 +685,15 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 
             <template #item.approved_by="{ item }">
                 <template v-if="item.type === 'Batch Exception'">
-                    <span>{{ item.approved_by?.name }}</span><br />
+                    <div class="approved-by-cell mx-auto">
+                        <span class="font-weight-bold d-block">{{ item.approver?.name }}</span>
+                        <span v-if="item.approver_remarks" class="text-subtitle-1 approved-by-remarks d-block">{{ item.approver_remarks }}</span>
+                    </div>
                 </template>
             </template>
 
             <template #item.dated_approved="{ item }">
-                {{ item.dated_approved ? Moment(item.dated_approved).format('MMMM D, YYYY') : '' }}
+                {{ item.approved_at ? Moment(item.approved_at).format('MM/DD/YY h:mm A') : '' }}
             </template>
 
             <template #item.status_id="{ item }">
@@ -592,12 +708,8 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 </v-chip>
             </template>
 
-            <template #item.with_qr="{ item }">
-                <div class="d-flex justify-center align-center">
-                    <i v-if="item.rfid?.[0]?.with_qr" style="font-size: 30px; background-color: green;"
-                        class="ri-checkbox-circle-line"></i>
-                    <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
-                </div>
+             <template #item.actions="{ item }">
+                <v-btn v-if="item.status_id === 2 || item.status_id === '2'" icon="ri-file-check-line" size="30" @click="approveRequest(item)" color="primary"></v-btn>
             </template>
 
         </VDataTableServer>
@@ -728,5 +840,139 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         </v-sheet>
     </v-dialog>
 
-  
+        <v-dialog v-model="showApproveModal" max-width="700px">
+            <v-card>
+            <v-card-title class="text-h6 font-weight-medium">Batch Exception Request</v-card-title>
+            <v-divider />
+                <form @submit.prevent="submitProcessRequest">
+                    <v-card-text class="py-6">
+
+                    <v-text-field
+                        label="Transaction Number"
+                        density="compact"
+                        :model-value="approveItem?.transaction_number ?? null"
+                        readonly
+                    />
+
+                    <v-text-field
+                        class="mt-4"
+                        label="Application Request Type"
+                        density="compact"
+                        :model-value="approveItemTypeLabel"
+                        readonly
+                    />
+
+                
+
+                    <template v-if="approveItem?.type === 'Batch Exception'">
+
+                        <v-text-field
+                            v-if="approveItem?.type === 'Batch Exception' && approveItem?.application_requestable?.exception_type === 'outside_age_requirement'"
+                            class="mt-4"
+                            label="Batch Exception Type"
+                            density="compact"
+                            model-value="Outside customer age requirements"
+                            readonly
+                        />
+
+                        <v-text-field
+                            v-else-if="approveItem?.type === 'Batch Exception' && approveItem?.application_requestable?.exception_type === 'within_age_requirement'"
+                            class="mt-4"
+                            label="Batch Exception Type"
+                            density="compact"
+                            model-value="Within customer age requirements"
+                            readonly
+                        />
+
+                        <v-text-field
+                            class="mt-4"
+                            label="Age Requirements"
+                            density="compact"
+                            :model-value="ageRequirementDisplay"
+                            readonly
+                        />
+
+                        <v-text-field
+                            class="mt-4"
+                            label="Delivery Document"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.delivery_document ?? null"
+                            readonly
+                        />
+
+                        <v-text-field
+                            class="mt-4"
+                            label="Line Item"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.line_item ?? null"
+                            readonly
+                        />
+
+                        <div class="mt-4">
+                            <div class="text-subtitle-1 font-weight-medium mb-2">Requested Batch(es)</div>
+                            <div v-if="approveItem?.application_requestable?.batches?.length > 0" class="d-flex flex-wrap ga-2">
+                                <v-chip
+                                        v-for="batch in approveItem?.application_requestable?.batches"
+                                        :key="batch"
+                                        color="warning"
+                                        variant="tonal"
+                                >
+                                        {{ batch }}
+                                </v-chip>
+                            </div>
+                            <div v-else class="text-medium-emphasis">
+                                    No batch list is available for this batch exception.
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="text-subtitle-1 font-weight-medium mb-2">Attached File</div>
+                            <a v-if="approveItem?.application_requestable?.customer_approval_file_url" :href="approveItem?.application_requestable?.customer_approval_file_url" target="_blank">
+                                {{ approveItem?.application_requestable?.original_filename || 'Open attachment' }}
+                            </a>
+                            <div v-else class="text-medium-emphasis">
+                                No attachment available.
+                            </div>
+                        </div>
+                    </template>
+
+                    <v-textarea
+                        class="mt-4"
+                        v-model="approveRemarks"
+                        label="Remarks (Required if rejecting)"
+                        density="compact"
+                        rows="3"
+                        :required="pendingRequestAction === 'reject'"
+                        clearable
+                    />
+                    </v-card-text>
+                    <v-divider />
+                    <v-card-actions class="pa-4">
+                        <v-spacer />
+                        <v-btn variant="outlined" color="secondary" @click="closeApproveModal" type="button">Close</v-btn>
+                        <v-btn variant="flat" color="error" class="px-6" type="submit" @click="pendingRequestAction = 'reject'">
+                            Reject
+                        </v-btn>
+                        <v-btn variant="flat" color="primary" class="px-6" type="submit" formnovalidate @click="pendingRequestAction = 'approve'">
+                            Approve
+                        </v-btn>
+                    </v-card-actions>
+                </form>
+          </v-card>
+      </v-dialog>
+    <Loader :show="pageLoading" />
 </template>
+
+<style scoped>
+.approved-by-cell {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+}
+
+.approved-by-remarks {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+</style>

@@ -125,17 +125,20 @@ const buildBatchSelectionParams = item => ({
     default_pallet_quantity: item.material_model?.default_pallet_quantity,
 })
 
+const isRefreshingDeliveries = ref(false)
 const refreshSelectedDeliveryItem = async () => {
+    isRefreshingDeliveries.value = true
     toast.value = { message: 'Batch exception request created successfully.', color: 'success', show: true }
     pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
-    store.selectedDeliveryItem = null
+    // store.selectedDeliveryItem = null
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
         sortBy: [{ key: 'created_at', order: 'desc' }],
         search: props.search,
     })
+    isRefreshingDeliveries.value = false
 }
 
 const handleAction = (delivery, action) => {

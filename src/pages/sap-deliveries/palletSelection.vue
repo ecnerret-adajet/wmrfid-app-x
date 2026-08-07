@@ -13,6 +13,10 @@ const store = useSapDeliveryStore()
 
 const toast = ref({ message: '', color: 'success', show: false })
 
+const hasCustomerApprovalDocument = computed(() => Boolean(
+    store.customerApprovalFile || store.customerApprovalFileName || store.customerApprovalFileUrl,
+))
+
 function removeLeadingZeros(value) {
     if (!value) return ''
     return value.replace(/^0+/, '')
@@ -107,7 +111,7 @@ const proceedReserve = async () => {
     }
 
     if (store.activeTab !== 'available_stocks') {
-        if (!store.customerApprovalFile) {
+        if (!hasCustomerApprovalDocument.value) {
             toast.value = { message: 'Please choose a customer approval file.', color: 'error', show: true }
             return
         }
@@ -134,9 +138,15 @@ const proceedReserve = async () => {
     formData.append('stock_exception', store.activeTab !== 'available_stocks')
     formData.append('batches', JSON.stringify(distributedPallets.value))
 
-    if (store.activeTab !== 'available_stocks') {
+    if (store.activeTab !== 'available_stocks' && store.customerApprovalFile instanceof File) {
         formData.append('customer_approval_document', store.customerApprovalFile)
+    }
+
+    if (store.activeTab !== 'available_stocks') {
         formData.append('customer_approval_remarks', store.customerApprovalRemarks)
+
+        if (store.customerApprovalFileName) formData.append('customer_approval_file_name', store.customerApprovalFileName)
+        if (store.customerApprovalFileUrl) formData.append('customer_approval_file_url', store.customerApprovalFileUrl)
     }
 
     try {
@@ -369,7 +379,7 @@ const proceedReserve = async () => {
                     <th>MFG DATE</th>
                     <th class="text-center">CURRENT QUANTITY</th>
                     <th class="text-center">ALLOCATED QUANTITY</th>
-                    <th class="text-center">AGE</th>
+                    <!-- <th class="text-center">AGE</th> -->
                     <th></th>
                 </tr>
             </thead>
@@ -380,7 +390,7 @@ const proceedReserve = async () => {
                     <td>{{ item.mfg_date ? moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</td>
                     <td class="text-center">{{ item.quantity }} {{ item.material?.base_unit }}</td>
                     <td class="text-center">{{ item.take_quantity }} {{ item.material?.base_unit }}</td>
-                    <td class="text-center">{{ calculateAge(item.mfg_date) }} day(s)</td>
+                    <!-- <td class="text-center">{{ calculateAge(item.mfg_date) }} day(s)</td> -->
                     <td class="text-end">
                         <i
                             @click="removeSelectedPallet(item, index)"

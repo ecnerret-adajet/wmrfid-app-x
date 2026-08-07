@@ -14,7 +14,7 @@ export const useBatchPickingStore = defineStore('batches', () => {
     const product_age = ref({ from: null, to: null }); 
     const availableStocks = ref([]); 
     const otherStocks = ref([])
-    const activeTab = ref('available_stocks');
+    const activeTab = ref(null);
     const customerApprovalFile = ref(null);
     const customerApprovalRemarks = ref('');
 
