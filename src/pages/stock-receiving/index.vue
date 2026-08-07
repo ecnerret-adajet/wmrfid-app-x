@@ -1,7 +1,5 @@
 <script setup>
 import DateRangePicker from '@/components/DateRangePicker.vue';
-import FilteringModal from '@/components/FilteringModal.vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import { useStockReceivingStore } from '@/stores/stockReceivingStore';
 import ApiService from '@/services/ApiService';
@@ -16,7 +14,6 @@ const searchValue = ref('');
 const itemsPerPage = ref(15);
 const page = ref(1);
 const pageLoading = ref(false);
-const filterModalVisible = ref(false);
 
 const toast = ref({
     message: '',
@@ -97,44 +94,20 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
 };
 
 const handleSearch = () => {
-    loadItems({
-        page: 1,
-        itemsPerPage: itemsPerPage.value,
-    });
-};
-
-const filterModalOpen = () => {
-    filterModalVisible.value = true;
-};
-
-const applyFilter = () => {
-    // Apply date range from DateRangePicker
+    // Sync date range to filters
     if (dateRange.value && dateRange.value.length === 2) {
         filters.start_date = dateRange.value[0];
         filters.end_date = dateRange.value[1];
+    } else {
+        filters.start_date = null;
+        filters.end_date = null;
     }
+
     loadItems({
         page: 1,
         itemsPerPage: itemsPerPage.value,
     });
-    filterModalVisible.value = false;
 };
-
-const resetFilter = () => {
-    filters.plant = null;
-    filters.start_date = null;
-    filters.end_date = null;
-    dateRange.value = null;
-    loadItems({
-        page: 1,
-        itemsPerPage: itemsPerPage.value,
-    });
-    filterModalVisible.value = false;
-};
-
-const isFiltersEmpty = computed(() => {
-    return !filters.plant && !filters.start_date && !filters.end_date;
-});
 
 const plantDescription = (plantCode) => {
     const plant = plantsOption.value.find(p => p.value === plantCode);
@@ -155,8 +128,9 @@ onMounted(() => {
 
 <template>
     <div>
-        <!-- Header -->
-        <div class="d-flex gap-4 align-center justify-center mb-2">
+        <!-- Filter Row -->
+        <div class="d-flex flex-wrap gap-4 align-center justify-center mb-4">
+            <!-- Search by Material Code -->
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -166,17 +140,33 @@ onMounted(() => {
                 hide-details
                 density="compact"
                 class="flex-grow-1"
+                style="max-width: 300px;"
                 @keyup.enter="handleSearch"
             />
-            <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
-                Search
-            </v-btn>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="mb-2 d-flex flex-wrap align-center gap-2 justify-end">
-            <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
-                Filter
+            <!-- Plant Filter -->
+            <v-select
+                style="max-width: 350px;"
+                class="flex-grow-1 align-center mt-1"
+                label="Filter by Plant"
+                density="compact"
+                :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+                v-model="filters.plant"
+                clearable
+            />
+
+            <!-- Date Range Picker -->
+            <div style="max-width: 350px;" class="flex-grow-1">
+                <label class="font-weight-bold text-caption">Date Range</label>
+                <DateRangePicker v-model="dateRange" />
+            </div>
+
+            <!-- Search Button -->
+            <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Search
             </v-btn>
         </div>
 
@@ -256,54 +246,6 @@ onMounted(() => {
                 </template>
             </VDataTableServer>
         </VCard>
-
-        <!-- Filter Modal -->
-        <FilteringModal
-            @close="filterModalVisible = false"
-            :show="filterModalVisible"
-            :dialogTitle="'Filter Stock Receiving'"
-        >
-            <template #default>
-                <v-form>
-                    <div class="mt-4">
-                        <label class="font-weight-bold">Plant</label>
-                        <v-select
-                            class="mt-1"
-                            label="Select Plant"
-                            density="compact"
-                            :items="plantsOption"
-                            v-model="filters.plant"
-                            item-title="title"
-                            item-value="value"
-                            clearable
-                        />
-                    </div>
-
-                    <div class="mt-4">
-                        <label class="font-weight-bold">Date Range</label>
-                        <DateRangePicker
-                            class="mt-1"
-                            v-model="dateRange"
-                        />
-                    </div>
-
-                    <div class="d-flex justify-end align-center mt-8">
-                        <v-btn
-                            color="secondary"
-                            variant="outlined"
-                            :disabled="isFiltersEmpty"
-                            @click="resetFilter"
-                            class="px-12 mr-3"
-                        >
-                            Reset Filter
-                        </v-btn>
-                        <PrimaryButton class="px-12" type="button" @click="applyFilter">
-                            Apply Filter
-                        </PrimaryButton>
-                    </div>
-                </v-form>
-            </template>
-        </FilteringModal>
 
         <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
     </div>
