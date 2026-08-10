@@ -64,8 +64,9 @@
                     {{ item.total_qty }}
                 </template>
 
-                <template #item.ref_no="{ item }">
-                    {{ item.delivery_document }}
+                <template #item.delivery_document="{ item }">
+                    <span class="font-weight-bold">{{ item.delivery_document }}</span><br />
+                    <span v-if="item.delivery_reserved_order?.sap_delivery?.ship_to_name" class="text-subtitle-1">{{ item.delivery_reserved_order?.sap_delivery?.ship_to_name }}</span>
                 </template>
 
                 <template #item.material="{ item }">
