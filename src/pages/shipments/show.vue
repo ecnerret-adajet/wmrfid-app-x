@@ -1,6 +1,8 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
+import ScannerModal from '@/pages/qr/ScannerModal.vue';
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import Moment from 'moment';
@@ -24,6 +26,9 @@ const sortQuery = ref('-updated_at'); // Default sort
 const deliveryItemsModalOpen = ref(false);
 const selectedDelivery = ref(null);
 const searchValue = ref('');
+const showScanner = ref(false)
+const selectedPallet = ref(null)
+const scanLoading = ref(false)
 
 const headers = [
     {
@@ -173,6 +178,33 @@ const syncStatus = async () => {
         console.log(error);
     } finally {
         syncingLoading.value = false;
+    }
+}
+
+const openScanner = (pallet) => {
+    selectedPallet.value = pallet
+    showScanner.value = true
+}
+
+const handleScanResult = async (data) => {
+    if (!selectedPallet.value) return
+    scanLoading.value = true
+    try {
+        await ApiService.post(
+            `deliveries/reserved-pallet/${selectedPallet.value.id}/scan-qr`,
+            { qr_text: data.text }
+        )
+        selectedPallet.value.scanned_qr = data.text
+        toast.value.message = 'QR code scanned successfully!'
+        toast.value.color = 'success'
+        toast.value.show = true
+    } catch (err) {
+        toast.value.message = err?.response?.data?.message ?? 'Scan failed. Please try again.'
+        toast.value.color = 'error'
+        toast.value.show = true
+    } finally {
+        scanLoading.value = false
+        selectedPallet.value = null
     }
 }
 
@@ -374,7 +406,27 @@ const syncStatus = async () => {
                                     <td>{{ pallet.material_code }}</td>
                                     <td>{{ pallet.material_description }}</td>
                                     <td class="text-center">{{ pallet.total_qty }}</td>
-                                    <td>{{ pallet.scanned_qr }}</td>
+                                    <td>
+                                        <v-chip
+                                            v-if="pallet.scanned_qr"
+                                            color="success"
+                                            size="small"
+                                            variant="tonal"
+                                            prepend-icon="ri-checkbox-circle-line"
+                                        >
+                                            Scanned
+                                        </v-chip>
+                                        <v-btn
+                                            v-else
+                                            size="small"
+                                            color="primary"
+                                            variant="tonal"
+                                            prepend-icon="ri-qr-scan-2-line"
+                                            @click="openScanner(pallet)"
+                                        >
+                                            Scan QR
+                                        </v-btn>
+                                    </td>
                                 </tr>
                                 <tr v-if="!reservedPallets.length">
                                     <td colspan="7" class="text-center text-medium-emphasis py-4">
@@ -457,6 +509,12 @@ const syncStatus = async () => {
             </tbody>
         </v-table>
     </DefaultModal>
+    <ScannerModal
+        v-if="showScanner"
+        type="reserved_pallet"
+        @close="showScanner = false"
+        @scan-result="handleScanResult"
+    />
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 
