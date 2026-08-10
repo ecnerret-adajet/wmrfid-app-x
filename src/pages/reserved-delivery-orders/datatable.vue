@@ -215,7 +215,9 @@ defineExpose({ loadItems, applyFilters })
         </template>
 
         <template #item.delivery_document="{ item }">
-            <span class="font-weight-medium">{{ item.reserved_pallets?.[0]?.delivery_document ?? '—' }}</span>
+            <span class="font-weight-bold">{{ item.reserved_pallets?.[0]?.delivery_document ?? '—' }}</span><br/>
+            <span class="font-weight-medium">{{ item.sap_delivery?.ship_to_name ?? '—' }}</span>
+
         </template>
 
         <template #item.delivery_item_number="{ item }">

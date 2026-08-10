@@ -261,9 +261,27 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                 class="py-0 px-0"
                                 :class="[
                                     selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
-                                    layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
+                                    layer.assigned_inventory &&
+                                    (
+                                        isBatchDisabled(layer.assigned_inventory.batch) ||
+                                        (
+                                            layer.assigned_inventory.is_reserved &&
+                                            layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null
+                                        )
+                                    )
+                                        ? 'v-list-item--disabled'
+                                        : ''
                                 ]"
-                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))"
+                                :disabled="
+                                    !!layer.assigned_inventory &&
+                                    (
+                                        Boolean(isBatchDisabled(layer.assigned_inventory.batch)) ||
+                                        (
+                                            Boolean(layer.assigned_inventory.is_reserved) &&
+                                            layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null
+                                        )
+                                    )
+                                "
                             >
                                 <template v-if="layer.assigned_inventory">
                                     <VListItem :class="[layer.layer_class,
@@ -281,6 +299,13 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                                 <div class="assigned-row">
                                                     <span class="label">Quantity: </span>
                                                     <span class="value font-weight-bold">{{ layer.assigned_inventory?.quantity }}</span>
+                                                </div>
+                                                <div v-if="layer.assigned_inventory.is_reserved && layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null" class="assigned-row">
+                                                    <span class="label">Reserved: </span>
+                                                    <span class="value font-weight-bold">
+                                                        {{ layer.assigned_inventory?.delivery_reserved_pallet?.delivery_document }} 
+                                                        ({{ layer.assigned_inventory?.delivery_reserved_pallet?.sap_delivery?.ship_to_name ?? '—' }})
+                                                    </span>
                                                 </div>
                                             </div>
                                         </VListItemTitle>
