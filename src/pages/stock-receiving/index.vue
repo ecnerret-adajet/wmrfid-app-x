@@ -1,10 +1,10 @@
 <script setup>
 import DateRangePicker from '@/components/DateRangePicker.vue';
+import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
-import { useStockReceivingStore } from '@/stores/stockReceivingStore';
 import ApiService from '@/services/ApiService';
-import Moment from 'moment';
-import { computed, onMounted, ref } from 'vue';
+import { useStockReceivingStore } from '@/stores/stockReceivingStore';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -129,9 +129,12 @@ onMounted(() => {
 <template>
     <div>
         <!-- Filter Row -->
-        <div class="d-flex flex-wrap gap-4 align-center justify-center mb-4">
+        <div class="d-flex flex-wrap gap-4 align-center justify-center">
+
+             <SearchInput class="flex-grow-1" @update:search="(val) => { searchValue = val; handleSearch(); }" />
+                
             <!-- Search by Material Code -->
-            <VTextField
+            <!-- <VTextField
                 v-model="searchValue"
                 label="Search"
                 placeholder="Search by material code..."
@@ -142,7 +145,7 @@ onMounted(() => {
                 class="flex-grow-1"
                 style="max-width: 300px;"
                 @keyup.enter="handleSearch"
-            />
+            /> -->
 
             <!-- Plant Filter -->
             <v-select
