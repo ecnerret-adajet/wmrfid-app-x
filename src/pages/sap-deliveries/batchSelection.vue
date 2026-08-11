@@ -13,7 +13,9 @@ const store = useSapDeliveryStore()
 
 const toast = ref({ message: '', color: 'success', show: false })
 const showBatchExceptionModal = ref(false)
+const showCancelBatchExceptionDialog = ref(false)
 const createLoading = ref(false)
+const cancelLoading = ref(false)
 
 const createForm = reactive({
     application_request_type: 3,
@@ -345,6 +347,15 @@ const closeBatchExceptionModal = () => {
     createForm.remarks = ''
 }
 
+const openCancelBatchExceptionDialog = () => {
+    showCancelBatchExceptionDialog.value = true
+}
+
+const closeCancelBatchExceptionDialog = () => {
+    if (cancelLoading.value) return
+    showCancelBatchExceptionDialog.value = false
+}
+
 const createBatchExceptionRequest = async () => {
     toast.value.show = false
 
@@ -472,6 +483,40 @@ const selectPallets = () => {
     store.setBatches(selectedBatchData)
     store.setOriginalBatchList(selectedBatchData)
     emit('select-pallets')
+}
+
+const cancelBatchExceptionRequest = async () => {
+    toast.value.show = false
+
+    if (!hasBatchException.value) {
+        toast.value = { message: 'No batch exception request to cancel.', color: 'error', show: true }
+        return
+    }
+
+    let applicationRequestId = store.selectedDeliveryItem?.batch_exception?.application_request?.id
+
+    if (!applicationRequestId) {
+        toast.value = { message: 'No request found. Please try to reload the page', color: 'error', show: true }
+        return
+    }
+
+    cancelLoading.value = true
+
+    try {
+        await ApiService.post(`application-requests/${applicationRequestId}/cancel`)
+        showCancelBatchExceptionDialog.value = false
+        toast.value = { message: 'Pending batch exception request cancelled successfully.', color: 'success', show: true }
+        emit('batch-exception-created', { cancelled: true })
+    } catch (error) {
+        console.error('Error cancelling batch exception request:', error)
+        toast.value = {
+            message: error.response?.data?.message || 'An error occurred while cancelling the batch exception request.',
+            color: 'error',
+            show: true,
+        }
+    } finally {
+        cancelLoading.value = false
+    }
 }
 </script>
 
@@ -623,7 +668,12 @@ const selectPallets = () => {
 
                 <!-- Available Stocks tab -->
                 <v-tabs-window-item value="available_stocks">
+
                     <div class="d-flex justify-end mb-3">
+                        <v-btn color="error" variant="outlined" class="mr-2" @click="openCancelBatchExceptionDialog" v-if="hasBatchException">
+                            Cancel Request
+                        </v-btn>
+
                         <v-btn
                             :color="batchExceptionButtonColor"
                             :variant="batchExceptionButtonVariant"
@@ -688,6 +738,9 @@ const selectPallets = () => {
                 <!-- Other Stocks tab -->
                 <v-tabs-window-item value="other_stocks">
                     <div class="d-flex justify-end mb-3">
+                        <v-btn color="error" variant="outlined" class="mr-2" @click="openCancelBatchExceptionDialog" v-if="hasBatchException">
+                            Cancel Request
+                        </v-btn>
                         <v-btn
                             :color="batchExceptionButtonColor"
                             :variant="batchExceptionButtonVariant"
@@ -759,6 +812,28 @@ const selectPallets = () => {
         </div>
 
     </v-container>
+
+    <v-dialog v-model="showCancelBatchExceptionDialog" max-width="560">
+        <v-card>
+            <v-card-title class="text-h6 font-weight-bold">
+                Confirm Cancellation
+            </v-card-title>
+
+            <v-card-text>
+                Are you sure you want to cancel this batch exception request?
+                You can submit a new batch exception request again after cancelling.
+            </v-card-text>
+
+            <v-card-actions class="justify-end pa-4 pt-0">
+                <v-btn variant="outlined" color="secondary" :disabled="cancelLoading" @click="closeCancelBatchExceptionDialog">
+                    Keep Request
+                </v-btn>
+                <v-btn color="error" variant="flat" :loading="cancelLoading" @click="cancelBatchExceptionRequest">
+                    Confirm Cancel
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
     <DefaultModal
         :show="showBatchExceptionModal"

@@ -126,9 +126,9 @@ const buildBatchSelectionParams = item => ({
 })
 
 const isRefreshingDeliveries = ref(false)
-const refreshSelectedDeliveryItem = async () => {
+const refreshSelectedDeliveryItem = async ({ cancelled } = {}) => {
     isRefreshingDeliveries.value = true
-    toast.value = { message: 'Batch exception request created successfully.', color: 'success', show: true }
+    toast.value = { message: cancelled ? 'Batch exception request cancelled successfully.' : 'Batch exception request created successfully.', color: 'success', show: true }
     pendingDeliveryId.value = store.deliveryData?.id
     currentView.value = 'items'
     // store.selectedDeliveryItem = null
@@ -410,7 +410,7 @@ defineExpose({ loadItems, applyFilters })
             <BatchSelection
                 v-else-if="currentView === 'batch-selection'"
                 @back="backToDeliveryItems"
-                @batch-exception-created="refreshSelectedDeliveryItem"
+                @batch-exception-created="refreshSelectedDeliveryItem($event)"
                 @select-pallets="handleSelectPallets"
             />
 
