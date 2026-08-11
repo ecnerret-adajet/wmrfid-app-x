@@ -154,7 +154,7 @@ const filters = reactive({
     created_at: null,
     updated_at: null,
     tag_type_id: null,
-    plant_code: null,
+    plant_code: authStore.user?.assigned_plant?.plant_code || null,
 });
 
 const form = reactive({
@@ -714,8 +714,11 @@ let debounceTimeout = null;
 const fetchMaterials = async (searchQuery = '') => {
     isMaterialsLoading.value = true;
     try {
+        const plantCode = filters.plant_code || authStore.user?.assigned_plant?.plant_code || null;
+
         const response = await ApiService.query('inventories/get-materials-dropdown', {
             params: {
+                plant_code: plantCode,
                 search: searchQuery,
                 limit: searchQuery ? null : 10 
             }
@@ -745,9 +748,15 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="d-flex gap-4 align-center justify-center mb-2">
+    <div class="d-flex flex-wrap gap-4 align-center justify-center mb-3">
         <VTextField v-model="searchValue" label="Search" placeholder="placeholder" append-inner-icon="ri-search-line"
             single-line hide-details density="compact" class="flex-grow-1" />
+
+        <v-select style="max-width: 320px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
+            density="compact" :items="plantsOption" v-model="filters.plant_code"
+            :rules="[value => value !== undefined || 'Please select an item from the list']">
+        </v-select>
+
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
                 <v-icon color="white"></v-icon>
@@ -768,12 +777,12 @@ onMounted(() => {
         </div>
 
         <div class="d-flex flex-wrap align-center gap-2 justify-end ml-auto">
-            <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
+            <!-- <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
                 </template>
                 Filter
-            </v-btn>
+            </v-btn> -->
             <v-btn @click="handleRegister">Register RFID</v-btn>
 
             <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line"
@@ -954,13 +963,6 @@ onMounted(() => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter RFID'">
         <template #default>
             <v-form>
-                <div class="mt-4">
-                    <label class="font-weight-bold">Plant</label>
-                    <v-select class="mt-1" label="Select Plant" density="compact" :items="plantsOption"
-                        v-model="filters.plant_code"
-                        :rules="[value => !!value || 'Please select an item from the list']">
-                    </v-select>
-                </div>
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
                     <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created" />
