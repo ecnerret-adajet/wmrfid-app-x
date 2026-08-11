@@ -160,7 +160,7 @@ onMounted(() => {
 
             <!-- Date Range Picker -->
             <div style="max-width: 350px;" class="flex-grow-1">
-                <label class="font-weight-bold text-caption">Date Range</label>
+               <!-- <label class="font-weight-bold text-caption">Date Range</label>  -->
                 <DateRangePicker v-model="dateRange" />
             </div>
 
