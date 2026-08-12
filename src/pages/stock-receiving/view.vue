@@ -1,6 +1,8 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
+import Swal from 'sweetalert2';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -8,11 +10,15 @@ const route = useRoute();
 const router = useRouter();
 const id = route.params.id;
 
+const { authUserCan } = useAuthorization();
+
 const header = ref(null);
 const items = ref([]);
 const materialDocuments = ref([]);
 const stockTransfer = ref(null);
 const pageLoading = ref(false);
+const postResult = ref(null);
+const disablePost = ref(false);
 
 const toast = ref({
     message: '',
@@ -56,6 +62,72 @@ const fetchDetails = async () => {
 const removeLeadingZeros = (value) => {
     if (!value) return '';
     return String(value).replace(/^0+/, '');
+};
+
+const postStockTransferReceiving = async (method) => {
+    disablePost.value = true;
+    try {
+        const payload = {
+            method: method,
+            stock_transfer_receiving_id: id,
+            posting_date: header.value?.posting_date,
+            document_date: header.value?.posting_date,
+            gr_gi_slip_number: header.value?.material_document,
+            document_header_text: '',
+            ref_doc_number: '',
+            items: items.value.map(item => ({
+                material_code: item.material_code,
+                batch: item.batch,
+                entry_qty: item.qty,
+                entry_uom: item.uom,
+                commercial_uom: item.commercial_uom,
+                plant: item.plant,
+                sloc: item.sloc,
+                production_date: item.production_date,
+            })),
+            sap_server: stockTransfer.value?.sap_server || header.value?.sap_server,
+        };
+
+        const { data } = await ApiService.post('stock-transfer-receiving-post', payload);
+        postResult.value = data;
+
+        if (data.status === 'S') {
+            const label = method === 'simulate' ? 'Simulated' : 'Posted';
+            await Swal.fire({
+                text: `Stock Transfer Successfully ${label}`,
+                icon: 'success',
+                confirmButtonText: 'Ok, got it!',
+                customClass: { confirmButton: 'btn btn-primary' },
+            });
+            if (method === 'post') {
+                router.push({ name: 'stock-receiving' });
+            }
+        } else if (data.status === 'R') {
+            await Swal.fire({
+                text: 'Material Document is already reversed. You cannot process this document.',
+                icon: 'error',
+                confirmButtonText: 'Ok, got it!',
+                customClass: { confirmButton: 'btn btn-primary' },
+            });
+        } else {
+            await Swal.fire({
+                text: 'Error encountered during processing',
+                icon: 'error',
+                confirmButtonText: 'Ok, got it!',
+                customClass: { confirmButton: 'btn btn-primary' },
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        await Swal.fire({
+            text: error.response?.data?.message || 'Failed to process stock transfer receiving.',
+            icon: 'error',
+            confirmButtonText: 'Ok, got it!',
+            customClass: { confirmButton: 'btn btn-primary' },
+        });
+    } finally {
+        disablePost.value = false;
+    }
 };
 
 onMounted(() => {
@@ -221,6 +293,86 @@ onMounted(() => {
                 </div>
             </v-card-text>
         </v-card>
+
+        <!-- Simulate / Post Actions -->
+        <!-- <v-card v-if="authUserCan('receive.stock_transfer_receiving')" class="mt-2"> -->
+        <v-card class="mt-2">
+            <v-card-text class="d-flex justify-end gap-2">
+                <template v-if="stockTransfer">
+                    <template v-if="!header?.status">
+                        <v-btn
+                            color="primary"
+                            size="small"
+                            :loading="disablePost"
+                            :disabled="disablePost"
+                            @click="postStockTransferReceiving('simulate')"
+                        >
+                            Simulate
+                        </v-btn>
+                        <v-btn
+                            v-if="postResult?.status === 'S'"
+                            color="success"
+                            size="small"
+                            :loading="disablePost"
+                            :disabled="disablePost"
+                            @click="postStockTransferReceiving('post')"
+                        >
+                            Post
+                        </v-btn>
+                        <v-btn
+                            color="secondary"
+                            variant="outlined"
+                            size="small"
+                            @click="router.push({ name: 'stock-receiving' })"
+                        >
+                            Cancel
+                        </v-btn>
+                    </template>
+                </template>
+                <template v-else>
+                    <v-btn
+                        color="primary"
+                        size="small"
+                        :loading="disablePost"
+                        :disabled="disablePost"
+                        @click="postStockTransferReceiving('simulate')"
+                    >
+                        Simulate
+                    </v-btn>
+                    <v-btn
+                        v-if="postResult?.status === 'S'"
+                        color="success"
+                        size="small"
+                        :loading="disablePost"
+                        :disabled="disablePost"
+                        @click="postStockTransferReceiving('post')"
+                    >
+                        Post
+                    </v-btn>
+                    <v-btn
+                        color="secondary"
+                        variant="outlined"
+                        size="small"
+                        @click="router.push({ name: 'stock-receiving' })"
+                    >
+                        Cancel
+                    </v-btn>
+                </template>
+            </v-card-text>
+        </v-card>
+
+        <!-- Error Messages -->
+        <v-alert
+            v-if="postResult?.returns?.length"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mt-2"
+        >
+            <ul class="mb-0">
+                <li v-for="(error, e) in postResult.returns" :key="e">{{ error.MESSAGE }}</li>
+            </ul>
+        </v-alert>
 
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     </div>
