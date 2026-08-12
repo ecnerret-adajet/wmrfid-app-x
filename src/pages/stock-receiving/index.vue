@@ -129,7 +129,7 @@ const slocDescription = (slocCode, plantCode) => {
 const viewReceiving = (item) => {
     router.push({
         name: 'apps-stock-transfer-receiving-view',
-        params: { stock_transfer_receiving_id: item.id }
+        params: { id: item.id }
     });
 };
 

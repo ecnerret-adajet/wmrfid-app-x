@@ -241,6 +241,18 @@ export const routes = [
             },
         },
         {
+            path: 'stock-receiving/:id',
+            name: 'apps-stock-transfer-receiving-view',
+            component: () => import('@/pages/stock-receiving/view.vue'),
+            meta: {
+                pageTitle: "Stock Transfer Receiving Details",
+                breadcrumbs: (route) => [
+                    { label: "Stock Receiving", link: "/stock-receiving" },
+                    { label: `${route.params.id}`, link: `/stock-receiving/${route.params.id}` }
+                ],
+            },
+        },
+        {
             path: 'sto-outbound',
             name: 'sto-outbound',
             component: () => import('@/pages/transfersOutbound/index.vue'),
