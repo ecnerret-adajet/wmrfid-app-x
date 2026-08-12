@@ -22,16 +22,16 @@ export const useStockReceivingStore = defineStore('stockReceiving', () => {
                 queryParams.plant = params.plant
             }
             if (params.start_date) {
-                queryParams.start_date = params.start_date
+                queryParams.posting_date_from = params.start_date
             }
             if (params.end_date) {
-                queryParams.end_date = params.end_date
+                queryParams.posting_date_to = params.end_date
             }
             if (params.page) {
                 queryParams.page = params.page
             }
-            if (params.per_page) {
-                queryParams.per_page = params.per_page
+            if (params.itemsPerPage) {
+                queryParams.itemsPerPage = params.itemsPerPage
             }
 
             const { data } = await ApiService.query('stock-transfer-receiving', { params: queryParams })

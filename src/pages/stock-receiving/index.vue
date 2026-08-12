@@ -4,7 +4,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useStockReceivingStore } from '@/stores/stockReceivingStore';
-import { onMounted, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -24,6 +24,9 @@ const toast = ref({
 // Plant options
 const plantsOption = ref([]);
 const plantsLoaded = ref(false);
+
+// Storage location options
+const storageLocationsOption = ref([]);
 
 const filters = reactive({
     plant: null,
@@ -50,6 +53,8 @@ const loadPlants = async () => {
         plantsOption.value = (response.data.plants ?? [])
             .filter(item => item.name !== null)
             .map(item => ({ value: item.plant_code, title: item.name }));
+        storageLocationsOption.value = (response.data.storage_locations ?? [])
+            .map(item => ({ value: item.code, title: item.name, plant_id: item.plant_id }));
         plantsLoaded.value = true;
     } catch (error) {
         console.error(error);
@@ -64,7 +69,7 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
     try {
         const params = {
             page: pageNum,
-            per_page: perPage,
+            itemsPerPage: perPage,
         };
 
         if (searchValue.value) {
@@ -112,6 +117,13 @@ const handleSearch = () => {
 const plantDescription = (plantCode) => {
     const plant = plantsOption.value.find(p => p.value === plantCode);
     return plant ? plant.title : '';
+};
+
+const slocDescription = (slocCode, plantCode) => {
+    if (!slocCode) return '';
+    const plant = plantsOption.value.find(p => p.value === plantCode);
+    const sloc = storageLocationsOption.value.find(s => s.value === slocCode && s.plant_id === plant?.id);
+    return sloc ? sloc.title : '';
 };
 
 const viewReceiving = (item) => {
@@ -210,6 +222,7 @@ onMounted(() => {
                         {{ plantDescription(item.stock_transfer_313_sap_downloads[0]?.plant) }}
                         <br>
                         {{ item.stock_transfer_313_sap_downloads[0]?.sloc }}
+                        {{ slocDescription(item.stock_transfer_313_sap_downloads[0]?.sloc, item.stock_transfer_313_sap_downloads[0]?.plant) }}
                     </span>
                 </template>
 
