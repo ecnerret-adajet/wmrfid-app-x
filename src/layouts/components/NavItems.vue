@@ -260,7 +260,7 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.putaway.report')"
         :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
 
-    <VerticalNavLink v-if="authUserCan('view.floating.pallets')"
+    <VerticalNavLink v-if="authUserCan('view.floating.pallets') && authStore.user?.assigned_plant?.plant_code === '2110'"
         :item="{ title: 'Floating Pallets Report', icon: 'ri-safe-2-line', to: '/reports/floating-pallets' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"

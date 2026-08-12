@@ -245,7 +245,8 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             density="compact" :items="[
                 { title: 'All', value: null },
                 { title: 'Valid', value: 1 },
-                { title: 'Invalid', value: 2 }
+                { title: 'Invalid', value: 2 },
+                { title: 'No QR', value: 3 }
             ]" v-model="filters.status_type">
         </v-select>
 

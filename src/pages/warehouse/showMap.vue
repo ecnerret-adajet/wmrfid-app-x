@@ -4,14 +4,17 @@ import MapBlockAssignModal from '@/components/MapBlockAssignModal.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import SmartAssignModal from '@/components/SmartAssignModal.vue';
 import Toast from '@/components/Toast.vue';
-import { convertSlugToUpperCase } from '@/composables/useHelpers';
+import { useAuthorization } from '@/composables/useAuthorization';
+import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import Moment from 'moment';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 import { useRoute, useRouter } from 'vue-router';
 
+const { authUserCan } = useAuthorization();
 const authStore = useAuthStore();
 const props = defineProps({
 });
@@ -20,7 +23,7 @@ const state = reactive({
     layout: [],
     draggable: true,
     resizable: true,
-    colNum: 40,
+    colNum: 12,
     index: 0,
     inventories: null,
     inventoriesCount: 0,
@@ -49,6 +52,27 @@ const selectedBlock = reactive({
 })
 const selectedStatus = ref(null);
 const pageLoading = ref(false);
+
+const floatingPalletDialog = ref(false);
+const floatingPalletLoading = ref(false);
+const floatingPalletItems = ref([]);
+const floatingPalletTotal = ref(0);
+const floatingPalletItemsPerPage = ref(10);
+const floatingPalletPage = ref(1);
+const floatingPalletSortQuery = ref('-created_at');
+const floatingPalletSearchValue = ref('');
+const floatingPalletFilters = reactive({
+    plant_code: plantCode || null,
+    storage_location: storageLocation || null,
+    location: storageLocation || null,
+});
+const floatingPalletHeaders = [
+    { title: 'Pallet ID', key: 'physical_id', align: 'start', sortable: false },
+    { title: 'Batch', key: 'batch', sortable: false },
+    { title: 'Quantity', key: 'quantity', sortable: false, align: 'center' },
+    { title: 'Mfg Date', key: 'mfg_date', sortable: false },
+    { title: 'Pallet Status', key: 'commodity_status_id', sortable: false, align: 'center' },
+];
 
 const toast = ref({
     message: '',
@@ -138,13 +162,15 @@ onMounted(() => {
     fetchStorageLocationInformation()
 })
 
+const statisticsData = ref(null);
 const fetchStorageLocationInformation = async () => {
     state.layout = [];
     loading.value = true;
     try {
         const response = await axios.get(`warehouse/get-storage-location-information/${plantCode}/${storageLocation}`);
-        const { details } = response.data
+        const { details, statistics } = response.data
 
+        statisticsData.value = statistics;
         storageLocationModel.value = details.storage_location
         layersData.value = details.layers_data;
 
@@ -181,6 +207,7 @@ const fetchStorageLocationInformation = async () => {
 };
 
 const handleBlockClick = async (item) => {
+    console.log(item)
     selectedBlock.data = item;
     pageLoading.value = true
     try {
@@ -256,19 +283,74 @@ const handleFilterStatus = (statusValue) => {
     isFiltered.value = statusValue !== null && statusValue !== undefined;
 };
 
+const loadFloatingPalletItems = ({ page, itemsPerPage, sortBy }) => {
+    floatingPalletLoading.value = true;
+
+    if (sortBy && sortBy.length > 0) {
+        const sort = sortBy[0];
+        floatingPalletSortQuery.value = `${sort.key}`;
+        if (sort.order === 'desc') {
+            floatingPalletSortQuery.value = `-${sort.key}`;
+        }
+    } else {
+        floatingPalletSortQuery.value = '-created_at';
+    }
+
+    ApiService.query('reports/datatable/floating-pallets', {
+        params: {
+            page,
+            itemsPerPage,
+            sort: floatingPalletSortQuery.value,
+            search: floatingPalletSearchValue.value,
+            filters: floatingPalletFilters,
+        },
+    })
+        .then((response) => {
+            const payload = response.data;
+
+            if (payload.table) {
+                floatingPalletItems.value = payload.table.data || [];
+                floatingPalletTotal.value = payload.table.total || 0;
+            }
+        })
+        .catch((error) => {
+            console.error('Error loading floating pallets:', error);
+        })
+        .finally(() => {
+            floatingPalletLoading.value = false;
+        });
+};
+
+const openFloatingPalletDialog = () => {
+    if ((statisticsData.value?.floating_pallets ?? 0) === 0) return;
+
+    floatingPalletDialog.value = true;
+    loadFloatingPalletItems({
+        page: floatingPalletPage.value,
+        itemsPerPage: floatingPalletItemsPerPage.value,
+        sortBy: [{ key: 'created_at', order: 'desc' }],
+    });
+};
+
 </script>
 
 <template>
-    <v-card elevation="2" class="mx-4 mt-4 px-3 py-2 sticky-top-card" style="border-radius: 0px !important;">
-        <v-card-title class="d-flex justify-space-between align-center">
+    <v-skeleton-loader v-if="mapLoading" type="article"></v-skeleton-loader>
+    <v-card v-else elevation="2" class="mx-4 mt-4 px-3 sticky-top-card" style="border-radius: 0px !important;">
+        <v-card-title  class="d-flex justify-space-between align-center">
             <div class="d-inline-flex align-center">
-                <v-btn @click="handleBack()" class="ma-2" color="grey-700" icon="ri-arrow-left-line"
+                <v-btn @click="handleBack()" color="grey-700" icon="ri-arrow-left-line"
                     variant="text"></v-btn>
-                <h3 class="font-weight-black text-uppercase text-primary">{{ convertSlugToUpperCase(storageLocation) }}
-                    Map</h3>
+                <h4 class="font-weight-black text-uppercase text-primary">
+                    {{ storageLocationModel?.plant?.plant_code }} - 
+                    {{ storageLocationModel?.plant?.name }} / 
+                    {{ storageLocationModel?.code ??''  }} - 
+                    {{ storageLocationModel?.name ??'' }}
+                    Map
+                </h4>
             </div>
             <div class="d-flex justify-end">
-                <v-btn color="primary-light"  @click="handleEditMap"
+                <v-btn color="primary-light" v-if="authUserCan('edit.warehouses')"  @click="handleEditMap"
                     class="px-12 mr-2 text-grey-100">
                     Edit Map
                 </v-btn>
@@ -276,120 +358,88 @@ const handleFilterStatus = (statusValue) => {
         </v-card-title>
 
         <v-card-text>
-            <VList lines="one" density="compact">
-                <VListItem>
-                    <VRow class="table-row" no-gutters>
-                        <VCol md="6" class="table-cell d-inline-flex">
-                            <VRow class="table-row">
-                                <VCol cols="4" class="d-inline-flex align-center">
-                                    <span class="text-h6 text-uppercase font-weight-black"
-                                        style="margin-top: 1px;">SLOC: </span>
-                                        <span class="font-weight-medium ml-3">
-                                            {{ storageLocationModel?.code ?? '--' }}
-                                        </span>
-                                </VCol>
-                                <VCol class="d-inline-flex align-center">
-                                    <span class="font-weight-medium"></span>
-                                </VCol>
-                            </VRow>
-                        </VCol>
-                        <VCol md="6" class="table-cell d-inline-flex">
-                            <VRow class="table-row">
-                                <VCol cols="4" class="d-inline-flex align-center">
-                                    <span class="text-h6 text-uppercase font-weight-black"
-                                        style="margin-top: 1px;">Plant: </span>
-                                        <span class="font-weight-medium ml-3">
-                                            {{ storageLocationModel?.plant?.name ?? '--' }}
-                                        </span>
-                                </VCol>
-                                <VCol class="d-inline-flex align-center">
-                                    <span class="font-weight-medium">
-                                    </span>
-                                </VCol>
-                            </VRow>
-                        </VCol>
-                    </VRow>
-                </VListItem>
-                <VListItem>
-                    <VRow class="table-row" no-gutters>
-                        <VCol md="6" class="table-cell d-inline-flex">
-                            <VRow class="table-row">
-                                <VCol cols="6" class="d-inline-flex align-center">
-                                    <span class="text-h6 text-uppercase font-weight-black "
-                                        style="margin-top: 1px;">Location: </span>
-                                        <span class="font-weight-medium ml-3">
-                                            {{ storageLocationModel?.plant?.city ?? '--' }}
-                                        </span>
-                                </VCol>
-                            </VRow>
-                        </VCol>
-                        <VCol md="6" class="table-cell d-inline-flex">
-                            <VRow class="table-row">
-                                <VCol cols="4" class="d-inline-flex align-center">
-                                    <span class="text-h6 text-uppercase font-weight-black"
-                                        style="margin-top: 1px;">Plant Code</span>
-                                          <span class="font-weight-medium ml-3">
-                                            {{ storageLocationModel?.plant?.plant_code ?? '--' }}
-                                        </span>
-                                </VCol>
-                                <VCol class="d-inline-flex align-center">
-                                    <span class="font-weight-medium">
-                                    </span>
-                                </VCol>
-                            </VRow>
-                        </VCol>
-                    </VRow>
-                </VListItem>
-
-                <!-- Add item as needed  -->
-            </VList>
-            <div class="d-flex align-center justify-space-between pl-4 pr-1">
-                <!-- Legend  -->
-                <div class="d-flex align-center">
-                    <template v-for="(layer, index) in layersData" :key="index">
-                        <div :style="{
-                            width: '30px',
-                            height: '30px',
-                            borderRadius: '25px',
-                            marginLeft: index > 0 ? '25px' : '0px',
-                            marginRight: '5px',
-                            backgroundColor: layer.layer === 4 ? '#a06ee2' :
-                                (layer.layer === 3 ? '#48a348' :
-                                    (layer.layer === 2 ? '#4877f7' : '#ebc965'))
-                        }"></div>
-                        {{ layer.label }}
-                    </template>
-                    <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                            margin-right: 5px; background-color: #f0edf2">
+            <v-row no-gutters class="align-center">
+                
+                <v-col cols="12" md="auto" class="mb-4 mb-md-0">
+                    <div class="d-flex align-center flex-wrap ga-2">
+                        <v-chip size="default" variant="elevated" color="grey-300">Empty: {{ statisticsData?.available_space ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="elevated" color="#ebc965">1-Pallet High: {{ statisticsData?.pallet_high_1 ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="elevated" color="#4877f7">2-Pallet High: {{ statisticsData?.pallet_high_2 ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="elevated" color="primary">3-Pallet High: {{ statisticsData?.pallet_high_3 ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="elevated" color="#a06ee2">4-Pallet High: {{ statisticsData?.pallet_high_4 ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="elevated">Total Pallets: {{ statisticsData?.total_pallets ?? 0 }}</v-chip>
                     </div>
-                    Empty
-                    <!-- <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                        margin-right: 5px; background-color: #f7897e">
-                    </div>
-                    Under Fumigation
-                    <div style="width: 30px; height: 30px; border-radius: 25px; margin-left: 25px;
-                        margin-right: 5px; background-color: #FFB400">
-                    </div>
-                    For Quality Inspection -->
-                </div>
+                </v-col>
 
-                <div class="d-flex align-center">
-                    <v-select class="mr-2" style="min-width: 300px;" clearable label="Filter by Status" density="compact"
-                        :items="statusOption" v-model="selectedStatus" @update:model-value="handleFilterStatus" 
-                    />
+                <v-spacer class="d-none d-md-block" />
+                <v-row dense class="align-center">
+                    <v-col cols="12" md="6" class="d-flex align-center">
+                        <v-select 
+                            style="min-width: 250px; width: 100%;" 
+                            clearable 
+                            label="Filter by Status" 
+                            density="compact"
+                            hide-details
+                            :items="statusOption" 
+                            v-model="selectedStatus" 
+                            @update:model-value="handleFilterStatus" 
+                        />
+                    </v-col>
 
-                    <SearchInput style="min-width: 300px;" placeholder="Filter by physical ID or batch" @update:search="handleSearch" />
-                </div>
-            </div>
+                    <v-col cols="12" md="6">
+                        <SearchInput 
+                            style="min-width: 250px; width: 100%;" 
+                            placeholder="Filter by physical ID or batch" 
+                            hide-details
+                            @update:search="handleSearch" 
+                        />
+                    </v-col>
+                </v-row>
+            </v-row>
+
+            <v-row dense>
+                <v-col cols="12" sm="6" md="3">
+                    <v-card variant="outlined" class="px-4 py-1 text-center">
+                        <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Total Pallet Capacity</div>
+                        <div class="text-h4 font-weight-black text-primary mt-1">{{ statisticsData?.total_blocks ?? 0 }}</div>
+                    </v-card>
+                </v-col>
+
+                <v-col cols="12" sm="6" md="3">
+                    <v-card variant="outlined" class="px-4 py-1 text-center">
+                        <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Occupied Positions</div>
+                        <div class="text-h4 font-weight-black text-warning mt-1">{{ statisticsData?.taken_space ?? 0 }}</div>
+                    </v-card>
+                </v-col>
+
+                <v-col cols="12" sm="6" md="3">
+                    <v-card variant="outlined" class="px-4 py-1 text-center">
+                        <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Available Positions</div>
+                        <div class="text-h4 font-weight-black text-success mt-1">{{ statisticsData?.available_space ?? 0 }}</div>
+                    </v-card>
+                </v-col>
+
+                <v-col cols="12" sm="6" md="3">
+                    <v-card
+                        variant="outlined"
+                        class="px-4 py-1 text-center floating-pallet-card"
+                        :class="{ 'floating-pallet-card--clickable': (statisticsData?.floating_pallets ?? 0) > 0 }"
+                        @click="(statisticsData?.floating_pallets ?? 0) > 0 && openFloatingPalletDialog()"
+                    >
+                        <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Floating Pallets</div>
+                        <div class="text-h4 font-weight-black text-error mt-1">{{ statisticsData?.floating_pallets ?? 0 }}</div>
+                    </v-card>
+                </v-col>
+            </v-row>
         </v-card-text>
+
         <div class="d-flex justify-end">
             <!-- <v-btn color="primary-light" @click="smartAssignModal = true" class="px-8 mr-6 text-grey-100">
                 Smart Assign
             </v-btn> -->
         </div>
-        <!-- Main content  -->
-        
     </v-card>
+    
     <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
     <div v-else>
         <v-card elevation="2" class="mx-4 mt-2">
@@ -447,6 +497,67 @@ const handleFilterStatus = (statusValue) => {
 
     <SmartAssignModal :storage-location="storageLocation" :plant="plantCode" :show="smartAssignModal"
         @assign-success="onAssignSuccess" @close="smartAssignModal = false" />
+
+    <v-dialog v-model="floatingPalletDialog" max-width="1100" persistent scrollable>
+        <v-card>
+            <v-card-title class="d-flex justify-space-between align-center">
+                <div>
+                    <span class="text-h5 font-weight-bold">Floating Pallets</span><br/>
+                    <span class="text-subtitle-1 text-medium-emphasis">List of pallets that are not assigned to any bin.</span>
+                </div>
+                <v-btn icon variant="text" @click="floatingPalletDialog = false">
+                    <v-icon>ri-close-line</v-icon>
+                </v-btn>
+            </v-card-title>
+
+            <v-card-text class="pt-2">
+                <div class="d-flex justify-end mb-4">
+                    <SearchInput
+                        class="w-100"
+                        placeholder="Search pallet"
+                        @update:search="(val) => { floatingPalletSearchValue = val; loadFloatingPalletItems({ page: floatingPalletPage, itemsPerPage: floatingPalletItemsPerPage, sortBy: [{ key: 'created_at', order: 'desc' }] }); }"
+                    />
+                </div>
+
+                <VDataTableServer
+                    v-model:items-per-page="floatingPalletItemsPerPage"
+                    :headers="floatingPalletHeaders"
+                    :items="floatingPalletItems"
+                    :items-length="floatingPalletTotal"
+                    :loading="floatingPalletLoading"
+                    item-value="id"
+                    @update:options="loadFloatingPalletItems"
+                    class="floating-pallet-table"
+                >
+                    <template #item.pallet_id="{ item }">
+                        {{ item.pallet_id ?? item.id ?? item.pallet?.id ?? 'N/A' }}
+                    </template>
+
+                    <template #item.batch="{ item }">
+                        {{ item.batch ?? item.inventory?.batch ?? 'N/A' }}
+                    </template>
+
+                    <template #item.commodity_status_id="{ item }">
+                        <v-chip
+                            :color="item.commodity_status_id == '1' ? 'primary' : item.commodity_status_id == '3' ? 'warning' : 'secondary'"
+                            size="small"
+                            class="px-2"
+                        >
+                            {{ item.commodity_status_id ? (item.commodity_status_id == '1' ? 'Good' : item.commodity_status_id == '3' ? 'For QI' : 'Pending') : 'N/A' }}
+                        </v-chip>
+                    </template>
+
+                    <template #item.quantity="{ item }">
+                        {{ item.quantity ?? item.qty ?? item.inventory?.quantity ?? 0 }}
+                    </template>
+
+                    <template #item.mfg_date="{ item }">
+                        {{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : 'N/A' }}
+                    </template>
+                </VDataTableServer>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     <Loader :show="pageLoading" />
@@ -541,6 +652,23 @@ const handleFilterStatus = (statusValue) => {
 
 .vue-grid-item:not(.vue-grid-placeholder) {
     border: 1px solid black;
+}
+
+.floating-pallet-card {
+    transition: all 0.2s ease;
+}
+
+.floating-pallet-card--clickable {
+    cursor: pointer;
+}
+
+.floating-pallet-card--clickable:hover {
+    background-color: rgba(255, 76, 81, 0.04);
+}
+
+.floating-pallet-table :deep(.v-data-table__td),
+.floating-pallet-table :deep(.v-data-table__th) {
+    white-space: nowrap;
 }
 
 
