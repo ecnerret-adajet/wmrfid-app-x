@@ -268,7 +268,8 @@ const proceedMapping = () => {
 
     <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets')"
         :item="{ heading: 'Requests' }" />
-    <VerticalNavLink
+
+    <VerticalNavLink v-if="authUserCan('view.service.requests')"
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/service-requests' }" />
 
     <!-- Authentication Section  -->

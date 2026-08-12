@@ -632,7 +632,7 @@ const ageRequirementDisplay = computed(() => {
             Search
         </v-btn>
 
-        <v-btn class="d-flex align-center" prepend-icon="ri-add-line" color="primary" @click="openCreateModal">
+        <v-btn v-if="authUserCan('create.service.requests')" class="d-flex align-center" prepend-icon="ri-add-line" color="primary" @click="openCreateModal">
             <template #prepend>
                 <v-icon color="white"></v-icon>
             </template>
