@@ -198,39 +198,36 @@ onMounted(() => {
                         </v-col>
 
                         <v-col cols="12" md="4">
-                            <v-text-field
-                                label="Status"
-                                variant="outlined"
-                                readonly
-                                density="compact"
-                            >
-                                <template #default>
-                                    <v-chip
-                                        v-if="header?.status === 'Received'"
-                                        size="small"
-                                        color="success"
-                                        text-color="white"
-                                    >
-                                        Received
-                                    </v-chip>
-                                    <v-chip
-                                        v-else-if="header?.status === 'Reversed'"
-                                        size="small"
-                                        color="error"
-                                        text-color="white"
-                                    >
-                                        Reversed
-                                    </v-chip>
-                                    <v-chip
-                                        v-else
-                                        size="small"
-                                        color="warning"
-                                        text-color="white"
-                                    >
-                                        For Receiving
-                                    </v-chip>
-                                </template>
-                            </v-text-field>
+                            <div class="d-flex flex-column" style="height: 100%;">
+                                <span class="text-caption text-medium-emphasis mb-1">Status</span>
+                                <v-chip
+                                    v-if="header?.status === 'Received'"
+                                    size="small"
+                                    color="success"
+                                    variant="tonal"
+                                    class="align-self-start"
+                                >
+                                    Received
+                                </v-chip>
+                                <v-chip
+                                    v-else-if="header?.status === 'Reversed'"
+                                    size="small"
+                                    color="error"
+                                    variant="tonal"
+                                    class="align-self-start"
+                                >
+                                    Reversed
+                                </v-chip>
+                                <v-chip
+                                    v-else
+                                    size="small"
+                                    color="warning"
+                                    variant="tonal"
+                                    class="align-self-start"
+                                >
+                                    For Receiving
+                                </v-chip>
+                            </div>
                         </v-col>
 
                         <v-col cols="12" md="4">
