@@ -210,25 +210,25 @@ onMounted(() => {
                 </template>
 
                 <template #item.issuing="{ item }">
-                    <span v-if="item.stock_transfer_313_sap_downloads">
-                        {{ item.stock_transfer_313_sap_downloads[0]?.plant }}
-                        {{ plantDescription(item.stock_transfer_313_sap_downloads[0]?.plant) }}
+                    <span v-if="item.stock_transfer313_sap_downloads">
+                        {{ item.stock_transfer313_sap_downloads[0]?.plant }}
+                        {{ plantDescription(item.stock_transfer313_sap_downloads[0]?.plant) }}
                     </span>
                 </template>
 
                 <template #item.receiving="{ item }">
-                    <span v-if="item.stock_transfer_313_sap_downloads">
-                        {{ item.stock_transfer_313_sap_downloads[0]?.plant }}
-                        {{ plantDescription(item.stock_transfer_313_sap_downloads[0]?.plant) }}
+                    <span v-if="item.stock_transfer313_sap_downloads">
+                        {{ item.stock_transfer313_sap_downloads[0]?.plant }}
+                        {{ plantDescription(item.stock_transfer313_sap_downloads[0]?.plant) }}
                         <br>
-                        {{ item.stock_transfer_313_sap_downloads[0]?.sloc }}
-                        {{ slocDescription(item.stock_transfer_313_sap_downloads[0]?.sloc, item.stock_transfer_313_sap_downloads[0]?.plant) }}
+                        {{ item.stock_transfer313_sap_downloads[0]?.sloc }}
+                        {{ slocDescription(item.stock_transfer313_sap_downloads[0]?.sloc, item.stock_transfer313_sap_downloads[0]?.plant) }}
                     </span>
                 </template>
 
                 <template #item.items_count="{ item }">
                     <v-chip size="small" color="info">
-                        {{ item.stock_transfer_313_sap_downloads_count || 0 }}
+                        {{ item.stock_transfer313_sap_downloads_count || 0 }}
                     </v-chip>
                 </template>
 
