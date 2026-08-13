@@ -276,7 +276,7 @@ defineExpose({
         </template>
 
         <template #item.details="{ item }">
-            <v-btn v-if="item.load_end_date === null" :to="{
+            <!-- <v-btn v-if="item.load_end_date === null" :to="{
                         path: `/shipment-picklist/${item.shipment_number}`,
                         query: { reader_id: item.reader_id, bay_no: item.bay_no  }
                     }"
@@ -285,11 +285,12 @@ defineExpose({
                     size="small"
                 >
                     View Picklist
-            </v-btn>
-            <v-btn v-else :to="{
+            </v-btn> -->
+            <v-btn :to="{
                         path: `/shipments/${item.shipment_number}`,
                         query: { reader_id: item.reader_id, bay_no: item.bay_no  }
                     }"
+                    :disabled="item.load_end_date ? false : true"
                     color="primary"
                     variant="outlined"
                     size="small"
