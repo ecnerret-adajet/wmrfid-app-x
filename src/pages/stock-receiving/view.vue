@@ -19,6 +19,7 @@ const stockTransfer = ref(null);
 const pageLoading = ref(false);
 const postResult = ref(null);
 const disablePost = ref(false);
+const documentHeaderText = ref('');
 
 const toast = ref({
     message: '',
@@ -73,7 +74,7 @@ const postStockTransferReceiving = async (method) => {
             posting_date: header.value?.posting_date,
             document_date: header.value?.posting_date,
             gr_gi_slip_number: header.value?.material_document,
-            document_header_text: '',
+            document_header_text: documentHeaderText.value,
             ref_doc_number: '',
             items: items.value.map(item => ({
                 material_code: item.material_code,
@@ -232,22 +233,14 @@ onMounted(() => {
 
                         <v-col cols="12" md="4">
                             <v-text-field
-                                label="Issuing Plant"
-                                :model-value="header?.stock_transfer_313_sap_downloads?.[0]
-                                    ? `${header.stock_transfer_313_sap_downloads[0].plant} ${header.stock_transfer_313_sap_downloads[0].plant_detail?.name || ''}`
-                                    : '-'"
+                                v-model="documentHeaderText"
+                                label="Doc. Header Text"
                                 variant="outlined"
-                                readonly
                                 density="compact"
-                            />
-                        </v-col>
-                        <v-col cols="12" md="4">
-                            <v-text-field
-                                label="Receiving SLoc"
-                                :model-value="header?.stock_transfer_313_sap_downloads?.[0]?.sloc || '-'"
-                                variant="outlined"
-                                readonly
-                                density="compact"
+                                maxlength="25"
+                                :disabled="!!header?.status"
+                                hint="Max 25 characters"
+                                persistent-hint
                             />
                         </v-col>
                     </v-row>
