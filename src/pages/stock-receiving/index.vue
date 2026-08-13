@@ -36,6 +36,13 @@ const filters = reactive({
 
 const dateRange = ref(null);
 
+const form = reactive({
+    loading: false,
+    refresh: false,
+    posting_date_from: null,
+    posting_date_to: null,
+});
+
 const headers = [
     { title: 'Posting Date', key: 'posting_date', sortable: true },
     { title: 'Material Document', key: 'material_document', sortable: true },
@@ -114,6 +121,38 @@ const handleSearch = () => {
     });
 };
 
+const refreshList = () => {
+    // Sync date range to form
+    if (dateRange.value && dateRange.value.length === 2) {
+        form.posting_date_from = dateRange.value[0];
+        form.posting_date_to = dateRange.value[1];
+    } else {
+        form.posting_date_from = null;
+        form.posting_date_to = null;
+    }
+
+    form.loading = true;
+    form.refresh = true;
+    ApiService.query('download-313?from_date=' + form.posting_date_from + '&to_date=' + form.posting_date_to)
+        .then(({ data }) => {
+            form.refresh = false;
+            loadItems({
+                page: 1,
+                itemsPerPage: itemsPerPage.value,
+            });
+        })
+        .catch((error) => {
+            console.error('Error refreshing stock receiving:', error);
+            form.refresh = false;
+            form.loading = false;
+            toast.value = {
+                message: 'Failed to refresh stock receiving data.',
+                color: 'error',
+                show: true
+            };
+        });
+};
+
 const plantDescription = (plantCode) => {
     const plant = plantsOption.value.find(p => p.value === plantCode);
     return plant ? plant.title : '';
@@ -182,6 +221,21 @@ onMounted(() => {
                     <v-icon color="white"></v-icon>
                 </template>
                 Search
+            </v-btn>
+
+            <!-- Get Receiving Button -->
+            <v-btn
+                class="d-flex align-center"
+                prepend-icon="ri-refresh-line"
+                color="primary"
+                :loading="form.refresh"
+                :disabled="form.refresh"
+                @click="refreshList"
+            >
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Get Receiving
             </v-btn>
         </div>
 
