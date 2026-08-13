@@ -37,12 +37,12 @@ const form = reactive({
 });
 
 const headers = [
-    {
-        title: 'ACTION',
-        key: 'action',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'ACTION',
+    //     key: 'action',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'Details',
         key: 'details',
@@ -66,6 +66,10 @@ const headers = [
     {
         title: 'DRIVER',
         key: 'driver_name',
+    },
+    {
+        title: 'PLATE NUMBER',
+        key: 'plate_number',
     },
     // {
     //     title: 'LOAD START',
@@ -199,16 +203,16 @@ const saveShipmentService = () => {
 }
 
 const fetchApplicationRequestType = () => {
-    ApiService.get('application-request/types')
-        .then((response) => {
-            applictionRequestTypes.value = response.data.map(item => ({
-                value: item.id,
-                title: item.name
-            }));
-        })
-        .catch((error) => {
-            console.error('Error fetching application request types:', error);
-        });
+    // ApiService.get('application-request/types')
+    //     .then((response) => {
+    //         applictionRequestTypes.value = response.data.map(item => ({
+    //             value: item.id,
+    //             title: item.name
+    //         }));
+    //     })
+    //     .catch((error) => {
+    //         console.error('Error fetching application request types:', error);
+    //     });
 }
 
 const formatDateTime = (date, time) => {
@@ -220,7 +224,7 @@ const formatDateTime = (date, time) => {
 
 
 onMounted(() => {
-    fetchApplicationRequestType();
+    // fetchApplicationRequestType();
 });
 
 
@@ -297,6 +301,10 @@ defineExpose({
 
         <template #item.shipment_number="{ item }">
             {{ item.shipment_number }}
+        </template>
+
+        <template #item.plate_number="{ item }">
+            {{ item.plate_number_1 || item.plate_number_2 || item.plate_number_3 || item.plate_number_4 || '' }}
         </template>
 
 

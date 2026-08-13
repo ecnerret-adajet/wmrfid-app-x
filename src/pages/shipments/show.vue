@@ -2,11 +2,11 @@
 import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import JwtService from '@/services/JwtService';
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 import Moment from 'moment';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 
 const route = useRoute();
 const router = useRouter();
@@ -24,33 +24,7 @@ const sortQuery = ref('-updated_at'); // Default sort
 const deliveryItemsModalOpen = ref(false);
 const selectedDelivery = ref(null);
 const searchValue = ref('');
-
-const headers = [
-    {
-        title: 'DELIVERY DOCUMENT',
-        key: 'delivery_document',
-    },
-    {
-        title: 'PLANT',
-        key: 'plant_id',
-    },
-    {
-        title: 'SHIP TO',
-        key: 'ship_to_name',
-    },
-    {
-        title: 'SOLD TO',
-        key: 'sold_to_name',
-    },
-    {
-        title: 'LAST UPDATED AT',
-        key: 'updated_at',
-    },
-    {
-        title: 'CREATED AT',
-        key: 'created_at',
-    },
-]
+const authStore = useAuthStore();
 
 const lastOptions = ref({});
 const currentOptions = ref({});
@@ -100,11 +74,9 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
             }
         });
 
-        const { shipment, deliveries_table } = response.data;
+        const { shipment } = response.data;
 
         shipmentData.value = shipment
-        totalItems.value = deliveries_table.total;
-        serverItems.value = deliveries_table.data;
 
     } catch (error) {
         console.log(error);
@@ -114,13 +86,19 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 onMounted(async () => {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'created_at', order: 'desc' }],
+        search: searchValue.value
+    });
 });
 
 const displayPlateNumber = computed(() => {
-    return shipmentData.shipment?.plate_number_1 ||
-        shipmentData.shipment?.plate_number_2 ||
-        shipmentData.shipment?.plate_number_3 ||
-        shipmentData.shipment?.plate_number_4 ||
+    return shipmentData.value?.shipment?.plate_number_1 ||
+        shipmentData.value?.shipment?.plate_number_2 ||
+        shipmentData.value?.shipment?.plate_number_3 ||
+        shipmentData.value?.shipment?.plate_number_4 ||
         ""; // Default value if none exist
 });
 
@@ -176,6 +154,12 @@ const syncStatus = async () => {
     }
 }
 
+
+function removeLeadingZeros(value) {
+    if (!value) return '';
+    return value.replace(/^0+/, '');
+}
+
 </script>
 
 <template>
@@ -219,7 +203,7 @@ const syncStatus = async () => {
                                     <VCol class="d-inline-flex align-center">
                                         <span class="font-weight-medium text-medium-emphasis">
                                             {{ shipmentData?.shipment?.check_in_date ?
-                                                Moment(shipmentData?.shipment?.check_in_date).format('MMMM D, YYYY') : '--'
+                                                Moment(shipmentData?.shipment?.check_in_date).format('M/D/YY h:mm A') : '--'
                                             }}
                                         </span>
                                     </VCol>
@@ -318,23 +302,43 @@ const syncStatus = async () => {
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Delivery Details</h4>
-                    <div class="mt-2">
-                        <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
-                            :items-length="totalItems" :loading="pageLoading" item-value="id" :search="searchValue"
-                            @update:options="loadItems" class="text-no-wrap">
 
-                            <template #item="{ item }">
-                                <tr @click="handleViewDelivery(item)" class="clickable-row">
+                    <div class="mt-2">
+                        <v-table class="text-no-wrap">
+                            <thead>
+                                <tr>
+                                    <th>Delivery Document</th>
+                                    <th>Ship To</th>
+                                    <th>Sold To</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <tr
+                                    v-for="item in shipmentData?.shipment?.bu_shipment?.deliveries ?? []"
+                                    :key="item.id"
+                                    @click="handleViewDelivery(item)"
+                                    class="clickable-row"
+                                >
                                     <td>{{ item.delivery_document }}</td>
-                                    <td>{{ item.plant?.name }}</td>
                                     <td>{{ item.ship_to_name }}</td>
                                     <td>{{ item.sold_to_name }}</td>
-                                    <td>{{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}</td>
-                                    <td>{{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}</td>
+                                    <td>
+                                        {{ item.created_at
+                                            ? Moment(item.created_at).format('M/D/YY h:mm A')
+                                            : ''
+                                        }}
+                                    </td>
                                 </tr>
-                            </template>
 
-                        </VDataTableServer>
+                                <tr v-if="!shipmentData?.shipment?.bu_shipment?.deliveries?.length">
+                                    <td colspan="6" class="text-center">
+                                        No delivery details found.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
                     </div>
                 </v-card-text>
             </v-card>
@@ -348,7 +352,7 @@ const syncStatus = async () => {
             </v-card> -->
         </div>
 
-        <div>
+        <div v-if="authStore.user?.assigned_plant?.plant_code === '2110'">
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
                     <h4 class="text-h4 font-weight-black text-primary">Reserved Pallets</h4>
@@ -421,7 +425,10 @@ const syncStatus = async () => {
                                 <tr v-for="item in shipmentData?.shipment?.references" :key="item.rfid_name">
                                     <td>{{ item.rfid_name }}</td>
                                     <td>{{ item.batch }}</td>
-                                    <td>{{ item.material?.material_description }}</td>
+                                    <td>
+                                        <span class="font-weight-bold">{{ item.material?.bu_material }}</span><br />
+                                        <span v-if="item.material?.material_description" class="text-subtitle-1">{{ item.material?.material_description }}</span>
+                                    </td>
                                     <td class="text-center">{{ item.item_number }}</td>
                                     <td class="text-center">{{ item.quantity }}</td>
                                     <td>{{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}</td>
@@ -439,19 +446,19 @@ const syncStatus = async () => {
                 <tr>
                     <th>Item</th>
                     <th>Batch</th>
-                    <th>Material</th>
+                    <th>Material Code</th>
                     <th>Description</th>
                     <th class="text-center">Quantity</th>
                     <th>Unit</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(item, index) in selectedDelivery.items" :key="index">
+                <tr v-for="(item, index) in selectedDelivery.delivery_items" :key="index">
                     <td>{{ item.item_number }}</td>
                     <td>{{ item.batch }}</td>
-                    <td>{{ item.material }}</td>
-                    <td>{{ item.material_desc }}</td>
-                    <td class="text-center">{{ item.quantity }}</td>
+                    <td>{{ removeLeadingZeros(item.material_number) }}</td>
+                    <td>{{ item.material_description }}</td>
+                    <td class="text-center">{{ item.delivery_quantity }}</td>
                     <td>{{ item.sales_unit }}</td>
                 </tr>
             </tbody>
