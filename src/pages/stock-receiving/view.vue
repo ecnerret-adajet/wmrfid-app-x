@@ -16,6 +16,9 @@ const header = ref(null);
 const items = ref([]);
 const materialDocuments = ref([]);
 const stockTransfer = ref(null);
+const movementType = ref(null);
+const stockTransferMaterialDocument = ref([]);
+const alcStockTransfer = ref([]);
 const pageLoading = ref(false);
 const postResult = ref(null);
 const disablePost = ref(false);
@@ -31,13 +34,12 @@ const itemsPerPage = ref(15);
 
 const headers = [
     { title: 'Material', key: 'material_code', sortable: false },
-    { title: 'Description', key: 'material_description', sortable: false },
-    { title: 'Batch', key: 'batch', sortable: false },
-    { title: 'Qty', key: 'qty', align: 'center', sortable: false },
-    { title: 'UOM', key: 'commercial_uom', align: 'center', sortable: false },
-    { title: 'Production Date', key: 'production_date', sortable: false },
+    { title: 'Entry Qty', key: 'qty', align: 'center', sortable: false },
+    { title: 'Entry UOM', key: 'commercial_uom', align: 'center', sortable: false },
+    { title: 'Batch', key: 'batch', align: 'center', sortable: false },
+    { title: 'Production Date', key: 'production_date', align: 'center', sortable: false },
     { title: 'Receiving Plant', key: 'plant', sortable: false },
-    { title: 'Receiving SLoc', key: 'sloc', sortable: false },
+    { title: 'Receiving Storage Location', key: 'sloc', sortable: false },
 ];
 
 const fetchDetails = async () => {
@@ -46,8 +48,15 @@ const fetchDetails = async () => {
         const response = await ApiService.get('stock-transfer-receiving', id);
         header.value = response.data.header;
         items.value = response.data.items;
-        materialDocuments.value = response.data.material_documents;
         stockTransfer.value = response.data.stock_transfer;
+        movementType.value = response.data.movement_type;
+        stockTransferMaterialDocument.value = response.data.stock_transfer_material_document;
+        alcStockTransfer.value = response.data.alc_stock_transfer;
+
+        // Set document header text from stock transfer if exists
+        if (stockTransfer.value) {
+            documentHeaderText.value = stockTransfer.value.document_header_text || '';
+        }
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -154,91 +163,51 @@ onMounted(() => {
                 </div>
 
                 <!-- Material Documents -->
-                <div v-if="header?.status === 'Received' && materialDocuments.length" class="px-4 mt-3">
-                    <v-alert
-                        v-for="(doc, i) in materialDocuments"
-                        :key="i"
-                        type="info"
-                        variant="tonal"
-                        density="compact"
-                        class="mb-1"
-                    >
-                        {{ doc.is_alc ? 'ALC' : 'BU' }} {{ doc.movement_type }} Material Document: {{ doc.material_document }}
-                    </v-alert>
+                <div v-if="stockTransfer && header?.status === 'Received' && stockTransferMaterialDocument.length" class="px-4 mt-3">
+                    <h4 v-for="(doc, i) in stockTransferMaterialDocument" :key="i" class="mb-1">
+                        {{ doc.stock_transfer_parent_id ? 'ALC' : 'BU' }} {{ doc.movement_type }} Material Document: {{ doc.material_document }}
+                    </h4>
                 </div>
 
                 <!-- General Info -->
                 <v-card-text>
                     <v-row class="mt-4">
-                        <v-col cols="12" md="4">
+                        <v-col cols="12" md="6">
                             <v-text-field
-                                label="Posting Date"
-                                :model-value="header?.posting_date || '-'"
+                                label="Document Date"
+                                :model-value="stockTransfer?.document_date || header?.posting_date || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
                             />
                         </v-col>
-                        <v-col cols="12" md="4">
+                        <v-col cols="12" md="6">
                             <v-text-field
-                                label="Material Document"
+                                label="GR/GI Slip No."
                                 :model-value="header?.material_document || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
                             />
                         </v-col>
-                        <v-col cols="12" md="4">
+
+                        <v-col cols="12" md="6">
                             <v-text-field
-                                label="Material Doc. Year"
-                                :model-value="header?.year || '-'"
+                                label="Posting Date"
+                                :model-value="stockTransfer?.posting_date || header?.posting_date || '-'"
                                 variant="outlined"
-                                readonly
+                                :readonly="!!header?.status"
                                 density="compact"
                             />
                         </v-col>
-
-                        <v-col cols="12" md="4">
-                            <div class="d-flex flex-column" style="height: 100%;">
-                                <span class="text-caption text-medium-emphasis mb-1">Status</span>
-                                <v-chip
-                                    v-if="header?.status === 'Received'"
-                                    size="small"
-                                    color="success"
-                                    variant="tonal"
-                                    class="align-self-start"
-                                >
-                                    Received
-                                </v-chip>
-                                <v-chip
-                                    v-else-if="header?.status === 'Reversed'"
-                                    size="small"
-                                    color="error"
-                                    variant="tonal"
-                                    class="align-self-start"
-                                >
-                                    Reversed
-                                </v-chip>
-                                <v-chip
-                                    v-else
-                                    size="small"
-                                    color="warning"
-                                    variant="tonal"
-                                    class="align-self-start"
-                                >
-                                    For Receiving
-                                </v-chip>
-                            </div>
-                        </v-col>
-
-                        <v-col cols="12" md="4">
+                        <v-col cols="12" md="6">
                             <v-text-field
                                 v-model="documentHeaderText"
                                 label="Doc. Header Text"
                                 variant="outlined"
                                 density="compact"
                                 maxlength="25"
-                                :disabled="!!header?.status"
+                                :disabled="!!stockTransfer"
                                 hint="Max 25 characters"
                                 persistent-hint
                             />
@@ -261,7 +230,11 @@ onMounted(() => {
                         class="text-no-wrap"
                     >
                         <template #item.material_code="{ item }">
-                            <span class="font-weight-bold">{{ removeLeadingZeros(item.material_code) }}</span>
+                            <div>
+                                <span class="font-weight-bold">{{ removeLeadingZeros(item.material_code) }}</span>
+                                <br />
+                                <span class="text-caption">{{ item.material_description }}</span>
+                            </div>
                         </template>
 
                         <template #item.qty="{ item }">
@@ -277,7 +250,7 @@ onMounted(() => {
                         </template>
 
                         <template #item.sloc="{ item }">
-                            <span>{{ item.sloc }}</span>
+                            <span>{{ item.sloc }} {{ item.sloc_description }}</span>
                         </template>
                     </VDataTable>
                 </div>
