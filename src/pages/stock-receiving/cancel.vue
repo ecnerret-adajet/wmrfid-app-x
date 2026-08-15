@@ -9,9 +9,11 @@ const route = useRoute();
 const router = useRouter();
 const id = route.params.id;
 
-const header = ref(null);
 const items = ref([]);
 const stockTransfer = ref(null);
+const movementType = ref(null);
+const stockTransferMaterialDocument = ref([]);
+const alcMaterialDocument = ref(null);
 const pageLoading = ref(false);
 const disableCancel = ref(false);
 
@@ -24,22 +26,27 @@ const toast = ref({
 const itemsPerPage = ref(15);
 
 const headers = [
+    { title: 'Line', key: 'line_id', align: 'center', sortable: false },
     { title: 'Material', key: 'material_code', sortable: false },
     { title: 'Entry Qty', key: 'qty', align: 'center', sortable: false },
     { title: 'Entry UOM', key: 'commercial_uom', align: 'center', sortable: false },
     { title: 'Batch', key: 'batch', align: 'center', sortable: false },
     { title: 'Production Date', key: 'production_date', align: 'center', sortable: false },
-    { title: 'Receiving Plant', key: 'plant', sortable: false },
-    { title: 'Receiving Storage Location', key: 'sloc', sortable: false },
+    { title: 'Plant', key: 'plant', sortable: false },
+    { title: 'Storage Location', key: 'sloc', sortable: false },
+    { title: 'Movement Type', key: 'movement_type', align: 'center', sortable: false },
+    { title: 'Cancel Status', key: 'cancel', align: 'center', sortable: false },
 ];
 
 const fetchDetails = async () => {
     pageLoading.value = true;
     try {
         const response = await ApiService.get('stock-transfer-receiving-cancellation', id);
-        header.value = response.data.header;
-        items.value = response.data.items;
+        movementType.value = response.data.movement_type;
         stockTransfer.value = response.data.stock_transfer;
+        stockTransferMaterialDocument.value = response.data.stock_transfer_material_document || [];
+        alcMaterialDocument.value = response.data.alc_material_document;
+        items.value = response.data.stock_transfer?.stock_transfer_items || [];
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -104,13 +111,37 @@ onMounted(() => {
                     </v-btn>
                 </div>
 
+                <!-- Event / Movement Type & Material Documents -->
+                <div v-if="movementType || stockTransferMaterialDocument.length" class="px-4 mt-3">
+                    <div v-if="movementType" class="text-body-1 font-weight-medium">
+                        Movement Type: {{ movementType.code }} - {{ movementType.name }}
+                    </div>
+                    <div
+                        v-for="(doc, i) in stockTransferMaterialDocument"
+                        :key="i"
+                        class="text-body-1 font-weight-medium"
+                    >
+                        {{ doc.stock_transfer_parent_id ? 'ALC' : 'BU' }} {{ doc.movement_type }} Material Document: {{ doc.material_document }}
+                    </div>
+                </div>
+
+                <v-alert
+                    v-if="alcMaterialDocument === 0"
+                    type="error"
+                    variant="tonal"
+                    density="compact"
+                    class="mx-4 mt-3"
+                >
+                    ALC is not yet posted. Please cancel this document and try again.
+                </v-alert>
+
                 <!-- General Info -->
                 <v-card-text>
                     <v-row class="mt-4">
                         <v-col cols="12" md="6">
                             <v-text-field
                                 label="Document Date"
-                                :model-value="stockTransfer?.document_date || header?.posting_date || '-'"
+                                :model-value="stockTransfer?.document_date || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -119,7 +150,7 @@ onMounted(() => {
                         <v-col cols="12" md="6">
                             <v-text-field
                                 label="GR/GI Slip No."
-                                :model-value="header?.material_document || '-'"
+                                :model-value="stockTransfer?.material_document || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -129,7 +160,7 @@ onMounted(() => {
                         <v-col cols="12" md="6">
                             <v-text-field
                                 label="Posting Date"
-                                :model-value="stockTransfer?.posting_date || header?.posting_date || '-'"
+                                :model-value="stockTransfer?.posting_date || '-'"
                                 variant="outlined"
                                 readonly
                                 density="compact"
@@ -170,19 +201,32 @@ onMounted(() => {
                         </template>
 
                         <template #item.qty="{ item }">
-                            <span>{{ item.qty }}</span>
+                            <span>{{ item.entry_quantity }}</span>
                         </template>
 
                         <template #item.commercial_uom="{ item }">
-                            <span>{{ item.commercial_uom || item.uom }}</span>
+                            <span>{{ item.commercial_uom || item.entry_uom }}</span>
+                        </template>
+
+                        <template #item.production_date="{ item }">
+                            <span>{{ item.manufacturing_date || '-' }}</span>
                         </template>
 
                         <template #item.plant="{ item }">
-                            <span>{{ item.plant }} {{ item.plant_description }}</span>
+                            <span>{{ item.plant_code }} {{ item.plant_description }}</span>
                         </template>
 
                         <template #item.sloc="{ item }">
-                            <span>{{ item.sloc }} {{ item.sloc_description }}</span>
+                            <span>{{ item.sloc_code }} {{ item.storage_location_description }}</span>
+                        </template>
+
+                        <template #item.cancel="{ item }">
+                            <v-chip v-if="item.cancel" color="error" size="small" variant="tonal">
+                                Cancelled
+                            </v-chip>
+                            <v-chip v-else color="success" size="small" variant="tonal">
+                                Active
+                            </v-chip>
                         </template>
                     </VDataTable>
                 </div>
