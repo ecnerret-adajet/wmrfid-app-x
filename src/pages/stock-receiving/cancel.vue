@@ -77,16 +77,38 @@ const cancelReceiving = async () => {
 
     if (!confirm.isConfirmed) return;
 
-    // TODO: wire up the actual cancellation endpoint once the backend route is finalized.
     disableCancel.value = true;
-    console.log('TODO: submit cancellation for stock transfer receiving', id, items.value);
-    disableCancel.value = false;
+    try {
+        const response = await ApiService.post('stock-transfer-receiving-cancel', { id });
 
-    toast.value = {
-        message: 'Cancellation endpoint is not implemented yet.',
-        color: 'warning',
-        show: true
-    };
+        if (response.data.status === 'S') {
+            toast.value = {
+                message: 'Stock transfer receiving cancelled successfully.',
+                color: 'success',
+                show: true
+            };
+            await fetchDetails();
+        } else {
+            const errorMessage =
+                response.data.errors?.[0]?.MESSAGE ||
+                response.data.errors_917?.[0]?.MESSAGE ||
+                'Failed to cancel stock transfer receiving.';
+            toast.value = {
+                message: errorMessage,
+                color: 'error',
+                show: true
+            };
+        }
+    } catch (error) {
+        console.error(error);
+        toast.value = {
+            message: 'Failed to cancel stock transfer receiving.',
+            color: 'error',
+            show: true
+        };
+    } finally {
+        disableCancel.value = false;
+    }
 };
 
 onMounted(() => {
