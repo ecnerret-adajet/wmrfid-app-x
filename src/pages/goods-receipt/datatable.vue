@@ -177,17 +177,33 @@ const getAssignedPalletCount = (item) => {
     return 0;
 };
 
-const hasIncompletePalletAssignment = (item) => {
-    console.log('Checking incomplete pallet assignment for item:', item);
+const getPalletAssignmentStatus = (item) => {
     const assignedPalletCount = getAssignedPalletCount(item);
-    console.log('Assigned Pallet Count:', assignedPalletCount);
     const totalItemsCount = Number(item.stock_transfer_items_count || 0);
 
-    return assignedPalletCount > 0 && totalItemsCount > assignedPalletCount;
+    if (assignedPalletCount > 0 && totalItemsCount > assignedPalletCount) {        return 'incomplete';
+    }
+
+    if (assignedPalletCount > 0) {
+        return 'assigned';
+    }
+
+    return 'not-assigned';
 };
 
-const hasAssignedPallet = (item) => getAssignedPalletCount(item) > 0;
+const hasIncompletePalletAssignment = (item) => getPalletAssignmentStatus(item) === 'incomplete';
+const hasAssignedPallet = (item) => getPalletAssignmentStatus(item) === 'assigned';
 
+const getPalletAssignmentLabel = (item) => {
+    switch (getPalletAssignmentStatus(item)) {
+        case 'incomplete':
+            return 'Incomplete Assign';
+        case 'assigned':
+            return 'Assigned';
+        default:
+            return 'Not Assigned';
+    }
+};
 
     const handleViewDetails = (item) => {
         router.push({ name: 'goods-receipt.show', params: { id: item.id } });
@@ -224,8 +240,16 @@ const hasAssignedPallet = (item) => getAssignedPalletCount(item) > 0;
         </template>
 
         <template #item.pallet_assignment_log="{ item }">
-            <span :class="hasIncompletePalletAssignment(item) ? 'text-warning' : hasAssignedPallet(item) ? 'text-success' : 'text-error'">
-                {{ hasIncompletePalletAssignment(item) ? 'Incomplete Assign' : hasAssignedPallet(item) ? 'Assigned Pallet' : 'Not Assigned' }}
+            <span
+                :class="
+                    hasIncompletePalletAssignment(item)
+                        ? 'text-warning'
+                        : hasAssignedPallet(item)
+                            ? 'text-success'
+                            : 'text-error'
+                "
+            >
+                {{ getPalletAssignmentLabel(item) }}
             </span>
         </template>
         

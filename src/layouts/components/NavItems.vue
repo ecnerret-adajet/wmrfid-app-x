@@ -255,13 +255,16 @@ const proceedMapping = () => {
 
   
 
-    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets') || authUserCan('view.open.do.picklist')"
         :item="{ heading: 'Reports' }" />
     <VerticalNavLink v-if="authUserCan('view.putaway.report')"
         :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
 
     <VerticalNavLink v-if="authUserCan('view.floating.pallets') && authStore.user?.assigned_plant?.plant_code === '2110'"
         :item="{ title: 'Floating Pallets Report', icon: 'ri-safe-2-line', to: '/reports/floating-pallets' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.open.do.picklist')"
+        :item="{ title: 'Open DO Picklist', icon: 'ri-list-check', to: '/reports/open-do-picklist' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->

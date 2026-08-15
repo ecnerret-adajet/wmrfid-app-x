@@ -461,6 +461,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/open-do-picklist',
+                name: 'open-do-picklist-report',
+                component: () => import('@/pages/reports/openDoPicklist/index.vue'),
+                meta: {
+                    pageTitle: "Open DO Picklist Report",
+                    breadcrumbs: [
+                            { label: "Open DO Picklist Report", link: "/reports/open-do-picklist" },
+                    ],
+                },
+        },
+        {
             path: 'view-inversions',
             name: 'view-inversions',
             component: () => import('@/pages/palletInverter/index.vue'),
