@@ -253,6 +253,19 @@ export const routes = [
             },
         },
         {
+            path: 'stock-receiving/:id/cancel',
+            name: 'apps-stock-transfer-receiving-cancel',
+            component: () => import('@/pages/stock-receiving/cancel.vue'),
+            meta: {
+                pageTitle: "Stock Transfer Receiving Cancellation",
+                breadcrumbs: (route) => [
+                    { label: "Stock Receiving", link: "/stock-receiving" },
+                    { label: `${route.params.id}`, link: `/stock-receiving/${route.params.id}` },
+                    { label: "Cancel", link: `/stock-receiving/${route.params.id}/cancel` }
+                ],
+            },
+        },
+        {
             path: 'sto-outbound',
             name: 'sto-outbound',
             component: () => import('@/pages/transfersOutbound/index.vue'),

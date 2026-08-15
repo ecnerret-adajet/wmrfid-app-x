@@ -172,6 +172,13 @@ const viewReceiving = (item) => {
     });
 };
 
+const cancelReceiving = (item) => {
+    router.push({
+        name: 'apps-stock-transfer-receiving-cancel',
+        params: { id: item.stock_transfer_id }
+    });
+};
+
 onMounted(() => {
     loadPlants();
 });
@@ -311,6 +318,9 @@ onMounted(() => {
                     <div class="d-flex justify-center align-center gap-1">
                         <IconBtn size="small" title="View" @click="viewReceiving(item)">
                             <VIcon icon="ri-eye-line" />
+                        </IconBtn>
+                        <IconBtn size="small" title="Cancel" @click="cancelReceiving(item)">
+                            <VIcon icon="ri-close-circle-line" color="error" />
                         </IconBtn>
                     </div>
                 </template>
