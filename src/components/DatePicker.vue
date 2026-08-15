@@ -6,12 +6,17 @@ import moment from 'moment';
 import { ref } from 'vue';
 
 const props = defineProps({
+    modelValue: [Date, String, null],
     minDate: [Date, String, null],
     maxDate: [Date, String, null],
 });
 
 const emit = defineEmits(['update:modelValue', 'cleared']);
 const date = ref(null);
+
+watch(() => props.modelValue, (newValue) => {
+    date.value = newValue ? new Date(newValue) : null;
+}, { immediate: true });
 
 const customDateFormat = (dates) => {
     if (Array.isArray(dates)) {
@@ -26,8 +31,7 @@ const customDateFormat = (dates) => {
 };
 
 watch(date, (newDate) => {
-    const formattedDate = moment(newDate).format('MMMM D, YYYY');
-    emit('update:modelValue', formattedDate); 
+    emit('update:modelValue', newDate ? moment(newDate).format('MMMM D, YYYY') : null);
 });
 
 const onClear = () => {

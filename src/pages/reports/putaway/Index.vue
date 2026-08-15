@@ -2,9 +2,11 @@
 import DatePicker from '@/components/DatePicker.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
-import { exportExcel } from '@/composables/useHelpers';
+import { exportExcel, exportSummaryExcel } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import moment from 'moment';
 import { ref } from 'vue';
+import PutawayChart from './PutawayChart.vue';
 
 import { useAuthStore } from '@/stores/auth';
 
@@ -14,6 +16,7 @@ const searchValue = ref('');
 const datatableRef = ref(null);
 const isLoading = ref(false);
 const plantsOption = ref([])
+const today = moment().format('MMMM D, YYYY');
 
 const toast = ref({
     message: 'Success!',
@@ -28,8 +31,8 @@ const filters = reactive({
     date_filter: null,
     shift_id: null,
     status_type: null,
-    date_range_preset: 'today',
-    specific_date: null,
+    date_from: today,
+    date_to: today,
     wrapping_type: 'All',
     weak_pallet_type: 'All'
 });
@@ -43,8 +46,8 @@ const clearFilters = () => {
     filters.date_filter = null;
     filters.shift_id = null;
     filters.status_type = null;
-    filters.date_range_preset = 'today';
-    filters.specific_date = null;
+    filters.date_from = today;
+    filters.date_to = today;
     filters.wrapping_type = 'rfid'
 };
 
@@ -82,8 +85,22 @@ const fetchDropdownData = async () => {
 
 const exportLoading = ref(false);
 const exportData = async () => {
+    if (!validateDateRange()) {
+        return;
+    }
+
     try {
         exportLoading.value = true;
+
+        if (activeView.value === 'summary') {
+            await exportSummaryExcel({
+                data: summaryChart.value,
+                filename: 'putaway-summary.xlsx',
+            })
+
+            return
+        }
+
         await exportExcel({
             url: `/reports/putaway/export`,
             params: {
@@ -98,7 +115,33 @@ const exportData = async () => {
     }
 }
 
+const validateDateRange = () => {
+    if (!filters.date_from || !filters.date_to) {
+        toast.value = {
+            message: 'Date From and Date To are required.',
+            color: 'error',
+            show: true
+        };
+        return false;
+    }
+
+    if (moment(filters.date_to, 'MMMM D, YYYY').isBefore(moment(filters.date_from, 'MMMM D, YYYY'), 'day')) {
+        toast.value = {
+            message: 'Date To must be the same as or later than Date From.',
+            color: 'error',
+            show: true
+        };
+        return false;
+    }
+
+    return true;
+};
+
 const handleSearch = () => {
+    if (!validateDateRange()) {
+        return;
+    }
+
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -108,14 +151,6 @@ const handleSearch = () => {
     });
 };
 
-
-const dateFilters = [
-    { title: 'Today', value: 'today' },
-    { title: 'Yesterday', value: 'yesterday' },
-    { title: 'Last 7 Days', value: 'last_7_days' },
-    { title: 'This Month', value: 'this_month' },
-    { title: 'Custom Date', value: 'custom' },
-]
 
 const baseHeaders = [
     { title: 'PLANT', key: 'plant_id', fixed: true, align: 'start', width: 65, sortable: false },
@@ -149,7 +184,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(25);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const kpi = ref({
@@ -161,7 +196,7 @@ const kpi = ref({
     qr_wrapping_putaway: { max: null, min: null, avg: null, count: null },
 });
 
-const chartKpis = ref(null)
+const summaryChart = ref(null)
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
     loading.value = true
@@ -198,8 +233,8 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 totalItems.value = payload.table.total;   // Total absolute matched lines for footer
             }
 
-            if (payload.chart_kpis) {
-                chartKpis.value = payload.chart_kpis;
+            if (payload.summary_chart) {
+                summaryChart.value = payload.summary_chart;
             }
 
             loading.value = false;
@@ -224,16 +259,28 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-        <!-- Date Selection Toggle Button Group -->
-        <v-select style="max-width: 200px;" label="Filter by Date" class="flex-grow-1 align-center mt-1"
-            density="compact" :items="dateFilters" v-model="filters.date_range_preset">
+        <!-- Wrapping Filter -->
+        <v-select style="max-width: 270px;" class="flex-grow-1 align-center mt-1" label="Filter by Wrapping"
+            density="compact" :items="[
+                { title: 'All', value: null },
+                { title: 'RFID', value: 1 },
+                { title: 'Manual Wrapping', value: 2 }
+            ]" v-model="filters.wrapping_type">
         </v-select>
 
-        <!-- Conditional Inline Calendar Picker -->
-        <div v-if="filters.date_range_preset === 'custom'" style="max-width: 300px;" class="flex-grow-1 mt-1">
-            <DatePicker v-model="filters.specific_date" placeholder="Select Custom Date" variant="outlined"
-                color="primary" />
-        </div>
+        <!-- Wrapping Filter -->
+        <v-select 
+            style="max-width: 270px;" 
+            class="flex-grow-1 align-center mt-1" 
+            label="Filter by Pallet Condition"
+            density="compact" 
+            :items="[
+                { title: 'All', value: null },
+                { title: 'Weak Pallet', value: 1 },
+                { title: 'Normal Pallet', value: 2 } 
+            ]" 
+            v-model="filters.weak_pallet_type">
+        </v-select>
 
         <!-- Shifts Filter -->
         <v-select style="max-width: 270px;" class="flex-grow-1 align-center mt-1" label="Filter by Shift"
@@ -266,28 +313,15 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     </div>
 
     <div class="d-flex mb-4 gap-4">
-        <!-- Wrapping Filter -->
-        <v-select style="max-width: 270px;" class="flex-grow-1 align-center mt-1" label="Filter by Wrapping"
-            density="compact" :items="[
-                { title: 'All', value: null },
-                { title: 'RFID', value: 1 },
-                { title: 'Manual Wrapping', value: 2 }
-            ]" v-model="filters.wrapping_type">
-        </v-select>
+        <div style="max-width: 200px;" class="flex-grow-1">
+            <label class="text-caption">Date From</label>
+            <DatePicker v-model="filters.date_from" />
+        </div>
 
-        <!-- Wrapping Filter -->
-        <v-select 
-            style="max-width: 270px;" 
-            class="flex-grow-1 align-center mt-1" 
-            label="Filter by Pallet Condition"
-            density="compact" 
-            :items="[
-                { title: 'All', value: null },
-                { title: 'Weak Pallet', value: 1 },
-                { title: 'Normal Pallet', value: 2 } 
-            ]" 
-            v-model="filters.weak_pallet_type">
-        </v-select>
+        <div style="max-width: 200px;" class="flex-grow-1 align-start">
+            <label class="text-caption">Date To</label>
+            <DatePicker v-model="filters.date_to" />
+        </div>
     </div>
     <v-tabs v-model="activeView" color="primary">
         <v-tab value="table">
@@ -295,9 +329,9 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             Table View
         </v-tab>
 
-        <v-tab value="graph">
+        <v-tab value="summary">
             <v-icon start>ri-bar-chart-line</v-icon>
-            Graph View
+            Summary View
         </v-tab>
     </v-tabs>
     <v-window v-model="activeView">
@@ -514,31 +548,19 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 </VDataTableServer>
             </VCard>
         </v-window-item>
-        <v-window-item value="graph">
+        <v-window-item value="summary">
             <VCard>
                 <VCardTitle>
                 </VCardTitle>
 
-                <!-- <VCardText> -->
-                <!-- <PutawayChart :data="chartKpis" /> -->
-                <!-- </VCardText> -->
-                <VCardText class="d-flex flex-column align-center justify-center pa-10">
-                    <v-icon size="64" color="grey-lighten-1" icon="ri-bar-chart-2-line">
-                    </v-icon>
-
-                    <div class="text-h6 mt-4 text-medium-emphasis">
-                        Graph View Coming Soon
-                    </div>
-
-                    <div class="text-caption text-medium-emphasis">
-                        We’re working on visual analytics for process performance
-                    </div>
+                <VCardText>
+                    <PutawayChart :data="summaryChart" />
                 </VCardText>
             </VCard>
         </v-window-item>
     </v-window>
 
-    <Toast :show="toast.show" :message="toast.message" />
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 <style scoped>
 /* 2. Keeps the background solid on pinned elements so text doesn't bleed during scroll gaps */
