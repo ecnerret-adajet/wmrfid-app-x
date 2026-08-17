@@ -36,6 +36,7 @@ const headers = [
     { title: 'Storage Location', key: 'sloc', sortable: false },
     { title: 'Movement Type', key: 'movement_type', align: 'center', sortable: false },
     { title: 'Cancel Status', key: 'cancel', align: 'center', sortable: false },
+    { title: 'Cancel Mat Doc', key: 'cancel_material_document', align: 'center', sortable: false },
 ];
 
 const fetchDetails = async () => {
@@ -249,6 +250,10 @@ onMounted(() => {
                             <v-chip v-else color="success" size="small" variant="tonal">
                                 Active
                             </v-chip>
+                        </template>
+
+                        <template #item.cancel_material_document="{ item }">
+                            <span>{{ item.cancel_material_document || '-' }}</span>
                         </template>
                     </VDataTable>
                 </div>
