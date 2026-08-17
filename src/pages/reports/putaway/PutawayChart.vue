@@ -18,22 +18,24 @@
             color="info"
             class="h-100"
           >
-            <VCardText>
+            <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    Total
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.total.toLocaleString() }}
-                  </div>
+                <div class="text-h5">
+                    Total Pallets
                 </div>
-
                 <VIcon
                   icon="ri-stack-line"
                   size="32"
                 />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Total Count
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.total.toLocaleString() }}
+                </div>
               </div>
             </VCardText>
           </VCard>
@@ -51,22 +53,24 @@
             color="primary-darken-1"
             class="h-100"
           >
-            <VCardText>
+            <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
+                <div class="text-h5">
                     Good
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.good.toLocaleString() }}
-                  </div>
                 </div>
-
                 <VIcon
                   icon="ri-checkbox-circle-line"
                   size="32"
                 />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  40 bags per pallet
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.good_non_loose.toLocaleString() }}
+                </div>
               </div>
             </VCardText>
           </VCard>
@@ -83,28 +87,31 @@
             variant="tonal"
             class="h-100"
           >
-            <VCardText>
+            <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
+                <div class="text-h5">
                     Empty
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.empty.toLocaleString() }}
-                  </div>
                 </div>
-
                 <VIcon
                   icon="ri-inbox-unarchive-line"
                   size="32"
                 />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Empty pallet/No batch
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.empty.toLocaleString() }}
+                </div>
               </div>
             </VCardText>
           </VCard>
         </VCol>
 
         <!-- Inline Rejected -->
+
         <VCol
           cols="12"
           sm="6"
@@ -116,28 +123,29 @@
             variant="tonal"
             class="h-100"
           >
-            <VCardText>
+            <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    Inline Rejected
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.inline_rejected.toLocaleString() }}
-                  </div>
+                <div class="text-h5">
+                    Inline Reject
                 </div>
-
                 <VIcon
                   icon="ri-close-circle-line"
                   size="32"
                 />
               </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Invalid/Wrong Ticket no.
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.inline_rejected.toLocaleString() }}
+                </div>
+              </div>
             </VCardText>
           </VCard>
         </VCol>
 
-        <!-- Weak Pallet -->
         <VCol
           cols="12"
           sm="6"
@@ -146,61 +154,31 @@
         >
           <VCard
             variant="tonal"
-            class="h-100"
             color="warning"
           >
-            <VCardText>
+            <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    Weak Pallet
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.weak_pallet.toLocaleString() }}
-                  </div>
+                <div class="text-h5">
+                  Loose
                 </div>
-
                 <VIcon
-                  icon="ri-alert-line"
+                  icon="ri-layout-row-line"
                   size="32"
                 />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Less than 40 bags per pallet
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.is_loose.toLocaleString() }}
+                </div>
               </div>
             </VCardText>
           </VCard>
         </VCol>
-
-        <!-- With QR -->
-        <VCol
-          cols="12"
-          sm="6"
-          md="4"
-          lg="2"
-        >
-          <VCard
-            variant="tonal"
-            class="h-100"
-          >
-            <VCardText>
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    With QR
-                  </div>
-
-                  <div class="text-h4 font-weight-bold mt-2">
-                    {{ totals.with_qr.toLocaleString() }}
-                  </div>
-                </div>
-
-                <VIcon
-                  icon="ri-qr-code-line"
-                  size="32"
-                />
-              </div>
-            </VCardText>
-          </VCard>
-        </VCol>
+  
       </VRow>
        <div class="mt-6">
           <div class="text-h6 font-weight-bold mb-3">
@@ -233,9 +211,9 @@
 
                   <td
                     v-for="row in props.data"
-                    :key="`good-${row.date}`"
+                    :key="`good_non_loose-${row.date}`"
                   >
-                    {{ formatNumber(row.good) }}
+                    {{ formatNumber(row.good_non_loose) }}
                   </td>
                 </tr>
 
@@ -254,7 +232,7 @@
 
                 <tr class="inline-rejected-row">
                   <td class="type-column font-weight-medium">
-                    Inline Rejected
+                    Inline Reject
                   </td>
 
                   <td
@@ -262,32 +240,6 @@
                     :key="`rejected-${row.date}`"
                   >
                     {{ formatNumber(row.inline_rejected) }}
-                  </td>
-                </tr>
-
-                <tr class="weak-pallet-row">
-                  <td class="type-column font-weight-medium">
-                    Weak Pallet
-                  </td>
-
-                  <td
-                    v-for="row in props.data"
-                    :key="`weak-${row.date}`"
-                  >
-                    {{ formatNumber(row.weak_pallet) }}
-                  </td>
-                </tr>
-
-                <tr class="with-qr-row">
-                  <td class="type-column font-weight-medium">
-                    With QR
-                  </td>
-
-                  <td
-                    v-for="row in props.data"
-                    :key="`qr-${row.date}`"
-                  >
-                    {{ formatNumber(row.with_qr) }}
                   </td>
                 </tr>
 
@@ -324,6 +276,366 @@
     </VCardText>
 
   </VCard>
+
+  <VCard class="mt-4">
+    <VCardTitle class="text-h5 font-weight-bold">
+      Putaway Pallet RFID Condition Summary
+    </VCardTitle>
+
+    <VCardText>
+      <VRow>
+        <!-- Total -->
+        <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="info"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    Total Pallets
+                </div>
+                <VIcon
+                  icon="ri-stack-line"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Total Count
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.total.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+        <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="primary-darken-1"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    Active
+                </div>
+                <VIcon
+                  icon="ri-signal-wifi-fill"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Active RFID tags
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.not_weak_pallet.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+         <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="error-darken-1"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    Weak
+                </div>
+                <VIcon
+                  icon="ri-signal-wifi-error-fill"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Weak RFID tags
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.weak_pallet.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+      </VRow>
+       <div class="mt-6">
+          <div class="text-h6 font-weight-bold mb-3">
+            Daily Summary
+          </div>
+
+          <div class="summary-table-wrapper">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th class="type-column">
+                    Type
+                  </th>
+
+                  <th
+                    v-for="row in props.data"
+                    :key="row.date"
+                    class="date-column"
+                  >
+                    {{ formatDate(row.date) }}
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr class="weak-pallet-row">
+                  <td class="type-column font-weight-medium">
+                    Active
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`weak-${row.date}`"
+                  >
+                    {{ formatNumber(row.not_weak_pallet) }}
+                  </td>
+                </tr>
+                <tr class="weak-pallet-row">
+                  <td class="type-column font-weight-medium">
+                    Weak
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`weak-${row.date}`"
+                  >
+                    {{ formatNumber(row.weak_pallet) }}
+                  </td>
+                </tr>
+                <tr class="total-row">
+                  <td class="type-column font-weight-bold">
+                    Total
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`total-${row.date}`"
+                    class="font-weight-bold"
+                  >
+                    {{ formatNumber(row.total) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+      </div>
+    </VCardText>
+  </VCard>
+
+  <VCard class="mt-4">
+    <VCardTitle class="text-h5 font-weight-bold">
+      Putaway Pallet QR Code Tracking Summary
+    </VCardTitle>
+
+    <VCardText>
+      <VRow>
+        <!-- Total -->
+        <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="info"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    Total Pallets
+                </div>
+                <VIcon
+                  icon="ri-stack-line"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  Total Count
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.total.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+       <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="primary-darken-1"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    With QR Code
+                </div>
+                <VIcon
+                  icon="ri-qr-code-line"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  With QR Code Sticker
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.with_qr.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+         <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="2"
+        >
+          <VCard
+            variant="tonal"
+            color="error-darken-1"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    No QR Code
+                </div>
+                <VIcon
+                  icon="ri-close-line"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  No QR Code Sticker
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.without_qr.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+      </VRow>
+       <div class="mt-6">
+          <div class="text-h6 font-weight-bold mb-3">
+            Daily Summary
+          </div>
+
+          <div class="summary-table-wrapper">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th class="type-column">
+                    Type
+                  </th>
+
+                  <th
+                    v-for="row in props.data"
+                    :key="row.date"
+                    class="date-column"
+                  >
+                    {{ formatDate(row.date) }}
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr class="weak-pallet-row">
+                  <td class="type-column font-weight-medium">
+                    With QR Code
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`with-qr-${row.date}`"
+                  >
+                    {{ formatNumber(row.with_qr) }}
+                  </td>
+                </tr>
+
+                <tr class="weak-pallet-row">
+                  <td class="type-column font-weight-medium">
+                    No QR Code
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`no-qr-${row.date}`"
+                  >
+                    {{ formatNumber(row.without_qr) }}
+                  </td>
+                </tr>
+
+                <tr class="total-row">
+                  <td class="type-column font-weight-bold">
+                    Total
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`total-${row.date}`"
+                    class="font-weight-bold"
+                  >
+                    {{ formatNumber(row.total) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+      </div>
+    </VCardText>
+  </VCard>
 </template>
 
 <script setup>
@@ -340,10 +652,12 @@ const totals = computed(() => {
   return props.data.reduce(
     (result, row) => {
       result.total += Number(row.total || 0)
-      result.good += Number(row.good || 0)
+      result.good_non_loose += Number(row.good_non_loose || 0)
       result.empty += Number(row.empty || 0)
       result.inline_rejected += Number(row.inline_rejected || 0)
       result.weak_pallet += Number(row.weak_pallet || 0)
+      result.without_qr += Number(row.without_qr || 0)
+      result.not_weak_pallet += Number(row.not_weak_pallet || 0)
       result.with_qr += Number(row.with_qr || 0)
       result.is_loose += Number(row.is_loose || 0)
 
@@ -351,10 +665,12 @@ const totals = computed(() => {
     },
     {
       total: 0,
-      good: 0,
+      good_non_loose: 0,
       empty: 0,
       inline_rejected: 0,
       weak_pallet: 0,
+      without_qr: 0,
+      not_weak_pallet: 0,
       with_qr: 0,
       is_loose: 0,
     }
@@ -426,7 +742,7 @@ const formatDate = date => {
 }
 
 .summary-table .total-row td {
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: rgba(var(--v-theme-grey-100));
 }
 
 </style>

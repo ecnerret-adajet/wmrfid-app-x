@@ -277,7 +277,7 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             :items="[
                 { title: 'All', value: null },
                 { title: 'Weak Pallet', value: 1 },
-                { title: 'Normal Pallet', value: 2 } 
+                { title: 'Active Pallet', value: 2 } 
             ]" 
             v-model="filters.weak_pallet_type">
         </v-select>
@@ -291,9 +291,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-1" label="Filter by Status"
             density="compact" :items="[
                 { title: 'All', value: null },
-                { title: 'Valid', value: 1 },
-                { title: 'Invalid', value: 2 },
-                { title: 'No QR', value: 3 }
+                { title: 'Good', value: 1 },
+                { title: 'Empty', value: 2 },
+                { title: 'Inline Reject', value: 3 },
+                { title: 'Loose', value: 4 },
+                { title: 'No QR', value: 5 },
+                { title: 'With QR', value: 6 }
+
             ]" v-model="filters.status_type">
         </v-select>
 

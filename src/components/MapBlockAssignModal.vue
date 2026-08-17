@@ -405,6 +405,21 @@ function onQrGenerated({ block_id, qr_code_path }) {
     }
 }
 
+// delivery_reserved_pallet can hold multiple splits of a single inventory's quantity across deliveries
+const activeReservedPallets = (inventory) => {
+    if (!inventory?.is_reserved) return [];
+
+    const pallets = Array.isArray(inventory.delivery_reserved_pallet)
+        ? inventory.delivery_reserved_pallet
+        : (inventory.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
+
+    return pallets.filter(pallet => pallet?.cancelled_at === null);
+}
+
+const reservedPalletQuantity = (pallet) => {
+    return Number(pallet?.quantity ?? pallet?.total_qty ?? pallet?.reserved_quantity ?? 0);
+}
+
 </script>
 <template>
     <DefaultModal :dialog-title="'Block Details'" :show="show" @close="closeModal" :max-width="'1100px'">
@@ -424,7 +439,7 @@ function onQrGenerated({ block_id, qr_code_path }) {
                             <v-col cols="6">
                                  <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
                             </v-col>
-                            <v-col cols="5">
+                            <v-col cols="6">
                                 <div class="assigned-info text-h5 text-white">
                                     <div class="assigned-row">
                                         <span class="label">Batch:</span>
@@ -434,9 +449,14 @@ function onQrGenerated({ block_id, qr_code_path }) {
                                         <span class="label">Physical ID:</span>
                                         <span class="value">{{ layer.assigned_inventory?.physical_id }}</span>
                                     </div>
+                                    <div class="assigned-row">
+                                        <span class="label">Remaining Quantity:</span>
+                                        <span class="value">{{ layer.assigned_inventory.is_reserved == 1 ? 0 : layer.assigned_inventory?.quantity }}</span>
+                                    </div>
                                 </div>
+                                  
                             </v-col>
-                            <v-col cols="1">
+                            <!-- <v-col cols="1"> -->
                                 <!-- <v-menu location="start">
                                     <template v-slot:activator="{ props }">
                                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props"
@@ -449,48 +469,26 @@ function onQrGenerated({ block_id, qr_code_path }) {
                                         </v-list-item>
                                     </v-list>
                                 </v-menu> -->
+                            <!-- </v-col> -->
+                            <v-col v-if="activeReservedPallets(layer.assigned_inventory).length" cols="12" class="pt-0">
+                                <div
+                                    v-for="(reservedPallet, reservedIndex) in activeReservedPallets(layer.assigned_inventory)"
+                                    :key="reservedPallet.id ?? reservedIndex"
+                                    class="assigned-row reserved-row text-h5 text-white font-italic"
+                                >
+                                    <span class="label">Reserved to:</span>
+                                    <span
+                                        class="reserved-value"
+                                        :title="`${reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—'} (${reservedPallet.delivery_document}) - Qty: ${reservedPalletQuantity(reservedPallet)}`"
+                                    >
+                                        {{ reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—' }} ({{ reservedPallet.delivery_document }}) - Qty: {{ reservedPalletQuantity(reservedPallet) }}
+                                    </span>
+                                </div>
                             </v-col>
                         </v-row>
                         <VDivider v-if="index !== block.layers - 1" color="white"/>
+                        
                     </template>
-
-                    <!-- <template v-if="layer.assigned_inventory">
-                        <VListItem :class="[layer.layer_class,
-                        (selectedLayerIndex === index && enableBinTransfer) ? 'highlighted-item' : '']">
-                            <VListItemTitle>
-                                <span class="text-h5 font-weight-bold text-white">{{ layer.layer_name }}</span>
-                                
-                            </VListItemTitle>
-                            <template #append>
-                                <div class="assigned-info text-h5 text-white">
-                                    <div class="assigned-row">
-                                        <span class="label">Batch:</span>
-                                        <span class="value">{{ layer.assigned_inventory?.batch }}</span>
-                                    </div>
-                                    <div class="assigned-row">
-                                        <span class="label">Physical ID:</span>
-                                        <span class="value">{{ layer.assigned_inventory?.physical_id }}</span>
-                                    </div>
-                                </div>
-                                <div class="d-flex gap-1">
-                                    <v-menu location="start">
-                                        <template v-slot:activator="{ props }">
-                                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props"
-                                                color="grey"></v-btn>
-                                        </template>
-                                        <v-list>
-                                            <v-list-item v-for="(item, i) in items" :key="i" :value="i"
-                                                @click="handleActionClick(item.title, layer, index)">
-                                                <v-list-item-title>{{ item.title }}</v-list-item-title>
-                                            </v-list-item>
-                                        </v-list>
-                                    </v-menu>
-                                </div>
-                            </template>
-                        </VListItem>
-                        <VDivider v-if="index !== block.layers - 1" />
-                    </template> -->
-
 
                     <template v-if="!layer.assigned_inventory">
                         <VListItem>
@@ -708,5 +706,15 @@ function onQrGenerated({ block_id, qr_code_path }) {
 .assigned-row .value {
   font-weight: 800;
   margin-left: 8px;
+}
+
+.reserved-row {
+  white-space: normal;
+}
+
+.reserved-value {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 </style>

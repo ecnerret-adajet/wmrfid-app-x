@@ -212,6 +212,21 @@ function handleBlockClick(item) {
 
 const isBatchDisabled = batch => !props.selectedBatches.some(selected => selected.BATCH === batch);
 
+
+const activeReservedPallets = (inventory) => {
+    if (!inventory?.is_reserved) return [];
+
+    const pallets = Array.isArray(inventory.delivery_reserved_pallet)
+        ? inventory.delivery_reserved_pallet
+        : (inventory.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
+
+    return pallets.filter(pallet => pallet?.cancelled_at === null);
+}
+
+const reservedPalletQuantity = (pallet) => {
+    return Number(pallet?.total_qty ?? 0);
+}
+
 </script>
 
 <template>
@@ -300,12 +315,21 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                                     <span class="label">Quantity: </span>
                                                     <span class="value font-weight-bold">{{ layer.assigned_inventory?.quantity }}</span>
                                                 </div>
-                                                <div v-if="layer.assigned_inventory.is_reserved && layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null" class="assigned-row">
-                                                    <span class="label">Reserved: </span>
-                                                    <span class="value font-weight-bold">
-                                                        {{ layer.assigned_inventory?.delivery_reserved_pallet?.delivery_document }} 
-                                                        ({{ layer.assigned_inventory?.delivery_reserved_pallet?.sap_delivery?.ship_to_name ?? '—' }})
-                                                    </span>
+
+                                                <div v-if="activeReservedPallets(layer.assigned_inventory).length" class="pt-0">
+                                                    <div
+                                                        v-for="(reservedPallet, reservedIndex) in activeReservedPallets(layer.assigned_inventory)"
+                                                        :key="reservedPallet.id ?? reservedIndex"
+                                                        class="assigned-row reserved-row text-h5 font-italic"
+                                                    >
+                                                        <span class="label">Reserved to:</span>
+                                                        <span
+                                                            class="reserved-value"
+                                                            :title="`${reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—'} (${reservedPallet.delivery_document}) - Qty: ${reservedPalletQuantity(reservedPallet)}`"
+                                                        >
+                                                            {{ reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—' }} ({{ reservedPallet.delivery_document }}) - Qty: {{ reservedPalletQuantity(reservedPallet) }}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </VListItemTitle>
