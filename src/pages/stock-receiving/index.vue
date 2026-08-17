@@ -180,7 +180,10 @@ const cancelReceiving = (item) => {
 };
 
 const actionList = (item) => {
-    const actions = [{ title: 'View', key: 'view' }];
+    const actions = [
+        { title: 'View', key: 'view' },
+        { title: 'Cancel', key: 'cancel' },
+    ];
 
     // if (item.status == 'Received' || item.status == 'Reversed') {
     //     actions.push({ title: 'Cancel', key: 'cancel' });
