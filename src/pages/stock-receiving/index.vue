@@ -319,7 +319,7 @@ onMounted(() => {
                         <IconBtn size="small" title="View" @click="viewReceiving(item)">
                             <VIcon icon="ri-eye-line" />
                         </IconBtn>
-                        <IconBtn size="small" title="Cancel" @click="cancelReceiving(item)">
+                        <IconBtn v-if="item.status !== 'For Receiving'" size="small" title="Cancel" @click="cancelReceiving(item)">
                             <VIcon icon="ri-close-circle-line" color="error" />
                         </IconBtn>
                     </div>
