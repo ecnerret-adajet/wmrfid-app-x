@@ -327,10 +327,14 @@ onMounted(() => {
                             Reversed
                         </v-chip>
                     </div>
-                    <div v-else>
+                    <div v-else class="d-flex flex-column align-start ga-1">
                         <v-chip size="small" color="warning" text-color="white">
                             <v-icon start size="small">ri-alert-line</v-icon>
                             For Receiving
+                        </v-chip>
+                        <v-chip v-if="item?.stock_transfer?.cancelled_stock_transfer_items.length > 0" size="small" color="warning" text-color="white">
+                            <v-icon start size="small">ri-alert-line</v-icon>
+                            With Cancelled Item(s)
                         </v-chip>
                     </div>
                 </template>
