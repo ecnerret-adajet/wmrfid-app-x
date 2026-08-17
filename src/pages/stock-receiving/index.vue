@@ -179,6 +179,24 @@ const cancelReceiving = (item) => {
     });
 };
 
+const actionList = (item) => {
+    const actions = [{ title: 'View', key: 'view' }];
+
+    if (item.status == 'Received' || item.status == 'Reversed') {
+        actions.push({ title: 'Cancel', key: 'cancel' });
+    }
+
+    return actions;
+};
+
+const handleAction = (item, action) => {
+    if (action.key == 'view') {
+        viewReceiving(item);
+    } else if (action.key == 'cancel') {
+        cancelReceiving(item);
+    }
+};
+
 onMounted(() => {
     loadPlants();
 });
@@ -315,13 +333,22 @@ onMounted(() => {
                 </template>
 
                 <template #item.actions="{ item }">
-                    <div class="d-flex justify-center align-center gap-1">
-                        <IconBtn size="small" title="View" @click="viewReceiving(item)">
-                            <VIcon icon="ri-eye-line" />
-                        </IconBtn>
-                        <IconBtn v-if="item.status == 'Received' || item.status == 'Reversed'" size="small" title="Cancel" @click="cancelReceiving(item)">
-                            <VIcon icon="ri-close-circle-line" color="error" />
-                        </IconBtn>
+                    <div class="d-flex justify-center">
+                        <v-menu location="start">
+                            <template #activator="{ props }">
+                                <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                            </template>
+                            <v-list>
+                                <v-list-item
+                                    v-for="(action, i) in actionList(item)"
+                                    :key="i"
+                                    :value="i"
+                                    @click="handleAction(item, action)"
+                                >
+                                    <v-list-item-title>{{ action.title }}</v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
                     </div>
                 </template>
             </VDataTableServer>
