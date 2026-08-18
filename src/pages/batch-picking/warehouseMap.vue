@@ -41,6 +41,13 @@ const emit = defineEmits(['update:selectedPallets']);
 
 const assignPallet = (inventory) => {
     toast.value.show = false
+    if (isInventoryReserved(inventory)) {
+        toast.value.message = `PHYSICAL ID ${inventory.physical_id} is already reserved and cannot be selected.`;
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
+
     const existingPallet = selectedPallets.value.find(p => p.physical_id === inventory.physical_id);
    
     if (existingPallet) {
@@ -223,6 +230,8 @@ const activeReservedPallets = (inventory) => {
     return pallets.filter(pallet => pallet?.cancelled_at === null);
 }
 
+const isInventoryReserved = (inventory) => activeReservedPallets(inventory).length > 0;
+
 const reservedPalletQuantity = (pallet) => {
     return Number(pallet?.total_qty ?? 0);
 }
@@ -279,10 +288,7 @@ const reservedPalletQuantity = (pallet) => {
                                     layer.assigned_inventory &&
                                     (
                                         isBatchDisabled(layer.assigned_inventory.batch) ||
-                                        (
-                                            layer.assigned_inventory.is_reserved &&
-                                            layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null
-                                        )
+                                        isInventoryReserved(layer.assigned_inventory)
                                     )
                                         ? 'v-list-item--disabled'
                                         : ''
@@ -291,10 +297,7 @@ const reservedPalletQuantity = (pallet) => {
                                     !!layer.assigned_inventory &&
                                     (
                                         Boolean(isBatchDisabled(layer.assigned_inventory.batch)) ||
-                                        (
-                                            Boolean(layer.assigned_inventory.is_reserved) &&
-                                            layer.assigned_inventory.delivery_reserved_pallet?.cancelled_at === null
-                                        )
+                                        isInventoryReserved(layer.assigned_inventory)
                                     )
                                 "
                             >
@@ -338,6 +341,7 @@ const reservedPalletQuantity = (pallet) => {
                                                 <v-btn
                                                     @click="assignPallet(layer.assigned_inventory)"
                                                     :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'"
+                                                    :disabled="isBatchDisabled(layer.assigned_inventory.batch) || isInventoryReserved(layer.assigned_inventory)"
                                                 >
                                                     {{ isSelected(layer.assigned_inventory) ? 'Selected' : '&nbsp Assign &nbsp' }}
                                                 </v-btn>
