@@ -141,6 +141,7 @@ const baseHeaders = [
     { title: 'PLANT', key: 'plant_id', fixed: true, align: 'start', width: 65, sortable: false },
     { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 100, sortable: false },
     { title: 'DELIVERY DOC.', key: 'delivery_document', fixed: true, width: 120, sortable: false },
+    { title: 'SHIPMENT NO.', key: 'shipment_number', fixed: true, width: 120, sortable: false },
     { title: 'BATCH', key: 'batch', fixed: true, width: 120, sortable: false },
     { title: 'HAS QR', key: 'has_qr', fixed: true, width: 90, sortable: false },
     { title: 'BAY NO.', key: 'bay_no', fixed: true, width: 90, sortable: false },
