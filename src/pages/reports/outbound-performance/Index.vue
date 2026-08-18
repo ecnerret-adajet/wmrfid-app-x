@@ -142,6 +142,7 @@ const baseHeaders = [
     { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 100, sortable: false },
     { title: 'DELIVERY DOC.', key: 'delivery_document', fixed: true, width: 120, sortable: false },
     { title: 'BATCH', key: 'batch', fixed: true, width: 120, sortable: false },
+    { title: 'HAS QR', key: 'has_qr', fixed: true, width: 90, sortable: false },
     { title: 'BAY NO.', key: 'bay_no', fixed: true, width: 90, sortable: false },
     { title: 'Status', key: 'status', fixed: true, width: 130, sortable: false },
     { title: 'Reservation Date', key: 'reservation_date', width: 130, sortable: false },
@@ -249,6 +250,7 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 { title: 'All', value: null },
                 { title: 'Bay Scanned', value: 1 },
                 { title: 'Pending Bay Scan', value: 2 },
+                { title: 'No QR (N/A)', value: 3 },
             ]" v-model="filters.scan_status">
         </v-select>
 
@@ -333,6 +335,11 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                         </div>
                     </template>
 
+                    <template #item.has_qr="{ item }">
+                        <v-chip v-if="item.has_qr" size="small" color="primary" text-color="white">Yes</v-chip>
+                        <v-chip v-else size="small" color="secondary" text-color="white">No</v-chip>
+                    </template>
+
                     <template #item.reservation_date="{ item }">
                         <v-chip v-if="item.reservation_date === 'Invalid'" size="small" color="error"
                             text-color="white">Invalid</v-chip>
@@ -340,32 +347,37 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                     </template>
 
                     <template #item.pallet_scan_date="{ item }">
-                        <v-chip v-if="item.pallet_scan_date === 'Invalid'" size="small" color="error"
-                            text-color="white">Invalid</v-chip>
+                        <v-chip v-if="item.pallet_scan_date === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.pallet_scan_date === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.pallet_scan_date }}</span>
                     </template>
 
                     <template #item.bay_scan_date="{ item }">
-                        <v-chip v-if="item.bay_scan_date === 'Pending'" size="small" color="warning"
+                        <v-chip v-if="item.bay_scan_date === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.bay_scan_date === 'Pending'" size="small" color="warning"
                             text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.bay_scan_date }}</span>
                     </template>
 
                     <template #item.reservation_pallet_scan="{ item }">
-                        <v-chip v-if="item.reservation_pallet_scan === 'Invalid'" size="small" color="error"
-                            text-color="white">Invalid</v-chip>
+                        <v-chip v-if="item.reservation_pallet_scan === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.reservation_pallet_scan === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.reservation_pallet_scan }}</span>
                     </template>
 
                     <template #item.pallet_bay_scan="{ item }">
-                        <v-chip v-if="item.pallet_bay_scan === 'Invalid'" size="small" color="error"
-                            text-color="white">Invalid</v-chip>
+                        <v-chip v-if="item.pallet_bay_scan === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.pallet_bay_scan === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.pallet_bay_scan }}</span>
                     </template>
 
                     <template #item.reservation_bay_scan="{ item }">
-                        <v-chip v-if="item.reservation_bay_scan === 'Invalid'" size="small" color="error"
-                            text-color="white">Invalid</v-chip>
+                        <v-chip v-if="item.reservation_bay_scan === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.reservation_bay_scan === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.reservation_bay_scan }}</span>
                     </template>
 
@@ -383,9 +395,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 
                     <template #item.status="{ item }">
                         <v-chip v-if="item.status == 'Completed'" size="small" color="primary"
-                            style="width: 130px; justify-content: center;" text-color="white">Completed</v-chip>
-                        <v-chip v-else size="small" color="warning"
-                            style="width: 130px; justify-content: center;" text-color="white">Pending Bay Scan</v-chip>
+                            style="width: 140px; justify-content: center;" text-color="white">Completed</v-chip>
+                        <v-chip v-else-if="item.status == 'N/A'" size="small" color="secondary" variant="tonal"
+                            style="width: 140px; justify-content: center;">No QR (N/A)</v-chip>
+                        <v-chip v-else-if="item.status == 'Pending Bay Scan'" size="small" color="warning"
+                            style="width: 140px; justify-content: center;" text-color="white">Pending Bay Scan</v-chip>
+                        <v-chip v-else size="small" color="warning" variant="tonal"
+                            style="width: 140px; justify-content: center;">Pending Pallet Scan</v-chip>
                     </template>
 
                     <template #item.bay_scanned_by="{ item }">
