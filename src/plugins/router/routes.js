@@ -450,6 +450,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/outbound-performance',
+                name: 'outbound-performance-report',
+                component: () => import('@/pages/reports/outbound-performance/Index.vue'),
+                meta: {
+                    pageTitle: "Outbound Performance Report",
+                    breadcrumbs: [
+                            { label: "Outbound Performance Report", link: "/reports/outbound-performance" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/floating-pallets',
                 name: 'floating-pallets-report',
                 component: () => import('@/pages/reports/floating-pallets/index.vue'),
