@@ -150,8 +150,7 @@ const baseHeaders = [
     { title: 'Bay Scan Date', key: 'bay_scan_date', width: 130, sortable: false },
     { title: 'Pallet Scan-Bay Scan', key: 'pallet_bay_scan', sortable: false },
     { title: 'Reservation-Bay Scan', key: 'reservation_bay_scan', sortable: false },
-    { title: 'Scanned By', key: 'scanned_by', sortable: false },
-    { title: 'Bay Scanned By', key: 'bay_scanned_by', sortable: false },
+    { title: 'Scanned By', key: 'bay_scanned_by', sortable: false },
 ]
 
 const headers = computed(() => {
@@ -387,10 +386,6 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                             style="width: 130px; justify-content: center;" text-color="white">Completed</v-chip>
                         <v-chip v-else size="small" color="warning"
                             style="width: 130px; justify-content: center;" text-color="white">Pending Bay Scan</v-chip>
-                    </template>
-
-                    <template #item.scanned_by="{ item }">
-                        <span>{{ item.scanned_by }}</span>
                     </template>
 
                     <template #item.bay_scanned_by="{ item }">
