@@ -8,9 +8,14 @@ import { computed, onMounted, reactive, ref } from 'vue';
 const authStore = useAuthStore();
 
 const searchValue = ref('');
-const datatableRef = ref(null);
 const isLoading = ref(false);
 const plantsOption = ref([])
+const summary_count = reactive({
+    needs_processing: 0,
+    partially_processed: 0,
+    pending: 0,
+    total_pending: 0,
+})
 
 const toast = ref({
     message: 'Success!',
@@ -106,25 +111,20 @@ const getProcessingState = (item) => {
 };
 
 const processingState = (item) => ({
-    needs_processing: {
-        label: 'Process now',
-        color: 'error', // Changed color to error
-        icon: 'ri-flashlight-line',
-    },
     partially_processed: {
         label: 'Partially Processed',
         color: 'warning', // Changed color to warning
         icon: 'ri-flashlight-line', // Adjust icon if you want it distinct from error
     },
-    processed: {
-        label: 'Processed',
-        color: 'success',
-        icon: 'ri-checkbox-circle-line',
-    },
     pending: {
         label: 'Pending',
         color: 'secondary',
         icon: 'ri-time-line',
+    },
+    needs_processing: {
+        label: 'Needs Processing',
+        color: 'error',
+        icon: 'ri-flashlight-line',
     },
 }[getProcessingState(item)]);
 
@@ -133,19 +133,10 @@ const processingRowProps = ({ item }) => ({
 });
 
 const processingKpis = computed(() => {
-    const counts = serverItems.value.reduce((summary, item) => {
-        const state = getProcessingState(item);
-        summary[state] += 1;
-        return summary;
-    }, { needs_processing: 0, partially_processed: 0, processed: 0, pending: 0 });
-
-    const totalDoItems = Object.values(counts).reduce((total, count) => total + count, 0);
-    const totalNeededForProcessing = counts.needs_processing + counts.partially_processed + counts.pending;
-
     const cards = [
         {
             label: 'Needs processing',
-            value: counts.needs_processing,
+            value: summary_count.needs_processing,
             statusType: 1,
             caption: 'Action required for batch & pallet assignment',
             color: 'error',
@@ -153,7 +144,7 @@ const processingKpis = computed(() => {
         },
         {
             label: 'Partially Processed',
-            value: counts.partially_processed,
+            value: summary_count.partially_processed,
             statusType: 2,
             caption: 'Partially assigned batch and pallet',
             color: 'warning',
@@ -161,27 +152,27 @@ const processingKpis = computed(() => {
         },
         {
             label: 'Pending for processing',
-            value: counts.pending,
+            value: summary_count.pending,
             statusType: 3,
             caption: 'Pending batch and pallet assignment',
             color: 'secondary',
             icon: 'ri-time-line',
         },
         {
-            label: 'Processed',
-            value: counts.processed,
+            label: 'Total Pending DO Items',
+            value: summary_count.total_pending,
             statusType: 4,
-            caption: 'Completed batch & pallet assignment',
-            color: 'primary',
-            icon: 'ri-checkbox-circle-line',
+            caption: 'Total pending delivery order items for processing',
+            color: 'info',
+            icon: 'ri-file-list-line',
         },
+
     ];
 
     return {
         cards,
         summary: {
-            totalDoItems,
-            totalNeededForProcessing,
+            totalDoItems: summary_count.needs_processing + summary_count.partially_processed + summary_count.pending,
         },
     };
 });
@@ -189,13 +180,13 @@ const processingKpis = computed(() => {
 const baseHeaders = [
     { title: 'PLANT', key: 'plant_id', align: 'start', sortable: false },
     { title: 'SLOC', key: 'storage_location', align: 'start', sortable: false },
-    { title: 'Ref #', key: 'ref_no',  sortable: false },
+    { title: 'Shipment', key: 'shipment_number', align: 'start', sortable: false },
+    { title: 'Delivery Order', key: 'ref_no',  sortable: false },
     { title: 'Item #', key: 'item_number', sortable: false },
     { title: 'MATERIAL', key: 'material', sortable: false },
     { title: 'Qty', key: 'quantity', sortable: false },
     { title: 'Reserved Qty', key: 'reserved_quantity', sortable: false },
     { title: 'Status', key: 'status', sortable: false, align: 'center' },
-    { title: 'ACTION', key: 'action', sortable: false },
 ]
 
 // 2. Create the computed headers layer to track totalItems state changes
@@ -308,9 +299,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         .then((response) => {
             const payload = response.data;
             console.log('API Response:', payload); // Log the entire response for debugging
-            if (payload.table) {
-                serverItems.value = payload.table.data;   // Current page raw line records array
-                totalItems.value = payload.table.total;   // Total absolute matched lines for footer
+            if (payload.table?.original) {
+                serverItems.value = payload.table?.original?.data;   // Current page raw line records array
+                totalItems.value = payload.table?.original?.total;   // Total absolute matched lines for footer
+                summary_count.needs_processing = payload.table?.original?.status_summary?.needs_processing || 0;
+                summary_count.partially_processed = payload.table?.original?.status_summary?.partial || 0;
+                summary_count.pending = payload.table?.original?.status_summary?.pending || 0;
+                summary_count.total_pending = payload.table?.original?.status_summary?.total || 0;
             }
 
             loading.value = false;
@@ -357,7 +352,13 @@ function removeLeadingZeros(value) {
     </div>
 
     <VRow class="processing-kpis" aria-live="polite">
-        <VCol v-for="kpi in processingKpis.cards" :key="kpi.label" cols="12" sm="6" lg="3">
+        <VCol
+            v-for="(kpi, kpiIndex) in processingKpis.cards"
+            :key="kpi.label"
+            cols="12"
+            sm="6"
+            lg="3"
+        >
             <v-card class="processing-kpi-card h-100 cursor-pointer processing-kpi-card-hover" 
                 :class="`processing-kpi-card--${kpi.color}`" 
                 @click="handleKpiClick(kpi)"
@@ -374,44 +375,27 @@ function removeLeadingZeros(value) {
             </v-card>
         </VCol>
     </VRow>
-    <div class="processing-summary-banner d-flex flex-column flex-sm-row align-stretch align-sm-center justify-space-between gap-4 pa-4 mb-2 rounded-lg">
-        <div class="d-flex align-center gap-3">
-            <v-avatar color="error" variant="tonal" size="40" rounded="lg">
-                <v-icon size="22">ri-error-warning-line</v-icon>
-            </v-avatar>
-            <div>
-                <div class="text-caption text-medium-emphasis">Total needed for processing</div>
-                <div class="text-h6 font-weight-bold text-error">
-                    {{ processingKpis.summary.totalNeededForProcessing }}
-                </div>
-            </div>
-        </div>
-        <v-divider class="d-none d-sm-flex" vertical thickness="1" />
-        <v-divider class="d-flex d-sm-none" horizontal thickness="1" />
-        <div class="d-flex align-center gap-3">
-            <v-avatar color="primary" variant="tonal" size="40" rounded="lg">
-                <v-icon size="22">ri-stack-line</v-icon>
-            </v-avatar>
-            <div>
-                <div class="text-caption text-medium-emphasis">Total DO items</div>
-                <div class="text-h6 font-weight-bold text-high-emphasis">
-                    {{ processingKpis.summary.totalDoItems }}
-                </div>
-            </div>
-        </div>
-    </div>
+    
     <VCard>
         <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
             :row-props="processingRowProps" class="text-no-wrap fixed-column-table">
 
+            <template #header.ref_no="{ column }">
+                <span>DELIVERY</span><br />
+                <span>ORDER</span>
+            </template>
+
+            <template #item.shipment_number="{ item }">
+                {{ item.delivery?.shipment_no || '-' }}
+            </template>
             <template #item.plant_id="{ item }">
-                <span class="font-weight-bold">{{ selectedPlant?.value || '' }}</span><br />
-                <span class="text-subtitle-1">{{ selectedPlant?.name || '' }}</span>
+                <span class="font-weight-bold">{{ item.plant || '' }}</span><br />
             </template>
 
             <template #item.ref_no="{ item }">
-                {{ item.delivery_document || '' }}
+                <span class="font-weight-bold">{{ item.delivery_document || '' }}</span><br />
+                <span class="text-subtitle-1">{{ item.delivery?.ship_to_name || '' }}</span>
             </template>
     
             <template #item.material="{ item }">
@@ -457,6 +441,7 @@ function removeLeadingZeros(value) {
                 <v-data-table v-if="selectedReservedPallets.length" :headers="reservedPalletHeaders"
                     :items="selectedReservedPallets" :items-per-page="10" item-value="id" density="compact"
                     class="reserved-pallet-table text-no-wrap">
+
                     <template #item.physical_id="{ item }">
                         <div >{{ item.pallet_physical_id || '-' }}</div>
                     </template>
@@ -529,6 +514,10 @@ function removeLeadingZeros(value) {
 
 .processing-kpi-card--error {
     color: rgb(var(--v-theme-error));
+}
+
+.processing-kpi-card--info {
+    color: rgb(var(--v-theme-info));
 }
 
 .processing-legend {
