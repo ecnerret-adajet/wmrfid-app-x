@@ -33,6 +33,11 @@ const totalRead = ref(0);
 // Variable to watch if tapping load end is already provided
 const is_tapping_load_end_found = ref(false);
 
+// Pallet scan completeness state (reported by loadEnd when reserved pallets are not fully scanned)
+const palletScanIncomplete = ref(false);
+const palletScanReservedCount = ref(0);
+const palletScanScannedCount = ref(0);
+
 // initialize null shipment data
 const shipmentData = reactive({
     deliveries: [],
@@ -73,10 +78,15 @@ onUnmounted(() => {
     // }
 })
 
-const onPicklistRefreshEvent = (data) => {
+const onPicklistRefreshEvent = async (data) => {
     console.log(data);
     if (data.picklistRefresh === true) {
-        fetchShipmentDetails(shipment.value?.shipment_number);
+        await fetchShipmentDetails(shipment.value?.shipment_number);
+
+        if (palletScanIncomplete.value && is_tapping_load_end_found.value === true) {
+            palletScanIncomplete.value = false;
+            sapLoadEnd(shipmentData.shipment.shipment);
+        }
     }
 }
 
@@ -208,14 +218,27 @@ const sapLoadEnd = async (shipmentNumber) => {
         const response = await ApiService.get(`picklist/load-end/${shipmentNumber}`);
         // If the backend returns an error structure, handle it
         if (response.data && response.data.success === false && response.data.errors && response.data.errors.length > 0) {
+            if (response.data.pallet_scan_incomplete) {
+                palletScanIncomplete.value = true;
+                palletScanReservedCount.value = response.data.reserved_count ?? 0;
+                palletScanScannedCount.value = response.data.scanned_count ?? 0;
+                return;
+            }
             errorMessage.value = response.data.errors[0];
             dialogVisible.value = true;
             return;
         }
         window.location.reload();
     } catch (error) {
+        const data = error.response?.data;
+        if (data?.pallet_scan_incomplete) {
+            palletScanIncomplete.value = true;
+            palletScanReservedCount.value = data.reserved_count ?? 0;
+            palletScanScannedCount.value = data.scanned_count ?? 0;
+            return;
+        }
         // Try to extract error message from backend
-        let msg = error.response?.data?.errors?.[0] || error.response?.data?.message || 'An unexpected error occurred.';
+        let msg = data?.errors?.[0] || data?.message || 'An unexpected error occurred.';
         errorMessage.value = msg;
         dialogVisible.value = true;
     }
@@ -597,6 +620,32 @@ const goToNextCarouselPage = () => {
                         <div class="text-caption mb-1" style="color: #4caf50;">Status</div>
                         <div class="text-h4 font-weight-black" style="color: #66bb6a;">
                             Pallet Completed
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+
+            <v-card
+                v-else-if="palletScanIncomplete"
+                class="mb-4 pa-4 d-flex align-center" color="error" variant="tonal" elevation="3"
+                style="border-left: 6px solid #e53935;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #c62828;">
+                            <v-icon color="error" class="mr-2" size="32" icon="ri-qr-scan-2-line"></v-icon>
+                            Reserved Pallets Still Awaiting Scan
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            Not all reserved pallets have been scanned yet. Please scan the remaining pallets before
+                            load end can be confirmed.<br>
+                            <span class="font-italic" style="color: #e53935;">Load end will retry automatically once
+                                scanning is complete.</span>
+                        </div>
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-caption mb-1" style="color: #c62828;">Pallets Scanned</div>
+                        <div class="text-h3 font-weight-black" style="color: #e53935;">
+                            {{ palletScanScannedCount }} / {{ palletScanReservedCount }}
                         </div>
                     </VCol>
                 </VRow>
