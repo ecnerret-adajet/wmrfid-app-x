@@ -21,7 +21,7 @@
             <VCardText class="d-flex flex-column  justify-space-between">
               <div class="d-flex align-center justify-space-between">
                 <div class="text-h5">
-                    Total Scanned
+                    Total Reserved
                 </div>
                 <VIcon
                   icon="ri-stack-line"
@@ -31,10 +31,10 @@
 
               <div >
                 <div class="text-caption text-medium-emphasis ">
-                  Total Pallets Scanned
+                  Total Pallets To Be Issued
                 </div>
                 <div class="text-h4 font-weight-bold">
-                  {{ totals.total_scanned.toLocaleString() }}
+                  {{ totals.total_reserved.toLocaleString() }}
                 </div>
               </div>
             </VCardText>
@@ -111,6 +111,41 @@
           </VCard>
         </VCol>
 
+        <!-- No QR (Skipped) -->
+        <VCol
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+        >
+          <VCard
+            variant="tonal"
+            color="secondary"
+            class="h-100"
+          >
+            <VCardText class="d-flex flex-column  justify-space-between">
+              <div class="d-flex align-center justify-space-between">
+                <div class="text-h5">
+                    No QR (Skipped)
+                </div>
+                <VIcon
+                  icon="ri-qr-scan-2-line"
+                  size="32"
+                />
+              </div>
+
+              <div >
+                <div class="text-caption text-medium-emphasis ">
+                  QR scanning not applicable
+                </div>
+                <div class="text-h4 font-weight-bold">
+                  {{ totals.no_qr_skipped.toLocaleString() }}
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
         <!-- Completion Rate -->
         <VCol
           cols="12"
@@ -136,7 +171,7 @@
 
               <div >
                 <div class="text-caption text-medium-emphasis ">
-                  Bay Scanned / Total Scanned
+                  Bay Scanned / Applicable (QR) Pallets
                 </div>
                 <div class="text-h4 font-weight-bold">
                   {{ completionRate }}%
@@ -197,9 +232,22 @@
                   </td>
                 </tr>
 
+                <tr class="weak-pallet-row">
+                  <td class="type-column font-weight-medium">
+                    No QR (Skipped)
+                  </td>
+
+                  <td
+                    v-for="row in props.data"
+                    :key="`no_qr-${row.date}`"
+                  >
+                    {{ formatNumber(row.no_qr_skipped) }}
+                  </td>
+                </tr>
+
                 <tr class="total-row">
                   <td class="type-column font-weight-bold">
-                    Total Scanned
+                    Total Reserved
                   </td>
 
                   <td
@@ -207,7 +255,7 @@
                     :key="`total-${row.date}`"
                     class="font-weight-bold"
                   >
-                    {{ formatNumber(row.total_scanned) }}
+                    {{ formatNumber(row.total_reserved) }}
                   </td>
                 </tr>
               </tbody>
@@ -232,24 +280,28 @@ const props = defineProps({
 const totals = computed(() => {
   return props.data.reduce(
     (result, row) => {
-      result.total_scanned += Number(row.total_scanned || 0)
+      result.total_reserved += Number(row.total_reserved || 0)
       result.bay_scanned += Number(row.bay_scanned || 0)
       result.pending_bay_scan += Number(row.pending_bay_scan || 0)
+      result.no_qr_skipped += Number(row.no_qr_skipped || 0)
 
       return result
     },
     {
-      total_scanned: 0,
+      total_reserved: 0,
       bay_scanned: 0,
       pending_bay_scan: 0,
+      no_qr_skipped: 0,
     }
   )
 })
 
 const completionRate = computed(() => {
-  if (!totals.value.total_scanned) return '0.00'
+  const applicable = totals.value.total_reserved - totals.value.no_qr_skipped
 
-  return ((totals.value.bay_scanned / totals.value.total_scanned) * 100).toFixed(2)
+  if (!applicable) return '0.00'
+
+  return ((totals.value.bay_scanned / applicable) * 100).toFixed(2)
 })
 
 const formatNumber = value => {
