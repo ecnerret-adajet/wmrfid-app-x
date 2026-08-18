@@ -255,10 +255,13 @@ const proceedMapping = () => {
 
   
 
-    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets') || authUserCan('view.open.do.picklist')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets') || authUserCan('view.open.do.picklist') || authUserCan('view.outbound.performance.report')"
         :item="{ heading: 'Reports' }" />
     <VerticalNavLink v-if="authUserCan('view.putaway.report')"
         :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.outbound.performance.report')"
+        :item="{ title: 'Outbound Performance Report', icon: 'ri-truck-line', to: '/reports/outbound-performance' }" />
 
     <VerticalNavLink v-if="authUserCan('view.floating.pallets') && authStore.user?.assigned_plant?.plant_code === '2110'"
         :item="{ title: 'Floating Pallets Report', icon: 'ri-safe-2-line', to: '/reports/floating-pallets' }" />
