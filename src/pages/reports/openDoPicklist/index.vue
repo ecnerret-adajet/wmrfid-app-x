@@ -1,6 +1,7 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -159,7 +160,7 @@ const processingKpis = computed(() => {
             icon: 'ri-time-line',
         },
         {
-            label: 'Total Pending DO Items',
+            label: 'Total Open DO Items',
             value: summary_count.total_pending,
             statusType: 4,
             caption: 'Total pending delivery order items for processing',
@@ -367,7 +368,7 @@ function removeLeadingZeros(value) {
                 <div class="d-flex align-start justify-space-between ga-3">
                     <div>
                         <div class="text-body-2 text-medium-emphasis">{{ kpi.label }}</div>
-                        <div class="text-h4 font-weight-bold mt-1">{{ kpi.value }}</div>
+                        <div class="text-h4 font-weight-bold mt-1">{{ numberWithComma(kpi.value) }}</div>
                         <div class="text-caption text-medium-emphasis mt-1">{{ kpi.caption }}</div>
                     </div>
                     <v-icon size="28" :color="kpi.color">{{ kpi.icon }}</v-icon>
@@ -381,20 +382,22 @@ function removeLeadingZeros(value) {
             :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
             :row-props="processingRowProps" class="text-no-wrap fixed-column-table">
 
-            <template #header.ref_no="{ column }">
-                <span>DELIVERY</span><br />
-                <span>ORDER</span>
-            </template>
-
-            <template #item.shipment_number="{ item }">
-                {{ item.delivery?.shipment_no || '-' }}
+            <template class="py-1" #item.shipment_number="{ item }">
+                <span class="font-weight-bold">{{ item.delivery?.shipment_no || '-' }}</span><br />
+                <v-chip class="font-weight-bold" v-if="item.delivery?.shipment" size="x-small" variant="tonal" color="info">
+                    Overall Status: {{ item.delivery?.shipment?.overall_status || '-' }}
+                </v-chip>
             </template>
             <template #item.plant_id="{ item }">
                 <span class="font-weight-bold">{{ item.plant || '' }}</span><br />
             </template>
 
             <template #item.ref_no="{ item }">
-                <span class="font-weight-bold">{{ item.delivery_document || '' }}</span><br />
+                <span class="font-weight-bold">{{ item.delivery_document || '' }}</span>
+                  <v-chip class="ml-1 font-weight-bold" v-if="item.delivery?.goods_issue_status" size="x-small" variant="tonal" color="info">
+                    Goods Issue: {{ item.delivery?.goods_issue_status || '-' }}
+                </v-chip>
+                <br />
                 <span class="text-subtitle-1">{{ item.delivery?.ship_to_name || '' }}</span>
             </template>
     
@@ -405,7 +408,7 @@ function removeLeadingZeros(value) {
 
             
             <template #item.quantity="{ item }">
-              {{ item.delivery_quantity || '' }} {{ item.sales_unit || '' }}
+              {{ numberWithComma(item.delivery_quantity) || '' }} {{ item.sales_unit || '' }}
             </template>
 
             <template #item.reserved_quantity="{ item }">
@@ -451,7 +454,7 @@ function removeLeadingZeros(value) {
                     </template>
 
                     <template #item.quantity="{ item }">
-                        {{ item.total_qty || 0 }} {{ item.uom || '' }}
+                        {{ numberWithComma(item.total_qty) || 0 }} {{ item.uom || '' }}
                     </template>
 
                     <template #item.item_number="{ item }">
