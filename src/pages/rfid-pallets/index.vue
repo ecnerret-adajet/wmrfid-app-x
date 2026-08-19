@@ -155,7 +155,13 @@ const filters = reactive({
     updated_at: null,
     tag_type_id: null,
     plant_code: authStore.user?.assigned_plant?.plant_code || null,
+    with_qr: null,
 });
+
+const withQrOptions = [
+    { title: 'With QR', value: 1 },
+    { title: 'Without QR', value: 0 },
+];
 
 const form = reactive({
     tag_type_id: null,
@@ -167,7 +173,8 @@ const isFiltersEmpty = computed(() => {
     return !filters.created_at &&
         !filters.updated_at &&
         !filters.tag_type_id &&
-        !filters.plant_code
+        !filters.plant_code &&
+        filters.with_qr === null
 });
 
 const applyFilter = () => {
@@ -196,6 +203,7 @@ const clearFilters = () => {
     filters.updated_at = null;
     filters.tag_type_id = null;
     filters.plant_code = null;
+    filters.with_qr = null;
 };
 
 const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
@@ -777,12 +785,12 @@ onMounted(() => {
         </div>
 
         <div class="d-flex flex-wrap align-center gap-2 justify-end ml-auto">
-            <!-- <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
+            <v-btn class="d-flex align-center" prepend-icon="ri-equalizer-line" @click="filterModalOpen">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
                 </template>
                 Filter
-            </v-btn> -->
+            </v-btn>
             <v-btn @click="handleRegister">Register RFID</v-btn>
 
             <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line"
@@ -971,6 +979,12 @@ onMounted(() => {
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Updated</label>
                     <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated" />
+                </div>
+
+                <div class="mt-4">
+                    <label class="font-weight-bold">With QR</label>
+                    <v-select class="mt-1" label="Select QR Status" density="compact" :items="withQrOptions"
+                        v-model="filters.with_qr" clearable />
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
