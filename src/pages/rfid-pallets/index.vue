@@ -156,11 +156,17 @@ const filters = reactive({
     tag_type_id: null,
     plant_code: authStore.user?.assigned_plant?.plant_code || null,
     with_qr: null,
+    is_weak_signal: null,
 });
 
 const withQrOptions = [
     { title: 'With QR', value: 1 },
     { title: 'Without QR', value: 0 },
+];
+
+const palletConditionOptions = [
+    { title: 'Weak Pallet', value: 0 },
+    { title: 'Active Pallet', value: 1 },
 ];
 
 const form = reactive({
@@ -174,7 +180,8 @@ const isFiltersEmpty = computed(() => {
         !filters.updated_at &&
         !filters.tag_type_id &&
         !filters.plant_code &&
-        filters.with_qr === null
+        filters.with_qr === null &&
+        filters.is_weak_signal === null
 });
 
 const applyFilter = () => {
@@ -204,6 +211,7 @@ const clearFilters = () => {
     filters.tag_type_id = null;
     filters.plant_code = null;
     filters.with_qr = null;
+    filters.is_weak_signal = null;
 };
 
 const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
@@ -985,6 +993,12 @@ onMounted(() => {
                     <label class="font-weight-bold">With QR</label>
                     <v-select class="mt-1" label="Select QR Status" density="compact" :items="withQrOptions"
                         v-model="filters.with_qr" clearable />
+                </div>
+
+                <div class="mt-4">
+                    <label class="font-weight-bold">Pallet Condition</label>
+                    <v-select class="mt-1" label="Select Pallet Condition" density="compact"
+                        :items="palletConditionOptions" v-model="filters.is_weak_signal" clearable />
                 </div>
 
                 <div class="d-flex justify-end align-center mt-8">
