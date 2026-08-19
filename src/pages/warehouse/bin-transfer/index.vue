@@ -732,7 +732,6 @@ const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
 }
 
 const handleSearch = () => {
-    console.log('searching')
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
