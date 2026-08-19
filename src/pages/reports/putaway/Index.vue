@@ -31,10 +31,12 @@ const filters = reactive({
     date_filter: null,
     shift_id: null,
     status_type: null,
+    transaction_status: null,
     date_from: today,
     date_to: today,
     wrapping_type: 'All',
-    weak_pallet_type: 'All'
+    weak_pallet_type: 'All',
+    qr_tracking: null
 });
 
 const activeView = ref('table')
@@ -154,11 +156,12 @@ const handleSearch = () => {
 
 const baseHeaders = [
     { title: 'PLANT', key: 'plant_id', fixed: true, align: 'start', width: 65, sortable: false },
-    { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 100, sortable: false },
+    { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 90, sortable: false },
     { title: 'BATCH', key: 'batch', fixed: true, width: 120, sortable: false },
     { title: 'TR NO.', key: 'tr_no', fixed: true, width: 120, sortable: false },
     { title: 'TO NO.', key: 'to_no', fixed: true, width: 120, sortable: false },
     { title: 'Status', key: 'status', fixed: true, width: 100, sortable: false },
+    // { title: 'Loose Qty', key: 'loose_qty', fixed: true, width: 100, sortable: false },
     { title: 'TR Creation', key: 'tr_creation_date', width: 120, sortable: false },
     { title: 'TO Creation', key: 'to_creation_date', width: 120, sortable: false },
     { title: 'TR Creation-TO Creation', key: 'tr_to_creation', sortable: false },
@@ -169,6 +172,8 @@ const baseHeaders = [
     { title: 'QR Putaway Date', key: 'putaway_date', width: 120, sortable: false },
     { title: 'QR Wrapping-Putaway', key: 'qr_wrapping_putaway', sortable: false },
     { title: 'TR Creation-Putaway', key: 'tr_creation_putaway', sortable: false },
+    { title: 'Type', key: 'type', fixed: true, width: 100, sortable: false },
+    { title: 'With QR', key: 'with_qr', fixed: true, width: 100, sortable: false },
     { title: 'Operator', key: 'operator', sortable: false },
 ]
 
@@ -184,7 +189,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(25);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const kpi = ref({
@@ -248,8 +253,9 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 </script>
 
 <template>
-    <div class="d-flex flex-wrap gap-4 align-center justify-center">
-        <SearchInput class="flex-grow-1" @update:search="(val) => { searchValue = val; handleSearch(); }" />
+    <section class="putaway-filters">
+        <div class="d-flex flex-wrap gap-4 align-center justify-center">
+            <SearchInput class="flex-grow-1" @update:search="(val) => { searchValue = val; handleSearch(); }" />
 
         <!-- Plant Filter -->
         <v-select style="max-width: 350px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
@@ -287,57 +293,80 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             density="compact" :items="[{ title: 'All', value: null }, ...shifts]" v-model="filters.shift_id">
         </v-select>
 
-        <!-- Status Filter -->
-        <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-1" label="Filter by Status"
+        <!-- Type Filter -->
+        <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-1" label="Filter by Type"
             density="compact" :items="[
                 { title: 'All', value: null },
                 { title: 'Good', value: 1 },
                 { title: 'Empty', value: 2 },
                 { title: 'Inline Reject', value: 3 },
                 { title: 'Loose', value: 4 },
-                { title: 'No QR', value: 5 },
-                { title: 'With QR', value: 6 }
+                // { title: 'No QR', value: 5 },
+                // { title: 'With QR', value: 6 }
 
             ]" v-model="filters.status_type">
         </v-select>
 
         <!-- Action Buttons -->
-        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
-            <template #prepend>
-                <v-icon color="white"></v-icon>
-            </template>
-            Export
-        </v-btn> 
-        <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
-            <template #prepend>
-                <v-icon color="white"></v-icon>
-            </template>
-            Search
-        </v-btn>
-    </div>
-
-    <div class="d-flex mb-4 gap-4">
-        <div style="max-width: 200px;" class="flex-grow-1">
-            <label class="text-caption">Date From</label>
-            <DatePicker v-model="filters.date_from" />
+            <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Export
+            </v-btn> 
+            <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
+                <template #prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Search
+            </v-btn>
         </div>
 
-        <div style="max-width: 200px;" class="flex-grow-1 align-start">
-            <label class="text-caption">Date To</label>
-            <DatePicker v-model="filters.date_to" />
-        </div>
-    </div>
-    <v-tabs v-model="activeView" color="primary">
-        <v-tab value="table">
-            <v-icon start>ri-table-line</v-icon>
-            Table View
-        </v-tab>
+        <div class="d-flex mb-4 gap-4">
+            <!-- Status Filter -->
+            <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-5" label="Filter by Status"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'Pending', value: 1 },
+                    { title: 'Completed', value: 2 },
+                    { title: 'Invalid', value: 3 },
+                ]" v-model="filters.transaction_status">
+            </v-select>
 
-        <v-tab value="summary">
-            <v-icon start>ri-bar-chart-line</v-icon>
-            Summary View
-        </v-tab>
-    </v-tabs>
+            <!-- QR Tracking Filter -->
+            <v-select style="max-width: 200px;" class="flex-grow-1 align-center mt-5" label="Filter by QR Tracking"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'With QR', value: 1 },
+                    { title: 'Without QR', value: 2 },
+                ]" v-model="filters.qr_tracking">
+            </v-select>
+
+            <div style="max-width: 200px;" class="flex-grow-1">
+                <label class="text-caption">Date From</label>
+                <DatePicker v-model="filters.date_from" />
+            </div>
+
+            <div style="max-width: 200px;" class="flex-grow-1 align-start">
+                <label class="text-caption">Date To</label>
+                <DatePicker v-model="filters.date_to" />
+            </div>
+        </div>
+        <v-tabs v-model="activeView" color="primary">
+            <v-tab value="table">
+                <v-icon start>ri-table-line</v-icon>
+                Table View
+            </v-tab>
+
+            <v-tab value="summary">
+                <v-icon start>ri-bar-chart-line</v-icon>
+                Summary View
+            </v-tab>
+        </v-tabs>
+    </section>
+
+    
+    
     <v-window v-model="activeView">
         <v-window-item value="table">
             <VCard>
@@ -481,6 +510,32 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                         </template>
                     </template>
 
+                    <template #item.with_qr="{ item }">
+                        <div class="d-flex justify-center align-center">
+                            <i v-if="item.with_qr" style="font-size: 30px; background-color: green;"
+                                class="ri-checkbox-circle-line"></i>
+                            <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                        </div>
+                    </template>
+
+                    <template #item.type="{ item }">
+                        <span v-if="item.type === 'Good'" class="text-primary font-weight-bold">
+                            Good
+                        </span>
+                        
+                        <!-- Split into 2 lines -->
+                        <span v-else-if="item.type === 'Inline Reject'" class="text-error font-weight-bold d-block line-height-tight">
+                            Inline<br>Reject
+                        </span>
+                        
+                        <span v-else-if="item.type === 'Empty'" class="text-secondary font-weight-bold">
+                            Empty
+                        </span>
+                        <span v-else-if="item.type === 'Loose'" class="text-warning font-weight-bold">
+                            Loose
+                        </span>
+                    </template>
+
                     <template #item.putaway_date="{ item }">
                         <v-chip v-if="item.putaway_date === 'Invalid'" size="small" color="error"
                             text-color="white">Invalid</v-chip>
@@ -567,6 +622,14 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
 <style scoped>
+.putaway-filters {
+    position: sticky;
+    top: 0px;
+    z-index: 5;
+    padding-block: 16px;
+    background-color: rgb(var(--v-theme-background));
+}
+
 /* 2. Keeps the background solid on pinned elements so text doesn't bleed during scroll gaps */
 .fixed-column-table :deep(th.v-data-table__th--fixed),
 .fixed-column-table :deep(td.v-data-table__td--fixed) {

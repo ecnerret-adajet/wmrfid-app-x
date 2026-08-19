@@ -32,6 +32,8 @@ const filters = reactive({
     status_type: 1,
 });
 
+const selectedKpiStatus = ref(filters.status_type);
+
 onMounted(() => {
     fetchDropdownData();
 })
@@ -299,7 +301,6 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     })
         .then((response) => {
             const payload = response.data;
-            console.log('API Response:', payload); // Log the entire response for debugging
             if (payload.table?.original) {
                 serverItems.value = payload.table?.original?.data;   // Current page raw line records array
                 totalItems.value = payload.table?.original?.total;   // Total absolute matched lines for footer
@@ -317,13 +318,9 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 }
 
 const handleKpiClick = (kpi) => {
+    selectedKpiStatus.value = kpi.statusType;
     filters.status_type = kpi.statusType;
     page.value = 1;
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: 'created_at', order: 'desc' }],
-    });
 };
 
 function removeLeadingZeros(value) {
@@ -335,7 +332,11 @@ function removeLeadingZeros(value) {
 
 <template>
     <div class="d-flex flex-wrap gap-4 align-center justify-center">
-        <SearchInput class="flex-grow-1" @update:search="(val) => { searchValue = val; handleSearch(); }" />
+        <SearchInput
+            placeholder="Search by DO, shipment no., or customer.."
+            class="flex-grow-1"
+            @update:search="searchValue = $event"
+        />
 
         <v-select style="max-width: 350px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
             density="compact"
@@ -343,7 +344,7 @@ function removeLeadingZeros(value) {
             v-model="filters.plant_code"
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
-       
+
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
                 <v-icon color="white"></v-icon>
@@ -360,8 +361,11 @@ function removeLeadingZeros(value) {
             sm="6"
             lg="3"
         >
-            <v-card class="processing-kpi-card h-100 cursor-pointer processing-kpi-card-hover" 
-                :class="`processing-kpi-card--${kpi.color}`" 
+            <v-card class="processing-kpi-card h-100 cursor-pointer processing-kpi-card-hover"
+                :class="[
+                    `processing-kpi-card--${kpi.color}`,
+                    selectedKpiStatus === kpi.statusType ? 'processing-kpi-card--selected' : '',
+                ]"
                 @click="handleKpiClick(kpi)"
                 variant="tonal"
             >
@@ -521,6 +525,13 @@ function removeLeadingZeros(value) {
 
 .processing-kpi-card--info {
     color: rgb(var(--v-theme-info));
+}
+
+.processing-kpi-card--selected {
+    border: 2px solid rgb(var(--v-theme-primary));
+    box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.14), 0 8px 22px rgba(0, 0, 0, 0.08);
+    background-color: rgba(var(--v-theme-primary), 0.08);
+    transform: translateY(-1px);
 }
 
 .processing-legend {
