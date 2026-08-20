@@ -205,6 +205,11 @@ const proceedMapping = () => {
             href: '/rfid/tonner-bags',
             to: '/rfid/tonner-bags',
         }" />
+        <VerticalNavLink v-if="authUserCan('view.rfid')" :item="{
+            title: 'No-QR Requests',
+            href: '/rfid/no-qr-requests',
+            to: '/rfid/no-qr-requests',
+        }" />
     </VerticalNavGroup>
 
     <VerticalNavGroup v-if="authUserCan('monitor.rfid.pallets') || authUserCan('monitor.rfid.tonner.bags')"

@@ -310,6 +310,17 @@ export const routes = [
             },
         },
         {
+            path: 'rfid/no-qr-requests',
+            name: 'rfid-no-qr-requests',
+            component: () => import('@/pages/no-qr-requests/index.vue'),
+            meta: {
+                pageTitle: "No-QR Requests - RFID Master",
+                breadcrumbs: [
+                    { label: "No-QR Requests", link: "/rfid/no-qr-requests" },
+                ],
+            },
+        },
+        {
             path: 'rfid/tonner-bags',
             name: 'rfid-tonner-bags',
             component: () => import('@/pages/rfid-tonner-bags/index.vue'),
