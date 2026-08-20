@@ -25,7 +25,7 @@ const { authUserCan } = useAuthorization();
 const searchValue = ref('');
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at');
 const storageLocations = ref([]); // filtered slocs based on plant_code
@@ -848,7 +848,7 @@ onMounted(() => {
         <!-- v-bind="authStore.user.is_super_admin || authStore.user.is_warehouse_admin ? { showSelect: true, 'v-model': selectedItems, returnObject: true } : {}" -->
         <VDataTableServer v-model:items-per-page="itemsPerPage" v-model="selectedItems" :headers="headers" show-select
             return-object :items="serverItems" :items-length="totalItems" :loading="pageLoading" item-value="id"
-            @update:options="loadItems" class="text-no-wrap">
+            @update:options="loadItems" :items-per-page-options="[25, 50, 100]" class="text-no-wrap">
 
 
             <template #item.physical_id="{ item }">

@@ -51,6 +51,7 @@
                 :items-length="totalItems"
                 :loading="tableLoading"
                 :items-per-page="itemsPerPage"
+                :items-per-page-options="[25, 50, 100]"
                 :page="page"
                 class="text-no-wrap"
                 @update:options="loadItems"
@@ -99,7 +100,7 @@ const { authUserCan } = useAuthorization();
 
 const searchValue = ref('');
 const serverItems = ref([]);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const totalItems = ref(0);
 const pageLoading = ref(false);

@@ -371,7 +371,7 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
         <v-window-item value="table">
             <VCard>
                 <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
-                    :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
+                    :items-length="totalItems" :loading="loading" :items-per-page-options="[25, 50, 100]" item-value="id" @update:options="loadItems"
                     class="text-no-wrap fixed-column-table">
                     <template #header.physical_id="{ column }">
                         <span>PHYSICAL</span><br />

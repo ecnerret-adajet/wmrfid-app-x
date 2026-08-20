@@ -204,7 +204,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const reservedPalletDialog = ref(false);
@@ -382,7 +382,7 @@ function removeLeadingZeros(value) {
     </VRow>
     
     <VCard>
-        <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+        <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" :headers="headers" :items="serverItems"
             :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
             :row-props="processingRowProps" class="text-no-wrap fixed-column-table">
 

@@ -24,7 +24,7 @@ const isLoading = ref(false)
 const serverItems = ref([])
 const loading = ref(true)
 const totalItems = ref(0)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 const filters = ref(null)
@@ -230,6 +230,7 @@ defineExpose({ loadItems, applyFilters })
 <template>
     <VDataTableServer
         v-model:items-per-page="itemsPerPage"
+        :items-per-page-options="[25, 50, 100]"
         :headers="headers"
         :items="serverItems"
         :items-length="totalItems"
