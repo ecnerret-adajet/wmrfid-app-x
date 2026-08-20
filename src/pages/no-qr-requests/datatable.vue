@@ -1,4 +1,5 @@
 <script setup>
+import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import Moment from 'moment';
 import { ref } from 'vue';
@@ -13,6 +14,9 @@ const props = defineProps({
     },
 });
 
+const { authUserCan } = useAuthorization();
+const canReview = authUserCan('review.no.qr.requests');
+
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
@@ -23,6 +27,19 @@ const filters = ref({ date_from: null, date_to: null });
 const previewDialog = ref(false);
 const previewImageUrl = ref(null);
 
+const reviewDialog = ref(false);
+const reviewAction = ref(null);
+const reviewRemarks = ref('');
+const reviewTarget = ref(null);
+const reviewSubmitting = ref(false);
+const reviewError = ref('');
+
+const statusMeta = {
+    pending: { label: 'Pending', color: 'warning' },
+    confirmed: { label: 'Confirmed', color: 'success' },
+    discrepancy: { label: 'Discrepancy', color: 'error' },
+};
+
 const headers = [
     { title: 'PHYSICAL ID', key: 'physical_id', sortable: false },
     { title: 'BATCH', key: 'batch', sortable: false },
@@ -32,6 +49,8 @@ const headers = [
     { title: 'REQUESTED BY', key: 'user', sortable: false },
     { title: 'IMAGE', key: 'image_url', sortable: false },
     { title: 'REQUESTED AT', key: 'created_at', sortable: false },
+    { title: 'REVIEW STATUS', key: 'status', sortable: false },
+    ...(canReview ? [{ title: 'ACTIONS', key: 'actions', sortable: false }] : []),
 ];
 
 const loadItems = ({ page: requestedPage, itemsPerPage: requestedPerPage, search }) => {
@@ -72,6 +91,48 @@ const applyFilters = data => {
 const openPreview = imageUrl => {
     previewImageUrl.value = imageUrl;
     previewDialog.value = true;
+};
+
+const openReviewDialog = (item, action) => {
+    reviewTarget.value = item;
+    reviewAction.value = action;
+    reviewRemarks.value = '';
+    reviewError.value = '';
+    reviewDialog.value = true;
+};
+
+const closeReviewDialog = () => {
+    reviewDialog.value = false;
+    reviewTarget.value = null;
+    reviewAction.value = null;
+    reviewRemarks.value = '';
+    reviewError.value = '';
+};
+
+const submitReview = () => {
+    if (!reviewTarget.value || !reviewAction.value) return;
+
+    reviewSubmitting.value = true;
+    reviewError.value = '';
+
+    ApiService.put(`no-qr-tag-logs/${reviewTarget.value.id}/status`, {
+        status: reviewAction.value,
+        remarks: reviewRemarks.value || null,
+    })
+        .then(response => {
+            const updated = response.data.data;
+            const index = serverItems.value.findIndex(row => row.id === updated.id);
+            if (index !== -1) {
+                serverItems.value[index] = { ...serverItems.value[index], ...updated };
+            }
+            closeReviewDialog();
+        })
+        .catch(error => {
+            reviewError.value = error.response?.data?.message || 'Failed to update request status.';
+        })
+        .finally(() => {
+            reviewSubmitting.value = false;
+        });
 };
 
 defineExpose({ loadItems, applyFilters });
@@ -116,6 +177,35 @@ defineExpose({ loadItems, applyFilters });
         <template #item.created_at="{ item }">
             {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY h:mm A') : '' }}
         </template>
+
+        <template #item.status="{ item }">
+            <div>
+                <v-chip
+                    size="small"
+                    :color="statusMeta[item.status]?.color ?? 'secondary'"
+                    variant="tonal"
+                    class="text-uppercase"
+                >
+                    {{ statusMeta[item.status]?.label ?? item.status }}
+                </v-chip>
+                <div v-if="item.status !== 'pending'" class="text-caption text-medium-emphasis mt-1">
+                    {{ item.reviewed_by?.name ?? '—' }}
+                    <span v-if="item.reviewed_at"> · {{ Moment(item.reviewed_at).format('MMM D, YYYY h:mm A') }}</span>
+                </div>
+            </div>
+        </template>
+
+        <template v-if="canReview" #item.actions="{ item }">
+            <div class="d-flex ga-2" v-if="item.status === 'pending'">
+                <v-btn size="small" color="success" variant="tonal" @click="openReviewDialog(item, 'confirmed')">
+                    Confirm
+                </v-btn>
+                <v-btn size="small" color="error" variant="tonal" @click="openReviewDialog(item, 'discrepancy')">
+                    Discrepancy
+                </v-btn>
+            </div>
+            <span v-else>—</span>
+        </template>
     </VDataTableServer>
 
     <v-dialog v-model="previewDialog" max-width="500">
@@ -124,6 +214,42 @@ defineExpose({ loadItems, applyFilters });
             <v-card-actions>
                 <v-spacer />
                 <v-btn variant="text" @click="previewDialog = false">Close</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="reviewDialog" max-width="480" persistent>
+        <v-card>
+            <v-card-title>
+                Tag as {{ reviewAction === 'confirmed' ? 'Confirmed' : 'Discrepancy' }}
+            </v-card-title>
+            <v-card-text>
+                <p class="mb-4">
+                    Physical ID: <strong>{{ reviewTarget?.physical_id }}</strong>
+                </p>
+                <v-textarea
+                    v-model="reviewRemarks"
+                    label="Remarks (optional)"
+                    :placeholder="reviewAction === 'discrepancy' ? 'Describe the discrepancy found' : 'Add any notes'"
+                    rows="3"
+                    density="compact"
+                />
+                <v-alert v-if="reviewError" type="error" density="compact" class="mt-2">
+                    {{ reviewError }}
+                </v-alert>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer />
+                <v-btn variant="outlined" color="secondary" :disabled="reviewSubmitting" @click="closeReviewDialog">
+                    Cancel
+                </v-btn>
+                <v-btn
+                    :color="reviewAction === 'confirmed' ? 'success' : 'error'"
+                    :loading="reviewSubmitting"
+                    @click="submitReview"
+                >
+                    {{ reviewAction === 'confirmed' ? 'Confirm' : 'Mark Discrepancy' }}
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
