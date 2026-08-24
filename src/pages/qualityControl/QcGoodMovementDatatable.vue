@@ -1,4 +1,5 @@
 <script setup>
+import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -23,9 +24,20 @@ const storageLocation = ref(null);
 const detailDialog = ref(false);
 const selectedLog = ref(null);
 
+const toast = ref({
+    message: '',
+    color: 'success',
+    show: false,
+});
+
+const cancelDialog = ref(false);
+const cancelTarget = ref(null);
+const cancelDate = ref(null);
+const cancelSubmitting = ref(false);
+const cancelErrors = ref([]);
+
 const headers = [
     { title: 'MOVEMENT TYPE', key: 'movement_type', align: 'center' },
-    { title: 'STATUS', key: 'status_text', align: 'center', sortable: false },
     { title: 'PLANT', key: 'plant', sortable: false },
     { title: 'ISSUING SLOC', key: 'issuing_sloc', sortable: false },
     { title: 'RECEIVING SLOC', key: 'receiving_sloc', sortable: false },
@@ -112,6 +124,77 @@ const openDetailDialog = (log) => {
     selectedLog.value = log;
     detailDialog.value = true;
 };
+
+const isCancellable = (log) => {
+    return log.movement_type === '313' && (log.items?.some(item => !item.cancel) ?? false);
+};
+
+const openCancelDialog = (log) => {
+    cancelTarget.value = log;
+    cancelDate.value = null;
+    cancelErrors.value = [];
+    cancelDialog.value = true;
+};
+
+const closeCancelDialog = () => {
+    cancelDialog.value = false;
+    cancelTarget.value = null;
+    cancelDate.value = null;
+    cancelErrors.value = [];
+};
+
+const confirmCancelGoodsMovement = () => {
+    if (!cancelTarget.value) return;
+
+    cancelSubmitting.value = true;
+    cancelErrors.value = [];
+
+    ApiService.post('quality-control/cancel-313', {
+        id: cancelTarget.value.id,
+        cancel_date: cancelDate.value,
+    })
+        .then((response) => {
+            const { status, errors } = response.data;
+
+            if (status === 'S') {
+                toast.value = {
+                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.`,
+                    color: 'success',
+                    show: true,
+                };
+                closeCancelDialog();
+                loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] });
+            } else {
+                cancelErrors.value = (errors && errors.length)
+                    ? errors.map(e => e.MESSAGE || e.message).filter(Boolean)
+                    : ['Failed to cancel the goods movement.'];
+            }
+        })
+        .catch((error) => {
+            cancelErrors.value = [error.response?.data?.message || 'Failed to cancel the goods movement.'];
+        })
+        .finally(() => {
+            cancelSubmitting.value = false;
+        });
+};
+
+const actionList = (log) => {
+    const actions = [{ title: 'View', key: 'view' }];
+
+    if (isCancellable(log)) {
+        actions.push({ title: 'Cancel', key: 'cancel' });
+    }
+
+    return actions;
+};
+
+const handleAction = (item, action) => {
+    if (action.key === 'view') {
+        openDetailDialog(item);
+    } else if (action.key === 'cancel') {
+        openCancelDialog(item);
+    }
+};
 </script>
 
 <template>
@@ -166,16 +249,6 @@ const openDetailDialog = (log) => {
                 </v-chip>
             </template>
 
-            <template #item.status_text="{ item }">
-                <v-chip
-                    color="primary"
-                    size="small"
-                    label
-                >
-                    {{ item.status_text }}
-                </v-chip>
-            </template>
-
             <template #item.issuing_sloc="{ item }">
                 {{ item.issuing_sloc || '--' }}
             </template>
@@ -191,15 +264,23 @@ const openDetailDialog = (log) => {
             </template>
 
             <template #item.actions="{ item }">
-                <v-btn
-                    icon
-                    variant="text"
-                    size="small"
-                    color="primary"
-                    @click="openDetailDialog(item)"
-                >
-                    <v-icon icon="ri-eye-line" />
-                </v-btn>
+                <div class="d-flex justify-end">
+                    <v-menu location="start">
+                        <template #activator="{ props }">
+                            <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
+                        </template>
+                        <v-list>
+                            <v-list-item
+                                v-for="(action, i) in actionList(item)"
+                                :key="i"
+                                :value="i"
+                                @click="handleAction(item, action)"
+                            >
+                                <v-list-item-title>{{ action.title }}</v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-menu>
+                </div>
             </template>
         </VDataTableServer>
 
@@ -294,5 +375,42 @@ const openDetailDialog = (log) => {
                 </v-card-text>
             </v-card>
         </v-dialog>
+
+        <v-dialog v-model="cancelDialog" max-width="480" persistent>
+            <v-card>
+                <v-card-title class="text-h6 font-weight-bold">
+                    Cancel Goods Movement
+                </v-card-title>
+                <v-divider />
+                <v-card-text>
+                    <p class="mb-4">
+                        This will reverse the SAP material document
+                        <strong>{{ cancelTarget?.material_document || '--' }}</strong> (movement type 313).
+                        This action cannot be undone.
+                    </p>
+                    <VTextField
+                        v-model="cancelDate"
+                        type="date"
+                        label="Cancel Date (optional)"
+                        density="compact"
+                        hide-details
+                    />
+                    <v-alert v-if="cancelErrors.length" type="error" density="compact" class="mt-4">
+                        <div v-for="(err, i) in cancelErrors" :key="i">{{ err }}</div>
+                    </v-alert>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn variant="outlined" color="secondary" :disabled="cancelSubmitting" @click="closeCancelDialog">
+                        Close
+                    </v-btn>
+                    <v-btn color="error" :loading="cancelSubmitting" @click="confirmCancelGoodsMovement">
+                        Confirm Cancel
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <Toast v-model:show="toast.show" :message="toast.message" :color="toast.color" />
     </div>
 </template>
