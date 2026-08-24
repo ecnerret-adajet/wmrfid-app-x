@@ -58,7 +58,7 @@ const itemHeaders = [
     { title: 'QTY', key: 'entry_qty', align: 'center' },
     { title: 'UOM', key: 'entry_uom', align: 'center' },
     { title: 'CANCEL MAT DOC', key: 'cancel_material_document', align: 'center' },
-    { title: 'CANCEL DATE', key: 'cancel_date', align: 'center' },
+    { title: 'CANCEL DATE', key: 'cancel_date', align: 'center', minWidth: '140px' },
 ];
 
 onMounted(() => {
@@ -362,7 +362,12 @@ const handleAction = (item, action) => {
                     <v-table density="compact">
                         <thead>
                             <tr>
-                                <th v-for="h in itemHeaders" :key="h.key" :class="h.align === 'center' ? 'text-center' : ''">
+                                <th
+                                    v-for="h in itemHeaders"
+                                    :key="h.key"
+                                    :class="h.align === 'center' ? 'text-center' : ''"
+                                    :style="h.minWidth ? `min-width: ${h.minWidth}` : undefined"
+                                >
                                     {{ h.title }}
                                 </th>
                             </tr>
@@ -382,7 +387,7 @@ const handleAction = (item, action) => {
                                 <td class="text-center">{{ item.entry_qty }}</td>
                                 <td class="text-center">{{ item.entry_uom }}</td>
                                 <td class="text-center">{{ item.cancel_material_document || '--' }}</td>
-                                <td class="text-center">{{ item.cancel_date || '--' }}</td>
+                                <td class="text-center text-no-wrap">{{ item.cancel_date || '--' }}</td>
                             </tr>
                         </tbody>
                     </v-table>
