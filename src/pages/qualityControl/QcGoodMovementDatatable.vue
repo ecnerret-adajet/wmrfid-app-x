@@ -57,6 +57,8 @@ const itemHeaders = [
     { title: 'RECEIVING SLOC', key: 'receiving_sloc' },
     { title: 'QTY', key: 'entry_qty', align: 'center' },
     { title: 'UOM', key: 'entry_uom', align: 'center' },
+    { title: 'CANCEL MAT DOC', key: 'cancel_material_document', align: 'center' },
+    { title: 'CANCEL DATE', key: 'cancel_date', align: 'center' },
 ];
 
 onMounted(() => {
@@ -258,9 +260,19 @@ const handleAction = (item, action) => {
             </template>
 
             <template #item.items_count="{ item }">
-                <v-chip size="small" variant="tonal" color="secondary">
-                    {{ item.items?.length ?? 0 }}
-                </v-chip>
+                <div class="d-flex flex-column align-center gap-1">
+                    <v-chip size="small" variant="tonal" color="secondary">
+                        {{ item.items?.length ?? 0 }}
+                    </v-chip>
+                    <v-chip
+                        v-if="item.items?.some(i => i.cancel_material_document)"
+                        size="x-small"
+                        variant="tonal"
+                        color="error"
+                    >
+                        With Cancelled Item(s)
+                    </v-chip>
+                </div>
             </template>
 
             <template #item.actions="{ item }">
@@ -369,6 +381,8 @@ const handleAction = (item, action) => {
                                 <td>{{ item.receiving_sloc || '--' }}</td>
                                 <td class="text-center">{{ item.entry_qty }}</td>
                                 <td class="text-center">{{ item.entry_uom }}</td>
+                                <td class="text-center">{{ item.cancel_material_document || '--' }}</td>
+                                <td class="text-center">{{ item.cancel_date || '--' }}</td>
                             </tr>
                         </tbody>
                     </v-table>
