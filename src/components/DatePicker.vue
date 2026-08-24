@@ -54,6 +54,6 @@ const onClear = () => {
     }
     .dp__input {
         color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-        background: rgb(var(--v-theme-surface));
+        background: rgb(var(--v-theme-gray-50));
     }
 </style>

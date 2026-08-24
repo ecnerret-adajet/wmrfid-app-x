@@ -138,12 +138,12 @@ const processingRowProps = ({ item }) => ({
 const processingKpis = computed(() => {
     const cards = [
         {
-            label: 'Needs processing',
+            label: 'Requires immediate processing',
             value: summary_count.needs_processing,
             statusType: 1,
-            caption: 'Action required for batch & pallet assignment',
+            caption: 'Truck already checked-in. Action required for batch & pallet assignment',
             color: 'error',
-            icon: 'ri-flashlight-line',
+            icon: 'ri-error-warning-line',
         },
         {
             label: 'Partially Processed',
