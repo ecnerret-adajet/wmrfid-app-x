@@ -137,6 +137,8 @@ const proceedMapping = () => {
         :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments' }" />
     <VerticalNavLink v-if="authUserCan('view.goods.receipt')"
         :item="{ title: 'Good Receipt List', icon: 'ri-file-list-line', to: '/goods-receipt' }" />
+    <VerticalNavLink v-if="authUserCan('view.sto')"
+        :item="{ title: 'Goods Issuance List', icon: 'ri-shuffle-line', to: '/transfer-orders' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
@@ -145,8 +147,7 @@ const proceedMapping = () => {
         :item="{ title: 'Reserved Orders', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
         :item="{ title: 'Reserved Pallets', icon: 'ri-stack-line', to: '/reserved-pallets' }" />
-    <VerticalNavLink v-if="authUserCan('view.sto')"
-        :item="{ title: 'Transfer Orders', icon: 'ri-shuffle-line', to: '/transfer-orders' }" />
+    
     <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"
