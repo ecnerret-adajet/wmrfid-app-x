@@ -7,6 +7,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import BatchPick from './batchPick.vue';
+import PalletAssignModal from './PalletAssignModal.vue';
 
 const stoBatchPickingStore = useStoBatchPickingStore();
 const emits = defineEmits(['pagination-changed']);
@@ -148,10 +149,15 @@ const applyFilters = (data) => {
         search: props.search
     });
 }
+
 const viewReservedPallets = ref(false);
+const palletModalOpen = ref(false);
+const isSaving = ref(false);
+const selectedItemForPallet = ref(null);
 
 const handleAction = (sto, action) => {
     stoData.value = sto;
+    selectedItemForPallet.value = sto
     if (action == 'batch_pick') {
         // showReservedPallets.value = true;
         // viewTransports.value = true;
@@ -159,6 +165,8 @@ const handleAction = (sto, action) => {
         router.push({ name: 'sto-batch-picking', params: { po_number: sto.po_number, po_item: sto.po_item } });
     } else if (action == 'view_reserved_pallets') {
         viewReservedPallets.value = true;
+    } else if (action == 'pallet_assignment') {
+        palletModalOpen.value = true;
     }
 
 }
@@ -213,6 +221,71 @@ function handleUpdated(){
     });
 }
 
+
+const closePalletModal = () => {
+    palletModalOpen.value = false;
+    selectedItemForPallet.value = null;
+};
+
+const savePalletAssignment = async ({ pallets }) => {
+    if (!selectedItemForPallet.value) return;
+
+    isSaving.value = true;
+
+    // Construct Payload
+    const payload = {
+        pallets: pallets.map(p => ({ 
+            physical_id: p.physical_id,
+            batch: p.batch || null, // Keeps the batch info or sets it to null if missing
+            quantity: p.quantity || 0 // Default to 0 if quantity is not provided
+        })),
+        material_code: parseInt(selectedItemForPallet.value.material_code),
+        quantity: parseFloat(selectedItemForPallet.value.qty),
+        po_number: selectedItemForPallet.value.po_number,
+        po_item: selectedItemForPallet.value.po_item,
+        plant: selectedItemForPallet.value.supplying_plant,
+        sloc: selectedItemForPallet.value.issuing_sloc_sto,
+        base_unit: selectedItemForPallet.value.uom,
+        receiving_plant: selectedItemForPallet.value.plant,
+        receiving_sloc: selectedItemForPallet.value.storage_location,
+    };
+
+    try {
+        await ApiService.post('transfers/assign-pallets', payload);
+
+        toast.value = {
+            message: 'Pallets assigned successfully',
+            color: 'success',
+            show: true
+        };
+        closePalletModal();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: props.search
+        });
+    } catch (error) {
+        console.error(error);
+        toast.value = {
+            message: error.response?.data?.message || 'Failed to assign pallets',
+            color: 'error',
+            show: true
+        };
+    } finally {
+        isSaving.value = false;
+    }
+};
+
+function fetchStockTransferDetails() {
+    loadItems({
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        sortBy: [{ key: 'updated_at', order: 'desc' }],
+        search: props.search
+    });
+}
+
 defineExpose({
     loadItems,
     applyFilters
@@ -234,12 +307,12 @@ defineExpose({
 
         <template #item.po_item="{ item }">
             <span class="font-weight-bold mb-1">{{ item.po_item }}</span><br />
-            <v-chip v-if="item.rfid_batch_picking_status === 'Reserved'" size="x-small" label color="primary"
-                variant="tonal">Reserved</v-chip>
-            <v-chip v-else-if="item.rfid_batch_picking_status === 'Pending'" size="x-small" label color="warning"
+            <v-chip v-if="item.pallet_assignment === 'Completed'" size="x-small" label color="primary"
+                variant="tonal">Completed</v-chip>
+            <v-chip v-else-if="item.pallet_assignment === 'Pending'" size="x-small" label color="warning"
                 variant="tonal">Pending</v-chip>
-            <v-chip v-else-if="item.rfid_batch_picking_status === 'Partial'" size="x-small" label color="info"
-                variant="tonal">Pending</v-chip>
+            <v-chip v-else-if="item.pallet_assignment === 'Partial'" size="x-small" label color="info"
+                variant="tonal">Partial</v-chip>
         </template>
 
         <template #item.material="{ item }">
@@ -345,10 +418,11 @@ defineExpose({
                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
                     <v-list>
-                        <v-list-item v-if="item.open_quantity > 0" @click="handleAction(item, 'batch_pick')">Batch
+                        <!-- <v-list-item v-if="item.open_quantity > 0" @click="handleAction(item, 'batch_pick')">Batch
                             Picking</v-list-item>
                         <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
-                            @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
+                            @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item> -->
+                        <v-list-item  @click="handleAction(item, 'pallet_assignment')">Pallet Assignment</v-list-item>
                     </v-list>
                 </v-menu>
             </div>
@@ -402,7 +476,15 @@ defineExpose({
     <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" @updated="handleUpdated"/>
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
-
+    <PalletAssignModal 
+        :show="palletModalOpen" 
+        :item="selectedItemForPallet"
+        :loading="isSaving"
+        :stock-transfer="stoData"
+        @close="closePalletModal"
+        @save="savePalletAssignment"
+        @updated="fetchStockTransferDetails"
+    />
 
 </template>
 

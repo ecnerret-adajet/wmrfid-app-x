@@ -27,6 +27,18 @@ export const numberWithComma = (number) => {
     return '0';
 };
 
+export const numberWithCommaAndTwoDecimals = (number) => {
+    const parsed = Number(number);
+
+    if (!isNaN(parsed)) {
+        return parsed.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    }
+
+    return '0.00';
+};
 
 export async function exportExcel({ url, params = {}, filename = 'export.xlsx' }) {
     try {
