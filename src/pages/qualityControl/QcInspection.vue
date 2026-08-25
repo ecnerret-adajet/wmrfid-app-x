@@ -4,9 +4,6 @@
 		<QcDatatable :plant_code="plant_code" :sloc="sloc"/>
 	</div>
 	<div v-else-if="navigation === 1">
-		<WarehouseBin :plant_code="plant_code" :sloc="sloc"/>
-	</div>
-	<div v-else-if="navigation === 2">
 		<QcGoodMovementDatatable :plant_code="plant_code" :sloc="sloc"/>
 	</div>
 	<qr-bottom-navigation @update:nav="handleNavChange" />
@@ -17,7 +14,6 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import QcDatatable from './QcDatatable.vue'
 import qrBottomNavigation from './qrBottomNavigation.vue'
-import WarehouseBin from './WarehouseBin.vue'
 import QcGoodMovementDatatable from './QcGoodMovementDatatable.vue'
 
 const route = useRoute()
