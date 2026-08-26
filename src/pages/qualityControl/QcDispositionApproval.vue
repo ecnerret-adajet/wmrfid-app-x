@@ -23,6 +23,8 @@ const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
 
+const storageLocation = ref(null)
+
 onMounted(() => loadPlants())
 
 const loadPlants = async () => {
@@ -43,6 +45,11 @@ const loadPlants = async () => {
     if (filters.storage_locations.length > 0) {
       filters.storage_location_id = filters.storage_locations[0].value
     }
+
+    const locations = response.data.storage_locations ?? []
+    if (locations.length > 0) {
+      storageLocation.value = locations[0]
+    }
   } catch (error) {
     console.error(error)
   }
@@ -57,7 +64,6 @@ const headers = [
   { title: 'STATUS', key: 'commodity_status', sortable: false },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
-  { title: 'CREATED AT', key: 'created_at' },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
@@ -158,8 +164,8 @@ const handleApprove = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
-      storage_location_id: filters.storage_location_id,
+      plant_code: storageLocation.value?.plant?.plant_code,
+      storage_location_id: storageLocation.value?.id,
       from_qc_disposition: true,
       type: 'qc-disposition-approval',
       items: selectedItems.value.map(item => ({
@@ -552,10 +558,6 @@ const handleApprove = async (method) => {
 
       <template #item.layer="{ item }">
         {{ item.position_in_block }}
-      </template>
-
-      <template #item.created_at="{ item }">
-        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
       </template>
     </VDataTableServer>
   </VCard>
