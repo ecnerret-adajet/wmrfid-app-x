@@ -285,7 +285,7 @@ const handleCreateDispo = async (method) => {
   </div>
 
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="7">
+    <VCol cols="12" md="8">
       <VTextField
         v-model="searchInput"
         placeholder="Search..."
