@@ -407,7 +407,7 @@ const startCountdown = () => {
                                 Submit
                             </VBtn>
                             <VBtn block variant="text" class="mt-2" @click="sapDialogVisible = false">
-                                Cancel
+                                Close
                             </VBtn>
                         </VCol>
                     </VRow>
