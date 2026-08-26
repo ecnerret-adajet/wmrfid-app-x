@@ -684,7 +684,7 @@ const ageRequirementDisplay = computed(() => {
             </template>
 
             <template #item.approved_by="{ item }">
-                <template v-if="item.type === 'Batch Exception'">
+                <template v-if="item.type === 'Batch Exception' || item.type === 'Putaway Exception'">
                     <div class="approved-by-cell mx-auto">
                         <span class="font-weight-bold d-block">{{ item.approver?.name }}</span>
                         <span v-if="item.approver_remarks" class="text-subtitle-1 approved-by-remarks d-block">{{ item.approver_remarks }}</span>
@@ -842,7 +842,7 @@ const ageRequirementDisplay = computed(() => {
 
         <v-dialog v-model="showApproveModal" max-width="700px">
             <v-card>
-            <v-card-title class="text-h6 font-weight-medium">Batch Exception Request</v-card-title>
+            <v-card-title class="text-h6 font-weight-medium">{{approveItem?.type}} Request</v-card-title>
             <v-divider />
                 <form @submit.prevent="submitProcessRequest">
                     <v-card-text class="py-6">
@@ -861,8 +861,6 @@ const ageRequirementDisplay = computed(() => {
                         :model-value="approveItemTypeLabel"
                         readonly
                     />
-
-                
 
                     <template v-if="approveItem?.type === 'Batch Exception'">
 
@@ -935,6 +933,54 @@ const ageRequirementDisplay = computed(() => {
                             </div>
                         </div>
                     </template>
+
+                    <template v-if="approveItem?.type === 'Putaway Exception'">
+                        <v-text-field
+                            class="mt-4"
+                            label="Physical ID"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.physical_id ?? null"
+                            readonly
+                        />
+                        <v-text-field
+                            class="mt-4"
+                            label="Batch"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.batch ?? null"
+                            readonly
+                        />
+                        <v-text-field
+                            class="mt-4"
+                            label="Pallet Actual Status"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.pallet_status ?? null"
+                            readonly
+                        />
+                        <v-text-field
+                            class="mt-4"
+                            label="Reason for Putaway Exception"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.reason ?? null"
+                            readonly
+                        />
+                        <v-text-field
+                            class="mt-4"
+                            label="Requestor Remarks"
+                            density="compact"
+                            :model-value="approveItem?.application_requestable?.remarks ?? null"
+                            readonly
+                        />
+                        <div class="mt-4">
+                            <div class="text-subtitle-1 font-weight-medium mb-2">Attached File</div>
+                            <a v-if="approveItem?.application_requestable?.pallet_image_url" :href="approveItem?.application_requestable?.pallet_image_url" target="_blank">
+                                {{ approveItem?.application_requestable?.pallet_filename || 'Open attachment' }}
+                            </a>
+                            <div v-else class="text-medium-emphasis">
+                                No attachment available.
+                            </div>
+                        </div>
+                    </template>
+
 
                     <v-textarea
                         class="mt-4"
