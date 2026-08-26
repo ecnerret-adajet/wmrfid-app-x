@@ -57,6 +57,7 @@ const headers = [
   { title: 'STATUS', key: 'commodity_status', sortable: false },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
+  { title: 'CREATED AT', key: 'created_at' },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
@@ -551,6 +552,10 @@ const handleApprove = async (method) => {
 
       <template #item.layer="{ item }">
         {{ item.position_in_block }}
+      </template>
+
+      <template #item.created_at="{ item }">
+        {{ item.created_at ? Moment(item.created_at).format('MMMM D, YYYY') : '' }}
       </template>
     </VDataTableServer>
   </VCard>
