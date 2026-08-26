@@ -58,6 +58,8 @@ const resetFilter = () => {
 
 const detailDialog = ref(false)
 const selectedLog = ref(null)
+const logItemsPage = ref(1)
+const logItemsPerPage = ref(5)
 
 const headers = [
   { title: 'PHYSICAL ID', key: 'physical_id', sortable: false },
@@ -155,8 +157,20 @@ const handleSearch = () => {
 
 const openDetailDialog = (log) => {
     selectedLog.value = log;
+    logItemsPage.value = 1;
     detailDialog.value = true;
 };
+
+const pagedLogItems = computed(() => {
+  const items = selectedLog.value?.goods_movement_log_items ?? []
+  const start = (logItemsPage.value - 1) * logItemsPerPage.value
+  return items.slice(start, start + logItemsPerPage.value)
+})
+
+const logItemsPageCount = computed(() => {
+  const total = selectedLog.value?.goods_movement_log_items?.length ?? 0
+  return Math.ceil(total / logItemsPerPage.value) || 1
+})
 </script>
 
 <template>
@@ -362,7 +376,10 @@ const openDetailDialog = (log) => {
                       </tr>
                   </thead>
                   <tbody>
-                      <tr v-for="item in selectedLog.goods_movement_log_items" :key="item.id">
+                      <tr v-if="pagedLogItems.length === 0">
+                          <td :colspan="itemHeaders.length" class="text-center text-medium-emphasis py-4">No movement log items found.</td>
+                      </tr>
+                      <tr v-for="item in pagedLogItems" :key="item.id">
                           <td>
                               <template v-if="item.goods_movement_log?.material_document">
                                   <div class="text-caption font-weight-bold">{{ item.goods_movement_log?.material_document }}</div>
@@ -388,6 +405,23 @@ const openDetailDialog = (log) => {
                       </tr>
                   </tbody>
               </v-table>
+              <div v-if="(selectedLog.goods_movement_log_items?.length ?? 0) > 0" class="d-flex align-center justify-space-between mt-3">
+                  <v-select
+                      v-model="logItemsPerPage"
+                      :items="[5, 10, 25, 50]"
+                      label="Rows per page"
+                      density="compact"
+                      hide-details
+                      style="max-width: 140px;"
+                      @update:model-value="logItemsPage = 1"
+                  />
+                  <v-pagination
+                      v-model="logItemsPage"
+                      :length="logItemsPageCount"
+                      total-visible="5"
+                      density="compact"
+                  />
+              </div>
           </v-card-text>
       </v-card>
   </v-dialog>
