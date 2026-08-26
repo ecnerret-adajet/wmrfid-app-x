@@ -10,9 +10,7 @@ const searchInput = ref('')
 const searchValue = ref('')
 const showCreateDialog = ref(false)
 
-const plantsOptions = ref([])
-const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], storage_location_id: null })
+const filters = reactive({ plant_id: null })
 
 const selectedItems = ref([])
 const serverItems = ref([])
@@ -23,19 +21,7 @@ const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
 
-const selectedPlant = computed(() => plantsOptions.value.find(item => item.value === filters.plant_id))
-
-const storageLocation = computed(() => {
-  const loc = filters.storage_locations.find(item => item.id === filters.storage_location_id)
-  if (!loc) return null
-  return {
-    ...loc,
-    plant: {
-      plant_code: selectedPlant.value?.plant_code,
-      name: selectedPlant.value?.title,
-    },
-  }
-})
+const storageLocation = ref(null)
 
 onMounted(() => loadPlants())
 
@@ -45,17 +31,10 @@ const loadPlants = async () => {
     const response = await axios.get('/managed-plant-storage-locations', {
       headers: { Authorization: `Bearer ${token}` },
     })
-    plantsOptions.value = (response.data.plants ?? [])
-      .filter(item => item.name !== null)
-      .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
-    if (plantsOptions.value.length > 0) {
-      filters.plant_id = plantsOptions.value[0].value
-      filters.plant_code = plantsOptions.value[0].plant_code
-      filters.storage_locations = plantsOptions.value[0].storage_locations
-    }
-    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
-    if(filters.storage_locations.length > 0) {
-      filters.storage_location_id = filters.storage_locations[0].value
+    const locations = response.data.storage_locations ?? []
+    if (locations.length > 0) {
+      storageLocation.value = locations[0]
+      filters.plant_id = locations[0].plant_id
     }
   } catch (error) {
     console.error(error)
