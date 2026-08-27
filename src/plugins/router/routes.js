@@ -610,6 +610,18 @@ export const routes = [
               ],
             },
         },
+        {
+            path: 'qc-disposition/goods-movement',
+            name: 'qc-disposition-goods-movement',
+            component: () => import('@/pages/qualityControl/QcGoodsMovement.vue'),
+            meta: {
+              pageTitle: 'Goods Movement',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Goods Movement', link: '/qc-disposition/goods-movement' },
+              ],
+            },
+        },
 
         {
             path: 'service-requests',
