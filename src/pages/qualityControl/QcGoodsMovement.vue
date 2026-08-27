@@ -181,10 +181,10 @@ const confirmCancelGoodsMovement = () => {
 
 const actionList = (log) => {
     const actions = [{ title: 'View', key: 'view' }];
-
-    if (isCancellable(log)) {
-        actions.push({ title: 'Cancel', key: 'cancel' });
-    }
+     actions.push({ title: 'Cancel', key: 'cancel' });
+    // if (isCancellable(log)) {
+    //    actions.push({ title: 'Cancel', key: 'cancel' });
+    // }
 
     return actions;
 };
