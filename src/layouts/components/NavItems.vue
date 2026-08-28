@@ -261,8 +261,17 @@ const proceedMapping = () => {
         }" />
     </VerticalNavGroup>
 
-    <VerticalNavSectionTitle v-if="authUserCan('view.putaway.report') || authUserCan('view.floating.pallets') || authUserCan('view.open.do.picklist') || authUserCan('view.outbound.performance.report')"
-        :item="{ heading: 'Reports' }" />
+    <VerticalNavSectionTitle
+        v-if="
+            authUserCan('view.putaway.report') ||
+            authUserCan('view.floating.pallets') ||
+            authUserCan('view.open.do.picklist') ||
+            authUserCan('view.outbound.performance.report') ||
+            authUserCan('view.service.requests.report')
+        "
+        :item="{ heading: 'Reports' }"
+    />
+
     <VerticalNavLink v-if="authUserCan('view.putaway.report') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Putaway Report', icon: 'ri-file-transfer-line', to: '/reports/putaway' }" />
 
@@ -274,6 +283,15 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.open.do.picklist') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Open DO Picklist', icon: 'ri-list-check', to: '/reports/open-do-picklist' }" />
+    
+    <VerticalNavLink
+        v-if="authUserCan('view.service.requests.report') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
+        :item="{
+            title: 'Service Requests Report',
+            icon: 'ri-service-line',
+            to: '/reports/service-requests'
+        }"
+    />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->

@@ -233,12 +233,12 @@ const handleSearch = () => {
         />
 
         <div style="max-width: 200px;" class="flex-grow-1">
-            <label class="text-caption">Date From</label>
+            <label>Date From</label>
             <DatePicker v-model="filters.date_from" />
         </div>
 
         <div style="max-width: 200px;" class="flex-grow-1 align-start">
-            <label class="text-caption">Date To</label>
+            <label>Date To</label>
             <DatePicker v-model="filters.date_to" />
         </div>
 

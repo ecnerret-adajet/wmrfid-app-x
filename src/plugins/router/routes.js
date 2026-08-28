@@ -530,6 +530,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/service-requests',
+                name: 'service-requests-report',
+                component: () => import('@/pages/reports/serviceRequests/index.vue'),
+                meta: {
+                    pageTitle: "Service Requests Report",
+                    breadcrumbs: [
+                            { label: "Service Requests Report", link: "/reports/service-requests" },
+                    ],
+                },
+        },
+        {
             path: 'view-inversions',
             name: 'view-inversions',
             component: () => import('@/pages/palletInverter/index.vue'),
