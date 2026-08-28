@@ -1,4 +1,5 @@
 <script setup>
+import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
@@ -63,6 +64,17 @@ const headers = [
         title: 'LAST UPDATED AT',
         key: 'updated_at',
     },
+    {
+        title: 'WEAK PALLET COUNT',
+        key: 'weak_pallet_logs_count',
+        sortable: false,
+    },
+    {
+        title: 'ACTION',
+        key: 'actions',
+        sortable: false,
+        align: 'end',
+    },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -104,6 +116,14 @@ const toast = ref({
     color: 'success',
     show: false
 });
+
+const confirmPalletDialog = ref(false);
+const selectedPallet = ref(null);
+
+const openConfirmPallet = item => {
+    selectedPallet.value = item;
+    confirmPalletDialog.value = true;
+};
 
 const applyFilters = (data) => {
     filters.value = data;
@@ -156,7 +176,71 @@ defineExpose({
             {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY') : '' }}
         </template>
 
+        <template #item.weak_pallet_logs_count="{ item }">
+            {{ item.weak_pallet_logs_count ?? 0 }}
+        </template>
+
+        <template #item.actions="{ item }">
+            <v-menu location="start">
+                <template v-slot:activator="{ props: menuProps }">
+                    <v-btn icon="ri-more-2-fill" variant="text" color="grey" v-bind="menuProps"></v-btn>
+                </template>
+                <v-list>
+                    <v-list-item @click="openConfirmPallet(item)">
+                        <v-list-item-title class="px-4">
+                            Confirm Pallet
+                        </v-list-item-title>
+                    </v-list-item>
+                </v-list>
+            </v-menu>
+        </template>
+
     </VDataTableServer>
+
+    <DefaultModal :show="confirmPalletDialog" dialogTitle="Confirm Pallet" @close="confirmPalletDialog = false">
+        <template #default>
+            <v-row v-if="selectedPallet">
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Name</div>
+                    <div class="font-weight-medium">{{ selectedPallet.name }}</div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Plant</div>
+                    <div class="font-weight-medium">{{ selectedPallet.plant?.name }}</div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">EPC</div>
+                    <div class="font-weight-medium">{{ selectedPallet.epc }}</div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Current Batch</div>
+                    <div class="font-weight-medium">{{ selectedPallet.inventory?.batch }}</div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Weak Pallet Count</div>
+                    <div class="font-weight-medium">{{ selectedPallet.weak_pallet_logs_count ?? 0 }}</div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Date Created</div>
+                    <div class="font-weight-medium">
+                        {{ selectedPallet.created_at ? Moment(selectedPallet.created_at).format('MMMM D, YYYY') : '' }}
+                    </div>
+                </v-col>
+                <v-col cols="6">
+                    <div class="text-caption text-grey-700">Last Updated At</div>
+                    <div class="font-weight-medium">
+                        {{ selectedPallet.updated_at ? Moment(selectedPallet.updated_at).format('MMMM D, YYYY') : '' }}
+                    </div>
+                </v-col>
+            </v-row>
+
+            <div class="d-flex justify-end align-center mt-8">
+                <v-btn color="secondary" variant="outlined" class="px-12" @click="confirmPalletDialog = false">
+                    Close
+                </v-btn>
+            </div>
+        </template>
+    </DefaultModal>
 
     <Toast :show="toast.show" :message="toast.message"/>
 

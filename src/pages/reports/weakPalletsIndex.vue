@@ -95,6 +95,10 @@ const fetchDropdownData = async () => {
             title: item.name,
             name: item.name
         }));
+
+        if (!filters.plant_code && plantsOption.value.length > 0) {
+            filters.plant_code = plantsOption.value[0].value;
+        }
     } catch (error) {
         console.error('Error fetching data:', error);
     } finally {
