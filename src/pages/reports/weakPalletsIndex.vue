@@ -230,6 +230,56 @@ watch(() => filters.plant_code, () => {
                 </div>
             </v-card>
         </v-col>
+        <v-col cols="3">
+            <v-skeleton-loader v-if="isLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
+                <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center">
+                        <div class="d-flex align-center justify-center mr-4" style="
+                                width: 48px;
+                                height: 48px;
+                                background-color: #e8f5e9;
+                                border-radius: 12px;
+                            ">
+                            <v-icon icon="ri-checkbox-circle-line" color="success" size="24"></v-icon>
+                        </div>
+                        <div>
+                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                Total Installed
+                            </span>
+                            <div class="text-h4 font-weight-bold text-primary mt-1">
+                                {{ statisticsData?.total_installed || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </v-card>
+        </v-col>
+        <v-col cols="3">
+            <v-skeleton-loader v-if="isLoading" type="article"></v-skeleton-loader>
+            <v-card v-else class="pa-4 bg-grey-50" elevation="2" style="border-radius: 4px;">
+                <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center">
+                        <div class="d-flex align-center justify-center mr-4" style="
+                                width: 48px;
+                                height: 48px;
+                                background-color: #f5e9e8;
+                                border-radius: 12px;
+                            ">
+                            <v-icon icon="ri-close-circle-line" color="error" size="24"></v-icon>
+                        </div>
+                        <div>
+                            <span class="text-subtitle-1 font-weight-bold text-grey-700">
+                                Total Not Installed
+                            </span>
+                            <div class="text-h4 font-weight-bold text-primary mt-1">
+                                {{ statisticsData?.total_not_installed || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </v-card>
+        </v-col>
     </v-row>
 
     <VCard>
