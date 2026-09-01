@@ -41,6 +41,29 @@ const response = reactive({
     color: 'primary'
 })
 
+const INVALID_REASON_LABELS = {
+    'batch-not-exists': 'BATCH NOT EXISTS',
+    'overscanning-detected': 'OVERSCANNING',
+    'unregistered': 'UNREGISTERED',
+    'fumigated': 'FUMIGATED',
+    'pallet-not-reserved': 'NOT RESERVED',
+};
+
+const getPalletStatus = log => {
+    const readingStatus = log?.antenna_log?.reading_status;
+    const isWeakSignal = log?.is_weak_signal === true || log?.is_weak_signal === 1;
+
+    if (INVALID_REASON_LABELS[readingStatus]) {
+        return { isInvalid: true, label: INVALID_REASON_LABELS[readingStatus] };
+    }
+
+    if (isWeakSignal) {
+        return { isInvalid: true, label: 'WEAK SIGNAL' };
+    }
+
+    return { isInvalid: false, label: 'LOADED' };
+};
+
 const onPicklistLogsEvent = (data) => {
     console.log(data);
     // Only process if the event is for the current bay
@@ -51,7 +74,8 @@ const onPicklistLogsEvent = (data) => {
         const isOverscanningDetected = readingStatus === 'overscanning-detected';
         const isUnregistered = readingStatus === 'unregistered';
         const isFumigated = readingStatus === 'fumigated';
-        const isInvalidReadingStatus = isBatchNotExists || isPalletNotReserved || isOverscanningDetected || isUnregistered || isFumigated;
+        const isWeakSignal = data.picklistLog?.is_weak_signal === true || data.picklistLog?.is_weak_signal === 1;
+        const isInvalidReadingStatus = isBatchNotExists || isPalletNotReserved || isOverscanningDetected || isUnregistered || isFumigated || isWeakSignal;
 
         if (isBatchNotExists) {
             response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} does not match any batch in this shipment.`;
@@ -70,6 +94,11 @@ const onPicklistLogsEvent = (data) => {
             snackbarVisible.value = true
         } else if (isFumigated) {
             response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} is currently fumigated and cannot be loaded.`;
+            response.type = 'error';
+            response.color = 'error';
+            snackbarVisible.value = true
+        } else if (isWeakSignal) {
+            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} has a weak RFID signal and cannot be loaded.`;
             response.type = 'error';
             response.color = 'error';
             snackbarVisible.value = true
@@ -253,8 +282,8 @@ watch(
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="getPalletStatus(lastRead).isInvalid ? 'text-error' : 'text-success'">
+                            {{ getPalletStatus(lastRead).label }}
                         </span>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
@@ -376,8 +405,8 @@ watch(
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="getPalletStatus(log).isInvalid ? 'text-error' : 'text-success'">
+                            {{ getPalletStatus(log).label }}
                         </span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
