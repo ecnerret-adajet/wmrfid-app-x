@@ -1,5 +1,6 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
@@ -70,6 +71,11 @@ const headers = [
         sortable: false,
     },
     {
+        title: 'INSTALLATION STATUS',
+        key: 'installation_status',
+        sortable: false,
+    },
+    {
         title: 'ACTION',
         key: 'actions',
         sortable: false,
@@ -119,10 +125,42 @@ const toast = ref({
 
 const confirmPalletDialog = ref(false);
 const selectedPallet = ref(null);
+const selectedInstallStatus = ref(null);
+const confirmLoading = ref(false);
 
 const openConfirmPallet = item => {
     selectedPallet.value = item;
+    selectedInstallStatus.value = item.latest_weak_pallet_log?.status === 'pending'
+        ? null
+        : item.latest_weak_pallet_log?.status ?? null;
     confirmPalletDialog.value = true;
+};
+
+const submitConfirmPallet = async () => {
+    if (!selectedPallet.value?.latest_weak_pallet_log?.id || !selectedInstallStatus.value) return;
+
+    confirmLoading.value = true;
+    try {
+        const response = await ApiService.post(
+            `reports/weak-pallets/${selectedPallet.value.latest_weak_pallet_log.id}/confirm`,
+            { status: selectedInstallStatus.value }
+        );
+
+        selectedPallet.value.latest_weak_pallet_log = response.data.data;
+
+        toast.value = { message: 'Pallet installation status updated successfully!', color: 'success', show: true };
+        confirmPalletDialog.value = false;
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'created_at', order: 'desc' }],
+            search: props.search
+        });
+    } catch (error) {
+        toast.value = { message: error?.response?.data?.message || 'Failed to update pallet status.', color: 'error', show: true };
+    } finally {
+        confirmLoading.value = false;
+    }
 };
 
 const applyFilters = (data) => {
@@ -180,6 +218,25 @@ defineExpose({
             {{ item.weak_pallet_logs_count ?? 0 }}
         </template>
 
+        <template #item.installation_status="{ item }">
+            <v-tooltip v-if="item.latest_weak_pallet_log?.confirmed_by" location="top">
+                <template #activator="{ props: tooltipProps }">
+                    <v-chip
+                        v-bind="tooltipProps"
+                        size="small"
+                        :color="item.latest_weak_pallet_log?.status === 'installed' ? 'success' : 'error'"
+                    >
+                        {{ item.latest_weak_pallet_log?.status === 'installed' ? 'Installed' : 'Not Installed' }}
+                    </v-chip>
+                </template>
+                Confirmed by {{ item.latest_weak_pallet_log.confirmed_by.name }}
+                on {{ Moment(item.latest_weak_pallet_log.confirmed_at).format('MMMM D, YYYY h:mm A') }}
+            </v-tooltip>
+            <v-chip v-else size="small" color="grey">
+                Pending
+            </v-chip>
+        </template>
+
         <template #item.actions="{ item }">
             <v-menu location="start">
                 <template v-slot:activator="{ props: menuProps }">
@@ -234,14 +291,41 @@ defineExpose({
                 </v-col>
             </v-row>
 
+            <div class="mt-6">
+                <label class="font-weight-bold">Installation Status</label>
+
+                <div v-if="!selectedPallet?.latest_weak_pallet_log?.id" class="text-caption text-error mt-1">
+                    No weak pallet log found to confirm.
+                </div>
+                <template v-else>
+                    <v-radio-group v-model="selectedInstallStatus" inline class="mt-1">
+                        <v-radio label="Installed" value="installed"></v-radio>
+                        <v-radio label="Not Installed" value="not_installed"></v-radio>
+                    </v-radio-group>
+
+                    <div v-if="selectedPallet?.latest_weak_pallet_log?.confirmed_by" class="text-caption text-grey-700 mt-1">
+                        Confirmed by <strong>{{ selectedPallet.latest_weak_pallet_log.confirmed_by.name }}</strong>
+                        on {{ Moment(selectedPallet.latest_weak_pallet_log.confirmed_at).format('MMMM D, YYYY h:mm A') }}
+                    </div>
+                </template>
+            </div>
+
             <div class="d-flex justify-end align-center mt-8">
-                <v-btn color="secondary" variant="outlined" class="px-12" @click="confirmPalletDialog = false">
+                <v-btn color="secondary" variant="outlined" class="px-12 mr-3" @click="confirmPalletDialog = false">
                     Close
                 </v-btn>
+                <PrimaryButton
+                    class="px-12"
+                    :disabled="!selectedInstallStatus || !selectedPallet?.latest_weak_pallet_log?.id"
+                    :loading="confirmLoading"
+                    @click="submitConfirmPallet"
+                >
+                    Confirm
+                </PrimaryButton>
             </div>
         </template>
     </DefaultModal>
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color"/>
 
 </template>
