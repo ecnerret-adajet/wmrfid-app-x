@@ -80,13 +80,13 @@ const fetchDropdownData = async () => {
     isLoading.value = true;
     try {
         let endpoint = 'reports/weak-pallets';
-        
+
         // Check if filters.plant_code is a valid, non-null value
         if (filters.plant_code) {
             endpoint += `/${filters.plant_code}`;
         }
 
-        const preReqData = await ApiService.get(endpoint);
+        const preReqData = await ApiService.query(endpoint, {});
         const { plants, statistics } = preReqData.data;
 
         statisticsData.value = statistics;
@@ -128,13 +128,14 @@ const exportData = async () => {
     try {
         exportLoading.value = true;
         await exportExcel({
-            url: `/export/production-lines`,
+            url: `/export/weak-pallets`,
             params: {
                 plant_code: filters.plant_code,
                 created_at: filters.created_at,
                 updated_at: filters.updated_at,
+                search: searchValue.value,
             },
-            filename: 'production-lines.xlsx',
+            filename: 'weak-pallets-report.xlsx',
         });
     } catch (error) {
         console.error('Export error:', error);
