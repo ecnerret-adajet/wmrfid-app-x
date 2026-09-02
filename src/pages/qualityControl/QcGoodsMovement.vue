@@ -49,6 +49,7 @@ const headers = [
 ];
 
 const itemHeaders = [
+    { title: 'PALLET PHYSICAL ID', key: 'pallet_physical_id' },
     { title: 'MATERIAL', key: 'material' },
     { title: 'BATCH', key: 'batch' },
     { title: 'MOVEMENT TYPE', key: 'movement_type', align: 'center' },
@@ -373,7 +374,8 @@ const handleAction = (item, action) => {
                         </thead>
                         <tbody>
                             <tr v-for="item in selectedLog.items" :key="item.id">
-                                <td>{{ item.material }}</td>
+                                <td>{{ item.pallet_physical_id || '--' }}</td>
+                                <td>{{ item.material?.replace(/^0+/, '') || item.material }}</td>
                                 <td>{{ item.batch }}</td>
                                 <td class="text-center">
                                     <v-chip :color="item.movement_type === '313' ? 'warning' : 'success'" size="small" label>
