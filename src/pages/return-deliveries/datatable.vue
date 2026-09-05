@@ -32,9 +32,12 @@ const toast = ref({
 
 const headers = [
     { title: 'DO NUMBER', key: 'do_number' },
+    { title: 'TRUCKSCALE NUMBER', key: 'truck_scale_num', sortable: false },
     { title: 'PLATE NUMBER', key: 'plate_number', sortable: false },
+    { title: 'VENDOR', key: 'vendor', sortable: false },
+    { title: 'NET WEIGHT', key: 'net_weight', align: 'end', sortable: false },
+    { title: 'SHIP TO NAME', key: 'ship_to_name', sortable: false },
     { title: 'CUSTOMER', key: 'customer', sortable: false },
-    { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
     { title: 'DELIVERY ITEMS', key: 'items', align: 'center', sortable: false },
     { title: '', key: 'action', align: 'center', sortable: false },
@@ -105,8 +108,24 @@ defineExpose({
             </div>
         </template>
 
+        <template #item.truck_scale_num="{ item }">
+            {{ item.truck_scale_num }}
+        </template>
+
         <template #item.plate_number="{ item }">
             {{ item.customerDelivery?.plate_number }}
+        </template>
+
+        <template #item.vendor="{ item }">
+            {{ item.customerDelivery?.vendor_name }}
+        </template>
+
+        <template #item.net_weight="{ item }">
+            {{ item.net_weight }}
+        </template>
+
+        <template #item.ship_to_name="{ item }">
+            {{ item.ship_to_name }}
         </template>
 
         <template #item.customer="{ item }">
