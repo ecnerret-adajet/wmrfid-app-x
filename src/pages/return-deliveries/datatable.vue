@@ -31,12 +31,12 @@ const toast = ref({
 });
 
 const headers = [
-    { title: 'DELIVERY NUMBER', key: 'delivery_document' },
+    { title: 'DO NUMBER', key: 'do_number' },
+    { title: 'PLATE NUMBER', key: 'plate_number', sortable: false },
     { title: 'CUSTOMER', key: 'customer', sortable: false },
-    { title: 'DELIVERY DATE', key: 'delivery_date' },
     { title: 'PICKING STATUS', key: 'picking_status' },
     { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
-    { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
+    { title: 'DELIVERY ITEMS', key: 'items', align: 'center', sortable: false },
     { title: '', key: 'action', align: 'center', sortable: false },
 ];
 
@@ -98,15 +98,26 @@ defineExpose({
     <VDataTableServer v-model:items-per-page="itemsPerPage" fixed-header :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems">
 
+        <template #item.do_number="{ item }">
+            <div class="d-flex flex-column py-1">
+                <span class="font-weight-bold text-sm">{{ item.do_number }}</span>
+                <span class="text-sm text-muted">{{ item.customerDelivery?.delivery_document }}</span>
+            </div>
+        </template>
+
+        <template #item.plate_number="{ item }">
+            {{ item.customerDelivery?.plate_number }}
+        </template>
+
         <template #item.customer="{ item }">
             <div class="d-flex flex-column py-1">
-                <span class="font-weight-bold text-sm">{{ item.sold_to_name }}</span>
+                <span class="font-weight-bold text-sm">{{ item.ship_to_customer }}</span>
                 <span class="text-sm">{{ item.ship_to_name }}</span>
             </div>
         </template>
 
-        <template #item.delivery_items="{ item }">
-            {{ item.delivery_items?.length ?? 0 }}
+        <template #item.items="{ item }">
+            {{ item.items?.length ?? 0 }}
         </template>
 
         <!-- Actions -->
@@ -128,7 +139,7 @@ defineExpose({
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
-                    Return Delivery Items — {{ selectedDelivery?.delivery_document }}
+                    Return Delivery Items — {{ selectedDelivery?.do_number }}
                 </div>
                 <v-btn icon="ri-close-line" variant="text" @click="showDeliveryItems = false"></v-btn>
             </v-card-title>
@@ -144,12 +155,12 @@ defineExpose({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in selectedDelivery?.delivery_items" :key="index">
+                        <tr v-for="(item, index) in selectedDelivery?.items" :key="index">
                             <td>{{ item.item_number }}</td>
-                            <td>{{ item.material_number }}</td>
+                            <td>{{ item.material_code }}</td>
                             <td>{{ item.plant }}</td>
                             <td>{{ item.storage_location }}</td>
-                            <td class="text-center">{{ item.delivery_quantity }} {{ item.sales_unit }}</td>
+                            <td class="text-center">{{ item.delivery_qty }} {{ item.sales_unit }}</td>
                         </tr>
                     </tbody>
                 </v-table>
