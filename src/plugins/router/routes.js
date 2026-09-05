@@ -230,6 +230,17 @@ export const routes = [
             },
         },
         {
+            path: 'return-deliveries',
+            name: 'return-deliveries',
+            component: () => import('@/pages/return-deliveries/index.vue'),
+            meta: {
+              pageTitle: "Return Deliveries",
+              breadcrumbs: [
+                  { label: "Return Deliveries", link: "/return-deliveries" },
+              ],
+            },
+        },
+        {
             path: 'stock-receiving',
             name: 'stock-receiving',
             component: () => import('@/pages/stock-receiving/index.vue'),

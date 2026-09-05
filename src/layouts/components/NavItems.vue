@@ -143,6 +143,8 @@ const proceedMapping = () => {
         :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-archive-line', to: '/sap-deliveries' }" />
+    <VerticalNavLink v-if="authUserCan('view.deliveries')"
+        :item="{ title: 'Return Deliveries', icon: 'ri-arrow-go-back-line', to: '/return-deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
         :item="{ title: 'Reserved Orders', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
