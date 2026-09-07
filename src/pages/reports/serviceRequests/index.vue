@@ -140,6 +140,7 @@ const baseHeaders = [
     { title: 'TRANSACTION NO.', key: 'transaction_number', sortable: false },
     { title: 'PLANT', key: 'plant_id', align: 'start', sortable: false },
     { title: 'TYPE', key: 'type',  sortable: false, align: 'center' },
+    { title: 'DETAILS', key: 'details',  sortable: false,  },
     { title: 'REQUESTED BY', key: 'requested_by', sortable: false },
     { title: 'DATE REQUESTED', key: 'created_at', sortable: false },
     { title: 'Status', key: 'status_id', sortable: false, align: 'center' },
@@ -316,8 +317,46 @@ function removeLeadingZeros(value) {
                 <span>{{ item.requester?.name }}</span><br />
             </template>
 
-            <template #item.mfg_date="{ item }">
-                {{ item.mfg_date ? Moment(item.mfg_date).format('MMM D, YYYY') : '' }}
+            <template #item.details="{ item }">
+                <div v-if="item.type === 'Batch Exception'" class="py-2">
+                    <div v-if="item.application_requestable?.batch_ages && Object.keys(item.application_requestable.batch_ages).length">
+                        <div 
+                            v-for="(age, batch) in item.application_requestable.batch_ages" 
+                            :key="batch"
+                            class="mb-1"
+                        >
+                            <span class="font-weight-bold mr-1">Batch: </span> 
+                            <span class="text-subtitle-1">{{ batch }}</span><br/>
+                            
+                            <span class="font-weight-bold mr-1">Age: </span> 
+                            <span class="text-subtitle-1">{{ age }} {{ age === 1 ? 'day' : 'days' }}</span>
+
+                            <div v-if="item.application_requestable?.age_requirement_from !== undefined || item.application_requestable?.age_requirement_to !== undefined">
+                                <span class="font-weight-bold mr-1">Aging Req: </span>
+                                <span class="text-subtitle-1">
+                                    {{ item.application_requestable.age_requirement_from ?? 0 }} 
+                                    to 
+                                    {{ item.application_requestable.age_requirement_to ?? '∞' }} days
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="py-2" v-else-if="item.type === 'Putaway Exception'">
+                    <div class="mb-1">
+                        <span class="font-weight-bold mr-1">Physical ID: </span> 
+                        <span class="text-subtitle-1">{{item.application_requestable?.physical_id}}</span><br/>
+                        
+                        <span class="font-weight-bold mr-1">Batch: </span> 
+                        <span class="text-subtitle-1">{{ item.application_requestable?.batch }}</span><br/>
+
+                        <span class="font-weight-bold mr-1">Pallet Status: </span> 
+                        <span class="text-subtitle-1">{{ item.application_requestable?.pallet_status }}</span><br/>
+
+                        <span class="font-weight-bold mr-1">Reason: </span> 
+                        <span class="text-subtitle-1">{{ item.application_requestable?.reason }}</span>
+                    </div>
+                </div>
             </template>
     
             <template #item.created_at="{ item }">
