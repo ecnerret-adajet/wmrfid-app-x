@@ -4,9 +4,30 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
+import ApiService from '@/services/ApiService';
 import { debounce } from 'lodash';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
+
+const plantsOption = ref([]);
+const plantsLoaded = ref(false);
+
+const loadPlants = async () => {
+    try {
+        const response = await ApiService.get('managed-plant-storage-locations');
+        plantsOption.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.plant_code, title: item.name }));
+        plantsLoaded.value = true;
+    } catch (error) {
+        console.error(error);
+        plantsLoaded.value = true;
+    }
+};
+
+onMounted(() => {
+    loadPlants();
+});
 
 const searchValue = ref('');
 const datatableRef = ref(null);
@@ -28,12 +49,14 @@ const filterModalOpen = () => {
 };
 
 const filters = reactive({
+    plant: null,
     created_at: null,
     updated_at: null,
 });
 
 const isFiltersEmpty = computed(() => {
-    return !filters.created_at &&
+    return !filters.plant &&
+           !filters.created_at &&
            !filters.updated_at
 });
 
@@ -53,6 +76,7 @@ const resetFilter = () => {
 }
 
 const clearFilters = () => {
+    filters.plant = null;
     filters.created_at = null;
     filters.updated_at = null;
 };
@@ -94,6 +118,19 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Return Deliveries'">
         <template #default>
             <v-form>
+                <div class="mt-4">
+                    <label class="font-weight-bold">Plant</label>
+                    <v-select
+                        class="mt-1"
+                        density="compact"
+                        label="Filter by Plant"
+                        :items="plantsOption"
+                        :loading="!plantsLoaded"
+                        v-model="filters.plant"
+                        clearable
+                    />
+                </div>
+
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
                     <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
