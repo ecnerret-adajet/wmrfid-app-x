@@ -14,7 +14,7 @@ const plantsLoaded = ref(false);
 
 const loadPlants = async () => {
     try {
-        const response = await ApiService.get('managed-plant-storage-locations');
+        const response = await ApiService.get('/users/get-data-dropdown');
         plantsOption.value = (response.data.plants ?? [])
             .filter(item => item.name !== null)
             .map(item => ({ value: item.plant_code, title: item.name }));
@@ -67,6 +67,10 @@ const applyFilter = () => {
     filterModalVisible.value = false;
 }
 
+const onPlantChange = () => {
+    applyFilter();
+}
+
 const resetFilter = () => {
     clearFilters();
     if(datatableRef.value) {
@@ -95,9 +99,22 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="10">
+    <VRow align="center">
+        <VCol md="7">
             <SearchInput @update:search="handleSearch"/>
+        </VCol>
+        <VCol md="3">
+            <v-select
+                density="compact"
+                label="Filter by Plant"
+                variant="outlined"
+                :items="plantsOption"
+                :loading="!plantsLoaded"
+                v-model="filters.plant"
+                clearable
+                hide-details
+                @update:model-value="onPlantChange"
+            />
         </VCol>
         <VCol md="2" class="d-flex justify-center align-center">
                 <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
@@ -118,19 +135,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Return Deliveries'">
         <template #default>
             <v-form>
-                <div class="mt-4">
-                    <label class="font-weight-bold">Plant</label>
-                    <v-select
-                        class="mt-1"
-                        density="compact"
-                        label="Filter by Plant"
-                        :items="plantsOption"
-                        :loading="!plantsLoaded"
-                        v-model="filters.plant"
-                        clearable
-                    />
-                </div>
-
                 <div class="mt-4">
                     <label class="font-weight-bold">Date Created</label>
                     <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
