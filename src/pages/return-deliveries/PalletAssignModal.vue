@@ -295,6 +295,8 @@ const handleSave = () => {
           <div class="d-flex justify-space-between align-center">
             <div>
               <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_code) }}</div>
+              <div><strong>Material Description:</strong> {{ item.material_description || 'N/A' }}</div>
+              <div><strong>Batch:</strong> {{ item.batch || 'N/A' }}</div>
               <div><strong>Qty:</strong> {{ item.delivery_qty }} {{ item.sales_unit }}</div>
             </div>
             <div v-if="materialConversionLoading">
