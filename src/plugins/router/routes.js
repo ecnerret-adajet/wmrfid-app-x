@@ -748,6 +748,14 @@ export const routes = [
         },
     },
     {
+        path: '/fumigation/:reader',
+        name: 'reader-fumigation',
+        component: () => import('@/pages/readers/fumigation.vue'),
+        meta: {
+            pageTitle: "Fumigation Bay Logs"
+        },
+    },
+    {
         path: '/loading-queue/:plant_code/:storage_location',
         component: () => import('@/pages/loadingQueue.vue'),
         meta: {
