@@ -38,7 +38,7 @@ const toast = ref({
 const headers = [
   { title: 'DO NUMBER', key: 'do_number' },
   { title: 'TRUCKSCALE NUMBER', key: 'truck_scale_num', sortable: false },
-  { title: 'PLATE NUMBER', key: 'plate_number', sortable: false },
+  { title: 'PLATE NUMBER', key: 'plate_number', sortable: false, width: '1%' },
   { title: 'VENDOR', key: 'vendor', sortable: false },
   { title: 'NET WEIGHT', key: 'net_weight', align: 'end', sortable: false },
   { title: 'SHIP TO NAME', key: 'ship_to_name', sortable: false },
@@ -183,7 +183,7 @@ defineExpose({
     </template>
 
     <template #item.plate_number="{ item }">
-      {{ item.do_truck_scale?.truckscale?.plate_number }}
+      <span class="text-no-wrap">{{ item.do_truck_scale?.truckscale?.plate_number }}</span>
     </template>
 
     <template #item.vendor="{ item }">
