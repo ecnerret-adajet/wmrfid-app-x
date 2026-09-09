@@ -5,12 +5,17 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
 import { computed, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
 
+const authStore = useAuthStore();
+
 const plantsOption = ref([]);
 const plantsLoaded = ref(false);
+
+const SUPER_ADMIN_DEFAULT_PLANT_CODE = '2110';
 
 const loadPlants = async () => {
     try {
@@ -19,6 +24,16 @@ const loadPlants = async () => {
             .filter(item => item.name !== null)
             .map(item => ({ value: item.plant_code, title: item.name }));
         plantsLoaded.value = true;
+
+        if (authStore.user?.is_super_admin) {
+            filters.plant = SUPER_ADMIN_DEFAULT_PLANT_CODE;
+        } else if (plantsOption.value.length > 0) {
+            filters.plant = plantsOption.value[0].value;
+        }
+
+        if (filters.plant) {
+            applyFilter();
+        }
     } catch (error) {
         console.error(error);
         plantsLoaded.value = true;
