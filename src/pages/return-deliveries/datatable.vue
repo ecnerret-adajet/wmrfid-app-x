@@ -183,11 +183,11 @@ defineExpose({
     </template>
 
     <template #item.plate_number="{ item }">
-      {{ item.customerDelivery?.plate_number }}
+      {{ item.do_truck_scale?.truckscale?.plate_number }}
     </template>
 
     <template #item.vendor="{ item }">
-      {{ item.customerDelivery?.vendor_name }}
+      {{ item.do_truck_scale?.truckscale?.vendor_name }}
     </template>
 
     <template #item.net_weight="{ item }">
