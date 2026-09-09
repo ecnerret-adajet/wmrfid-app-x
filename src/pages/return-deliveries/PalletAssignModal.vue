@@ -94,7 +94,7 @@ const fetchPallets = async (query = '') => {
       material_code: removeLeadingZeros(props.item?.material_code),
     }
 
-    const response = await ApiService.post('/transfers/pallet-list', payload)
+    const response = await ApiService.post('/return-deliveries/pallet-list', payload)
 
     availablePallets.value = response.data.data
   } catch (error) {
