@@ -161,7 +161,7 @@ watch(() => dialogVisible.value, newVal => {
 })
 
 watch(search, newVal => {
-  if (newVal !== selectedPallet.value?.physical_id) {
+  if (newVal !== selectedPallet.value?.name) {
     debouncedFetchPallets(newVal)
   }
 })
@@ -172,10 +172,13 @@ const addPallet = () => {
       return
     }
 
-    const exists = addedPallets.value.find(p => p.physical_id === selectedPallet.value.physical_id)
+    const exists = addedPallets.value.find(p => p.physical_id === selectedPallet.value.name)
     if (!exists) {
       addedPallets.value.push({
         ...selectedPallet.value,
+        physical_id: selectedPallet.value.name,
+        batch: selectedPallet.value.inventory?.batch,
+        quantity: selectedPallet.value.inventory?.quantity,
         is_assigned: false,
       })
       selectedPallet.value = null
@@ -191,7 +194,7 @@ const addPallet = () => {
 }
 
 const getPlantLabel = palletItem => {
-  const plant = palletItem?.material?.plant
+  const plant = palletItem?.inventory?.material?.plant
 
   if (!plant) {
     return 'N/A'
@@ -337,8 +340,8 @@ const handleSave = () => {
               v-model:search="search"
               :items="availablePallets"
               :loading="isLoading"
-              item-title="physical_id"
-              item-value="physical_id"
+              item-title="name"
+              item-value="name"
               label="Search Pallet"
               return-object
               variant="outlined"
@@ -353,12 +356,12 @@ const handleSave = () => {
                   v-bind="props"
                   class="pallet-option-item"
                   lines="three"
-                  :title="item.raw.physical_id || 'N/A'"
+                  :title="item.raw.name || 'N/A'"
                 >
                   <template #subtitle>
                     <div class="pallet-option-subtitle">
                       <div>{{ getPlantLabel(item.raw) }}</div>
-                      <div>Current Batch: {{ item.raw.batch || 'N/A' }}</div>
+                      <div>Current Batch: {{ item.raw.inventory?.batch || 'N/A' }}</div>
                     </div>
                   </template>
                 </VListItem>
