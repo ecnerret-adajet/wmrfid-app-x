@@ -89,7 +89,7 @@ const onFumigationScanEvent = data => {
     }
 
     logs.value.unshift(log);
-    if (logs.value.length > 8) logs.value.pop();
+    if (logs.value.length > 5) logs.value.pop();
     lastRead.value = logs.value[0] || null;
 
     // If pallet is unregistered
@@ -462,15 +462,16 @@ watch(
     display: flex;
     align-items: stretch;
     gap: 14px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    width: 100%;
 }
 
 .door-list {
     display: flex;
     align-items: stretch;
     gap: 10px;
-    flex-wrap: wrap;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
 }
 
 .door-card {
@@ -482,7 +483,8 @@ watch(
     border: 1px solid #e3e8e5;
     border-radius: 14px;
     padding: 8px 18px;
-    min-width: 72px;
+    min-width: 0;
+    flex: 1 1 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -502,7 +504,9 @@ watch(
 }
 
 .stat-card {
-    display: inline-flex;
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
     align-items: center;
     gap: 18px;
     background: linear-gradient(135deg, #00833c 0%, #006830 100%);
@@ -756,6 +760,10 @@ watch(
 }
 
 @media (max-width: 1100px) {
+    .chamber-stats {
+        flex-direction: column;
+    }
+
     .hero-card {
         grid-template-columns: 1fr;
         text-align: left;
