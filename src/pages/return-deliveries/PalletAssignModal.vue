@@ -259,7 +259,7 @@ const handleSave = () => {
 
   const formattedPallets = newPallets.map(p => ({
     physical_id: p.physical_id,
-    batch: p.batch || 'N/A',
+    batch: p.batch || null,
     quantity: p.quantity || 0,
   }))
 
