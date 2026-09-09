@@ -756,6 +756,13 @@ export const routes = [
         },
     },
     {
+        path: '/version-release',
+        component: () => import('@/pages/version-release/Index.vue'),
+        meta: {
+            pageTitle: "Version Release"
+        }
+    },
+    {
         path: '/loading-queue/:plant_code/:storage_location',
         component: () => import('@/pages/loadingQueue.vue'),
         meta: {

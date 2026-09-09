@@ -320,6 +320,12 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.pallet.checker')"
         :item="{ title: 'Pallet Checker', icon: 'ri-checkbox-multiple-line', to: '/pallet-checker' }" />
+    
+    <!-- // Add version release link -->
+    <!-- <VerticalNavLink v-if="authUserCan('view.version.releases')"
+        :item="{ title: 'Version Releases', icon: 'ri-history-line', to: '/version-releases' }" /> -->
+    <VerticalNavLink 
+        :item="{ title: 'Version Release', icon: 'ri-history-line', to: '/version-release' }" />
 
     <!-- Warehouse Mapping  -->
     <AddingModal @close="showMappingModal = false" :show="showMappingModal" :dialogTitle="'Select Location'">
