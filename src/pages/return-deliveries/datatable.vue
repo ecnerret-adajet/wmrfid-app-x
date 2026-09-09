@@ -45,8 +45,13 @@ const headers = [
   { title: 'CUSTOMER', key: 'customer', sortable: false },
   { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
   { title: 'DELIVERY ITEMS', key: 'items', align: 'center', sortable: false },
+  { title: 'ASSIGNED PALLETS', key: 'assigned_pallets_total', align: 'center', sortable: false },
   { title: '', key: 'action', align: 'center', sortable: false },
 ]
+
+const getAssignedPalletsTotal = item => {
+  return (item.items ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
+}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
   loading.value = true
@@ -202,6 +207,15 @@ defineExpose({
 
     <template #item.items="{ item }">
       {{ item.items?.length ?? 0 }}
+    </template>
+
+    <template #item.assigned_pallets_total="{ item }">
+      <VChip
+        size="small"
+        :color="getAssignedPalletsTotal(item) > 0 ? 'success' : 'default'"
+      >
+        {{ getAssignedPalletsTotal(item) }}
+      </VChip>
     </template>
 
     <!-- Actions -->
