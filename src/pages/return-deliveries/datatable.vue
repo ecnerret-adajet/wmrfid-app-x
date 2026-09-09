@@ -127,7 +127,7 @@ const savePalletAssignment = async ({ pallets }) => {
     quantity: selectedItemForPallet.value.delivery_qty,
     do_number: selectedDelivery.value.do_number,
     item_number: selectedItemForPallet.value.item_number,
-    plant: selectedItemForPallet.value.plant,
+    plant: selectedDelivery.value?.customer_delivery?.plant?.plant_code || selectedItemForPallet.value.plant,
     storage_location: selectedItemForPallet.value.storage_location,
     uom: selectedItemForPallet.value.sales_unit,
   }
