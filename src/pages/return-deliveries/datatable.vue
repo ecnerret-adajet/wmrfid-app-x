@@ -50,7 +50,7 @@ const headers = [
 ]
 
 const getAssignedPalletsTotal = item => {
-  return (item.items ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
+  return (item.customerDelivery?.deliveryItems ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
 }
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -123,11 +123,11 @@ const savePalletAssignment = async ({ pallets }) => {
       batch: p.batch || null,
       quantity: p.quantity || 0,
     })),
-    material_code: selectedItemForPallet.value.material_code,
-    quantity: selectedItemForPallet.value.delivery_qty,
+    material_code: selectedItemForPallet.value.material_number,
+    quantity: selectedItemForPallet.value.delivery_quantity,
     do_number: selectedDelivery.value.do_number,
     item_number: selectedItemForPallet.value.item_number,
-    plant: selectedDelivery.value?.customer_delivery?.plant?.plant_code || selectedItemForPallet.value.plant,
+    plant: selectedDelivery.value?.customerDelivery?.plant?.plant_code || selectedItemForPallet.value.plant,
     storage_location: selectedItemForPallet.value.storage_location,
     uom: selectedItemForPallet.value.sales_unit,
   }
@@ -206,7 +206,7 @@ defineExpose({
     </template>
 
     <template #item.items="{ item }">
-      {{ item.items?.length ?? 0 }}
+      {{ item.customerDelivery?.deliveryItems?.length ?? 0 }}
     </template>
 
     <template #item.assigned_pallets_total="{ item }">
@@ -264,6 +264,7 @@ defineExpose({
             <tr>
               <th>Item</th>
               <th>Material</th>
+              <th>Material Description</th>
               <th>Plant</th>
               <th>Storage Location</th>
               <th class="text-center">
@@ -279,15 +280,16 @@ defineExpose({
           </thead>
           <tbody>
             <tr
-              v-for="(item, index) in selectedDelivery?.items"
+              v-for="(item, index) in selectedDelivery?.customerDelivery?.deliveryItems"
               :key="index"
             >
               <td>{{ item.item_number }}</td>
-              <td>{{ item.material_code }}</td>
+              <td>{{ item.material_number }}</td>
+              <td>{{ item.material_description }}</td>
               <td>{{ item.plant }}</td>
               <td>{{ item.storage_location }}</td>
               <td class="text-center">
-                {{ item.delivery_qty }} {{ item.sales_unit }}
+                {{ item.delivery_quantity }} {{ item.sales_unit }}
               </td>
               <td class="text-center">
                 <VChip

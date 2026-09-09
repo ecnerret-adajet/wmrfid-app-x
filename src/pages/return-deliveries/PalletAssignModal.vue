@@ -49,7 +49,7 @@ const maxPallets = ref(0)
 const materialConversionLoading = ref(false)
 
 const getPlantCode = () => {
-  return props.delivery?.customer_delivery?.plant?.plant_code || props.item?.plant
+  return props.delivery?.customerDelivery?.plant?.plant_code || props.item?.plant
 }
 
 function removeLeadingZeros(value) {
@@ -64,8 +64,8 @@ const fetchMaterialConversion = async () => {
   materialConversionLoading.value = true
   try {
     const payload = {
-      material_code: removeLeadingZeros(props.item?.material_code),
-      quantity: props.item?.delivery_qty,
+      material_code: removeLeadingZeros(props.item?.material_number),
+      quantity: props.item?.delivery_quantity,
       uom: props.item?.sales_unit,
     }
 
@@ -91,7 +91,7 @@ const fetchPallets = async (query = '') => {
       page: 1,
       per_page: 20,
       plant_code: getPlantCode(),
-      material_code: removeLeadingZeros(props.item?.material_code),
+      material_code: removeLeadingZeros(props.item?.material_number),
     }
 
     const response = await ApiService.post('/return-deliveries/pallet-list', payload)
@@ -111,7 +111,7 @@ const fetchAssignedPallets = async () => {
     const payload = {
       do_number: props.delivery?.do_number,
       item_number: props.item?.item_number,
-      material_code: removeLeadingZeros(props.item?.material_code),
+      material_code: removeLeadingZeros(props.item?.material_number),
     }
 
     const response = await ApiService.post('return-deliveries/get-assigned-pallets', payload)
@@ -228,7 +228,7 @@ const removePallet = async item => {
         batch: item.batch || null,
         do_number: props.delivery?.do_number,
         item_number: props.item?.item_number,
-        material_code: removeLeadingZeros(props.item?.material_code),
+        material_code: removeLeadingZeros(props.item?.material_number),
         plant: props.item?.plant,
         storage_location: props.item?.storage_location,
       })
@@ -258,7 +258,7 @@ const handleSave = () => {
   const newPallets = addedPallets.value.filter(p => !p.is_assigned)
 
   const totalPallets = addedPallets.value.length
-  const perPalletQty = totalPallets > 0 ? (props.item?.delivery_qty || 0) / totalPallets : 0
+  const perPalletQty = totalPallets > 0 ? (props.item?.delivery_quantity || 0) / totalPallets : 0
 
   const formattedPallets = newPallets.map(p => ({
     physical_id: p.physical_id,
@@ -300,10 +300,10 @@ const handleSave = () => {
         >
           <div class="d-flex justify-space-between align-center">
             <div>
-              <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_code) }}</div>
-              <div><strong>Material Description:</strong> {{ item.material?.material_description || 'N/A' }}</div>
+              <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_number) }}</div>
+              <div><strong>Material Description:</strong> {{ item.material_description || 'N/A' }}</div>
               <div><strong>Batch:</strong> {{ item.batch || 'N/A' }}</div>
-              <div><strong>Qty:</strong> {{ item.delivery_qty }} {{ item.sales_unit }}</div>
+              <div><strong>Qty:</strong> {{ item.delivery_quantity }} {{ item.sales_unit }}</div>
             </div>
             <div v-if="materialConversionLoading">
               <VProgressCircular
