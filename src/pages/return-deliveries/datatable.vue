@@ -256,6 +256,9 @@ defineExpose({
                 Quantity
               </th>
               <th class="text-center">
+                Assigned Pallets
+              </th>
+              <th class="text-center">
                 Actions
               </th>
             </tr>
@@ -271,6 +274,14 @@ defineExpose({
               <td>{{ item.storage_location }}</td>
               <td class="text-center">
                 {{ item.delivery_qty }} {{ item.sales_unit }}
+              </td>
+              <td class="text-center">
+                <VChip
+                  size="small"
+                  :color="item.assigned_pallets_total > 0 ? 'success' : 'default'"
+                >
+                  {{ item.assigned_pallets_total ?? 0 }}
+                </VChip>
               </td>
               <td class="text-center">
                 <VBtn
