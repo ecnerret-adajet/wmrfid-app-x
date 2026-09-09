@@ -257,10 +257,13 @@ const removePallet = async item => {
 const handleSave = () => {
   const newPallets = addedPallets.value.filter(p => !p.is_assigned)
 
+  const totalPallets = addedPallets.value.length
+  const perPalletQty = totalPallets > 0 ? (props.item?.delivery_qty || 0) / totalPallets : 0
+
   const formattedPallets = newPallets.map(p => ({
     physical_id: p.physical_id,
-    batch: p.batch || null,
-    quantity: p.quantity || 0,
+    batch: props.item?.batch || null,
+    quantity: perPalletQty,
   }))
 
   emit('save', {
