@@ -113,7 +113,7 @@ const proceedMapping = () => {
             to: '/qc-disposition/postings',
         }" />
         <VerticalNavLink v-if="authUserCan('can.view.qc.postings') && authUserCan('view.deliveries')" :item="{
-            title: 'Return Delivery Dispositions',
+            title: 'Return Deliveries',
             to: '/return-deliveries/dispositions',
         }" />
         <VerticalNavLink v-if="authUserCan('can.view.quality.control') || authUserCan('can.view.qc.disposition')" :item="{
@@ -152,7 +152,7 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-archive-line', to: '/sap-deliveries' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
-        :item="{ title: 'Return Deliveries', icon: 'ri-arrow-go-back-line', to: '/return-deliveries' }" />
+        :item="{ title: 'Return Deliveries', icon: 'ri-arrow-go-back-line', to: '/return-deliveries', exactMatch: true }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
         :item="{ title: 'Reserved Orders', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
