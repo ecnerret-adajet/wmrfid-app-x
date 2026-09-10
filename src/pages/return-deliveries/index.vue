@@ -109,12 +109,79 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tablePage.value = page
     tablePerPage.value = itemsPerPage
     searchValue.value = search
+
+    loadStatusCounts();
 }
+
+const statusCounts = ref({
+    total: 0,
+    without_assigned_pallets: 0,
+});
+const statusCountsLoading = ref(false);
+
+const loadStatusCounts = async () => {
+    statusCountsLoading.value = true;
+    try {
+        const response = await ApiService.get('return-deliveries/status-counts', {
+            params: {
+                search: searchValue.value,
+                filters,
+            },
+        });
+        statusCounts.value = {
+            total: response.data.total ?? 0,
+            without_assigned_pallets: response.data.without_assigned_pallets ?? 0,
+        };
+    } catch (error) {
+        console.error(error);
+    } finally {
+        statusCountsLoading.value = false;
+    }
+};
 
 </script>
 
 <template>
-    <VRow align="center">
+    <VRow>
+        <VCol cols="12" sm="6" md="4">
+            <VCard>
+                <VCardText class="d-flex align-center justify-space-between">
+                    <div>
+                        <div class="text-body-2 text-medium-emphasis">
+                            Total Entries
+                        </div>
+                        <div class="text-h4 font-weight-bold">
+                            <VProgressCircular v-if="statusCountsLoading" indeterminate size="20" width="2" color="primary"/>
+                            <span v-else>{{ statusCounts.total }}</span>
+                        </div>
+                    </div>
+                    <VAvatar color="primary" variant="tonal" size="48" rounded>
+                        <VIcon icon="ri-file-list-3-line" size="24"/>
+                    </VAvatar>
+                </VCardText>
+            </VCard>
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+            <VCard>
+                <VCardText class="d-flex align-center justify-space-between">
+                    <div>
+                        <div class="text-body-2 text-medium-emphasis">
+                            Without Assigned Pallets
+                        </div>
+                        <div class="text-h4 font-weight-bold">
+                            <VProgressCircular v-if="statusCountsLoading" indeterminate size="20" width="2" color="warning"/>
+                            <span v-else>{{ statusCounts.without_assigned_pallets }}</span>
+                        </div>
+                    </div>
+                    <VAvatar color="warning" variant="tonal" size="48" rounded>
+                        <VIcon icon="ri-stack-line" size="24"/>
+                    </VAvatar>
+                </VCardText>
+            </VCard>
+        </VCol>
+    </VRow>
+
+    <VRow align="center" class="mt-1">
         <VCol md="7">
             <SearchInput @update:search="handleSearch"/>
         </VCol>
