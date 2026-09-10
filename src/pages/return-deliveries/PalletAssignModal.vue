@@ -49,7 +49,7 @@ const maxPallets = ref(0)
 const materialConversionLoading = ref(false)
 
 const getPlantCode = () => {
-  return props.delivery?.customerDelivery?.plant?.plant_code || props.item?.plant
+  return props.delivery?.customer_delivery?.plant?.plant_code || props.item?.plant
 }
 
 function removeLeadingZeros(value) {

@@ -50,7 +50,7 @@ const headers = [
 ]
 
 const getAssignedPalletsTotal = item => {
-  return (item.customerDelivery?.deliveryItems ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
+  return (item.customer_delivery?.delivery_items ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
 }
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
@@ -127,7 +127,7 @@ const savePalletAssignment = async ({ pallets }) => {
     quantity: selectedItemForPallet.value.delivery_quantity,
     do_number: selectedDelivery.value.do_number,
     item_number: selectedItemForPallet.value.item_number,
-    plant: selectedDelivery.value?.customerDelivery?.plant?.plant_code || selectedItemForPallet.value.plant,
+    plant: selectedDelivery.value?.customer_delivery?.plant?.plant_code || selectedItemForPallet.value.plant,
     storage_location: selectedItemForPallet.value.storage_location,
     uom: selectedItemForPallet.value.sales_unit,
   }
@@ -174,7 +174,7 @@ defineExpose({
     <template #item.do_number="{ item }">
       <div class="d-flex flex-column py-1">
         <span class="font-weight-bold text-sm">{{ item.do_number }}</span>
-        <span class="text-sm text-muted">{{ item.customerDelivery?.delivery_document }}</span>
+        <span class="text-sm text-muted">{{ item.customer_delivery?.delivery_document }}</span>
       </div>
     </template>
 
@@ -206,7 +206,7 @@ defineExpose({
     </template>
 
     <template #item.items="{ item }">
-      {{ item.customerDelivery?.deliveryItems?.length ?? 0 }}
+      {{ item.customer_delivery?.delivery_items?.length ?? 0 }}
     </template>
 
     <template #item.assigned_pallets_total="{ item }">
@@ -280,7 +280,7 @@ defineExpose({
           </thead>
           <tbody>
             <tr
-              v-for="(item, index) in selectedDelivery?.customerDelivery?.deliveryItems"
+              v-for="(item, index) in selectedDelivery?.customer_delivery?.delivery_items"
               :key="index"
             >
               <td>{{ item.item_number }}</td>
