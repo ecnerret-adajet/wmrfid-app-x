@@ -19,6 +19,9 @@ const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
 
+const selectedItems = ref([])
+const confirmLoading = ref(false)
+
 onMounted(() => loadPlants())
 
 const loadPlants = async () => {
@@ -48,6 +51,8 @@ const headers = [
   { title: 'STATUS', key: 'commodity_status', sortable: false },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
+  { title: 'CONFIRMED BY', key: 'confirmed_by', sortable: false },
+  { title: 'CONFIRMED AT', key: 'confirmed_at', sortable: false },
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
@@ -88,6 +93,26 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 const handleSearch = () => {
   searchValue.value = searchInput.value
   lastOptions.value = {}
+  selectedItems.value = []
+}
+
+const handleConfirm = () => {
+  if (selectedItems.value.length === 0) return
+
+  confirmLoading.value = true
+
+  ApiService.post('return-deliveries/confirm-disposition-items', { ids: selectedItems.value })
+    .then(() => {
+      selectedItems.value = []
+      lastOptions.value = {}
+      loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
+    })
+    .catch((error) => {
+      console.error(error)
+    })
+    .finally(() => {
+      confirmLoading.value = false
+    })
 }
 </script>
 
@@ -148,17 +173,34 @@ const handleSearch = () => {
         Search
       </v-btn>
     </VCol>
+    <VCol cols="12" md="2" class="d-flex align-center">
+      <v-btn
+        block
+        :loading="confirmLoading"
+        :disabled="selectedItems.length === 0"
+        prepend-icon="ri-check-line"
+        color="success"
+        @click="handleConfirm"
+      >
+        <template v-slot:loader>
+          <v-progress-circular indeterminate color="white" size="24" />
+        </template>
+        Confirm
+      </v-btn>
+    </VCol>
   </VRow>
 
   <VCard>
     <VDataTableServer
       v-model:items-per-page="itemsPerPage"
+      v-model="selectedItems"
       :headers="headers"
       :items="serverItems"
       :items-length="totalItems"
       :loading="pageLoading"
       item-value="id"
       :search="searchValue"
+      show-select
       @update:options="loadItems"
       class="text-no-wrap"
     >
@@ -182,6 +224,14 @@ const handleSearch = () => {
 
       <template #item.layer="{ item }">
         {{ item.position_in_block }}
+      </template>
+
+      <template #item.confirmed_by="{ item }">
+        {{ item.return_delivery_pallet_assignment_item?.confirmed_by?.name ?? '' }}
+      </template>
+
+      <template #item.confirmed_at="{ item }">
+        {{ item.return_delivery_pallet_assignment_item?.confirmed_at ? Moment(item.return_delivery_pallet_assignment_item.confirmed_at).format('MMMM D, YYYY h:mm A') : '' }}
       </template>
     </VDataTableServer>
   </VCard>
