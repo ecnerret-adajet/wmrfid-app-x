@@ -2,14 +2,13 @@
 import DateRangePicker from '@/components/DateRangePicker.vue';
 import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
-import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { debounce } from 'lodash';
 import { computed, ref } from 'vue';
 import datatable from './datatable.vue';
 
 const searchValue = ref('');
+const searchInputValue = ref('');
 const datatableRef = ref(null);
 const tablePerPage = ref(10);
 const tablePage = ref(1);
@@ -91,9 +90,9 @@ const clearFilters = () => {
     filters.updated_at = null;
 };
 
-const handleSearch = debounce((search) => {
-    searchValue.value = search;
-}, 500);
+const handleSearch = () => {
+    searchValue.value = searchInputValue.value;
+};
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tableSort.value = sortBy
@@ -115,20 +114,37 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 v-model="filters.plant_code"
             />
         </VCol>
-        <VCol md="7">
-            <SearchInput @update:search="handleSearch"/>
+        <VCol cols="12" md="7">
+            <v-text-field
+                v-model="searchInputValue"
+                persistent-placeholder
+                placeholder="Search ..."
+                append-inner-icon="ri-search-line"
+                single-line
+                hide-details
+                density="compact"
+                class="custom-text-field"
+            />
         </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
+        <VCol cols="12" md="2" class="d-flex justify-center align-center">
+            <v-btn block prepend-icon="ri-search-eye-line" class="w-full" @click="handleSearch">
+                <template v-slot:prepend>
+                    <v-icon color="white"></v-icon>
+                </template>
+                Search
+            </v-btn>
+        </VCol>
+        <!-- <VCol cols="12" md="2" class="d-flex justify-center align-center">
             <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
                 <template v-slot:prepend>
                     <v-icon color="white"></v-icon>
                 </template>
                 Filter
             </v-btn>
-        </VCol>
+        </VCol> -->
     </VRow>
 
-    <VCard>
+    <VCard class="mt-4">
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
             :search="searchValue"
         />
