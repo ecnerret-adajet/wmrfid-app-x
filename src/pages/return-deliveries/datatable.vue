@@ -35,21 +35,25 @@ const toast = ref({
 })
 
 const headers = [
+  { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
   { title: 'DO NUMBER', key: 'do_number' },
   { title: 'ITEM', key: 'item_number', sortable: false, width: '1%' },
   { title: 'MATERIAL', key: 'material' },
   { title: 'QUANTITY', key: 'quantity', align: 'end', sortable: false },
-  { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
   { title: 'TRUCKSCALE NUMBER', key: 'truck_scale_num', sortable: false },
   { title: 'PLATE NUMBER', key: 'plate_number', sortable: false, width: '1%' },
   { title: 'VENDOR', key: 'vendor', sortable: false },
-  { title: 'NET WEIGHT', key: 'net_weight', align: 'end', sortable: false },
   { title: 'SHIP TO NAME', key: 'ship_to_name', sortable: false },
   { title: 'CUSTOMER', key: 'customer', sortable: false },
-  { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status', sortable: false },
   { title: 'ASSIGNED PALLETS', key: 'assigned_pallets_total', align: 'center', sortable: false },
   { title: '', key: 'action', align: 'center', sortable: false },
 ]
+
+const stripLeadingZeros = value => {
+  if (!value) return value
+
+  return String(value).replace(/^0+(?=\d)/, '')
+}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
   loading.value = true
@@ -179,6 +183,10 @@ defineExpose({
     :search="search"
     @update:options="loadItems"
   >
+    <template #item.material_document="{ item }">
+      {{ item.material_document }}
+    </template>
+
     <template #item.do_number="{ item }">
       <div class="d-flex flex-column py-1">
         <span class="font-weight-bold text-sm">{{ item.delivery?.do_number }}</span>
@@ -192,17 +200,13 @@ defineExpose({
 
     <template #item.material="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.material_code }}</span>
+        <span class="font-weight-bold text-sm">{{ stripLeadingZeros(item.material_code) }}</span>
         <span class="text-sm text-muted">{{ item.material?.material_description }}</span>
       </div>
     </template>
 
     <template #item.quantity="{ item }">
       {{ item.delivery_qty }} {{ item.sales_unit }}
-    </template>
-
-    <template #item.material_document="{ item }">
-      {{ item.material_document }}
     </template>
 
     <template #item.truck_scale_num="{ item }">
@@ -217,23 +221,15 @@ defineExpose({
       {{ item.delivery?.do_truck_scale?.truckscale?.vendor_name }}
     </template>
 
-    <template #item.net_weight="{ item }">
-      {{ item.delivery?.net_weight }}
-    </template>
-
     <template #item.ship_to_name="{ item }">
       {{ item.delivery?.ship_to_name }}
     </template>
 
     <template #item.customer="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.delivery?.ship_to_customer }}</span>
-        <span class="text-sm">{{ item.delivery?.ship_to_name }}</span>
+        <span class="font-weight-bold text-sm">{{ item.delivery?.customer_delivery?.ship_to_customer }}</span>
+        <span class="text-sm">{{ item.delivery?.customer_delivery?.ship_to_name }}</span>
       </div>
-    </template>
-
-    <template #item.goods_issue_status="{ item }">
-      {{ item.delivery?.goods_issue_status }}
     </template>
 
     <template #item.assigned_pallets_total="{ item }">
