@@ -621,6 +621,18 @@ export const routes = [
             },
         },
         {
+            path: 'return-deliveries/dispositions',
+            name: 'return-delivery-dispositions',
+            component: () => import('@/pages/return-deliveries/ReturnDeliveryDispositions.vue'),
+            meta: {
+              pageTitle: 'Return Delivery Dispositions',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Return Delivery Dispositions', link: '/return-deliveries/dispositions' },
+              ],
+            },
+        },
+        {
             path: 'qc-disposition/postings',
             name: 'qc-disposition-postings',
             component: () => import('@/pages/qualityControl/Postings.vue'),
