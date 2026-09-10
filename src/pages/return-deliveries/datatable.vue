@@ -22,7 +22,6 @@ const page = ref(1)
 const sortQuery = ref('-created_at')
 const filters = ref(null)
 
-const showDeliveryItems = ref(false)
 const selectedDelivery = ref(null)
 
 const palletModalOpen = ref(false)
@@ -37,21 +36,20 @@ const toast = ref({
 
 const headers = [
   { title: 'DO NUMBER', key: 'do_number' },
+  { title: 'ITEM', key: 'item_number', sortable: false, width: '1%' },
+  { title: 'MATERIAL', key: 'material' },
+  { title: 'QUANTITY', key: 'quantity', align: 'end', sortable: false },
+  { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
   { title: 'TRUCKSCALE NUMBER', key: 'truck_scale_num', sortable: false },
   { title: 'PLATE NUMBER', key: 'plate_number', sortable: false, width: '1%' },
   { title: 'VENDOR', key: 'vendor', sortable: false },
   { title: 'NET WEIGHT', key: 'net_weight', align: 'end', sortable: false },
   { title: 'SHIP TO NAME', key: 'ship_to_name', sortable: false },
   { title: 'CUSTOMER', key: 'customer', sortable: false },
-  { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
-  { title: 'DELIVERY ITEMS', key: 'items', align: 'center', sortable: false },
+  { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status', sortable: false },
   { title: 'ASSIGNED PALLETS', key: 'assigned_pallets_total', align: 'center', sortable: false },
   { title: '', key: 'action', align: 'center', sortable: false },
 ]
-
-const getAssignedPalletsTotal = item => {
-  return (item.customer_delivery?.delivery_items ?? []).reduce((sum, i) => sum + (i.assigned_pallets_total ?? 0), 0)
-}
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
   loading.value = true
@@ -95,21 +93,25 @@ const applyFilters = data => {
   })
 }
 
-const handleAction = (delivery, action) => {
-  if (action === 'view_delivery_items') {
-    selectedDelivery.value = delivery
-    showDeliveryItems.value = true
-  }
-}
-
 const openPalletModal = item => {
-  selectedItemForPallet.value = item
+  selectedDelivery.value = item.delivery
+  selectedItemForPallet.value = {
+    material_number: item.material_code,
+    material_description: item.material?.material_description,
+    batch: item.batch,
+    delivery_quantity: item.delivery_qty,
+    sales_unit: item.sales_unit,
+    item_number: item.item_number,
+    plant: item.plant,
+    storage_location: item.storage_location,
+  }
   palletModalOpen.value = true
 }
 
 const closePalletModal = () => {
   palletModalOpen.value = false
   selectedItemForPallet.value = null
+  selectedDelivery.value = null
 }
 
 const savePalletAssignment = async ({ pallets }) => {
@@ -141,6 +143,12 @@ const savePalletAssignment = async ({ pallets }) => {
       show: true,
     }
     closePalletModal()
+    loadItems({
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      sortBy: [{ key: 'created_at', order: 'desc' }],
+      search: props.search,
+    })
   } catch (error) {
     console.error(error)
     toast.value = {
@@ -173,157 +181,83 @@ defineExpose({
   >
     <template #item.do_number="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.do_number }}</span>
-        <span class="text-sm text-muted">{{ item.customer_delivery?.delivery_document }}</span>
+        <span class="font-weight-bold text-sm">{{ item.delivery?.do_number }}</span>
+        <span class="text-sm text-muted">{{ item.delivery?.customer_delivery?.delivery_document }}</span>
       </div>
     </template>
 
+    <template #item.item_number="{ item }">
+      {{ item.item_number }}
+    </template>
+
+    <template #item.material="{ item }">
+      <div class="d-flex flex-column py-1">
+        <span class="font-weight-bold text-sm">{{ item.material_code }}</span>
+        <span class="text-sm text-muted">{{ item.material?.material_description }}</span>
+      </div>
+    </template>
+
+    <template #item.quantity="{ item }">
+      {{ item.delivery_qty }} {{ item.sales_unit }}
+    </template>
+
+    <template #item.material_document="{ item }">
+      {{ item.material_document }}
+    </template>
+
     <template #item.truck_scale_num="{ item }">
-      {{ item.truck_scale_num }}
+      {{ item.delivery?.truck_scale_num }}
     </template>
 
     <template #item.plate_number="{ item }">
-      <span class="text-no-wrap">{{ item.do_truck_scale?.truckscale?.plate_number }}</span>
+      <span class="text-no-wrap">{{ item.delivery?.do_truck_scale?.truckscale?.plate_number }}</span>
     </template>
 
     <template #item.vendor="{ item }">
-      {{ item.do_truck_scale?.truckscale?.vendor_name }}
+      {{ item.delivery?.do_truck_scale?.truckscale?.vendor_name }}
     </template>
 
     <template #item.net_weight="{ item }">
-      {{ item.net_weight }}
+      {{ item.delivery?.net_weight }}
     </template>
 
     <template #item.ship_to_name="{ item }">
-      {{ item.ship_to_name }}
+      {{ item.delivery?.ship_to_name }}
     </template>
 
     <template #item.customer="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.ship_to_customer }}</span>
-        <span class="text-sm">{{ item.ship_to_name }}</span>
+        <span class="font-weight-bold text-sm">{{ item.delivery?.ship_to_customer }}</span>
+        <span class="text-sm">{{ item.delivery?.ship_to_name }}</span>
       </div>
     </template>
 
-    <template #item.items="{ item }">
-      {{ item.customer_delivery?.delivery_items?.length ?? 0 }}
+    <template #item.goods_issue_status="{ item }">
+      {{ item.delivery?.goods_issue_status }}
     </template>
 
     <template #item.assigned_pallets_total="{ item }">
       <VChip
         size="small"
-        :color="getAssignedPalletsTotal(item) > 0 ? 'success' : 'default'"
+        :color="(item.assigned_pallets_total ?? 0) > 0 ? 'success' : 'default'"
       >
-        {{ getAssignedPalletsTotal(item) }}
+        {{ item.assigned_pallets_total ?? 0 }}
       </VChip>
     </template>
 
     <!-- Actions -->
     <template #item.action="{ item }">
       <div class="d-flex justify-center gap-1">
-        <VMenu location="end">
-          <template #activator="{ props }">
-            <VBtn
-              icon="ri-more-2-line"
-              variant="text"
-              v-bind="props"
-              color="grey"
-            />
-          </template>
-          <VList>
-            <VListItem @click="handleAction(item, 'view_delivery_items')">
-              View Delivery Items
-            </VListItem>
-          </VList>
-        </VMenu>
+        <VBtn
+          icon="ri-stack-line"
+          size="small"
+          variant="text"
+          title="Assign Pallets"
+          @click="openPalletModal(item)"
+        />
       </div>
     </template>
   </VDataTableServer>
-
-  <VDialog
-    v-model="showDeliveryItems"
-    max-width="1300px"
-  >
-    <VCard elevation="2">
-      <VCardTitle class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
-        <div class="text-h4 font-weight-bold ps-2 text-primary">
-          Return Delivery Items — {{ selectedDelivery?.do_number }}
-        </div>
-        <VBtn
-          icon="ri-close-line"
-          variant="text"
-          @click="showDeliveryItems = false"
-        />
-      </VCardTitle>
-      <VCardText>
-        <VTable
-          density="compact"
-          class="elevation-0 border mx-4"
-        >
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Material</th>
-              <th>Material Description</th>
-              <th>Plant</th>
-              <th>Storage Location</th>
-              <th class="text-center">
-                Quantity
-              </th>
-              <th class="text-center">
-                Assigned Pallets
-              </th>
-              <th class="text-center">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(item, index) in selectedDelivery?.customer_delivery?.delivery_items"
-              :key="index"
-            >
-              <td>{{ item.item_number }}</td>
-              <td>{{ item.material_number }}</td>
-              <td>{{ item.material_description }}</td>
-              <td>{{ item.plant }}</td>
-              <td>{{ item.storage_location }}</td>
-              <td class="text-center">
-                {{ item.delivery_quantity }} {{ item.sales_unit }}
-              </td>
-              <td class="text-center">
-                <VChip
-                  size="small"
-                  :color="item.assigned_pallets_total > 0 ? 'success' : 'default'"
-                >
-                  {{ item.assigned_pallets_total ?? 0 }}
-                </VChip>
-              </td>
-              <td class="text-center">
-                <VBtn
-                  icon="ri-stack-line"
-                  size="small"
-                  variant="text"
-                  title="Assign Pallets"
-                  @click="openPalletModal(item)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
-        <div class="d-flex justify-end mt-8 mx-4">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            type="button"
-            @click="showDeliveryItems = false"
-          >
-            Close
-          </VBtn>
-        </div>
-      </VCardText>
-    </VCard>
-  </VDialog>
 
   <Toast
     :show="toast.show"
