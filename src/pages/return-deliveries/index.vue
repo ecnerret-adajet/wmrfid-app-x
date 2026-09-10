@@ -122,7 +122,7 @@ const statusCountsLoading = ref(false);
 const loadStatusCounts = async () => {
     statusCountsLoading.value = true;
     try {
-        const response = await ApiService.get('return-deliveries/status-counts', {
+        const response = await ApiService.query('return-deliveries/status-counts', {
             params: {
                 search: searchValue.value,
                 filters,
