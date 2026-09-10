@@ -51,6 +51,7 @@ const headers = [
   { title: 'STATUS', key: 'commodity_status', sortable: false },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
+  { title: 'RETURN DATE', key: 'return_date', sortable: false },
   { title: 'CONFIRMED BY', key: 'confirmed_by', sortable: false },
   { title: 'CONFIRMED AT', key: 'confirmed_at', sortable: false },
 ]
@@ -224,6 +225,10 @@ const handleConfirm = () => {
 
       <template #item.layer="{ item }">
         {{ item.position_in_block }}
+      </template>
+
+      <template #item.return_date="{ item }">
+        {{ item.return_delivery_pallet_assignment_item?.created_at ? Moment(item.return_delivery_pallet_assignment_item.created_at).format('MMMM D, YYYY h:mm A') : '' }}
       </template>
 
       <template #item.confirmed_by="{ item }">
