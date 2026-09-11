@@ -230,6 +230,17 @@ export const routes = [
             },
         },
         {
+            path: 'return-deliveries',
+            name: 'return-deliveries',
+            component: () => import('@/pages/return-deliveries/index.vue'),
+            meta: {
+              pageTitle: "Return Deliveries",
+              breadcrumbs: [
+                  { label: "Return Deliveries", link: "/return-deliveries" },
+              ],
+            },
+        },
+        {
             path: 'stock-receiving',
             name: 'stock-receiving',
             component: () => import('@/pages/stock-receiving/index.vue'),
@@ -610,6 +621,18 @@ export const routes = [
             },
         },
         {
+            path: 'return-deliveries/dispositions',
+            name: 'return-delivery-dispositions',
+            component: () => import('@/pages/return-deliveries/ReturnDeliveryDispositions.vue'),
+            meta: {
+              pageTitle: 'Return Delivery Dispositions',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Return Delivery Dispositions', link: '/return-deliveries/dispositions' },
+              ],
+            },
+        },
+        {
             path: 'qc-disposition/postings',
             name: 'qc-disposition-postings',
             component: () => import('@/pages/qualityControl/Postings.vue'),
@@ -618,6 +641,18 @@ export const routes = [
               breadcrumbs: [
                   { label: 'QC Disposition', link: '/qc-disposition' },
                   { label: 'Postings', link: '/qc-disposition/postings' },
+              ],
+            },
+        },
+        {
+            path: 'qc-disposition/goods-movement',
+            name: 'qc-disposition-goods-movement',
+            component: () => import('@/pages/qualityControl/QcGoodsMovement.vue'),
+            meta: {
+              pageTitle: 'Goods Movement',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Goods Movement', link: '/qc-disposition/goods-movement' },
               ],
             },
         },

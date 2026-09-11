@@ -10,9 +10,7 @@ const searchInput = ref('')
 const searchValue = ref('')
 const showCreateDialog = ref(false)
 
-const plantsOptions = ref([])
-const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], storage_location_id: null })
+const filters = reactive({ plant_id: null })
 
 const selectedItems = ref([])
 const serverItems = ref([])
@@ -23,6 +21,8 @@ const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
 
+const storageLocation = ref(null)
+
 onMounted(() => loadPlants())
 
 const loadPlants = async () => {
@@ -31,17 +31,10 @@ const loadPlants = async () => {
     const response = await axios.get('/managed-plant-storage-locations', {
       headers: { Authorization: `Bearer ${token}` },
     })
-    plantsOptions.value = (response.data.plants ?? [])
-      .filter(item => item.name !== null)
-      .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
-    if (plantsOptions.value.length > 0) {
-      filters.plant_id = plantsOptions.value[0].value
-      filters.plant_code = plantsOptions.value[0].plant_code
-      filters.storage_locations = plantsOptions.value[0].storage_locations
-    }
-    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
-    if(filters.storage_locations.length > 0) {
-      filters.storage_location_id = filters.storage_locations[0].value
+    const locations = response.data.storage_locations ?? []
+    if (locations.length > 0) {
+      storageLocation.value = locations[0]
+      filters.plant_id = locations[0].plant_id
     }
   } catch (error) {
     console.error(error)
@@ -163,8 +156,8 @@ const handleCreateDispo = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
-      storage_location_id: filters.storage_location_id,
+      plant_code: storageLocation.value?.plant?.plant_code,
+      storage_location_id: storageLocation.value?.id,
       from_qc_disposition: true,
       type: 'qc-disposition',
       items: selectedItems.value.map(item => ({
@@ -286,17 +279,13 @@ const handleCreateDispo = async (method) => {
     </VCol>
   </VRow>
 
+  <div class="pa-4">
+    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
+  </div>
+
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="3" class="d-flex align-center">
-      <v-select
-        label="Filter by Plant"
-        density="compact"
-        hide-details
-        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
-        v-model="filters.plant_id"
-      />
-    </VCol>
-    <VCol cols="12" md="5">
+    <VCol cols="12" md="8">
       <VTextField
         v-model="searchInput"
         placeholder="Search..."

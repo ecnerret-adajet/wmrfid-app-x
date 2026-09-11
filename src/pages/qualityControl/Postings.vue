@@ -4,15 +4,13 @@ import FilteringModal from '@/components/FilteringModal.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
 import ApiService from '@/services/ApiService'
 import moment from 'moment'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
 const searchValue = ref('')
 
-const plantsOptions = ref([])
-const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], sloc: null })
+const storageLocation = ref(null)
 
 const serverItems = ref([])
 const totalItems = ref(0)
@@ -60,6 +58,8 @@ const resetFilter = () => {
 
 const detailDialog = ref(false)
 const selectedLog = ref(null)
+const logItemsPage = ref(1)
+const logItemsPerPage = ref(5)
 
 const headers = [
   { title: 'PHYSICAL ID', key: 'physical_id', sortable: false },
@@ -94,88 +94,20 @@ onMounted(() => loadPlants())
 const loadPlants = async () => {
   try {
     const response = await ApiService.query('managed-plant-storage-locations', {})
-    plantsOptions.value = (response.data.plants ?? [])
-      .filter(item => item.name !== null)
-      .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
-    
-    if (plantsOptions.value.length > 0) {
-      const firstPlant = plantsOptions.value[0]
-      filters.plant_id = firstPlant.value
-      filters.plant_code = firstPlant.plant_code
-      
-      storageLocations.value = response.data.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code, plant_id: item.plant_id }))
-      
-      if(storageLocations.value.length > 0) {
-        filters.sloc = storageLocations.value[0]
-      }
+    const locations = response.data.storage_locations ?? []
+    if (locations.length > 0) {
+      storageLocation.value = locations[0]
     }
-    
-    // Automatically load items after plants are loaded
+
+    // Automatically load items after the storage location is resolved
     handleSearch()
   } catch (error) {
     console.error(error)
   }
 }
 
-watch(() => filters.plant_id, (newVal) => {
-    const selectedSloc = storageLocations.value.find(p => p.plant_id === newVal);
-    if (selectedSloc) {
-        filters.plant_code = selectedSloc.plant_code;
-        storageLocations.value = selectedSloc.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
-        
-        if (storageLocations.value.length > 0) {
-            // filters.sloc = storageLocations.value[0].value;
-            filters.sloc = selectedSloc.code;
-        } else {
-            filters.sloc = null;
-        }
-        
-        handleSearch();
-    }
-})
-
-watch(() => filters.sloc, () => {
-    handleSearch();
-})
-
-// const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
-//   if (!filters.plant_code || !filters.sloc) {
-//       serverItems.value = []
-//       totalItems.value = 0
-//       return
-//   }
-
-//   pageLoading.value = true
-
-//   if (sortBy && sortBy.length > 0) {
-//     const sort = sortBy[0]
-//     sortQuery.value = sort.order === 'desc' ? `-${sort.key}` : sort.key
-//   } else {
-//     sortQuery.value = '-created_at'
-//   }
-
-//   ApiService.query(`quality-control/goods-movement-logs/${filters.plant_code}/${filters.sloc?.code}`, {
-//     params: {
-//       page: pageVal,
-//       itemsPerPage: perPage,
-//       sort: sortQuery.value,
-//       search: searchValue.value,
-//       type: "qc-disposition"
-//     },
-//   })
-//     .then((response) => {
-//       totalItems.value = response.data.total
-//       serverItems.value = response.data.data
-//       pageLoading.value = false
-//     })
-//     .catch((error) => {
-//       console.error(error)
-//       pageLoading.value = false
-//     })
-// }
-
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
-  if (!filters.plant_code || !filters.sloc) {
+  if (!storageLocation.value) {
     serverItems.value = []
     totalItems.value = 0
     return
@@ -193,8 +125,7 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
   let start_date = appliedFilters.start_date
   let end_date = appliedFilters.end_date
 
-  // ApiService.query(`quality-control/dispositions/${filters.plant_code}/${filters.sloc?.code}`, {
-  ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc?.code}`, {
+  ApiService.query(`quality-control/disposition-items/${storageLocation.value?.plant?.plant_code}/${storageLocation.value?.code}`, {
     params: {
       page: pageVal,
       itemsPerPage: perPage,
@@ -226,8 +157,20 @@ const handleSearch = () => {
 
 const openDetailDialog = (log) => {
     selectedLog.value = log;
+    logItemsPage.value = 1;
     detailDialog.value = true;
 };
+
+const pagedLogItems = computed(() => {
+  const items = selectedLog.value?.goods_movement_log_items ?? []
+  const start = (logItemsPage.value - 1) * logItemsPerPage.value
+  return items.slice(start, start + logItemsPerPage.value)
+})
+
+const logItemsPageCount = computed(() => {
+  const total = selectedLog.value?.goods_movement_log_items?.length ?? 0
+  return Math.ceil(total / logItemsPerPage.value) || 1
+})
 </script>
 
 <template>
@@ -251,26 +194,13 @@ const openDetailDialog = (log) => {
     </VCol>
   </VRow>
 
+  <div class="pa-4">
+    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
+  </div>
+
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="3" class="d-flex align-center">
-      <v-select
-        label="Filter by Plant"
-        density="compact"
-        hide-details
-        :items="plantsOptions"
-        v-model="filters.plant_id"
-      />
-    </VCol>
-    <VCol cols="12" md="3" class="d-flex align-center">
-      <v-select
-        label="Filter by Storage Location"
-        density="compact"
-        hide-details
-        :items="storageLocations"
-        v-model="filters.sloc"
-      />
-    </VCol>
-    <VCol cols="12" md="3">
+    <VCol cols="12" md="6">
       <VTextField
         v-model="searchInput"
         placeholder="Search movement type, batch..."
@@ -446,7 +376,10 @@ const openDetailDialog = (log) => {
                       </tr>
                   </thead>
                   <tbody>
-                      <tr v-for="item in selectedLog.goods_movement_log_items" :key="item.id">
+                      <tr v-if="pagedLogItems.length === 0">
+                          <td :colspan="itemHeaders.length" class="text-center text-medium-emphasis py-4">No movement log items found.</td>
+                      </tr>
+                      <tr v-for="item in pagedLogItems" :key="item.id">
                           <td>
                               <template v-if="item.goods_movement_log?.material_document">
                                   <div class="text-caption font-weight-bold">{{ item.goods_movement_log?.material_document }}</div>
@@ -472,6 +405,23 @@ const openDetailDialog = (log) => {
                       </tr>
                   </tbody>
               </v-table>
+              <div v-if="(selectedLog.goods_movement_log_items?.length ?? 0) > 0" class="d-flex align-center justify-space-between mt-3">
+                  <v-select
+                      v-model="logItemsPerPage"
+                      :items="[5, 10, 25, 50]"
+                      label="Rows per page"
+                      density="compact"
+                      hide-details
+                      style="max-width: 140px;"
+                      @update:model-value="logItemsPage = 1"
+                  />
+                  <v-pagination
+                      v-model="logItemsPage"
+                      :length="logItemsPageCount"
+                      total-visible="5"
+                      density="compact"
+                  />
+              </div>
           </v-card-text>
       </v-card>
   </v-dialog>
