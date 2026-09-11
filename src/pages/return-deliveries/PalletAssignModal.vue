@@ -40,8 +40,7 @@ const toast = ref({
 
 const headers = [
   { title: 'Physical ID', key: 'physical_id', sortable: false },
-  { title: 'Current', key: 'current_batch', sortable: false },
-  { title: 'Quantity', key: 'quantity', sortable: false },
+  { title: 'Last Batch', key: 'current_batch', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false },
 ]
 
@@ -58,13 +57,15 @@ function removeLeadingZeros(value) {
   return value.replace(/^0+/, '')
 }
 
+const default_pallet_quantity = ref(0);
+
 const fetchMaterialConversion = async () => {
   if (!props.item) return
 
   materialConversionLoading.value = true
   try {
     const payload = {
-      material_code: removeLeadingZeros(props.item?.material_number),
+      material_code: removeLeadingZeros(props.item?.bu_material_code),
       quantity: props.item?.delivery_quantity,
       uom: props.item?.sales_unit,
     }
@@ -75,9 +76,16 @@ const fetchMaterialConversion = async () => {
     } else {
       maxPallets.value = 0
     }
+
+    if (response.data && response.data.default_pallet_quantity) {
+      default_pallet_quantity.value = response.data.default_pallet_quantity
+    } else {
+      default_pallet_quantity.value = 40; // default to 40
+    }
   } catch (error) {
     console.error('Failed to fetch material conversion:', error)
     maxPallets.value = 0
+    default_pallet_quantity.value = 0
   } finally {
     materialConversionLoading.value = false
   }
@@ -95,7 +103,7 @@ const fetchPallets = async (query = '') => {
     }
 
     const response = await ApiService.post('/return-deliveries/pallet-list', payload)
-
+   
     availablePallets.value = response.data.data
   } catch (error) {
     console.error('Failed to fetch pallets:', error)
@@ -255,20 +263,29 @@ const removePallet = async item => {
 }
 
 const handleSave = () => {
-  const newPallets = addedPallets.value.filter(p => !p.is_assigned)
+    const newPallets = addedPallets.value.filter(p => !p.is_assigned)
+    
+    // Track the remaining delivery quantity that needs to be distributed
+    let remainingQty = props.item?.delivery_quantity || 0
+    const maxPalletQty = default_pallet_quantity.value || 40
 
-  const totalPallets = addedPallets.value.length
-  const perPalletQty = totalPallets > 0 ? (props.item?.delivery_quantity || 0) / totalPallets : 0
+    const formattedPallets = newPallets.map(p => {
+      // Determine quantity for this specific pallet (take either the remaining amount or the max capacity)
+      const currentPalletQty = Math.min(remainingQty, maxPalletQty)
+      
+      // Deduct the distributed amount from our total pool
+      remainingQty = Math.max(0, remainingQty - currentPalletQty)
 
-  const formattedPallets = newPallets.map(p => ({
-    physical_id: p.physical_id,
-    batch: props.item?.batch || null,
-    quantity: perPalletQty,
-  }))
+      return {
+        physical_id: p.physical_id,
+        batch: p.inventory?.batch || null,
+        quantity: currentPalletQty,
+      }
+    })
 
-  emit('save', {
-    pallets: formattedPallets,
-  })
+    emit('save', {
+      pallets: formattedPallets,
+    })
 }
 </script>
 

@@ -108,6 +108,7 @@ const openPalletModal = item => {
     item_number: item.item_number,
     plant: item.plant,
     storage_location: item.storage_location,
+    bu_material_code: item.batch_prefix?.bu_material
   }
   palletModalOpen.value = true
 }
@@ -200,7 +201,7 @@ defineExpose({
 
     <template #item.material="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ stripLeadingZeros(item.material_code) }}</span>
+        <span class="font-weight-bold text-sm">{{ stripLeadingZeros(item.batch_prefix?.bu_material) }}</span>
         <span class="text-sm text-muted">{{ item.material?.material_description }}</span>
       </div>
     </template>
