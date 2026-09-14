@@ -352,7 +352,7 @@ function formatStatusText(status) {
             </template>
 
 			<template #item.batch="{ item }">
-				<span class="font-weight-bold">{{ item.po_item }}</span><br />
+				<span class="font-weight-bold">{{ item.purchase_order_line }}</span><br />
                 <span>{{ item?.batch }}</span>
             </template>
 
