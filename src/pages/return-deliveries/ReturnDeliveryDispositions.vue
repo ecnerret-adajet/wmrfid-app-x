@@ -3,7 +3,7 @@ import ApiService from '@/services/ApiService'
 import JwtService from '@/services/JwtService'
 import axios from 'axios'
 import Moment from 'moment'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
@@ -21,6 +21,22 @@ const lastOptions = ref({})
 
 const selectedItems = ref([])
 const confirmLoading = ref(false)
+
+const showDispositionDialog = ref(false)
+const grGiSlipNumber = ref('')
+const refDocNumber = ref('')
+const postingDate = ref(new Date().toISOString().split('T')[0])
+const dispositionStatus = ref(null)
+const dispositionStatusOptions = [
+  { title: 'Good', value: 'good' },
+  { title: 'For RTM', value: 'for-rtm' },
+  { title: 'Disposal', value: 'disposal' },
+]
+const dispositionRemarks = ref('')
+
+const totalSelectedQuantity = computed(() =>
+  selectedItems.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+)
 
 onMounted(() => loadPlants())
 
@@ -97,13 +113,36 @@ const handleSearch = () => {
   selectedItems.value = []
 }
 
+const handleSelectionChange = (val) => {
+  selectedItems.value = val
+}
+
 const handleConfirm = () => {
+  if (selectedItems.value.length === 0) return
+
+  grGiSlipNumber.value = ''
+  refDocNumber.value = ''
+  postingDate.value = new Date().toISOString().split('T')[0]
+  dispositionStatus.value = null
+  dispositionRemarks.value = ''
+  showDispositionDialog.value = true
+}
+
+const submitDisposition = () => {
   if (selectedItems.value.length === 0) return
 
   confirmLoading.value = true
 
-  ApiService.post('return-deliveries/confirm-disposition-items', { ids: selectedItems.value })
+  ApiService.post('return-deliveries/confirm-disposition-items', {
+    ids: selectedItems.value.map(item => item.id),
+    gr_gi_slip_number: grGiSlipNumber.value,
+    ref_doc_number: refDocNumber.value,
+    posting_date: postingDate.value,
+    status: dispositionStatus.value,
+    remarks: dispositionRemarks.value,
+  })
     .then(() => {
+      showDispositionDialog.value = false
       selectedItems.value = []
       lastOptions.value = {}
       loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
@@ -191,10 +230,140 @@ const handleConfirm = () => {
     </VCol>
   </VRow>
 
+  <v-dialog
+    v-model="showDispositionDialog"
+    max-width="700"
+    persistent
+  >
+    <v-card>
+      <v-card-title class="text-h6 font-weight-bold pa-4">
+        QC Disposition Approval
+      </v-card-title>
+      <v-divider />
+      <v-card-text class="pa-4">
+        <VTextField
+          v-model="grGiSlipNumber"
+          label="GR GI Slip Number"
+          placeholder="Enter GR GI Slip Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <VTextField
+          v-model="refDocNumber"
+          label="Ref Doc Number"
+          placeholder="Enter Ref Doc Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <VTextField
+          v-model="postingDate"
+          label="Posting Date"
+          type="date"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <v-select
+          v-model="dispositionStatus"
+          label="Select Status"
+          :items="dispositionStatusOptions"
+          item-title="title"
+          item-value="value"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <v-textarea
+          v-model="dispositionRemarks"
+          class="mb-4"
+          clear-icon="ri-close-line"
+          label="Remarks"
+          lines="1"
+          variant="outlined"
+          density="compact"
+          clearable
+        />
+        <v-divider class="mb-4" />
+        <div class="d-flex gap-3 mb-4">
+          <v-card
+            variant="tonal"
+            color="primary"
+            rounded="lg"
+            class="flex-1-1"
+          >
+            <v-card-text class="pa-3">
+              <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">Total Pallets</div>
+              <div class="text-h5 font-weight-bold">{{ selectedItems.length }}</div>
+            </v-card-text>
+          </v-card>
+          <v-card
+            variant="tonal"
+            color="success"
+            rounded="lg"
+            class="flex-1-1"
+          >
+            <v-card-text class="pa-3">
+              <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">Total Quantity</div>
+              <div class="text-h5 font-weight-bold">{{ totalSelectedQuantity }}</div>
+            </v-card-text>
+          </v-card>
+        </div>
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th>Physical ID</th>
+              <th>Batch</th>
+              <th class="text-center">Quantity</th>
+              <th>Bin Location</th>
+              <th class="text-center">Layer</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in selectedItems"
+              :key="item.id"
+            >
+              <td>{{ item.physical_id }}</td>
+              <td>{{ item.batch }}</td>
+              <td class="text-center">{{ item.quantity }}</td>
+              <td>{{ item.block?.lot?.label && item.block?.label ? `${item.block.lot.label} - ${item.block.label}` : '--' }}</td>
+              <td class="text-center">{{ item.position_in_block ?? '--' }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-btn
+          color="error"
+          variant="outlined"
+          :disabled="confirmLoading"
+          @click="showDispositionDialog = false"
+        >
+          Cancel
+        </v-btn>
+        <v-spacer />
+        <v-btn
+          color="success"
+          :loading="confirmLoading"
+          @click="submitDisposition"
+        >
+          Submit
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
   <VCard>
     <VDataTableServer
       v-model:items-per-page="itemsPerPage"
-      v-model="selectedItems"
+      :model-value="selectedItems"
       :headers="headers"
       :items="serverItems"
       :items-length="totalItems"
@@ -202,7 +371,9 @@ const handleConfirm = () => {
       item-value="id"
       :search="searchValue"
       show-select
+      return-object
       @update:options="loadItems"
+      @update:model-value="handleSelectionChange"
       class="text-no-wrap"
     >
       <template #item.material_id="{ item }">

@@ -40,7 +40,6 @@ const toast = ref({
 
 const headers = [
   { title: 'Physical ID', key: 'physical_id', sortable: false },
-  { title: 'Last Batch', key: 'current_batch', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false },
 ]
 
@@ -99,7 +98,7 @@ const fetchPallets = async (query = '') => {
       page: 1,
       per_page: 20,
       plant_code: getPlantCode(),
-      material_code: removeLeadingZeros(props.item?.material_number),
+      material_code: removeLeadingZeros(props.item?.bu_material_code),
     }
 
     const response = await ApiService.post('/return-deliveries/pallet-list', payload)
@@ -119,7 +118,7 @@ const fetchAssignedPallets = async () => {
     const payload = {
       do_number: props.delivery?.do_number,
       item_number: props.item?.item_number,
-      material_code: removeLeadingZeros(props.item?.material_number),
+      material_code: removeLeadingZeros(props.item?.bu_material_code),
     }
 
     const response = await ApiService.post('return-deliveries/get-assigned-pallets', payload)
@@ -262,6 +261,10 @@ const removePallet = async item => {
   }
 }
 
+const hasAssignedPallets = computed(() => {
+  return addedPallets.value.some(pallet => pallet.is_assigned === true)
+})
+
 const handleSave = () => {
     const newPallets = addedPallets.value.filter(p => !p.is_assigned)
     
@@ -278,7 +281,7 @@ const handleSave = () => {
 
       return {
         physical_id: p.physical_id,
-        batch: p.inventory?.batch || null,
+        batch: props.item?.batch,
         quantity: currentPalletQty,
       }
     })
@@ -317,7 +320,7 @@ const handleSave = () => {
         >
           <div class="d-flex justify-space-between align-center">
             <div>
-              <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_number) }}</div>
+              <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.bu_material_code) }}</div>
               <div><strong>Material Description:</strong> {{ item.material_description || 'N/A' }}</div>
               <div><strong>Batch:</strong> {{ item.batch || 'N/A' }}</div>
               <div><strong>Qty:</strong> {{ item.delivery_quantity }} {{ item.sales_unit }}</div>
@@ -346,6 +349,18 @@ const handleSave = () => {
             </div>
           </div>
         </div>
+
+        <!-- <VRow v-if="hasAssignedPallets" class="mb-4">
+          <VCol cols="12">
+            <VAlert
+              type="info"
+              variant="tonal"
+              closable
+              title="Assigned Pallets Pending Action"
+              text="Please proceed to putaway the assigned pallets on the WM Mobile App."
+            />
+          </VCol>
+        </VRow> -->
 
         <VRow
           align="center"
