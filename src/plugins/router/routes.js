@@ -541,6 +541,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/sto',
+                name: 'sto-report',
+                component: () => import('@/pages/reports/sto/index.vue'),
+                meta: {
+                    pageTitle: "STO Report",
+                    breadcrumbs: [
+                            { label: "STO Report", link: "/reports/sto" },
+                    ],
+                },
+        },
+        {
             path: 'view-inversions',
             name: 'view-inversions',
             component: () => import('@/pages/palletInverter/index.vue'),

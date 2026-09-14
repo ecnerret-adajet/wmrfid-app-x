@@ -267,7 +267,8 @@ const proceedMapping = () => {
             authUserCan('view.floating.pallets') ||
             authUserCan('view.open.do.picklist') ||
             authUserCan('view.outbound.performance.report') ||
-            authUserCan('view.service.requests.report')
+            authUserCan('view.service.requests.report') || 
+            authUserCan('view.sto.report')
         "
         :item="{ heading: 'Reports' }"
     />
@@ -292,6 +293,9 @@ const proceedMapping = () => {
             to: '/reports/service-requests'
         }"
     />
+
+    <VerticalNavLink v-if="authUserCan('view.sto.report') || authStore.user?.is_super_admin"
+        :item="{ title: 'STO Report', icon: 'ri-file-chart-line', to: '/reports/sto' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
