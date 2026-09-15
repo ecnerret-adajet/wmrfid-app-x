@@ -110,15 +110,15 @@ const modes = [
 	{ title: 'Bags to Pallet', value: 'bags_to_pallet' },
 ];
 
-const headers = [
+const headers = computed(() => [
 	{ title: 'STO NO.', key: 'sto_number' },
 	{ title: 'MATERIAL DOCUMENT', key: 'material_document' },
 	{ title: 'MATERIAL', key: 'material' },
-	{ title: 'BATCH', key: 'batch' },
+	...(filters.direction === 'outbound' ? [] : [{ title: 'BATCH', key: 'batch' }]),
 	{ title: 'ISSUING PLANT', key: 'issuing_plant' },
 	{ title: 'RECEIVING PLANT', key: 'receiving_plant' },
 	{ title: 'DIRECTION', key: 'direction' },
-	{ title: 'MODE', key: 'mode' },
+	...(filters.direction === 'outbound' ? [] : [{ title: 'MODE', key: 'mode' }]),
 	{ title: 'ENTRY QTY', key: 'entry_qty' },
 	{ title: 'PALLETS REQUIRED', key: 'required_pallets', align: 'center' },
 	{ title: 'PALLETS ASSIGNED', key: 'pallets_assigned', align: 'center' },
@@ -126,7 +126,7 @@ const headers = [
 	{ title: 'PO CREATED AT', key: 'created_at' },
 	{ title: 'PROCESSED BY', key: 'processed_by' },
 	{ title: 'PROCESSED AT', key: 'processed_at' },
-];
+]);
 
 const handleSearch = () => {
 	loadItems({
@@ -335,7 +335,8 @@ function formatStatusText(status) {
 			</template>
 
 			<template #item.sto_number="{ item }">
-                <span>{{ item?.purchase_order_number }}</span><br />
+				<span class="font-weight-bold">{{ item.purchase_order_line }}</span><br />
+                <span>{{ item?.purchase_order_number || item?.po_number }}</span><br />
             </template>
 
 			<template #item.material_document="{ item }">
@@ -348,11 +349,10 @@ function formatStatusText(status) {
 
 			<template #item.mode="{ item }">
                 <span v-if="item.pallet_assignment_logs?.at(0)?.mode === 'pallet_inbound'">PALLETIZED</span>
-				<span v-else>BAGS TO PALLET</span>
+				<span v-else-if="item.pallet_assignment_logs?.at(0)?.mode === 'bags_to_pallet'">BAGS TO PALLET</span>
             </template>
 
 			<template #item.batch="{ item }">
-				<span class="font-weight-bold">{{ item.purchase_order_line }}</span><br />
                 <span>{{ item?.batch }}</span>
             </template>
 
