@@ -4,8 +4,12 @@ import FilteringModal from '@/components/FilteringModal.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import Moment from 'moment';
 import { computed, ref } from 'vue';
 import datatable from './datatable.vue';
+
+const yesterdayStr = Moment().subtract(1, 'days').format('YYYY-MM-DD');
+const todayStr = Moment().format('YYYY-MM-DD');
 
 const searchValue = ref('');
 const searchInputValue = ref('');
@@ -54,6 +58,8 @@ const filterModalOpen = () => {
 
 const filters = reactive({
     plant_code: null,
+    dateFrom: yesterdayStr,
+    dateTo: todayStr,
     created_at: null,
     updated_at: null,
 });
@@ -92,6 +98,9 @@ const clearFilters = () => {
 
 const handleSearch = () => {
     searchValue.value = searchInputValue.value;
+    if (datatableRef.value) {
+        datatableRef.value.applyFilters(filters);
+    }
 };
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
@@ -114,7 +123,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 v-model="filters.plant_code"
             />
         </VCol>
-        <VCol cols="12" md="7">
+        <VCol cols="12" md="3">
             <v-text-field
                 v-model="searchInputValue"
                 persistent-placeholder
@@ -125,6 +134,12 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 density="compact"
                 class="custom-text-field"
             />
+        </VCol>
+        <VCol cols="12" md="2">
+            <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol cols="12" md="2">
+            <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
         <VCol cols="12" md="2" class="d-flex justify-center align-center">
             <v-btn block prepend-icon="ri-search-eye-line" class="w-full" @click="handleSearch">
