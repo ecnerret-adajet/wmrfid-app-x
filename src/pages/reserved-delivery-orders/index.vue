@@ -1,5 +1,4 @@
 <script setup>
-import DatePicker from '@/components/DatePicker.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
@@ -38,10 +37,13 @@ const filterModalOpen = () => {
     }
 };
 
+const weekStr = moment().subtract(7, 'days').format('YYYY-MM-DD');
+const todayStr = moment().format('YYYY-MM-DD');
+
 const filters = reactive({
     plant_code: authStore.user?.assigned_plant?.plant_code,
-    date_from: moment().subtract(1, 'months').format('YYYY-MM-DD'),
-    date_to: moment().format('YYYY-MM-DD'),
+    date_from: weekStr,
+    date_to: todayStr,
 });
 
 const { authUserCan } = useAuthorization()
@@ -229,17 +231,15 @@ const handleSearch = () => {
             single-line 
             hide-details 
             density="compact" 
-            class="flex-grow-1 mt-5" 
+            class="flex-grow-1" 
         />
 
         <div style="max-width: 200px;" class="flex-grow-1">
-            <label>Date From</label>
-            <DatePicker v-model="filters.date_from" />
+            <v-text-field v-model="filters.date_from" label="Date Reserved From" type="date" density="compact" variant="outlined" hide-details />
         </div>
 
         <div style="max-width: 200px;" class="flex-grow-1 align-start">
-            <label>Date To</label>
-            <DatePicker v-model="filters.date_to" />
+            <v-text-field v-model="filters.date_to" label="Date Reserved To" type="date" density="compact" variant="outlined" hide-details />
         </div>
 
         <v-select 
@@ -250,11 +250,11 @@ const handleSearch = () => {
             :items="[{ title: 'All', value: null }, ...plantsOption]" 
             v-model="filters.plant_code"
             :rules="[value => value !== undefined || 'Please select an item from the list']"
-            class="flex-grow-0 mt-5"
+            class="flex-grow-0"
         />
 
         <v-btn 
-            class="d-flex align-center mt-5" 
+            class="d-flex align-center" 
             prepend-icon="ri-search-eye-line" 
             @click="handleSearch"
         >

@@ -13,9 +13,10 @@
                 class="flex-grow-1" 
             />
 
-            <!-- Swapped fixed style width for explicit structural flex sizing (fixed 250px-300px) -->
+            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateFrom" label="Date Reserved From" type="date" density="compact" variant="outlined" hide-details />
+            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateTo" label="Date Reserved To" type="date" density="compact" variant="outlined" hide-details />
             <v-select 
-                style="max-width: 400px; min-width: 300px;"
+                style="max-width: 380px; min-width: 280px;"
                 label="Select Plant" 
                 density="compact"
                 hide-details
@@ -65,6 +66,14 @@
                     {{ item.total_qty }}
                 </template>
 
+                <template #item.date_created="{ item }">
+                    {{ item.created_at ? moment(item.created_at).format('MM/DD/YYYY') : null}}
+                </template>
+
+                <template #item.manufacturing_date="{ item }">
+                    {{ item.manufacturing_date ? moment(item.manufacturing_date).format('MM/DD/YYYY') : null}}
+                </template>
+
                 <template #item.delivery_document="{ item }">
                     <span class="font-weight-bold">{{ item.delivery_document }}</span><br />
                     <span v-if="item.delivery_reserved_order?.sap_delivery?.ship_to_name" class="text-subtitle-1">{{ item.delivery_reserved_order?.sap_delivery?.ship_to_name }}</span>
@@ -93,7 +102,11 @@ import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
+import moment from 'moment';
 import { VDataTableServer } from 'vuetify/components';
+
+const yesterdayStr = moment().subtract(1, 'days').format('YYYY-MM-DD');
+const todayStr = moment().format('YYYY-MM-DD');
 
 const authStore = useAuthStore();
 const { authUserCan } = useAuthorization();
@@ -108,7 +121,9 @@ const sortQuery = ref('-created_at');
 
 
 const filters = reactive({
-    plant_code: authStore.user?.assigned_plant?.plant_code
+    plant_code: authStore.user?.assigned_plant?.plant_code,
+    dateFrom: yesterdayStr,
+    dateTo: todayStr,
 });
 
 const toast = reactive({
@@ -142,12 +157,13 @@ const fetchDropdownData = async () => {
 const headers = computed(() => {
     const baseHeaders = [
       { title: 'Shipment No.', key: 'shipment_no', align: 'start', sortable: false },
-      { title: 'Ref No.', key: 'delivery_document', align: 'start', sortable: false },
+      { title: 'Delivery Number', key: 'delivery_document', align: 'start', sortable: false },
       { title: 'Material', key: 'material', align: 'start', sortable: false },
       { title: 'Batch', key: 'commodity_batch_code', align: 'start', sortable: false },
       { title: 'Mfg Date', key: 'manufacturing_date', align: 'start', sortable: false },
       { title: 'Qty', key: 'qty', align: 'start', sortable: false },
       { title: 'Physical ID', key: 'pallet_physical_id', align: 'start', sortable: false },
+      { title: 'Date Reserved', key: 'date_created', align: 'start', sortable: false },
     ];
 
     // TODO:: uncomment if adding specific column depending on user permissions
