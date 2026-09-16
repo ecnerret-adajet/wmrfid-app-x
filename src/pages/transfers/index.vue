@@ -1,65 +1,136 @@
 <script setup>
-import DateRangePicker from '@/components/DateRangePicker.vue';
-import FilteringModal from '@/components/FilteringModal.vue';
+import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
-import { debounce } from 'lodash';
-import { computed, ref } from 'vue';
+import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
+import Moment from 'moment';
+import { computed, onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
 
-const searchValue = ref('');
+const authStore = useAuthStore();
+const todayStr = Moment().format('YYYY-MM-DD');
+
+const defaultFilters = () => ({
+    plant: null, // Stores the full plant object or at least { id, title/code }
+    storageLocation: null, // Stores the full sloc object
+    dateFrom: todayStr,
+    dateTo: todayStr,
+});
+
+const filters = ref(defaultFilters());
+
+const searchInput = ref(''); // raw value from the search field, not yet applied
+const searchValue = ref(''); // committed search term, only updated when Search is clicked
 const datatableRef = ref(null);
-const tablePerPage = ref(10);
+const tablePerPage = ref(50);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
+const pageLoading = ref(false);
 const toast = ref({
     message: 'Success message',
     color: 'success',
     show: false
 });
-const filterModalVisible = ref(false);
 
-const filterModalOpen = () => {
-    if (!filterModalVisible.value) {
-        filterModalVisible.value = true;
+const plantsOption = ref([]);
+const storageLocationsOption = ref([]);
+
+onMounted(() => {
+    fetchDataDropdown();
+});
+
+const fetchDataDropdown = async () => {
+    try {
+        pageLoading.value = true;
+        const response = await ApiService.get('/users/get-data-dropdown');
+        const { plants } = response.data;
+        plantsOption.value = plants;
+
+        // Default to the user's assigned plant
+        const assignedPlantId = authStore.user?.assigned_plant?.id;
+        const defaultPlant = assignedPlantId ? plantsOption.value.find(p => p.id === assignedPlantId) : null;
+        const defaultStorageLocation = defaultPlant?.default_storage_location || null;
+
+        if (defaultPlant) {
+            filters.value.plant = defaultPlant;
+            storageLocationsOption.value = defaultPlant.storage_locations;
+            if (defaultStorageLocation) {
+                filters.value.storageLocation = defaultStorageLocation;
+            }
+
+            // Re-fetch since the datatable's initial load already ran before the default plant/storage location resolved
+            applyFilter();
+        }
+
+    } catch (error) {
+        console.error('Error fetching dropdown data:', error);
+    } finally {
+        pageLoading.value = false;
     }
 };
 
-const filters = reactive({
-    created_at: null,
-    updated_at: null,
-});
+// Watch for plant changes to update storage locations list
+watch(
+    () => filters.value.plant,
+    (newPlant) => {
+        // If plant changes, clear sloc unless it matches the new plant (unlikely in dropdown)
+        // Check if the ID changed to avoid unnecessary clears if object reference changes but ID is same
+        // But for v-select return-object, it replaces the object.
+
+        // We only want to reset sloc if the user *changed* the plant, not on initial load if persisted.
+        // However, on change, we should update options.
+
+        if (newPlant) {
+             const selectedPlant = plantsOption.value.find(p => p.id === newPlant.id);
+             storageLocationsOption.value = selectedPlant ? selectedPlant.storage_locations : [];
+
+             // If the current sloc doesn't belong to the new plant, clear it
+             if (filters.value.storageLocation && (!selectedPlant?.storage_locations.find(sl => sl.id === filters.value.storageLocation.id))) {
+                 filters.value.storageLocation = null;
+             }
+        } else {
+            storageLocationsOption.value = [];
+            filters.value.storageLocation = null;
+        }
+    }
+);
 
 const isFiltersEmpty = computed(() => {
-    return !filters.created_at && 
-           !filters.updated_at 
+    return !filters.value.dateFrom &&
+           !filters.value.dateTo &&
+           !filters.value.plant &&
+           !filters.value.storageLocation
 });
 
 const applyFilter = () => {
+    searchValue.value = searchInput.value;
     if(datatableRef.value) {
-        datatableRef.value.applyFilters(filters);
+        // Pass IDs to datatable as it expects
+        datatableRef.value.applyFilters({
+            dateFrom: filters.value.dateFrom,
+            dateTo: filters.value.dateTo,
+            plant_id: filters.value.plant?.id,
+            storage_location_id: filters.value.storageLocation?.id,
+            valid_material_only: true,
+        });
     }
-    filterModalVisible.value = false;
 }
 
 const resetFilter = () => {
-    clearFilters();
+    filters.value = defaultFilters();
+    searchInput.value = '';
+    searchValue.value = '';
     if(datatableRef.value) {
         datatableRef.value.applyFilters([]);
     }
-    filterModalVisible.value = false;
 }
 
-const clearFilters = () => {
-    filters.created_at = null;
-    filters.updated_at = null;
-};
-
-const handleSearch = debounce((search) => {
-    searchValue.value = search;
-}, 500);
+const handleSearch = (search) => {
+    searchInput.value = search;
+}
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tableSort.value = sortBy
@@ -71,48 +142,69 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow>
-        <VCol md="10">
-            <SearchInput @update:search="handleSearch"/>
+    <VRow align="center">
+        <VCol md="6" cols="12">
+            <SearchInput placeholder="PO Number" @update:search="handleSearch"/>
         </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
-                <v-btn block prepend-icon="ri-equalizer-line" class="w-full" @click="filterModalOpen">
-                    <template v-slot:prepend>
-                        <v-icon color="white"></v-icon>
-                    </template>
-                    Filter
-                </v-btn>
+        <VCol md="3" cols="12">
+            <v-select
+                label="Plant"
+                density="compact"
+                :items="plantsOption"
+                item-title="title"
+                item-value="id"
+                v-model="filters.plant"
+                clearable
+                variant="outlined"
+                return-object
+                hide-details
+            ></v-select>
+        </VCol>
+        <VCol md="3" cols="12">
+            <v-select
+                label="Storage Location"
+                density="compact"
+                :items="storageLocationsOption"
+                item-title="name"
+                item-value="id"
+                v-model="filters.storageLocation"
+                clearable
+                variant="outlined"
+                :disabled="!filters.plant"
+                return-object
+                hide-details
+            ></v-select>
+        </VCol>
+    </VRow>
+
+    <VRow align="center" class="mb-4">
+        <VCol md="2" cols="12">
+            <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol md="2" cols="12">
+            <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol md="2" cols="12" class="d-flex align-center">
+            <PrimaryButton class="flex-grow-1 mr-2" type="button" @click="applyFilter" :loading="isLoading">
+                Search
+            </PrimaryButton>
         </VCol>
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
             :search="searchValue"
+            :initial-filters="{
+                dateFrom: filters.dateFrom,
+                dateTo: filters.dateTo,
+                plant_id: filters.plant?.id,
+                storage_location_id: filters.storageLocation?.id,
+                valid_material_only: true,
+            }"
         />
     </VCard>
 
-    <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Shipments'">
-        <template #default>
-            <v-form>
-                <div class="mt-4">
-                    <label class="font-weight-bold">Date Created</label>
-                    <DateRangePicker class="mt-1" v-model="filters.created_at" placeholder="Select Date Created"/>
-                </div>
-                 
-                <div class="mt-4">
-                    <label class="font-weight-bold">Date Updated</label>
-                    <DateRangePicker class="mt-1" v-model="filters.updated_at" placeholder="Select Date Updated"/>
-                </div>
-
-                <div class="d-flex justify-end align-center mt-8">
-                    <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                    <PrimaryButton class="px-12" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
-                        Apply Filter
-                    </PrimaryButton>
-                </div>
-            </v-form>
-        </template>
-    </FilteringModal>
-
     <Toast :show="toast.show" :message="toast.message"/>
+    <Loader :show="pageLoading" />
+
 </template>

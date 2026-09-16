@@ -17,6 +17,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    initialFilters: {
+        type: Object,
+        default: () => ({})
+    },
 });
 
 const router = useRouter();
@@ -25,10 +29,10 @@ const isLoading = ref(false);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
-const filters = ref(null);
+const filters = ref({ ...props.initialFilters });
 const showDeliveryItems = ref(false);
 const showReservedPallets = ref(false);
 const stoData = ref([]);
@@ -44,11 +48,16 @@ const headers = [
         title: 'PO ITEM',
         key: 'po_item',
         align: 'center',
+        sortable: false,
+
     },
     {
         title: 'PO NUMBER',
         key: 'po_number',
+        sortable: false,
+
     },
+   
     {
         title: 'Material',
         key: 'material',
@@ -58,14 +67,19 @@ const headers = [
     {
         title: 'From',
         key: 'from_plant_sloc',
+        sortable: false,
+
     },
     {
         title: 'To',
         key: 'to_plant_sloc',
+        sortable: false,
+
     },
     {
         title: 'UOM',
         key: 'uom',
+        sortable: false,
     },
     {
         title: 'PO qty',
@@ -97,10 +111,22 @@ const headers = [
         align: 'center',
         sortable: false,
     },
+    {
+        title: 'DATE CREATED',
+        key: 'created_at',
+    },
 
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+
+    // Skip fetching until both plant and storage location filters are selected
+    if (!filters.value.plant_id || !filters.value.storage_location_id) {
+        serverItems.value = [];
+        totalItems.value = 0;
+        loading.value = false;
+        return;
+    }
 
     loading.value = true
     if (sortBy && sortBy.length > 0) {
@@ -293,7 +319,7 @@ defineExpose({
 </script>
 
 <template>
-    <VDataTableServer v-model:items-per-page="itemsPerPage" fixed-header :headers="headers" :items="serverItems"
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" fixed-header :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems">
         <template class="font-weight-black" v-slot:header.remaining_qty="{ header }">
             <span>REMAINING</span><br />
@@ -408,6 +434,10 @@ defineExpose({
 
         <template #item.release_indicator="{ item }">
             {{ item.purchase_order?.release_indicator }}
+        </template>
+
+        <template #item.created_at="{ item }">
+            {{ item.created_at ? moment(item.created_at).format('M/D/YY h:mm A') : '' }}
         </template>
 
         <!-- Actions -->

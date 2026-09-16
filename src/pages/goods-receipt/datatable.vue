@@ -229,7 +229,7 @@ const getPalletAssignmentLabel = (item) => {
 
 <template>
 
-    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
 

@@ -219,13 +219,13 @@ export const routes = [
             },
         },
         {
-            path: 'transfer-orders',
-            name: 'transfer-orders',
+            path: 'goods-issuance',
+            name: 'goods-issuance',
             component: () => import('@/pages/transfers/index.vue'),
             meta: {
-              pageTitle: "Transfer Orders",
+              pageTitle: "Goods Issuance List",
               breadcrumbs: [
-                  { label: "Transfer Orders", link: "/transfer-orders" },
+                  { label: "Goods Issuance List", link: "/goods-issuance" },
               ],
             },
         },
