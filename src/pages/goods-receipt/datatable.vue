@@ -101,6 +101,14 @@ const headers = [
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 
+    // Skip fetching until both plant and storage location filters are selected
+    if (!filters.value.plant_id || !filters.value.storage_location_id) {
+        serverItems.value = [];
+        totalItems.value = 0;
+        loading.value = false;
+        return;
+    }
+
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field

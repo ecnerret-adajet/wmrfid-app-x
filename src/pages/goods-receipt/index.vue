@@ -1,4 +1,5 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
@@ -28,6 +29,7 @@ const tablePerPage = ref(10);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
+const pageLoading = ref(false)
 const toast = ref({
     message: 'Success message',
     color: 'success',
@@ -47,6 +49,7 @@ onMounted(() => {
 });
 
 const fetchDataDropdown = async () => {
+    pageLoading.value = true;
     try {
         const response = await ApiService.get('/users/get-data-dropdown');
         const { plants } = response.data;
@@ -70,6 +73,8 @@ const fetchDataDropdown = async () => {
 
     } catch (error) {
         console.error('Error fetching dropdown data:', error);
+    } finally {
+        pageLoading.value = false;
     }
 };
 
@@ -221,4 +226,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     </VCard>
 
     <Toast :show="toast.show" :message="toast.message"/>
+    <Loader :show="pageLoading" />
+
 </template>
