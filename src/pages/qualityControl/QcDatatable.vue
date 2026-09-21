@@ -1,8 +1,7 @@
 <script setup>
-import DateRangePicker from '@/components/DateRangePicker.vue';
-import FilteringModal from '@/components/FilteringModal.vue';
 import ApiService from '@/services/ApiService';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import moment from 'moment';
+import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -16,25 +15,12 @@ const s_section = route.params.storage_section;
 
 const searchValue = ref('');
 
-const filterModalVisible = ref(false);
-const batchOptions = ref([]);
+const todayStr = moment().format('YYYY-MM-DD');
 
 const filters = reactive({
-    date_range: null,
-    batch: null,
+    dateFrom: todayStr,
+    dateTo: todayStr,
 });
-
-const dateFilter = ref(null);
-
-const isFiltersEmpty = computed(() => {
-    return !filters.date_range && !filters.batch;
-});
-
-const dateFilterOptions = [
-    { title: 'Today', value: 'today' },
-    { title: 'Yesterday', value: 'yesterday' },
-    { title: 'Last 7 Days', value: 'last_7_days' },
-];
 
 const selectedItems = ref([]);
 const serverItems = ref([]);
@@ -53,13 +39,13 @@ const headers = [
     { title: 'MATERIAL', key: 'material', sortable: false },
     { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
     { title: 'LAYER', key: 'position_in_block', align: 'center', sortable: false },
+    { title: 'PUTAWAY DATE', key: 'putaway_date', align: 'center', sortable: false },
 ];
 
 
 onMounted(() => {
     fetchStorageLocationDetails();
-    // fetchBatches();
-})
+});
 
 const fetchStorageLocationDetails = async () => {
     pageLoading.value = true;
@@ -84,52 +70,6 @@ const fetchStorageLocationDetails = async () => {
 //         console.log(error);
 //     }
 // };
-
-const filterModalOpen = () => {
-    if (!filterModalVisible.value) {
-        filterModalVisible.value = true;
-    }
-};
-
-const applyFilter = () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-    filterModalVisible.value = false;
-};
-
-const resetFilter = () => {
-    clearFilters();
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-    filterModalVisible.value = false;
-};
-
-const clearFilters = () => {
-    filters.date_range = null;
-    filters.batch = null;
-};
-
-watch(() => dateFilter.value, () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-});
-
-watch(() => filters.batch, () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-});
 
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     loading.value = true;
@@ -157,7 +97,6 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
             sort: sortQuery.value,
             search: searchValue.value,
             filters: filters,
-            date_filter: dateFilter.value,
         }
     })
         .then((response) => {
@@ -353,37 +292,24 @@ defineExpose({ loadItems, selectedItems });
                 class="flex-grow-1"
                 @keyup.enter="handleSearch"
             />
-
-            <!-- <v-select
-                style="max-width: 200px;"
-                class="flex-grow-1 align-center"
+            <VTextField
+                v-model="filters.dateFrom"
+                label="Date From"
+                type="date"
                 density="compact"
-                :items="dateFilterOptions"
-                v-model="dateFilter"
-                label="Date Filter"
-                clearable
-            /> -->
-
-            <!-- <v-select
-                style="max-width: 250px;"
-                class="flex-grow-1 align-center"
+                variant="outlined"
+                style="max-width: 180px; min-width: 100px;"
+                hide-details
+            />
+            <VTextField
+                v-model="filters.dateTo"
+                label="Date To"
+                type="date"
                 density="compact"
-                :items="batchOptions"
-                v-model="filters.batch"
-                label="Batch"
-                clearable
-            /> -->
-
-            <!-- <v-btn
-                class="d-flex align-center"
-                prepend-icon="ri-equalizer-line"
-                @click="filterModalOpen"
-            >
-                <template #prepend>
-                    <v-icon color="white"></v-icon>
-                </template>
-                Filter
-            </v-btn> -->
+                variant="outlined"
+                style="max-width: 180px; min-width: 100px;"
+                hide-details
+            />
 
             <v-btn
                 class="d-flex align-center"
@@ -590,24 +516,6 @@ defineExpose({ loadItems, selectedItems });
             </v-card>
         </v-dialog>
 
-        <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Quality Inspection'">
-            <template #default>
-                <v-form>
-                    <div class="mt-4">
-                        <label class="font-weight-bold">Date Range</label>
-                        <DateRangePicker class="mt-1" v-model="filters.date_range" placeholder="Select Date Range" />
-                    </div>
-
-                    <div class="d-flex justify-end align-center mt-8">
-                        <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                        <v-btn class="px-12" type="button" color="primary" :disabled="isFiltersEmpty" @click="applyFilter">
-                            Apply Filter
-                        </v-btn>
-                    </div>
-                </v-form>
-            </template>
-        </FilteringModal>
-
         <VCard>
             <VDataTableServer
                 v-model:items-per-page="itemsPerPage"
@@ -630,6 +538,10 @@ defineExpose({ loadItems, selectedItems });
 
                 <template #item.bin_location="{ item }">
                     {{ item.block?.lot?.label ?? '--' }} - {{ item.block?.label ?? '--' }}
+                </template>
+
+                <template #item.putaway_date="{ item }">
+                    {{ item?.qr_putaway_log?.created_at ? moment(item.qr_putaway_log.created_at).format('MM/DD/YY hh:mmA') : '-' }}
                 </template>
 
                 <template #item.position_in_block="{ item }">
