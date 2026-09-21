@@ -3,7 +3,7 @@ import ApiService from '@/services/ApiService'
 import JwtService from '@/services/JwtService'
 import axios from 'axios'
 import Moment from 'moment'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
@@ -12,16 +12,22 @@ const showApprovalDialog = ref(false)
 
 const plantsOptions = ref([])
 const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], storage_location_id: null })
+const todayStr = Moment().format('YYYY-MM-DD')
+const filters = reactive({ 
+  plant_id: null, 
+  plant_code: null, 
+  storage_locations: [], 
+  storage_location_id: null,
+  dateFrom: todayStr,
+  dateTo: todayStr
+})
 
 const selectedItems = ref([])
 const serverItems = ref([])
 const totalItems = ref(0)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
-
-const lastOptions = ref({})
 
 onMounted(() => loadPlants())
 
@@ -43,6 +49,11 @@ const loadPlants = async () => {
     if (filters.storage_locations.length > 0) {
       filters.storage_location_id = filters.storage_locations[0].value
     }
+    loadItems({
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      sortBy: []
+    })
   } catch (error) {
     console.error(error)
   }
@@ -59,13 +70,10 @@ const headers = [
   { title: 'LAYER', key: 'layer', sortable: false },
 ]
 
+const tableLoading = ref(false)
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
-  const options = { page, itemsPerPage, sortBy, search: searchValue.value, plant_id: filters.plant_id }
-  const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options)
-  if (isSame) return
-  lastOptions.value = options
-
-  pageLoading.value = true
+  if (!filters.plant_id) return
+  tableLoading.value = true
 
   if (sortBy && sortBy.length > 0) {
     const sort = sortBy[0]
@@ -81,23 +89,29 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
       sort: sortQuery.value,
       search: searchValue.value,
       plant_id: filters.plant_id,
+      plant_code: filters.plant_code,
+      date_from: filters.dateFrom,
+      date_to: filters.dateTo,
       commodity_status_id: 8, // QC disposition status
     },
   })
     .then((response) => {
       totalItems.value = response.data.total
       serverItems.value = response.data.data
-      pageLoading.value = false
+      tableLoading.value = false
     })
     .catch((error) => {
       console.error(error)
-      pageLoading.value = false
+      tableLoading.value = false
     })
 }
 
 const handleSearch = () => {
-  searchValue.value = searchInput.value
-  lastOptions.value = {}
+  loadItems({
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      sortBy: [],
+  });
 }
 
 const handleSelectionChange = (val) => {
@@ -290,7 +304,7 @@ const handleApprove = async (method) => {
         v-model="filters.plant_id"
       />
     </VCol>
-    <VCol cols="12" md="5">
+    <VCol cols="12" md="3">
       <VTextField
         v-model="searchInput"
         placeholder="Search..."
@@ -298,10 +312,29 @@ const handleApprove = async (method) => {
         single-line
         hide-details
         density="compact"
-        @keyup.enter="handleSearch"
       />
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateFrom"
+        label="Date From"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateTo"
+        label="Date To"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
         block
         :loading="pageLoading"
@@ -315,7 +348,7 @@ const handleApprove = async (method) => {
         Search
       </v-btn>
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
         block
         color="success"
@@ -522,7 +555,7 @@ const handleApprove = async (method) => {
       :headers="headers"
       :items="serverItems"
       :items-length="totalItems"
-      :loading="pageLoading"
+      :loading="tableLoading"
       item-value="id"
       :search="searchValue"
       show-select

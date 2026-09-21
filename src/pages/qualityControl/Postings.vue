@@ -9,14 +9,22 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 const pageLoading = ref(false)
 const searchInput = ref('')
 const searchValue = ref('')
+const todayStr = moment().format('YYYY-MM-DD')
 
 const plantsOptions = ref([])
 const storageLocations = ref([])
-const filters = reactive({ plant_id: null, plant_code: null, storage_locations: [], sloc: null })
+const filters = reactive({ 
+  plant_id: null, 
+  plant_code: null, 
+  storage_locations: [], 
+  sloc: null,
+  dateFrom: todayStr, 
+  dateTo: todayStr 
+})
 
 const serverItems = ref([])
 const totalItems = ref(0)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
@@ -102,11 +110,10 @@ const loadPlants = async () => {
       const firstPlant = plantsOptions.value[0]
       filters.plant_id = firstPlant.value
       filters.plant_code = firstPlant.plant_code
-      
-      storageLocations.value = response.data.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code, plant_id: item.plant_id }))
+      storageLocations.value = firstPlant.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
       
       if(storageLocations.value.length > 0) {
-        filters.sloc = storageLocations.value[0]
+        filters.sloc = storageLocations.value[0].code
       }
     }
     
@@ -118,64 +125,22 @@ const loadPlants = async () => {
 }
 
 watch(() => filters.plant_id, (newVal) => {
-    const selectedSloc = storageLocations.value.find(p => p.plant_id === newVal);
-    if (selectedSloc) {
-        filters.plant_code = selectedSloc.plant_code;
-        storageLocations.value = selectedSloc.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
+    const selectedPlant = plantsOptions.value.find(p => p.value === newVal);
+    if (selectedPlant) {
+        filters.plant_code = selectedPlant.plant_code;
+        storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
         
         if (storageLocations.value.length > 0) {
-            // filters.sloc = storageLocations.value[0].value;
-            filters.sloc = selectedSloc.code;
+            filters.sloc = storageLocations.value[0].code;
         } else {
             filters.sloc = null;
         }
         
-        handleSearch();
     }
 })
 
-watch(() => filters.sloc, () => {
-    handleSearch();
-})
-
-// const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
-//   if (!filters.plant_code || !filters.sloc) {
-//       serverItems.value = []
-//       totalItems.value = 0
-//       return
-//   }
-
-//   pageLoading.value = true
-
-//   if (sortBy && sortBy.length > 0) {
-//     const sort = sortBy[0]
-//     sortQuery.value = sort.order === 'desc' ? `-${sort.key}` : sort.key
-//   } else {
-//     sortQuery.value = '-created_at'
-//   }
-
-//   ApiService.query(`quality-control/goods-movement-logs/${filters.plant_code}/${filters.sloc?.code}`, {
-//     params: {
-//       page: pageVal,
-//       itemsPerPage: perPage,
-//       sort: sortQuery.value,
-//       search: searchValue.value,
-//       type: "qc-disposition"
-//     },
-//   })
-//     .then((response) => {
-//       totalItems.value = response.data.total
-//       serverItems.value = response.data.data
-//       pageLoading.value = false
-//     })
-//     .catch((error) => {
-//       console.error(error)
-//       pageLoading.value = false
-//     })
-// }
-
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
-  if (!filters.plant_code || !filters.sloc) {
+  if (!filters.plant_code) {
     serverItems.value = []
     totalItems.value = 0
     return
@@ -190,18 +155,18 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     sortQuery.value = '-created_at'
   }
 
-  let start_date = appliedFilters.start_date
-  let end_date = appliedFilters.end_date
 
   // ApiService.query(`quality-control/dispositions/${filters.plant_code}/${filters.sloc?.code}`, {
-  ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc?.code}`, {
+  ApiService.query(`quality-control/disposition-items/${filters.plant_code}/${filters.sloc}`, {
     params: {
       page: pageVal,
       itemsPerPage: perPage,
       sort: sortQuery.value,
       search: searchValue.value,
-      start_date: start_date,
-      end_date: end_date,
+      date_from: filters.dateFrom,
+      date_to: filters.dateTo,
+      plant_code: filters.plant_code,
+      sloc: filters.sloc,
     },
   })
     .then((response) => {
@@ -217,6 +182,7 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
 
 const handleSearch = () => {
   searchValue.value = searchInput.value
+  console.log(filters)
   loadItems({
     page: page.value,
     itemsPerPage: itemsPerPage.value,
@@ -252,7 +218,7 @@ const openDetailDialog = (log) => {
   </VRow>
 
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="3" class="d-flex align-center">
+    <VCol cols="12" md="2" class="d-flex align-center">
       <v-select
         label="Filter by Plant"
         density="compact"
@@ -261,7 +227,7 @@ const openDetailDialog = (log) => {
         v-model="filters.plant_id"
       />
     </VCol>
-    <VCol cols="12" md="3" class="d-flex align-center">
+    <VCol cols="12" md="2" class="d-flex align-center">
       <v-select
         label="Filter by Storage Location"
         density="compact"
@@ -270,7 +236,7 @@ const openDetailDialog = (log) => {
         v-model="filters.sloc"
       />
     </VCol>
-    <VCol cols="12" md="3">
+    <VCol cols="12" md="2">
       <VTextField
         v-model="searchInput"
         placeholder="Search movement type, batch..."
@@ -281,7 +247,27 @@ const openDetailDialog = (log) => {
         @keyup.enter="handleSearch"
       />
     </VCol>
-    <VCol cols="12" md="3" class="d-flex align-center">
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateFrom"
+        label="Date From"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateTo"
+        label="Date To"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="2" class="d-flex align-center">
       <v-btn
         class="flex-grow-1 mr-2"
         :loading="pageLoading"
@@ -294,7 +280,7 @@ const openDetailDialog = (log) => {
         </template>
         Search
       </v-btn>
-      <v-btn
+      <!-- <v-btn
         class="flex-grow-1"
         prepend-icon="ri-equalizer-line"
         variant="tonal"
@@ -302,7 +288,7 @@ const openDetailDialog = (log) => {
         @click="filterModalOpen"
       >
         Filter
-      </v-btn>
+      </v-btn> -->
     </VCol>
   </VRow>
   <VCard>
