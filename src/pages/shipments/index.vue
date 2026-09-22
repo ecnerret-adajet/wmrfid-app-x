@@ -15,9 +15,9 @@ const authStore = useAuthStore();
 const todayStr = Moment().format('YYYY-MM-DD');
 const searchValue = ref('');
 const datatableRef = ref(null);
-const tablePerPage = ref(10);
+const tablePerPage = ref(50);
 const tablePage = ref(1);
-const tableSort = ref('-created_at')
+const tableSort = ref('-load_start_date')
 const isLoading = ref(false);
 const pageLoading = ref(false);
 const toast = ref({
@@ -124,6 +124,9 @@ onMounted(() => {
 <template>
     <VRow align="center">
         <VCol cols="12" sm="6" md="3">
+            <SearchInput @update:search="handleSearch"/>
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
 			<v-select class=" align-center mt-1" label="Filter by Plant"
 				density="compact"
 				item-title="title"
@@ -132,20 +135,17 @@ onMounted(() => {
 				v-model="filters.plant"
 				return-object
 				clearable
-				@update:model-value="applyFilter">
+            >
 			</v-select>
 		</VCol>
-        <VCol cols="12" sm="6" md="3">
-            <SearchInput @update:search="handleSearch"/>
-        </VCol>
         <VCol cols="12" sm="6" md="2">
-			<v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" hide-details />
+			<v-text-field v-model="filters.dateFrom" label="Load Start From" type="date" density="compact" hide-details />
 		</VCol>
 		<VCol cols="12" sm="6" md="2">
-			<v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" hide-details />
+			<v-text-field v-model="filters.dateTo" label="Load Start To" type="date" density="compact" hide-details />
 		</VCol>
         <VCol cols="12" md="2" class="d-flex align-center">
-			<v-btn block prepend-icon="ri-search-eye-line" @click="handleSearch">
+			<v-btn block prepend-icon="ri-search-eye-line" @click="applyFilter">
 				Search
 			</v-btn>
 		</VCol>

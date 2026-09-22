@@ -28,9 +28,9 @@ const shipmentData = ref([]);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
-const sortQuery = ref('-created_at'); // Default sort
+const sortQuery = ref('-load_start_date'); // Default sort
 const filters = ref({ ...props.initialFilters });
 const showShipmentServiceModal = ref(false);
 const applictionRequestTypes = ref([]);
@@ -56,6 +56,9 @@ const headers = [
     {
         title: 'SHIPMENT NUMBER',
         key: 'shipment_number',
+        width: '100px',    // Changed to standard CSS string value format
+        minWidth: '100px', // Forces it to hold its ground
+        fixed: true
     },
     {
         title: 'BAY NO',
@@ -73,24 +76,33 @@ const headers = [
     {
         title: 'DRIVER',
         key: 'driver_name',
+        width: '150px',    // Changed to standard CSS string value format
+        minWidth: '150px', // Forces it to hold its ground
+        fixed: true
     },
     {
         title: 'PLATE NUMBER',
         key: 'plate_number',
     },
-    // {
-    //     title: 'LOAD START',
-    //     key: 'load_start_date',
-    // },
-    // {
-    //     title: 'LOAD END',
-    //     key: 'load_end_date',
-    // },
     {
         title: 'STATUS',
         key: 'status',
         align: 'center',
         sortable: false,
+    },
+    {
+        title: 'LOAD START',
+        key: 'load_start_date',
+        width: '195px',    // Changed to standard CSS string value format
+        minWidth: '195px', // Forces it to hold its ground
+        fixed: true
+    },
+    {
+        title: 'LOAD END',
+        key: 'load_end_date',
+        width: '195px',    // Changed to standard CSS string value format
+        minWidth: '195px', // Forces it to hold its ground
+        fixed: true
     },
     // {
     //     title: 'ACTION',
@@ -111,7 +123,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             sortQuery.value = `-${sort.key}`;  // Prefix with minus for descending order
         }
     } else {
-        sortQuery.value = '-created_at';
+        sortQuery.value = '-load_start_date';
     }
 
     ApiService.query('datatable/shipments', {
@@ -156,7 +168,7 @@ const applyFilters = (data) => {
     loadItems({
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        sortBy: [{ key: 'created_at', order: 'desc' }],
+        sortBy: [{ key: 'load_start_date', order: 'desc' }],
         search: props.search
     });
 }
@@ -226,7 +238,7 @@ const formatDateTime = (date, time) => {
     // Pad time to 6 digits if needed (for 'HHmmss' format)
     let formattedDate = Moment(date).format('YYYY-MM-DD');
     
-    return Moment(`${formattedDate} ${time}`, 'YYYY-MM-DD HH:mm:ss').format('MMMM D, YYYY hh:mm:ss A');
+    return Moment(`${formattedDate} ${time}`, 'YYYY-MM-DD HH:mm:ss').format('MM/DD/YYYY h:mm A');
 };
 
 
