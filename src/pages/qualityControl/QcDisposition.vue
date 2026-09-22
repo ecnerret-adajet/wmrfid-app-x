@@ -111,6 +111,8 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 
 
 const handleSearch = () => {
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  filters.plant_code = selectedPlant?.plant_code ?? null
   loadItems({
       page: page.value,
       itemsPerPage: itemsPerPage.value,
@@ -303,6 +305,7 @@ const handleCreateDispo = async (method) => {
         density="compact"
         hide-details
         :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        @update:model-value="handleSearch"
         v-model="filters.plant_id"
       />
     </VCol>

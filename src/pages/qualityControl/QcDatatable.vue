@@ -1,7 +1,7 @@
 <script setup>
 import ApiService from '@/services/ApiService';
 import moment from 'moment';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
@@ -9,15 +9,19 @@ const emits = defineEmits(['pagination-changed', 'update:selected']);
 
 const route = useRoute();
 
-const plantCode = route.params.plant_code;
-const sloc = route.params.sloc;
 const s_section = route.params.storage_section;
 
 const searchValue = ref('');
 
 const todayStr = moment().format('YYYY-MM-DD');
 
+const plantsOptions = ref([]);
+const storageLocations = ref([]);
+
 const filters = reactive({
+    plant_id: null,
+    plant_code: route.params.plant_code ?? null,
+    sloc: route.params.sloc ?? null,
     dateFrom: todayStr,
     dateTo: todayStr,
 });
@@ -44,13 +48,45 @@ const headers = [
 
 
 onMounted(() => {
-    fetchStorageLocationDetails();
+    loadPlants();
 });
+
+const applyPlantSelection = (plantId) => {
+    const selectedPlant = plantsOptions.value.find(p => p.value === plantId);
+    if (!selectedPlant) return;
+    filters.plant_code = selectedPlant.plant_code;
+    storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.code, title: `${item.code} - ${item.name}`, code: item.code }));
+
+    const matchedSloc = storageLocations.value.find(s => s.code === filters.sloc);
+    filters.sloc = matchedSloc ? matchedSloc.code : (storageLocations.value[0]?.code ?? null);
+};
+
+watch(() => filters.plant_id, (newVal) => applyPlantSelection(newVal));
+
+const loadPlants = async () => {
+    try {
+        const response = await ApiService.query('managed-plant-storage-locations', {});
+        plantsOptions.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }));
+
+        const matchedPlant = plantsOptions.value.find(p => p.plant_code === filters.plant_code) ?? plantsOptions.value[0];
+        if (matchedPlant) {
+            filters.plant_id = matchedPlant.value;
+            applyPlantSelection(matchedPlant.value);
+        }
+
+        await fetchStorageLocationDetails();
+        handleSearch();
+    } catch (error) {
+        console.error(error);
+    }
+};
 
 const fetchStorageLocationDetails = async () => {
     pageLoading.value = true;
     try {
-        const response = await ApiService.get(`quality-control/storage-location/${plantCode}/${sloc}`);
+        const response = await ApiService.get(`quality-control/storage-location/${filters.plant_code}/${filters.sloc}`);
         storageLocation.value = response.data.storage_location;
     } catch (error) {
         console.log(error);
@@ -74,8 +110,8 @@ const fetchStorageLocationDetails = async () => {
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     loading.value = true;
 
-    const plant_code = route.params.plant_code;
-    const sloc = route.params.sloc;
+    const plant_code = filters.plant_code;
+    const sloc = filters.sloc;
     const forklift = route.params.forklift;
 
     if (!plant_code || !sloc || !forklift) {
@@ -281,6 +317,24 @@ defineExpose({ loadItems, selectedItems });
             <h4 class="text-h5 font-weight-bold mb-2">Total for Quality Inspection : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
         </div>
         <div class="d-flex flex-wrap gap-4 align-center justify-center mb-2">
+            <v-select
+                v-model="filters.plant_id"
+                label="Plant"
+                :items="plantsOptions"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
+            <v-select
+                v-model="filters.sloc"
+                label="Storage Location"
+                :items="storageLocations"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
             <VTextField
                 v-model="searchValue"
                 label="Search"

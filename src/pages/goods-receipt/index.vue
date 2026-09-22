@@ -133,7 +133,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow  no-gutters align="center" >
+    <VRow no-gutters align="center" >
         <VCol md="4" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <SearchInput placeholder="Material Document" @update:search="handleSearch"/>
         </VCol>
@@ -194,6 +194,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 
         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
             <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
+                <i class="ri-search-eye-line mr-2"></i>
                 Search
             </PrimaryButton>
         </VCol>

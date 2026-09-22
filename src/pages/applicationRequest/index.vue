@@ -1,5 +1,6 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
@@ -10,7 +11,7 @@ import Moment from 'moment';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const authStore = useAuthStore();
-
+const todayStr = Moment().format('YYYY-MM-DD');
 const { authUserCan } = useAuthorization();
 const searchValue = ref('');
 const datatableRef = ref(null);
@@ -466,7 +467,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
@@ -600,7 +601,6 @@ const ageRequirementDisplay = computed(() => {
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 
-
         <v-select style="max-width: 250px;" class="flex-grow-1 align-center mt-1" label="Filter by Request Type"
             density="compact" :items="requestTypes.length > 1 ? [{ title: 'All', value: null }, ...requestTypes] : requestTypes"
             v-model="filters.request_type"
@@ -625,12 +625,6 @@ const ageRequirementDisplay = computed(() => {
             </template>
             Export
         </v-btn>  -->
-        <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
-            <template #prepend>
-                <v-icon color="white"></v-icon>
-            </template>
-            Search
-        </v-btn>
 
         <v-btn v-if="authUserCan('create.service.requests')" class="d-flex align-center" prepend-icon="ri-add-line" color="primary" @click="openCreateModal">
             <template #prepend>
@@ -639,6 +633,23 @@ const ageRequirementDisplay = computed(() => {
             Create Service Request
         </v-btn>
     </div>
+
+    <VRow no-gutters class="mb-4">
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol md="6" class="d-none d-md-flex"></VCol>
+
+         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
+            <PrimaryButton class="flex-grow-1" type="button" @click="handleSearch" :loading="loading">
+                <i class="ri-search-eye-line mr-2"></i>
+                Search
+            </PrimaryButton>
+        </VCol>
+    </VRow>
 
     <VCard>
         <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"

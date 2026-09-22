@@ -15,6 +15,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    initialFilters: {
+        type: Object,
+        default: () => ({})
+    },
 });
 
 const router = useRouter();
@@ -27,7 +31,7 @@ const totalItems = ref(0);
 const itemsPerPage = ref(10);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
-const filters = ref(null);
+const filters = ref({ ...props.initialFilters });
 const showShipmentServiceModal = ref(false);
 const applictionRequestTypes = ref([]);
 const form = reactive({
@@ -62,6 +66,9 @@ const headers = [
     {
         title: 'HAULER',
         key: 'hauler_name',
+        width: '200px',    // Changed to standard CSS string value format
+        minWidth: '200px', // Forces it to hold its ground
+        fixed: true
     },
     {
         title: 'DRIVER',
@@ -95,7 +102,7 @@ const headers = [
 
 const unauthorizedFlag = ref(false);
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
-
+    // if(!filters['plant_id']) return;
     loading.value = true
     if (sortBy && sortBy.length > 0) {
         const sort = sortBy[0];  // Assuming single sort field
@@ -237,8 +244,8 @@ defineExpose({
 <template>
 
     <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
-        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
-        class="text-no-wrap">
+        :items-length="totalItems" fixed-header :loading="loading" item-value="id" :search="search" @update:options="loadItems"
+    >
 
         <!-- <template #item.action="{ item }">
             <v-btn :to="{
@@ -303,6 +310,16 @@ defineExpose({
         <template #item.shipment_number="{ item }">
             {{ item.shipment_number }}
         </template>
+
+        <!-- <template #item.hauler_name="{ item }">
+            <div 
+                class="text-truncate" 
+                style="max-width: 180px;" 
+                :title="item.hauler_name"
+            >
+                {{ item.hauler_name }}
+            </div>
+        </template> -->
 
         <template #item.plate_number="{ item }">
             {{ item.plate_number_1 || item.plate_number_2 || item.plate_number_3 || item.plate_number_4 || '' }}

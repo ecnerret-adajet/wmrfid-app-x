@@ -13,18 +13,19 @@
                 class="flex-grow-1" 
             />
 
-            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateFrom" label="Date Reserved From" type="date" density="compact" variant="outlined" hide-details />
-            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateTo" label="Date Reserved To" type="date" density="compact" variant="outlined" hide-details />
             <v-select 
                 style="max-width: 380px; min-width: 280px;"
                 label="Select Plant" 
                 density="compact"
                 hide-details
-                :items="[{ title: 'All', value: null }, ...plantsOption]" 
+                :items="plantsOption" 
                 v-model="filters.plant_code"
                 :rules="[value => value !== undefined || 'Please select an item from the list']"
                 class="flex-grow-0"
             />
+
+            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateFrom" label="Date Reserved From" type="date" density="compact" variant="outlined" hide-details />
+            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateTo" label="Date Reserved To" type="date" density="compact" variant="outlined" hide-details />
 
             <v-btn 
                 :loading="exportLoading" 

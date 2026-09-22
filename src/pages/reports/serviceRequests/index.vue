@@ -9,7 +9,7 @@ import Moment from 'moment';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 const authStore = useAuthStore();
-
+const todayStr = Moment().format('YYYY-MM-DD');
 const searchValue = ref('');
 const isLoading = ref(false);
 const plantsOption = ref([])
@@ -160,7 +160,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 
@@ -224,6 +224,14 @@ function removeLeadingZeros(value) {
             class="flex-grow-1"
             @update:search="searchValue = $event"
         />
+
+        <v-select style="max-width: 350px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
+            density="compact"
+            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+            v-model="filters.plant_code"
+            :rules="[value => value !== undefined || 'Please select an item from the list']">
+        </v-select>
+
         <div style="max-width: 200px; margin-top: -20px" class="flex-grow-1">
             <label>Date From</label>
             <DatePicker v-model="filters.date_from" />
@@ -237,13 +245,6 @@ function removeLeadingZeros(value) {
         <v-select style="max-width: 250px;" class="flex-grow-1 align-center mt-1" label="Filter by Request Type"
             density="compact" :items="requestTypes.length > 1 ? [{ title: 'All', value: null }, ...requestTypes] : requestTypes"
             v-model="filters.request_type"
-            :rules="[value => value !== undefined || 'Please select an item from the list']">
-        </v-select>
-
-        <v-select style="max-width: 350px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
-            density="compact"
-            :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-            v-model="filters.plant_code"
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
 

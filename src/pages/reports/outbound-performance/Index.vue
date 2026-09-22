@@ -164,7 +164,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(25);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-scanned_pallet_at');
 const kpi = ref({

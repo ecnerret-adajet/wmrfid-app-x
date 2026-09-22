@@ -115,15 +115,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 <template>
     <VRow align="center">
         <VCol cols="12" md="3">
-            <v-select
-                label="Filter by Plant"
-                density="compact"
-                hide-details
-                :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
-                v-model="filters.plant_code"
-            />
-        </VCol>
-        <VCol cols="12" md="3">
             <v-text-field
                 v-model="searchInputValue"
                 persistent-placeholder
@@ -133,6 +124,15 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
                 density="compact"
                 class="custom-text-field"
+            />
+        </VCol>
+        <VCol cols="12" md="3">
+            <v-select
+                label="Filter by Plant"
+                density="compact"
+                hide-details
+                :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+                v-model="filters.plant_code"
             />
         </VCol>
         <VCol cols="12" md="2">

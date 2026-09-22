@@ -52,7 +52,7 @@ const fetchDataDropdown = async () => {
         // Default to the user's assigned plant
         const assignedPlantId = authStore.user?.assigned_plant?.id;
         const defaultPlant = assignedPlantId ? plantsOption.value.find(p => p.id === assignedPlantId) : null;
-        const defaultStorageLocation = defaultPlant?.default_storage_location || null;
+        const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
 
         if (defaultPlant) {
             filters.value.plant = defaultPlant;
@@ -76,13 +76,7 @@ const fetchDataDropdown = async () => {
 watch(
     () => filters.value.plant,
     (newPlant) => {
-        // If plant changes, clear sloc unless it matches the new plant (unlikely in dropdown)
-        // Check if the ID changed to avoid unnecessary clears if object reference changes but ID is same
-        // But for v-select return-object, it replaces the object.
-
-        // We only want to reset sloc if the user *changed* the plant, not on initial load if persisted.
-        // However, on change, we should update options.
-
+        
         if (newPlant) {
              const selectedPlant = plantsOption.value.find(p => p.id === newPlant.id);
              storageLocationsOption.value = selectedPlant ? selectedPlant.storage_locations : [];
@@ -142,11 +136,11 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow align="center">
-        <VCol md="6" cols="12">
+    <VRow no-gutters align="center">
+        <VCol md="6" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <SearchInput placeholder="PO Number" @update:search="handleSearch"/>
         </VCol>
-        <VCol md="3" cols="12">
+        <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
                 label="Plant"
                 density="compact"
@@ -160,7 +154,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="3" cols="12">
+        <VCol md="3" cols="12" class="pb-2 pb-md-0">
             <v-select
                 label="Storage Location"
                 density="compact"
@@ -177,15 +171,17 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         </VCol>
     </VRow>
 
-    <VRow align="center" class="mb-4">
-        <VCol md="2" cols="12">
+    <VRow no-gutters align="center" class="mb-4">
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12">
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12" class="d-flex align-center">
-            <PrimaryButton class="flex-grow-1 mr-2" type="button" @click="applyFilter" :loading="isLoading">
+        <VCol md="6" class="d-none d-md-flex"></VCol>
+        <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
+            <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
+                <i class="ri-search-eye-line mr-2"></i>
                 Search
             </PrimaryButton>
         </VCol>

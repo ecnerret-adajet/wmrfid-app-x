@@ -1,16 +1,22 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { onMounted, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
 const route = useRoute();
 
-const plantCode = route.params.plant_code;
-const sloc = route.params.sloc;
-
 const searchValue = ref('');
+
+const plantsOptions = ref([]);
+const storageLocations = ref([]);
+
+const filters = reactive({
+    plant_id: null,
+    plant_code: route.params.plant_code ?? null,
+    sloc: route.params.sloc ?? null,
+});
 
 const serverItems = ref([]);
 const loading = ref(true);
@@ -62,13 +68,45 @@ const itemHeaders = [
 ];
 
 onMounted(() => {
-    fetchStorageLocationDetails();
+    loadPlants();
 })
+
+const applyPlantSelection = (plantId) => {
+    const selectedPlant = plantsOptions.value.find(p => p.value === plantId);
+    if (!selectedPlant) return;
+    filters.plant_code = selectedPlant.plant_code;
+    storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.code, title: `${item.code} - ${item.name}`, code: item.code }));
+
+    const matchedSloc = storageLocations.value.find(s => s.code === filters.sloc);
+    filters.sloc = matchedSloc ? matchedSloc.code : (storageLocations.value[0]?.code ?? null);
+};
+
+watch(() => filters.plant_id, (newVal) => applyPlantSelection(newVal));
+
+const loadPlants = async () => {
+    try {
+        const response = await ApiService.query('managed-plant-storage-locations', {});
+        plantsOptions.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }));
+
+        const matchedPlant = plantsOptions.value.find(p => p.plant_code === filters.plant_code) ?? plantsOptions.value[0];
+        if (matchedPlant) {
+            filters.plant_id = matchedPlant.value;
+            applyPlantSelection(matchedPlant.value);
+        }
+
+        await fetchStorageLocationDetails();
+        handleSearch();
+    } catch (error) {
+        console.error(error);
+    }
+};
 
 const fetchStorageLocationDetails = async () => {
     pageLoading.value = true;
     try {
-        const response = await ApiService.get(`quality-control/storage-location/${plantCode}/${sloc}`);
+        const response = await ApiService.get(`quality-control/storage-location/${filters.plant_code}/${filters.sloc}`);
         storageLocation.value = response.data.storage_location;
     } catch (error) {
         console.log(error);
@@ -80,8 +118,8 @@ const fetchStorageLocationDetails = async () => {
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     loading.value = true;
 
-    const plant_code = route.params.plant_code;
-    const sloc = route.params.sloc;
+    const plant_code = filters.plant_code;
+    const sloc = filters.sloc;
 
     if (!plant_code || !sloc) {
         loading.value = false;
@@ -201,12 +239,44 @@ const handleAction = (item, action) => {
 
 <template>
     <div>
-        <div class="pa-4">
-            <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
-            <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
-            <h4 class="text-h5 font-weight-bold mb-2">Total Goods Movement Logs : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
-        </div>
-        <div class="d-flex gap-4 align-center justify-center px-4 mb-2">
+        <VRow>
+            <VCol cols="12" md="3">
+            <v-skeleton-loader v-if="pageLoading" type="article" />
+            <v-card v-else class="pa-4" elevation="2" style="border-radius: 10px; background-color: #f9fafb;">
+                <div class="d-flex align-center">
+                <div
+                    class="d-flex align-center justify-center mr-4"
+                    style="width: 48px; height: 48px; background-color: #cae2fa; border-radius: 12px;"
+                >
+                    <v-icon icon="ri-list-check" color="primary" size="24" />
+                </div>
+                <div>
+                    <span class="text-subtitle-1 font-weight-bold text-grey-700">Total Goods Movement Logs</span>
+                    <div class="text-h4 font-weight-bold text-primary mt-1">{{ totalItems }}</div>
+                </div>
+                </div>
+            </v-card>
+            </VCol>
+        </VRow>
+        <div class="d-flex gap-4 align-center justify-center mb-2 mt-4">
+            <v-select
+                v-model="filters.plant_id"
+                label="Plant"
+                :items="plantsOptions"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
+            <v-select
+                v-model="filters.sloc"
+                label="Storage Location"
+                :items="storageLocations"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
             <VTextField
                 v-model="searchValue"
                 label="Search"

@@ -239,12 +239,6 @@ function formatStatusText(status) {
 				@keyup.enter="handleSearch"
 			/>
 		</VCol>
-		<VCol cols="12" sm="6" md="2">
-			<v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" hide-details />
-		</VCol>
-		<VCol cols="12" sm="6" md="2">
-			<v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" hide-details />
-		</VCol>
 		<VCol cols="12" sm="6" md="3">
 			<v-select class=" align-center mt-1" label="Filter by Plant"
 				density="compact"
@@ -253,7 +247,14 @@ function formatStatusText(status) {
 				:rules="[value => value !== undefined || 'Please select an item from the list']">
 			</v-select>
 		</VCol>
-	
+
+		<VCol cols="12" sm="6" md="2">
+			<v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" hide-details />
+		</VCol>
+		<VCol cols="12" sm="6" md="2">
+			<v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" hide-details />
+		</VCol>
+		
 		<VCol cols="12" sm="6" md="2">
 			<v-select v-model="filters.direction" label="Direction" :items="directions" density="compact" hide-details />
 		</VCol>
@@ -263,7 +264,8 @@ function formatStatusText(status) {
 		<VCol cols="12" sm="6" md="2">
 			<v-select v-model="filters.mode" label="Mode" :items="modes" density="compact" hide-details />
 		</VCol>
-		<VCol cols="12" md="1" class="d-flex align-center">
+		<VCol md="8" class="d-none d-md-flex"></VCol>
+		<VCol cols="12" md="2" class="d-flex align-center">
 			<v-btn block prepend-icon="ri-search-eye-line" @click="handleSearch">
 				Search
 			</v-btn>

@@ -233,6 +233,16 @@ const handleSearch = () => {
             density="compact" 
             class="flex-grow-1" 
         />
+        <v-select 
+            style="max-width: 400px; min-width: 300px;"
+            label="Select Plant" 
+            density="compact"
+            hide-details
+            :items="plantsOption" 
+            v-model="filters.plant_code"
+            :rules="[value => value !== undefined || 'Please select an item from the list']"
+            class="flex-grow-0"
+        />
 
         <div style="max-width: 200px;" class="flex-grow-1">
             <v-text-field v-model="filters.date_from" label="Date Reserved From" type="date" density="compact" variant="outlined" hide-details />
@@ -241,17 +251,6 @@ const handleSearch = () => {
         <div style="max-width: 200px;" class="flex-grow-1 align-start">
             <v-text-field v-model="filters.date_to" label="Date Reserved To" type="date" density="compact" variant="outlined" hide-details />
         </div>
-
-        <v-select 
-            style="max-width: 400px; min-width: 300px;"
-            label="Select Plant" 
-            density="compact"
-            hide-details
-            :items="[{ title: 'All', value: null }, ...plantsOption]" 
-            v-model="filters.plant_code"
-            :rules="[value => value !== undefined || 'Please select an item from the list']"
-            class="flex-grow-0"
-        />
 
         <v-btn 
             class="d-flex align-center" 

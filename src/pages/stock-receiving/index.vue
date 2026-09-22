@@ -1,17 +1,19 @@
 <script setup>
-import DateRangePicker from '@/components/DateRangePicker.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { useStockReceivingStore } from '@/stores/stockReceivingStore';
+import Moment from 'moment';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const stockReceivingStore = useStockReceivingStore();
-
+const todayStr = Moment().format('YYYY-MM-DD');
 const searchValue = ref('');
-const itemsPerPage = ref(15);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const pageLoading = ref(false);
 
@@ -30,11 +32,11 @@ const storageLocationsOption = ref([]);
 
 const filters = reactive({
     plant: null,
-    start_date: null,
-    end_date: null,
+    plant_code: null,
+    dateFrom: todayStr,
+    dateTo: todayStr,
 });
 
-const dateRange = ref(null);
 
 const form = reactive({
     loading: false,
@@ -54,22 +56,36 @@ const headers = [
     { title: 'Action', key: 'actions', align: 'center', sortable: false },
 ];
 
-const loadPlants = async () => {
+const fetchDataDropdown = async () => {
+    pageLoading.value = true;
     try {
-        const response = await ApiService.get('managed-plant-storage-locations');
-        plantsOption.value = (response.data.plants ?? [])
-            .filter(item => item.name !== null)
-            .map(item => ({ value: item.plant_code, title: item.name }));
-        storageLocationsOption.value = (response.data.storage_locations ?? [])
-            .map(item => ({ value: item.code, title: item.name, plant_id: item.plant_id }));
-        plantsLoaded.value = true;
+        const response = await ApiService.get('/users/get-data-dropdown');
+        const { plants } = response.data;
+        plantsOption.value = plants;
+
+        // Default to the user's assigned plant
+        const assignedPlantId = authStore.user?.assigned_plant?.id;
+        const defaultPlant = assignedPlantId ? plantsOption.value.find(p => p.id === assignedPlantId) : null;
+        const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
+
+        if (defaultPlant) {
+            filters.plant = defaultPlant;
+            // Re-fetch since the datatable's initial load already ran before the default plant/storage location resolved
+            // applyFilter();
+        }
+
     } catch (error) {
-        console.error(error);
-        plantsLoaded.value = true;
+        console.error('Error fetching dropdown data:', error);
+    } finally {
+        pageLoading.value = false;
     }
 };
 
 const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
+    if (!filters.plant) {
+        pageLoading.value = false;
+        return;
+    }
     pageLoading.value = true;
     page.value = pageNum;
 
@@ -85,11 +101,11 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
         if (filters.plant) {
             params.plant = filters.plant;
         }
-        if (filters.start_date) {
-            params.start_date = filters.start_date;
+        if (filters.dateFrom) {
+            params.start_date = filters.dateFrom;
         }
-        if (filters.end_date) {
-            params.end_date = filters.end_date;
+        if (filters.dateTo) {
+            params.end_date = filters.dateTo;
         }
 
         await stockReceivingStore.fetchStockReceiving(params);
@@ -106,15 +122,6 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
 };
 
 const handleSearch = () => {
-    // Sync date range to filters
-    if (dateRange.value && dateRange.value.length === 2) {
-        filters.start_date = dateRange.value[0];
-        filters.end_date = dateRange.value[1];
-    } else {
-        filters.start_date = null;
-        filters.end_date = null;
-    }
-
     loadItems({
         page: 1,
         itemsPerPage: itemsPerPage.value,
@@ -201,7 +208,7 @@ const handleAction = (item, action) => {
 };
 
 onMounted(() => {
-    loadPlants();
+    fetchDataDropdown();
 });
 </script>
 
@@ -210,38 +217,25 @@ onMounted(() => {
         <!-- Filter Row -->
         <div class="d-flex flex-wrap gap-4 align-center justify-center">
 
-             <SearchInput class="flex-grow-1" @update:search="(val) => { searchValue = val; handleSearch(); }" />
-                
-            <!-- Search by Material Code -->
-            <!-- <VTextField
-                v-model="searchValue"
-                label="Search"
-                placeholder="Search by material code..."
-                append-inner-icon="ri-search-line"
-                single-line
-                hide-details
-                density="compact"
-                class="flex-grow-1"
-                style="max-width: 300px;"
-                @keyup.enter="handleSearch"
-            /> -->
+            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="handleSearch"/>
 
             <!-- Plant Filter -->
             <v-select
                 style="max-width: 350px;"
-                class="flex-grow-1 align-center mt-1"
+                class="flex-grow-1 align-center"
                 label="Filter by Plant"
                 density="compact"
-                :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
+                :items="plantsOption"
                 v-model="filters.plant"
                 clearable
             />
 
-            <!-- Date Range Picker -->
-            <div style="max-width: 350px;" class="flex-grow-1">
-               <!-- <label class="font-weight-bold text-caption">Date Range</label>  -->
-                <DateRangePicker v-model="dateRange" />
-            </div>
+            <VCol md="2" cols="12" >
+                <v-text-field v-model="filters.dateFrom" label="Posting Date From" type="date" density="compact" variant="outlined" hide-details />
+            </VCol>
+            <VCol md="2" cols="12" >
+                <v-text-field v-model="filters.dateTo" label="Posting Date To" type="date" density="compact" variant="outlined" hide-details />
+            </VCol>
 
             <!-- Search Button -->
             <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
@@ -280,7 +274,7 @@ onMounted(() => {
                 class="text-no-wrap"
             >
                 <template #item.posting_date="{ item }">
-                    <span>{{ item.posting_date }}</span>
+                    <span>{{ Moment(item.posting_date).format('YYYY-MM-DD') }}</span>
                 </template>
 
                 <template #item.material_document="{ item }">

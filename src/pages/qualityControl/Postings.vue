@@ -110,7 +110,7 @@ const loadPlants = async () => {
       const firstPlant = plantsOptions.value[0]
       filters.plant_id = firstPlant.value
       filters.plant_code = firstPlant.plant_code
-      storageLocations.value = firstPlant.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
+      storageLocations.value = firstPlant.storage_locations.map(item => ({ value: item.code, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
       
       if(storageLocations.value.length > 0) {
         filters.sloc = storageLocations.value[0].code
@@ -128,7 +128,7 @@ watch(() => filters.plant_id, (newVal) => {
     const selectedPlant = plantsOptions.value.find(p => p.value === newVal);
     if (selectedPlant) {
         filters.plant_code = selectedPlant.plant_code;
-        storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.id, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
+        storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.code, title: `${item.code} - ${item.name}`, code: item.code, plant_code: item.plant_code }));
         
         if (storageLocations.value.length > 0) {
             filters.sloc = storageLocations.value[0].code;
