@@ -6,7 +6,7 @@ import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
 
 const authStore = useAuthStore();
@@ -58,7 +58,7 @@ const fetchDataDropdown = async () => {
         // Default to the user's assigned plant
         const assignedPlantId = authStore.user?.assigned_plant?.id;
         const defaultPlant = assignedPlantId ? plantsOption.value.find(p => p.id === assignedPlantId) : null;
-        const defaultStorageLocation = defaultPlant?.default_storage_location || null;
+        const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
 
         if (defaultPlant) {
             filters.value.plant = defaultPlant;
@@ -104,14 +104,6 @@ watch(
     }
 );
 
-const isFiltersEmpty = computed(() => {
-    return !filters.value.dateFrom &&
-           !filters.value.dateTo &&
-           !filters.value.plant &&
-           !filters.value.storageLocation && 
-           !filters.value.pallet_status
-});
-
 const applyFilter = () => {
     searchValue.value = searchInput.value;
     if(datatableRef.value) {
@@ -126,14 +118,6 @@ const applyFilter = () => {
     }
 }
 
-const resetFilter = () => {
-    filters.value = defaultFilters();
-    searchInput.value = '';
-    searchValue.value = '';
-    if(datatableRef.value) {
-        datatableRef.value.applyFilters([]);
-    }
-}
 
 const handleSearch = (search) => {
     searchInput.value = search;
@@ -149,11 +133,11 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow align="center" >
-        <VCol md="4" cols="12">
+    <VRow  no-gutters align="center" >
+        <VCol md="4" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <SearchInput placeholder="Material Document" @update:search="handleSearch"/>
         </VCol>
-        <VCol md="3" cols="12">
+        <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
                 label="Plant"
                 density="compact"
@@ -167,7 +151,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="3" cols="12">
+        <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
                 label="Storage Location"
                 density="compact"
@@ -182,7 +166,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="2" cols="12">
+        <VCol md="2" cols="12" class="pb-2 pb-md-0">
             <v-select
                 label="Pallet Status"
                 density="compact"
@@ -198,15 +182,18 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         
     </VRow>
 
-    <VRow align="center" class="mb-4">
-        <VCol md="2" cols="12">
-            <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+    <VRow no-gutters align="center" class="mb-4">
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateFrom" label="Posting Date From" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12">
-            <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateTo" label="Posting Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12" class="d-flex align-center">
-            <PrimaryButton class="flex-grow-1 mr-2" type="button" @click="applyFilter" :loading="isLoading">
+        
+        <VCol md="6" class="d-none d-md-flex"></VCol>
+
+        <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
+            <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
                 Search
             </PrimaryButton>
         </VCol>
