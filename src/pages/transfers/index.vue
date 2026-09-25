@@ -17,6 +17,8 @@ const defaultFilters = () => ({
     storageLocation: null, // Stores the full sloc object
     dateFrom: todayStr,
     dateTo: todayStr,
+    pallet_assignment: 1,
+    batch_pick: 1,
 });
 
 const filters = ref(defaultFilters());
@@ -178,7 +180,27 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="6" class="d-none d-md-flex"></VCol>
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-select label="Pallet Assignment"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'Pending', value: 1 },
+                    { title: 'Partial', value: 2 },
+                    { title: 'Completed', value: 3 }
+                ]" v-model="filters.pallet_assignment">
+            </v-select>
+        </VCol>
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-select label="Batch Pick"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'No Batch Picked', value: 1 },
+                    { title: 'Batch Picked', value: 2 }
+                ]" v-model="filters.batch_pick">
+            </v-select>
+        </VCol>
+        <VCol md="2" class="d-none d-md-flex"></VCol>
+       
         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
             <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
                 <i class="ri-search-eye-line mr-2"></i>

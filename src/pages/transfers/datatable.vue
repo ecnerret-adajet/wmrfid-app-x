@@ -1,16 +1,24 @@
 <script setup>
+import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
+import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import BatchPick from './batchPick.vue';
+import BatchPickSelectionModal from './BatchPickSelectionModal.vue';
 import PalletAssignModal from './PalletAssignModal.vue';
 
 const stoBatchPickingStore = useStoBatchPickingStore();
 const emits = defineEmits(['pagination-changed']);
+const { authUserCan } = useAuthorization();
+const authStore = useAuthStore();
 
 const props = defineProps({
     search: {
@@ -50,6 +58,19 @@ const headers = [
         align: 'center',
         sortable: false,
 
+    },
+    {
+        title: 'PALLET ASSIGNMENT',
+        key: 'pallet_assignment',
+        align: 'center',
+        sortable: false,
+
+    },
+    {
+        title: 'BATCH PICK STATUS',
+        key: 'batch_pick_status',
+        align: 'center',
+        sortable: false,
     },
     {
         title: 'PO NUMBER',
@@ -181,40 +202,105 @@ const palletModalOpen = ref(false);
 const isSaving = ref(false);
 const selectedItemForPallet = ref(null);
 
-const handleAction = (sto, action) => {
+const handleAction = async (sto, action) => {
     stoData.value = sto;
     selectedItemForPallet.value = sto
+    console.log(sto)
     if (action == 'batch_pick') {
-        // showReservedPallets.value = true;
-        // viewTransports.value = true;
-        // fetchTransports()
-        router.push({ name: 'sto-batch-picking', params: { po_number: sto.po_number, po_item: sto.po_item } });
+        batchPickModalOpen.value = true;
     } else if (action == 'view_reserved_pallets') {
         viewReservedPallets.value = true;
     } else if (action == 'pallet_assignment') {
-        palletModalOpen.value = true;
+        try {
+            isLoading.value = true;
+            // Call the API endpoint (adjust the URL/payload format if needed)
+            const response = await axios.get(`transfers/check-sto-batch-picked/${sto.po_number}/${sto.po_item}`);
+
+            // If the API returns true directly or inside data (e.g., response.data === true)
+            if (response.data?.batch_picked) {
+                palletModalOpen.value = true;
+            } else {
+                // Show SweetAlert2 warning if false
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No Batch Picked Yet',
+                    text: 'Please contact supply chain.',
+                    confirmButtonColor: '#00833c',
+                    confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+                });
+            }
+        } catch (error) {
+            // Handle potential API errors gracefully
+            console.error("API Error:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to verify batch picking status. Please try again.'
+            });
+        } finally {
+            isLoading.value = false;
+        }
     }
 
 }
 
-const handleSelectBatch = () => {
-    // viewTransports.value = false;
-
-    const selectedTransport = transports.value?.find(
-        (item) => item.id === selectedTransportId.value
-    );
-    stoBatchPickingStore.selectedTransport = selectedTransport;
-
-    showReservedPallets.value = true;
-}
-
 const selectedTransportId = ref(null);
 
-// watch(() => viewTransports.value, (isOpen) => {
-//     if (!isOpen) {
-//         selectedTransportId.value = null;
-//     }
-// });
+const batchPickModalOpen = ref(false);
+
+const closeBatchPickModal = () => {
+    batchPickModalOpen.value = false;
+};
+
+const saveLoading = ref(false)
+const handleBatchPickSave = async ({ transport, batches }) => {
+    // 1. Extract route parameters (or replace with your component state variables, e.g., stoData.value.po_number)
+    const poNumber = stoData.value.po_number;
+    const poItem = stoData.value.po_item;
+    saveLoading.value = true;
+    try {
+        // 2. Build the dynamic endpoint URL and send the POST request
+        const response = await ApiService.post(`transfer-orders/sto-batch-pick/${poNumber}/${poItem}/save`, {
+            transport: transport,
+            batches: batches,
+            material_code: stoData.value.material_code,
+            plant: stoData.value.supplying_plant
+        });
+
+        // 3. Handle successful processing
+        batchPickModalOpen.value = false;
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Saved Successfully',
+            text: 'Batch picking selection has been saved.',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
+
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: props.search
+        })
+
+    } catch (error) {
+        console.error('Failed to save batch picking:', error);
+        
+        const errorMessage = error.response?.data?.message || 'Failed to save batch picking selection.';
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Error Saving',
+            text: errorMessage,
+            confirmButtonColor: '#d33', // Custom alert styling match
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>'
+        });
+    } finally {
+        saveLoading.value = false;
+    }
+};
 
 const calculateAge = (date) => {
     if (!date) return '';
@@ -253,7 +339,7 @@ const closePalletModal = () => {
     selectedItemForPallet.value = null;
 };
 
-const savePalletAssignment = async ({ pallets }) => {
+const savePalletAssignment = async ({ pallets, transport_number }) => {
     if (!selectedItemForPallet.value) return;
 
     isSaving.value = true;
@@ -274,16 +360,19 @@ const savePalletAssignment = async ({ pallets }) => {
         base_unit: selectedItemForPallet.value.uom,
         receiving_plant: selectedItemForPallet.value.plant,
         receiving_sloc: selectedItemForPallet.value.storage_location,
+        transport_number
     };
 
     try {
         await ApiService.post('transfers/assign-pallets', payload);
 
-        toast.value = {
-            message: 'Pallets assigned successfully',
-            color: 'success',
-            show: true
-        };
+        Swal.fire({
+            icon: 'success',
+            title: 'Saved Successfully',
+            text: 'Pallet assignment has been saved.',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
         closePalletModal();
         loadItems({
             page: page.value,
@@ -293,13 +382,65 @@ const savePalletAssignment = async ({ pallets }) => {
         });
     } catch (error) {
         console.error(error);
-        toast.value = {
-            message: error.response?.data?.message || 'Failed to assign pallets',
-            color: 'error',
-            show: true
-        };
+        Swal.fire({
+            icon: 'error',
+            title: 'Error Saving Pallet Assignment',
+            text: error.response?.data?.message || 'Failed to assign pallets',
+            confirmButtonColor: '#d33',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>'
+        });
     } finally {
         isSaving.value = false;
+    }
+};
+
+const cancelConfirmationModal = ref(false);
+const selectedCancelItem = ref(null)
+const selectedCancelGroup = ref(null)
+const cancelReservation = async ({ item, group }) => {
+    selectedCancelItem.value = item;
+    selectedCancelGroup.value = group;
+    cancelConfirmationModal.value = true;
+};
+
+const cancelReserveLoading = ref(false);
+const cancelReserve = async () => {
+    cancelReserveLoading.value = true;
+    try {
+        // Call your API to cancel the reservation
+        await ApiService.post('transfer-orders/transfer-order-remove', {
+            po_number: selectedCancelItem.value.po_number,
+            po_item: selectedCancelItem.value.po_item,
+            transport_number: selectedCancelGroup.value.transport?.transport_number
+        });
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Batch Reservation Cancelled Successfully',
+            text: 'The batch reservation has been cancelled.',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
+        cancelConfirmationModal.value = false;
+        batchPickModalOpen.value = false;
+        // fetchStockTransferDetails();
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: props.search
+        });
+    } catch (error) {
+        console.error(error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error Cancelling Reservation',
+            text: error.response?.data?.message || 'Failed to cancel reservation',
+            confirmButtonColor: '#d33', // Custom alert styling match
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>'
+        });
+    } finally {
+        cancelReserveLoading.value = false;
     }
 };
 
@@ -332,13 +473,23 @@ defineExpose({
         </template>
 
         <template #item.po_item="{ item }">
-            <span class="font-weight-bold mb-1">{{ item.po_item }}</span><br />
+            <span class="font-weight-bold mb-1">{{ item.po_item }}</span>
+        </template>
+
+        <template #item.pallet_assignment="{ item }">
             <v-chip v-if="item.pallet_assignment === 'Completed'" size="x-small" label color="primary"
                 variant="tonal">Completed</v-chip>
             <v-chip v-else-if="item.pallet_assignment === 'Pending'" size="x-small" label color="warning"
                 variant="tonal">Pending</v-chip>
             <v-chip v-else-if="item.pallet_assignment === 'Partial'" size="x-small" label color="info"
                 variant="tonal">Partial</v-chip>
+        </template>
+
+        <template #item.batch_pick_status="{ item }">
+            <v-chip v-if="item.batch_pick_status === 'Batch Picked'" size="x-small" label color="primary"
+                variant="tonal">Batch Picked</v-chip>
+            <v-chip v-else-if="item.batch_pick_status === 'No Batch Picked'" size="x-small" label color="error"
+                variant="tonal">No Batch Picked</v-chip>
         </template>
 
         <template #item.material="{ item }">
@@ -448,9 +599,9 @@ defineExpose({
                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
                     <v-list>
-                        <!-- <v-list-item v-if="item.open_quantity > 0" @click="handleAction(item, 'batch_pick')">Batch
+                        <v-list-item v-if="item.open_quantity > 0 && (authUserCan('can.sto.batch.pick') || authStore.user?.is_super_admin)" @click="handleAction(item, 'batch_pick')">Batch
                             Picking</v-list-item>
-                        <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
+                        <!-- <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
                             @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item> -->
                         <v-list-item  @click="handleAction(item, 'pallet_assignment')">Pallet Assignment</v-list-item>
                     </v-list>
@@ -505,7 +656,102 @@ defineExpose({
     <!-- Show Reserved Pallets Modal -->
     <BatchPick v-if="showReservedPallets" :show="showReservedPallets" :sto-data="stoData" @close="batchPickClose" @updated="handleUpdated"/>
 
+    <BatchPickSelectionModal
+        :show="batchPickModalOpen"
+        :item="stoData"
+        @close="closeBatchPickModal"
+        @save="handleBatchPickSave"
+        @cancel-reservation="cancelReservation"
+    />
+
+    <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
+        <v-card class="pa-6 rounded-lg" color="surface">
+            <div class="text-center">
+                <!-- Icon Indicator -->
+                <v-icon
+                    class="mb-4"
+                    color="error"
+                    icon="ri-close-circle-line"
+                    size="80"
+                ></v-icon>
+                
+                <h3 class="text-h5 font-weight-bold mb-2">Cancel Batch Reservation?</h3>
+                <p class="text-body-2 text-medium-emphasis mb-5">
+                    Are you sure you want to cancel this batch assignment? This action cannot be undone.
+                </p>
+
+                <!-- Metadata Details Container -->
+                <v-card variant="flat" color="grey-lighten-4" class="pa-4 text-left rounded-md mb-6">
+                    <v-row dense>
+                        <v-col cols="5" class="font-weight-bold ">PO Number:</v-col>
+                        <v-col cols="7">{{ selectedCancelItem?.po_number || 'N/A' }}</v-col>
+                        
+                        <v-col cols="5" class="font-weight-bold ">PO Item:</v-col>
+                        <v-col cols="7">{{ selectedCancelItem?.po_item || 'N/A' }}</v-col>
+                        
+                        <v-col cols="5" class="font-weight-bold ">Transport No:</v-col>
+                        <v-col cols="7">{{ selectedCancelGroup?.transport?.transport_number || 'N/A' }}</v-col>
+                        
+                        <v-col cols="5" class="font-weight-bold ">Plate Number:</v-col>
+                        <v-col cols="7">{{ selectedCancelGroup?.transport?.vehicle?.plate_number || 'N/A' }}</v-col>
+                        
+                        <v-col cols="5" class="font-weight-bold ">Driver Name:</v-col>
+                        <v-col cols="7">
+                            {{ selectedCancelGroup?.transport?.driver?.first_name }} {{ selectedCancelGroup?.transport?.driver?.last_name }}
+                            <span v-if="!selectedCancelGroup?.transport?.driver">N/A</span>
+                        </v-col>
+                        
+                        <v-col cols="12">
+                            <v-divider class="my-2" color="grey-darken-2"></v-divider>
+                        </v-col>
+
+                        <v-col cols="5" class="font-weight-bold text-body-2 text-primary">
+                            Reserved Batches:
+                        </v-col>
+                        <v-col cols="7" class="text-body-2 d-flex flex-wrap gap-1">
+                            <!-- Filter out null/empty batches, grab unique codes, and render as chips -->
+                            <template v-if="selectedCancelGroup?.transport_transaction_items?.length > 0">
+                                <v-chip
+                                    v-for="(item, index) in selectedCancelGroup.transport_transaction_items.filter(i => i.batch)"
+                                    :key="index"
+                                    color="primary"
+                                    size="small"
+                                    variant="flat"
+                                    class="mr-1 mb-1 font-weight-bold"
+                                >
+                                    {{ item.batch }}
+                                </v-chip>
+                            </template>
+                            <span v-else style="color: #ffd166;">N/A</span>
+                        </v-col>
+                    </v-row>
+                </v-card>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-end align-center mt-4">
+                    <v-btn 
+                        color="secondary" 
+                        variant="outlined" 
+                        @click="cancelConfirmationModal = false" 
+                        class="px-6 mr-3"
+                    >
+                        Cancel
+                    </v-btn>
+                    <v-btn 
+                        color="error" 
+                        @click="cancelReserve" 
+                        :loading="cancelReserveLoading" 
+                        class="px-6"
+                    >
+                        Yes, Proceed
+                    </v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-dialog>
+
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+    <Loader :show="isLoading || saveLoading" />
     <PalletAssignModal 
         :show="palletModalOpen" 
         :item="selectedItemForPallet"
