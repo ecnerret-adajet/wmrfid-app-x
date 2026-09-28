@@ -1,7 +1,6 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
-import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
@@ -23,7 +22,7 @@ const defaultFilters = () => ({
 
 const filters = ref(defaultFilters());
 
-const searchInput = ref(''); // raw value from the search field, not yet applied
+const searchInput = ref(''); // committed search term, only updated when Search is clicked
 const searchValue = ref(''); // committed search term, only updated when Search is clicked
 const datatableRef = ref(null);
 const tablePerPage = ref(50);
@@ -106,6 +105,7 @@ const applyFilter = () => {
     if(datatableRef.value) {
         // Pass IDs to datatable as it expects
         datatableRef.value.applyFilters({
+            search: searchValue.value,
             dateFrom: filters.value.dateFrom,
             dateTo: filters.value.dateTo,
             plant_id: filters.value.plant?.id,
@@ -124,9 +124,6 @@ const resetFilter = () => {
     }
 }
 
-const handleSearch = (search) => {
-    searchInput.value = search;
-}
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tableSort.value = sortBy
@@ -140,7 +137,15 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 <template>
     <VRow no-gutters align="center">
         <VCol md="6" cols="12" class="pe-md-2 pb-2 pb-md-0">
-            <SearchInput placeholder="PO Number" @update:search="handleSearch"/>
+            <VTextField
+                v-model="searchInput"
+                persistent-placeholder
+                placeholder="Search PO Number"
+                append-inner-icon="ri-search-line"
+                single-line
+                hide-details
+                density="compact"
+            />
         </VCol>
         <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
@@ -173,7 +178,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         </VCol>
     </VRow>
 
-    <VRow no-gutters align="center" class="mb-4">
+    <VRow no-gutters align="center" class="mb-4 mt-4">
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
@@ -211,7 +216,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 
     <VCard>
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
-            :search="searchValue"
             :initial-filters="{
                 dateFrom: filters.dateFrom,
                 dateTo: filters.dateTo,

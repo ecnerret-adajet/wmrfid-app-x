@@ -165,7 +165,6 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             page,
             itemsPerPage,
             sort: sortQuery.value,
-            search: props.search,
             filters: filters.value
         }
     })
