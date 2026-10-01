@@ -5,7 +5,7 @@ import ApiService from '@/services/ApiService';
 import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
 import { storeToRefs } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const goodsReceiptStore = useGoodsReceiptStore();
 const { filters } = storeToRefs(goodsReceiptStore);
@@ -32,13 +32,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save', 'updated']);
 
 const dialogVisible = ref(props.show);
-const step = ref(1);
 const selectedPallet = ref(null);
-const selectedTransport = ref(null);
 const addedPallets = ref([]);
-const availableBlocks = ref([]);
-const selectedBlock = ref(null);
-const isLoadingBlocks = ref(false);
 const availablePallets = ref([]);
 const isLoading = ref(false);
 const search = ref('');
@@ -62,36 +57,24 @@ const materialConversionLoading = ref(false);
 
 const palletCount = computed(() => totalAssignedPallets.value + addedPallets.value.filter(pallet => !pallet.is_assigned).length);
 
-const transportOptions = computed(() => {
-    const transactions = Array.isArray(props.item?.sto_transactions)
-        ? props.item.sto_transactions
-        : [];
-    const uniqueTransports = new Map();
-
-    transactions.forEach(transaction => {
-        const transport = transaction?.transport || transaction;
-        const key = transaction?.transport_id || transport?.id || transaction?.transaction_item_id;
-
-        if (key != null && !uniqueTransports.has(key)) {
-            uniqueTransports.set(key, {
-                ...transaction,
-                transport,
-                transport_id: transaction?.transport_id || transport?.id,
-                transaction_item_id: transaction?.transaction_item_id || transaction?.id
-            });
-        }
-    });
-
-    return [...uniqueTransports.values()];
+const selectedTransport = computed(() => {
+    const rawTransport = props.item?.transport || props.item;
+    return {
+        ...rawTransport,
+        transport_number: rawTransport?.transport_number || props.item?.transport_number || props.item?.transport?.transport_number,
+        driver_name: rawTransport?.driver_name || rawTransport?.driver?.full_name || props.item?.driver_name || props.item?.transport?.driver?.full_name,
+        plate_number: rawTransport?.plate_number || rawTransport?.vehicle?.plate_number || props.item?.plate_number || props.item?.transport?.vehicle?.plate_number,
+        batch: rawTransport?.batch || props.item?.batch || props.item?.transport?.batch
+    };
 });
 
 const getPlantCode = () => {
-    return props.stockTransfer?.purchase_order?.supplying_plant;
+    return props.item?.purchase_order_item?.supplying_plant || props.item?.supplying_plant;
 };
 
 function removeLeadingZeros(value) {
     if (!value) return '';
-    return value.replace(/^0+/, '');
+    return String(value).replace(/^0+/, '');
 }
 
 const fetchMaterialConversion = async () => {
@@ -101,15 +84,15 @@ const fetchMaterialConversion = async () => {
     
     try {
         const payload = {
-            material_code: removeLeadingZeros(props.item?.material_code),
-            quantity: props.item?.qty,
-            uom: props.item?.uom
+            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
+            quantity: props.item?.purchase_order_item?.qty || props.item?.qty,
+            uom: props.item?.purchase_order_item?.uom || props.item?.uom
         };
         const response = await ApiService.post('/transfers/get-material-conversion', payload);
         if (response.data && response.data.quantity) {
              maxPallets.value = response.data.quantity;
         } else {
-             maxPallets.value = 0; // Or some default
+             maxPallets.value = 0;
         }
     } catch (error) {
         console.error('Failed to fetch material conversion:', error);
@@ -120,7 +103,8 @@ const fetchMaterialConversion = async () => {
 };
 
 const fetchPallets = async (query = '') => {
-    if (!selectedTransport.value) return;
+    const transportNumber = selectedTransport.value?.transport_number;
+    if (!transportNumber) return;
 
     isLoading.value = true;
     try {
@@ -129,10 +113,10 @@ const fetchPallets = async (query = '') => {
             page: 1,
             per_page: 20,
             plant_code: getPlantCode(),
-            material_code: removeLeadingZeros(props.item?.material_code),
-            po_number: props.item?.po_number,
-            po_item: props.item?.po_item,
-            transport_number: selectedTransport.value?.transport_number,
+            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
+            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
+            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
+            transport_number: transportNumber,
         };
         const response = await ApiService.post('/transfers/pallet-list', payload);
         availablePallets.value = response.data.data;
@@ -144,15 +128,15 @@ const fetchPallets = async (query = '') => {
 };
 
 const fetchAssignedPallets = async () => {
-    if (!props.item || !props.stockTransfer?.id) return;
+    if (!props.item) return;
 
     addedPallets.value = [];
 
     try {
         const payload = {
-            po_number: props.item?.po_number,
-            po_item: props.item?.po_item,
-            material_code: removeLeadingZeros(props.item?.material_code),
+            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
+            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
             transport_number: selectedTransport.value?.transport_number,
         };
         const response = await ApiService.post('transfers/get-assigned-pallets', payload);
@@ -166,7 +150,7 @@ const fetchAssignedPallets = async () => {
                     quantity: item.quantity,
                     batch: item.batch,
                 };
-            }).filter(p => p.physical_id); // Filter out any undefined pallets
+            }).filter(p => p.physical_id);
         }
     } catch (error) {
         console.error("Failed to fetch assigned pallets", error);
@@ -174,13 +158,13 @@ const fetchAssignedPallets = async () => {
 };
 
 const fetchTotalAssignedPallets = async () => {
-    if (!props.item || !props.stockTransfer?.id) return;
+    if (!props.item) return;
 
     try {
         const payload = {
-            po_number: props.item?.po_number,
-            po_item: props.item?.po_item,
-            material_code: removeLeadingZeros(props.item?.material_code),
+            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
+            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
         };
         const response = await ApiService.post('transfers/get-total-assigned-pallets', payload);
         totalAssignedPallets.value = Array.isArray(response.data)
@@ -197,9 +181,7 @@ const debouncedFetchPallets = debounce((query) => {
 }, 500);
 
 const resetPalletSelection = () => {
-    step.value = 1;
     selectedPallet.value = null;
-    selectedTransport.value = null;
     addedPallets.value = [];
     totalAssignedPallets.value = 0;
     maxPallets.value = 0;
@@ -207,32 +189,26 @@ const resetPalletSelection = () => {
     availablePallets.value = [];
 };
 
-const goToPalletStep = async () => {
-    if (!selectedTransport.value) return;
-
-    step.value = 2;
-    selectedPallet.value = null;
-    search.value = '';
+const loadModalData = async () => {
+    resetPalletSelection();
     await Promise.all([
+        fetchMaterialConversion(),
+        fetchTotalAssignedPallets(),
         fetchPallets(),
         fetchAssignedPallets()
     ]);
 };
 
-const goBackToTransportStep = () => {
-    step.value = 1;
-    selectedPallet.value = null;
-    search.value = '';
-    availablePallets.value = [];
-};
+onMounted(() => {
+    if (props.show) {
+        loadModalData();
+    }
+});
 
 watch(() => props.show, (newVal) => {
     dialogVisible.value = newVal;
     if (newVal) {
-        resetPalletSelection();
-        selectedBlock.value = null; // Reset block selection
-        fetchMaterialConversion();
-        fetchTotalAssignedPallets();
+        loadModalData();
     }
 });
 
@@ -243,7 +219,7 @@ watch(() => dialogVisible.value, (newVal) => {
 });
 
 watch(search, (newVal) => {
-    if (step.value === 2 && selectedTransport.value && newVal !== selectedPallet.value?.physical_id) { // Avoid refetching when selecting an item
+    if (selectedTransport.value?.transport_number && newVal !== selectedPallet.value?.physical_id) {
          debouncedFetchPallets(newVal);
     }
 });
@@ -252,7 +228,6 @@ const addPallet = () => {
     if (selectedPallet.value) {
         // Check limit
         if (maxPallets.value > 0 && palletCount.value >= maxPallets.value) {
-            // Optional: User feedback, though button should be disabled
             return; 
         }
 
@@ -308,12 +283,12 @@ const removePallet = async (item) => {
             const response = await ApiService.post('transfers/remove-assigned-pallet', { 
                 physical_id: item.physical_id,
                 batch: item.batch || null,
-                po_number: props.item?.po_number,
-                po_item: props.item?.po_item,
-                material_code: removeLeadingZeros(props.item?.material_code),
+                po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
+                po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
+                material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
                 transport_number: selectedTransport.value?.transport_number,
-                plant: props.item?.supplying_plant,
-                sloc: props.item?.issuing_sloc_sto,
+                plant: props.item?.purchase_order_item?.supplying_plant || props.item?.supplying_plant,
+                sloc: props.item?.purchase_order_item?.issuing_sloc_sto || props.item?.issuing_sloc_sto,
             });
             
             toast.value = {
@@ -340,9 +315,10 @@ const removePallet = async (item) => {
 };
 
 const handleSave = () => {
-    if (!selectedTransport.value) {
+    const transportNumber = selectedTransport.value?.transport_number;
+    if (!transportNumber) {
         toast.value = {
-            message: 'Please select a transport before saving.',
+            message: 'Transport number is missing.',
             color: 'error',
             show: true
         };
@@ -369,42 +345,85 @@ const handleSave = () => {
 
     emit('save', {
         pallets: formattedPallets,
-        transport_number: selectedTransport.value.transport_number,
+        transport_number: transportNumber,
     });
 };
 
-const getTransportNumber = (option) => option?.transport_number || 'N/A';
-const getDriverName = (option) => {
-    return option.driver_name || 'N/A';
+const getTransportNumber = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.transport_number || t?.transport?.transport_number || props.item?.transport_number || 'N/A';
 };
-const getPlateNumber = (option) =>  option?.plate_number || 'N/A';
+
+const getDriverName = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.driver_name || t?.driver?.full_name || t?.transport?.driver?.full_name || props.item?.driver_name || 'N/A';
+};
+
+const getPlateNumber = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.plate_number || t?.vehicle?.plate_number || t?.transport?.vehicle?.plate_number || props.item?.plate_number || 'N/A';
+};
 
 const getPickedBatch = (option) => {
-    if (!option?.batch) return 'N/A';
+    const t = option || selectedTransport.value;
+    const batch = t?.batch || t?.transport?.batch || props.item?.batch;
+    if (!batch) return 'N/A';
     
-    return Array.isArray(option.batch) 
-        ? option.batch.join(', ') 
-        : option.batch;
+    if (Array.isArray(batch)) {
+        return batch.map(b => typeof b === 'object' ? (b.batch || b.BATCH || JSON.stringify(b)) : b).join(', ');
+    }
+    
+    return typeof batch === 'object' ? (batch.batch || batch.BATCH || 'N/A') : batch;
 };
 
 const getAllowedBatches = (item) => {
-    if (!item?.sto_transactions) return '';
+    if (!item) return '';
 
-    const allBatches = item.sto_transactions?.flatMap(tx => {
-        // Handle if tx.batch is an array or an array-like string
-        if (Array.isArray(tx.batch)) return tx.batch;
-        try {
-            const parsed = JSON.parse(tx.batch);
-            return Array.isArray(parsed) ? parsed : [tx.batch];
-        } catch {
-            return tx.batch ? [tx.batch] : [];
+    if (item.sto_transactions) {
+        const allBatches = item.sto_transactions.flatMap(tx => {
+            if (!tx.batch) return [];
+            
+            let batchArray = tx.batch;
+            
+            if (typeof batchArray === 'string') {
+                try {
+                    batchArray = JSON.parse(batchArray);
+                } catch {
+                    return [batchArray];
+                }
+            }
+
+            if (Array.isArray(batchArray)) {
+                return batchArray.map(b => typeof b === 'object' ? b.batch : b);
+            }
+            
+            return typeof batchArray === 'object' ? [(batchArray.batch || batchArray.BATCH)] : [batchArray];
+        });
+
+        const uniqueBatches = [...new Set(allBatches)].filter(Boolean);
+        if (uniqueBatches.length > 0) return uniqueBatches.join(', ');
+    }
+
+    const directBatch = item.batch || item.transport?.batch;
+    if (directBatch) {
+        if (typeof directBatch === 'string') {
+            try {
+                const parsed = JSON.parse(directBatch);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(b => typeof b === 'object' ? (b.batch || b.BATCH) : b).filter(Boolean).join(', ');
+                }
+            } catch {
+                return directBatch;
+            }
+            return directBatch;
         }
-    });
+        if (Array.isArray(directBatch)) {
+            return directBatch.map(b => typeof b === 'object' ? (b.batch || b.BATCH) : b).filter(Boolean).join(', ');
+        }
+        return typeof directBatch === 'object' ? (directBatch.batch || directBatch.BATCH || '') : String(directBatch);
+    }
 
-    // 2. Filter out duplicates and join them with spaces
-    const uniqueBatches = [...new Set(allBatches)].filter(Boolean);
-
-    return uniqueBatches.length > 0 ? uniqueBatches.join(', ') : '';
+    return '';
 };
 
 </script>
@@ -424,6 +443,7 @@ const getAllowedBatches = (item) => {
                     type="info"
                     variant="outlined"
                     prominent
+                    class="mb-4"
                 >
                     Picked Batch: <span class="font-weight-bold">{{ getAllowedBatches(props.item) }}</span>. 
                     
@@ -433,10 +453,10 @@ const getAllowedBatches = (item) => {
                 <div v-if="item" class="mb-4 pa-3 bg-grey-lighten-4 rounded">
                    <div class="d-flex justify-space-between align-center">
                         <div>
-                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_code) }}</div>
-                            <div><strong>Material Desc:</strong> {{ item.material_description }}</div>
-                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.qty) }} {{ item.uom }}</div>
-                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.open_quantity) }} {{ item.uom }}</div>
+                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.purchase_order_item?.material_code || item.material_code) }}</div>
+                            <div><strong>Material Desc:</strong> {{ item.purchase_order_item?.material_description || item.material_description }}</div>
+                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.purchase_order_item?.qty || item.qty) }} {{ item.purchase_order_item?.uom || item.uom }}</div>
+                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.purchase_order_item?.open_quantity || item.open_quantity) }} {{ item.purchase_order_item?.uom || item.uom }}</div>
                         </div>
                         <div v-if="materialConversionLoading">
                            <v-progress-circular indeterminate size="20" width="2" color="primary"></v-progress-circular> Calculating limit...
@@ -450,137 +470,96 @@ const getAllowedBatches = (item) => {
                    </div>
                 </div>
 
-                <div class="d-flex align-center flex-nowrap mb-2 mt-4">
-                    <div class="d-flex align-center flex-shrink-0">
-                        <v-avatar :color="step >= 1 ? 'primary' : 'grey-lighten-1'" size="28">
-                            <span class="text-body-2 text-white">1</span>
-                        </v-avatar>
-                        <span class="ml-2 text-no-wrap" :class="{ 'font-weight-bold': step === 1 }">Select Transport</span>
+                <div class="d-flex align-center justify-space-between mb-3 pa-2 bg-grey-lighten-5 rounded border">
+                    <div>
+                        <span>Transport: </span>
+                        <span class="font-weight-bold">{{ getTransportNumber(selectedTransport) }}</span>
                     </div>
-                    <v-divider class="mx-4"></v-divider>
-                    <div class="d-flex align-center flex-shrink-0">
-                        <v-avatar :color="step >= 2 ? 'primary' : 'grey-lighten-1'" size="28">
-                            <span class="text-body-2 text-white">2</span>
-                        </v-avatar>
-                        <span class="ml-2 text-no-wrap" :class="{ 'font-weight-bold': step === 2 }">Assign Pallets</span>
+                    <div v-if="getPlateNumber(selectedTransport) !== 'N/A'">
+                        <span>Plate: </span>
+                        <span class="font-weight-bold">{{ getPlateNumber(selectedTransport) }}</span>
+                    </div>
+                    <div v-if="getDriverName(selectedTransport) !== 'N/A'">
+                        <span>Driver: </span>
+                        <span class="font-weight-bold">{{ getDriverName(selectedTransport) }}</span>
                     </div>
                 </div>
-                
-                <div v-if="step === 1" class="mb-4 mt-4">
-                    <v-radio-group v-model="selectedTransport" hide-details="auto">
-                        <v-table density="compact" class="border rounded">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 60px;"></th>
-                                    <th>Transport Number</th>
-                                    <th>Driver</th>
-                                    <th>Plate Number</th>
-                                    <th>Picked Batch</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="option in transportOptions" :key="option.transport_id || option.transaction_item_id">
-                                    <td class="text-center">
-                                        <v-radio :value="option" color="primary" density="compact"></v-radio>
-                                    </td>
-                                    <td>{{ getTransportNumber(option) }}</td>
-                                    <td>{{ getDriverName(option) }}</td>
-                                    <td>{{ getPlateNumber(option) }}</td>
-                                    <td>{{ getPickedBatch(option) }}</td>
-                                </tr>
-                                <tr v-if="transportOptions.length === 0">
-                                    <td colspan="5" class="text-center text-grey py-4">No transport options found.</td>
-                                </tr>
-                            </tbody>
-                        </v-table>
-                    </v-radio-group>
-                </div>
 
-                <template v-else>
-                    <div class="d-flex align-center mb-2 mt-3">
-                        <span class="ml-3 font-weight-bold">Transport: {{ getTransportNumber(selectedTransport) }}</span>
-                        <v-spacer></v-spacer>
-                        <span class="ml-3 font-weight-bold">Batch: {{ getPickedBatch(selectedTransport) }}</span>
-                    </div>
+                <v-row align="center" class="mb-2">
+                    <v-col cols="12" md="8">
+                        <v-autocomplete
+                            v-model="selectedPallet"
+                            v-model:search="search"
+                            :items="availablePallets"
+                            :loading="isLoading"
+                            item-title="physical_id"
+                            item-value="physical_id"
+                            label="Search Pallet"
+                            return-object
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            placeholder="Type to search..."
+                            no-filter
+                            :disabled="maxPallets > 0 && palletCount >= maxPallets"
+                        >
+                            <template #item="{ props: itemProps, item: palletOption }">
+                                <v-list-item
+                                    v-bind="itemProps"
+                                    class="pallet-option-item"
+                                    lines="three"
+                                    :title="palletOption.raw.physical_id || 'N/A'"
+                                >
+                                    <template #subtitle>
+                                        <div class="pallet-option-subtitle">
+                                            <div>{{ getPlantLabel(palletOption.raw) }}</div>
+                                            <div>Current Batch: {{ palletOption.raw.batch || 'N/A' }}</div>
+                                        </div>
+                                    </template>
+                                </v-list-item>
+                            </template>
+                        </v-autocomplete>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                        <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet || (maxPallets > 0 && palletCount >= maxPallets)">
+                            Add Pallet
+                        </v-btn>
+                    </v-col>
+                </v-row>
 
-                    <v-row align="center" class="mb-2 mt-3">
-                        <v-col cols="12" md="8">
-                            <v-autocomplete
-                                v-model="selectedPallet"
-                                v-model:search="search"
-                                :items="availablePallets"
-                                :loading="isLoading"
-                                item-title="physical_id"
-                                item-value="physical_id"
-                                label="Search Pallet"
-                                return-object
-                                variant="outlined"
-                                density="compact"
-                                hide-details
-                                placeholder="Type to search..."
-                                no-filter
-                                :disabled="maxPallets > 0 && palletCount >= maxPallets"
-                            >
-                                <template #item="{ props, item }">
-                                    <v-list-item
-                                        v-bind="props"
-                                        class="pallet-option-item"
-                                        lines="three"
-                                        :title="item.raw.physical_id || 'N/A'"
-                                    >
-                                        <template #subtitle>
-                                            <div class="pallet-option-subtitle">
-                                                <div>{{ getPlantLabel(item.raw) }}</div>
-                                                <div>Current Batch: {{ item.raw.batch || 'N/A' }}</div>
-                                            </div>
-                                        </template>
-                                    </v-list-item>
-                                </template>
-                            </v-autocomplete>
-                        </v-col>
-                        <v-col cols="12" md="4">
-                            <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet || (maxPallets > 0 && palletCount >= maxPallets)">
-                                Add Pallet
-                            </v-btn>
-                        </v-col>
-                    </v-row>
-
-                    <v-data-table
-                        :headers="headers"
-                        :items="addedPallets"
-                        class="elevation-1 border rounded"
-                        density="compact"
-                    >
-                        <template #item.current_batch="{ item }">
-                            {{ item.batch || item?.inventory?.batch || '-' }}
-                        </template>
-                        <template #item.actions="{ item }">
-                            <v-btn 
-                                icon="ri-delete-bin-line" 
-                                size="small" 
-                                :color="item.is_assigned ? 'error' : 'warning'" 
-                                variant="text" 
-                                :title="item.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
-                                @click="removePallet(item)"
-                            ></v-btn>
-                        </template>
-                        <template #no-data>
-                            <div class="pa-4 text-center text-grey">
-                                No pallets assigned. Search and add pallets above.
-                            </div>
-                        </template>
-                    </v-data-table>
-                </template>
+                <v-data-table
+                    :headers="headers"
+                    :items="addedPallets"
+                    class="elevation-1 border rounded"
+                    density="compact"
+                >
+                    <template #item.current_batch="{ item: tableItem }">
+                        {{ tableItem.batch || tableItem?.inventory?.batch || '-' }}
+                    </template>
+                    <template #item.actions="{ item: tableItem }">
+                        <v-btn 
+                            icon="ri-delete-bin-line" 
+                            size="small" 
+                            :color="tableItem.is_assigned ? 'error' : 'warning'" 
+                            variant="text" 
+                            :title="tableItem.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
+                            @click="removePallet(tableItem)"
+                        ></v-btn>
+                    </template>
+                    <template #no-data>
+                        <div class="pa-4 text-center text-grey">
+                            No pallets assigned. Search and add pallets above.
+                        </div>
+                    </template>
+                </v-data-table>
             </v-card-text>
 
             <v-divider></v-divider>
 
             <v-card-actions class="pa-4">
-                <v-btn v-if="step === 2" variant="outlined" @click="goBackToTransportStep">Back</v-btn>
                 <v-spacer></v-spacer>
                 <v-btn variant="outlined" @click="dialogVisible = false">Cancel</v-btn>
-                <v-btn v-if="step === 1" color="primary" variant="elevated" @click="goToPalletStep" :disabled="!selectedTransport">Next</v-btn>
-                <v-btn v-else color="primary" variant="elevated" @click="handleSave" :loading="loading" :disabled="!selectedTransport">Save Changes</v-btn>
+                <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading" :disabled="!selectedTransport?.transport_number">Save Changes</v-btn>
             </v-card-actions>
         </v-card>
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />

@@ -52,7 +52,7 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'TRANSPORT NO.',
+        title: 'TRANSACTION NO.',
         key: 'transport_number',
         align: 'center',
         sortable: false,
@@ -182,7 +182,7 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             itemsPerPage,
             sort: sortQuery.value,
             filters: filters.value,
-            is_alc_managed: true
+            is_alc_managed: false
         }
     })
         .then((response) => {
