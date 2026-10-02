@@ -121,6 +121,11 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
     }
 };
 
+const onSearchInput = (val) => {
+    searchValue.value = val;
+    handleSearch();
+};
+
 const handleSearch = () => {
     loadItems({
         page: 1,
@@ -217,7 +222,7 @@ onMounted(() => {
         <!-- Filter Row -->
         <div class="d-flex flex-wrap gap-4 align-center justify-center">
 
-            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="handleSearch"/>
+            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="onSearchInput"/>
 
             <!-- Plant Filter -->
             <v-select
