@@ -52,8 +52,8 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'TRANSPORT NO.',
-        key: 'transport_number',
+        title: 'TRANSACTION NO.',
+        key: 'transaction_number',
         align: 'center',
         sortable: false,
     },
@@ -87,19 +87,6 @@ const headers = [
         key: 'material',
         sortable: false,
         width: '90px'
-    },
-    {
-        title: 'PLATE NO.',
-        key: 'plate_number',
-        align: 'center',
-        sortable: false,
-        width: '90px'
-    },
-    {
-        title: 'DRIVER NAME',
-        key: 'driver_name',
-        align: 'center',
-        sortable: false,
     },
     {
         title: 'From',
@@ -229,7 +216,7 @@ const handleAction = async (sto, action) => {
         try {
             isLoading.value = true;
             // Call the API endpoint (adjust the URL/payload format if needed)
-            const response = await axios.get(`transfers/check-sto-batch-picked/${sto.purchase_order_item?.po_number}/${sto.purchase_order_item?.po_item}`);
+            const response = await axios.get(`transfers/check-sto-batch-picked/${sto?.po_number}/${sto?.po_item}`);
 
             // If the API returns true directly or inside data (e.g., response.data === true)
             if (response.data?.batch_picked) {
@@ -270,8 +257,8 @@ const closeBatchPickModal = () => {
 const saveLoading = ref(false)
 const handleBatchPickSave = async ({ transport, batches, is_alc_managed }) => {
     // 1. Extract route parameters (or replace with your component state variables, e.g., stoData.value.po_number)
-    const poNumber = stoData.value?.purchase_order_item?.po_number;
-    const poItem = stoData.value?.purchase_order_item?.po_item;
+    const poNumber = stoData.value?.po_number;
+    const poItem = stoData.value?.po_item;
     saveLoading.value = true;
     try {
         // 2. Build the dynamic endpoint URL and send the POST request
@@ -279,8 +266,8 @@ const handleBatchPickSave = async ({ transport, batches, is_alc_managed }) => {
             transport: transport,
             batches: batches,
             is_alc_managed: is_alc_managed,
-            material_code: stoData.value?.purchase_order_item?.material_code,
-            plant: stoData.value?.purchase_order_item?.supplying_order_plant?.plant_code
+            material_code: stoData.value?.material_code,
+            plant: stoData.value?.supplying_order_plant?.plant_code
         });
 
         // 3. Handle successful processing
@@ -367,15 +354,15 @@ const savePalletAssignment = async ({ pallets, transport_number }) => {
             batch: p.batch || null, // Keeps the batch info or sets it to null if missing
             quantity: p.quantity || 0 // Default to 0 if quantity is not provided
         })),
-        material_code: parseInt(selectedItemForPallet.value?.purchase_order_item?.material_code),
-        quantity: parseFloat(selectedItemForPallet.value?.purchase_order_item?.qty),
-        po_number: selectedItemForPallet.value?.purchase_order_item?.po_number,
-        po_item: selectedItemForPallet.value?.purchase_order_item?.po_item,
-        plant: selectedItemForPallet.value?.purchase_order_item?.supplying_plant,
-        sloc: selectedItemForPallet.value?.purchase_order_item?.issuing_sloc_sto,
-        base_unit: selectedItemForPallet.value?.purchase_order_item?.uom,
-        receiving_plant: selectedItemForPallet.value?.purchase_order_item?.plant,
-        receiving_sloc: selectedItemForPallet.value?.purchase_order_item?.storage_location,
+        material_code: parseInt(selectedItemForPallet.value?.material_code),
+        quantity: parseFloat(selectedItemForPallet.value?.qty),
+        po_number: selectedItemForPallet.value?.po_number,
+        po_item: selectedItemForPallet.value?.po_item,
+        plant: selectedItemForPallet.value?.supplying_plant,
+        sloc: selectedItemForPallet.value?.issuing_sloc_sto,
+        base_unit: selectedItemForPallet.value?.uom,
+        receiving_plant: selectedItemForPallet.value?.plant,
+        receiving_sloc: selectedItemForPallet.value?.storage_location,
         transport_number
     };
 
@@ -424,8 +411,8 @@ const cancelReserve = async () => {
     try {
         // Call your API to cancel the reservation
         await ApiService.post('transfer-orders/transfer-order-remove', {
-            po_number: selectedCancelItem.value?.purchase_order_item?.po_number,
-            po_item: selectedCancelItem.value?.purchase_order_item?.po_item,
+            po_number: selectedCancelItem.value?.po_number,
+            po_item: selectedCancelItem.value?.po_item,
             transport_number: selectedCancelItem.value.transport?.transport_number
         });
 
@@ -487,8 +474,21 @@ defineExpose({
             <span>GR QTY</span>
         </template>
 
+        <template #item.transaction_number="{ item }">
+            <v-chip v-if="!item.sto_transactions || item.sto_transactions.length === 0" 
+                size="x-small" 
+                label 
+                color="warning"
+                variant="tonal"
+            >
+                PENDING
+            </v-chip>
+            <v-chip v-else size="x-small" label color="info"
+                variant="tonal">{{item.sto_transactions?.[0].transaction_number}}</v-chip>
+        </template>
+
         <template #item.po_item="{ item }">
-            <span class="font-weight-bold mb-1">{{ item.purchase_order_item?.po_item }}</span>
+            <span class="font-weight-bold mb-1">{{ item.po_item }}</span>
         </template>
 
         <template #item.plate_number="{ item }">
@@ -505,8 +505,8 @@ defineExpose({
 
         <template #item.po_number="{ item }">
             <div class="d-flex flex-column py-3">
-                <span class="font-weight-bold">{{ item.purchase_order_item?.po_number }}</span>
-                <span><small class="text-gray-400 text-muted">{{ item.purchase_order_item?.purchase_order?.created_on }}</small></span>
+                <span class="font-weight-bold">{{ item.po_number }}</span>
+                <span><small class="text-gray-400 text-muted">{{ item.purchase_order?.created_on }}</small></span>
             </div>
         </template>
 
@@ -528,43 +528,43 @@ defineExpose({
 
         <template #item.material="{ item }">
             <div class="d-flex flex-column py-3 text-sm">
-                <span class="font-weight-bold" v-if="item.purchase_order_item?.material_code">{{ parseInt(item.purchase_order_item?.material_code, 10) }}</span>
-                <span v-if="item.purchase_order_item?.material_description">{{ item.purchase_order_item?.material_description }}</span>
+                <span class="font-weight-bold" v-if="item.material_code">{{ parseInt(item.material_code, 10) }}</span>
+                <span v-if="item.material_description">{{ item.material_description }}</span>
             </div>
         </template>
 
         <template #item.from_plant_sloc="{ item }">
             <div class="d-flex flex-column mt-1">
-                <span class="font-weight-bold text-sm">{{ item.purchase_order_item?.supplying_order_plant?.plant_code }}</span>
-                <span class="text-sm">{{ item.purchase_order_item?.supplying_order_plant?.name }}</span>
+                <span class="font-weight-bold text-sm">{{ item.supplying_order_plant?.plant_code }}</span>
+                <span class="text-sm">{{ item.supplying_order_plant?.name }}</span>
             </div>
             <div class="d-flex flex-column py-1">
-                <span class="font-weight-bold text-sm">{{ item.purchase_order_item?.issuing_storage_location?.code }}</span>
-                <span class="text-sm">{{ item.purchase_order_item?.issuing_storage_location?.name }}</span>
+                <span class="font-weight-bold text-sm">{{ item.issuing_storage_location?.code }}</span>
+                <span class="text-sm">{{ item.issuing_storage_location?.name }}</span>
             </div>
         </template>
 
         <template #item.to_plant_sloc="{ item }">
             <div class="d-flex flex-column mt-1">
-                <span class="font-weight-bold text-sm">{{ item.purchase_order_item?.receiving_order_plant?.plant_code }}</span>
-                <span class="text-sm">{{ item.purchase_order_item?.receiving_order_plant?.name }}</span>
+                <span class="font-weight-bold text-sm">{{ item.receiving_order_plant?.plant_code }}</span>
+                <span class="text-sm">{{ item.receiving_order_plant?.name }}</span>
             </div>
             <div class="d-flex flex-column py-1">
-                <span class="font-weight-bold text-sm">{{ item.purchase_order_item?.receiving_storage_location?.code }}</span>
-                <span class="text-sm">{{ item.purchase_order_item?.receiving_storage_location?.name }}</span>
+                <span class="font-weight-bold text-sm">{{ item.receiving_storage_location?.code }}</span>
+                <span class="text-sm">{{ item.receiving_storage_location?.name }}</span>
             </div>
         </template>
 
         <template #item.storage_location="{ item }">
             <div class="d-flex flex-column py-3">
-                <span class="font-weight-bold">{{ item.purchase_order_item?.storage_location?.code }}</span>
-                <span>{{ item.purchase_order_item?.storage_location?.name }}</span>
+                <span class="font-weight-bold">{{ item.storage_location?.code }}</span>
+                <span>{{ item.storage_location?.name }}</span>
             </div>
         </template>
 
         <template v-slot:[`item.po_qty`]="{ item }">
             <span>
-                {{ Number(item.purchase_order_item?.qty ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                {{ Number(item.qty ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 }}
             </span>
         </template>
@@ -607,15 +607,15 @@ defineExpose({
         </template>
 
         <template #item.uom="{ item }">
-            {{ item.purchase_order_item?.commercial_uom?.commercial_uom }}
+            {{ item.commercial_uom?.commercial_uom }}
         </template>
 
         <template #item.release_indicator="{ item }">
-            {{ item.purchase_order_item?.purchase_order?.release_indicator }}
+            {{ item.purchase_order?.release_indicator }}
         </template>
 
         <template #item.created_at="{ item }">
-            {{ item.purchase_order_item?.purchase_order?.created_at ? moment(item.purchase_order_item?.purchase_order?.created_at).format('M/D/YY h:mm A') : '' }}
+            {{ item.purchase_order?.created_at ? moment(item.purchase_order?.created_at).format('M/D/YY h:mm A') : '' }}
         </template>
 
         <!-- Actions -->
@@ -665,13 +665,13 @@ defineExpose({
                 <v-card variant="flat" color="grey-lighten-4" class="pa-4 text-left rounded-md mb-6">
                     <v-row dense>
                         <v-col cols="5" class="font-weight-bold ">PO Number:</v-col>
-                        <v-col cols="7">{{ selectedCancelItem?.purchase_order_item?.po_number || 'N/A' }}</v-col>
+                        <v-col cols="7">{{ selectedCancelItem?.po_number || 'N/A' }}</v-col>
                         
                         <v-col cols="5" class="font-weight-bold ">PO Item:</v-col>
-                        <v-col cols="7">{{ selectedCancelItem?.purchase_order_item?.po_item || 'N/A' }}</v-col>
-                        
-                        <v-col cols="5" class="font-weight-bold ">Transport No:</v-col>
-                        <v-col cols="7">{{ selectedCancelItem?.transport?.transport_number || 'N/A' }}</v-col>
+                        <v-col cols="7">{{ selectedCancelItem?.po_item || 'N/A' }}</v-col>
+
+                        <!-- <v-col cols="5" class="font-weight-bold" v-if="selectedCancelItem.sto_transactions?.[0]?.transport_number !== 'N/A' || selectedCancelItem.transport_number !== null">Transport No:</v-col>
+                        <v-col cols="7" v-if="selectedCancelItem.sto_transactions?.[0]?.transport_number !== 'N/A' || selectedCancelItem.transport_number !== null">{{ selectedCancelItem?.transport?.transport_number || 'N/A' }}</v-col>
                         
                         <v-col cols="5" class="font-weight-bold ">Plate Number:</v-col>
                         <v-col cols="7">{{ selectedCancelItem?.transport?.vehicle?.plate_number || 'N/A' }}</v-col>
@@ -679,7 +679,7 @@ defineExpose({
                         <v-col cols="5" class="font-weight-bold ">Driver Name:</v-col>
                         <v-col cols="7">
                             {{ selectedCancelItem?.transport?.driver?.full_name }} 
-                        </v-col>
+                        </v-col> -->
                         
                         <v-col cols="12">
                             <v-divider class="my-2" color="grey-darken-2"></v-divider>

@@ -35,15 +35,15 @@ const batchHeaders = [
 ];
 
 const fetchData = async () => {
-    if (!props.item?.purchase_order_item?.po_number || !props.item?.purchase_order_item?.po_item) return;
+    if (!props.item?.po_number || !props.item?.po_item) return;
     pageLoading.value = true;
     try {
         const openQuantityParams = {
-            po_number: props.item.purchase_order_item?.po_number,
-            po_item: props.item.purchase_order_item?.po_item,
-            po_quantity: stoBatchPickingStore.stoDetails?.qty ?? props.item.purchase_order_item?.qty,
-            plant_code: stoBatchPickingStore.stoDetails?.supplying_plant ?? props.item.purchase_order_item?.supplying_plant,
-            sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto ?? props.item.purchase_order_item?.issuing_sloc_sto
+            po_number: props.item?.po_number,
+            po_item: props.item?.po_item,
+            po_quantity: stoBatchPickingStore.stoDetails?.qty ?? props.item?.qty,
+            plant_code: stoBatchPickingStore.stoDetails?.supplying_plant ?? props.item?.supplying_plant,
+            sloc: stoBatchPickingStore.stoDetails?.issuing_sloc_sto ?? props.item?.issuing_sloc_sto
         };
 
         // Open quantity value
@@ -51,7 +51,7 @@ const fetchData = async () => {
 
         const availableParams = {
             ...openQuantityParams,
-            material_code: stoBatchPickingStore.stoDetails?.material_code ?? props.item?.purchase_order_item?.material_code
+            material_code: stoBatchPickingStore.stoDetails?.material_code ?? props.item?.material_code
         };
 
         // Batch selection
@@ -124,41 +124,41 @@ const handleClose = () => {
                 <v-row dense>
                     <v-col cols="6" md="3">
                         <div >PO Number</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.po_number }}</div>
+                        <div class="font-weight-bold">{{ item?.po_number }}</div>
                     </v-col>
                     <v-col cols="6" md="3">
                         <div>PO Item</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.po_item }}</div>
+                        <div class="font-weight-bold">{{ item?.po_item }}</div>
                     </v-col>
                     <v-col cols="12" md="3">
                         <div>Material Code</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.material_code || '-' }}</div>
+                        <div class="font-weight-bold">{{ item?.material_code || '-' }}</div>
                     </v-col>
                     <v-col cols="6" md="3">
                         <div>Material Desc</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.material_description || '-' }}</div>
+                        <div class="font-weight-bold">{{ item?.material_description || '-' }}</div>
                     </v-col>
                 </v-row>
                  <v-row dense>
                     <v-col cols="6" md="3">
                         <div>Issuing Plant</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.supplying_order_plant?.plant_code }}</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.supplying_order_plant?.name }}</div>
+                        <div class="font-weight-bold">{{ item?.supplying_order_plant?.plant_code }}</div>
+                        <div class="font-weight-bold">{{ item?.supplying_order_plant?.name }}</div>
                     </v-col>
                     <v-col cols="6" md="3">
                         <div>Issuing SLOC</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.issuing_storage_location?.code }}</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.issuing_storage_location?.name }}</div>
+                        <div class="font-weight-bold">{{ item?.issuing_storage_location?.code }}</div>
+                        <div class="font-weight-bold">{{ item?.issuing_storage_location?.name }}</div>
                     </v-col>
                     <v-col cols="12" md="3">
                         <div>Receiving Plant</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.receiving_order_plant?.plant_code }}</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.receiving_order_plant?.name }}</div>
+                        <div class="font-weight-bold">{{ item?.receiving_order_plant?.plant_code }}</div>
+                        <div class="font-weight-bold">{{ item?.receiving_order_plant?.name }}</div>
                     </v-col>
                     <v-col cols="6" md="3">
                         <div>Receiving SLOC</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.receiving_storage_location?.code }}</div>
-                        <div class="font-weight-bold">{{ item.purchase_order_item?.receiving_storage_location?.name }}</div>
+                        <div class="font-weight-bold">{{ item?.receiving_storage_location?.code }}</div>
+                        <div class="font-weight-bold">{{ item?.receiving_storage_location?.name }}</div>
                     </v-col>
                     <v-col cols="6" md="3">
                         <div>Transport Number</div>
@@ -183,7 +183,7 @@ const handleClose = () => {
                         <v-sheet border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
                             <span class="text-primary font-weight-medium">PO Item Qty</span>
                             <span class="text-h6 text-primary font-weight-bold">
-                                {{ numberWithComma(item.purchase_order_item?.qty ?? 0) }} {{ item.purchase_order_item?.uom}}
+                                {{ numberWithComma(item?.qty ?? 0) }} {{ item?.uom}}
                             </span>
                         </v-sheet>
                     </v-col>
@@ -195,7 +195,7 @@ const handleClose = () => {
                         <v-sheet v-else border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
                             <span class="text-error font-weight-medium">Open Qty</span>
                             <span class="text-h6 text-error font-weight-bold">
-                                {{ numberWithComma(stoBatchPickingStore.stoDetails?.open_quantity ?? 0) }} {{ item.purchase_order_item?.uom}}
+                                {{ numberWithComma(stoBatchPickingStore.stoDetails?.open_quantity ?? 0) }} {{ item?.uom}}
                             </span>
                         </v-sheet>
                     </v-col>

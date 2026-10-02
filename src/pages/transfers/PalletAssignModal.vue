@@ -57,11 +57,77 @@ const materialConversionLoading = ref(false);
 
 const palletCount = computed(() => totalAssignedPallets.value + addedPallets.value.filter(pallet => !pallet.is_assigned).length);
 
+const truckscales = ref([]);
+const truckscalesLoading = ref(false);
+const selectedTruckscale = ref(null);
+const selectedTransportNumber = ref(null);
+
+// Map the selected truckscale to a section type; add new types here and a matching section in the template.
+const truckscaleType = computed(() => {
+    const ts = selectedTruckscale.value;
+    if (!ts) return null;
+    if (ts.is_gi_sto) return 'gi_sto';
+    return 'other';
+});
+
+const transportHeaders = [
+    { title: '', key: 'select', sortable: false, width: '60px' },
+    { title: 'Transport Number', key: 'transport_number', sortable: false },
+    { title: 'Net Weight', key: 'net_weight', sortable: false },
+    { title: 'Tare Weight', key: 'tare_weight', sortable: false }
+];
+
+const truckscaleTransports = computed(() => selectedTruckscale.value?.transports || []);
+
+const truckscaleSearch = ref('');
+
+const fetchTruckscales = async (query = '') => {
+    const poNumber = props.item?.po_number;
+    if (!poNumber) return;
+
+    truckscalesLoading.value = true;
+    try {
+        const trimmed = String(query || '').trim();
+        const response = await ApiService.query(`transfers/get-truckscales/${poNumber}`, {
+            params: trimmed ? { search: trimmed } : {}
+        });
+        const data = response.data?.data ?? response.data;
+        truckscales.value = Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Failed to fetch truckscales:', error);
+        truckscales.value = [];
+    } finally {
+        truckscalesLoading.value = false;
+    }
+};
+
+const debouncedFetchTruckscales = debounce((val) => {
+    fetchTruckscales(val);
+}, 400);
+
+const onTruckscaleSearchInput = (val) => {
+    if (val !== getTruckscaleTitle(selectedTruckscale.value)) {
+        debouncedFetchTruckscales(val);
+    }
+};
+
+const getTruckscaleTitle = (ts) => ts?.truckscale_number || ts?.ticket_number || ts?.name || ts?.id || '';
+
+watch(selectedTruckscale, () => {
+    selectedTransportNumber.value = null;
+});
+
+watch(selectedTransportNumber, (val) => {
+    if (!val) return;
+    fetchPallets();
+    fetchAssignedPallets();
+});
+
 const selectedTransport = computed(() => {
     const rawTransport = props.item?.transport || props.item;
     return {
         ...rawTransport,
-        transport_number: rawTransport?.transport_number || props.item?.transport_number || props.item?.transport?.transport_number,
+        transport_number: selectedTransportNumber.value || rawTransport?.transport_number || props.item?.transport_number || props.item?.transport?.transport_number,
         driver_name: rawTransport?.driver_name || rawTransport?.driver?.full_name || props.item?.driver_name || props.item?.transport?.driver?.full_name,
         plate_number: rawTransport?.plate_number || rawTransport?.vehicle?.plate_number || props.item?.plate_number || props.item?.transport?.vehicle?.plate_number,
         batch: rawTransport?.batch || props.item?.batch || props.item?.transport?.batch
@@ -69,7 +135,7 @@ const selectedTransport = computed(() => {
 });
 
 const getPlantCode = () => {
-    return props.item?.purchase_order_item?.supplying_plant || props.item?.supplying_plant;
+    return props.item?.supplying_plant || props.item?.supplying_plant;
 };
 
 function removeLeadingZeros(value) {
@@ -84,9 +150,9 @@ const fetchMaterialConversion = async () => {
     
     try {
         const payload = {
-            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
-            quantity: props.item?.purchase_order_item?.qty || props.item?.qty,
-            uom: props.item?.purchase_order_item?.uom || props.item?.uom
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+            quantity: props.item?.qty || props.item?.qty,
+            uom: props.item?.uom || props.item?.uom
         };
         const response = await ApiService.post('/transfers/get-material-conversion', payload);
         if (response.data && response.data.quantity) {
@@ -113,9 +179,9 @@ const fetchPallets = async (query = '') => {
             page: 1,
             per_page: 20,
             plant_code: getPlantCode(),
-            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
-            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
-            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
             transport_number: transportNumber,
         };
         const response = await ApiService.post('/transfers/pallet-list', payload);
@@ -134,9 +200,9 @@ const fetchAssignedPallets = async () => {
 
     try {
         const payload = {
-            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
-            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
-            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
             transport_number: selectedTransport.value?.transport_number,
         };
         const response = await ApiService.post('transfers/get-assigned-pallets', payload);
@@ -162,9 +228,9 @@ const fetchTotalAssignedPallets = async () => {
 
     try {
         const payload = {
-            po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
-            po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
-            material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
         };
         const response = await ApiService.post('transfers/get-total-assigned-pallets', payload);
         totalAssignedPallets.value = Array.isArray(response.data)
@@ -187,11 +253,15 @@ const resetPalletSelection = () => {
     maxPallets.value = 0;
     search.value = '';
     availablePallets.value = [];
+    truckscales.value = [];
+    selectedTruckscale.value = null;
+    selectedTransportNumber.value = null;
 };
 
 const loadModalData = async () => {
     resetPalletSelection();
     await Promise.all([
+        fetchTruckscales(),
         fetchMaterialConversion(),
         fetchTotalAssignedPallets(),
         fetchPallets(),
@@ -283,12 +353,12 @@ const removePallet = async (item) => {
             const response = await ApiService.post('transfers/remove-assigned-pallet', { 
                 physical_id: item.physical_id,
                 batch: item.batch || null,
-                po_number: props.item?.purchase_order_item?.po_number || props.item?.po_number,
-                po_item: props.item?.purchase_order_item?.po_item || props.item?.po_item,
-                material_code: removeLeadingZeros(props.item?.purchase_order_item?.material_code || props.item?.material_code),
+                po_number: props.item?.po_number || props.item?.po_number,
+                po_item: props.item?.po_item || props.item?.po_item,
+                material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
                 transport_number: selectedTransport.value?.transport_number,
-                plant: props.item?.purchase_order_item?.supplying_plant || props.item?.supplying_plant,
-                sloc: props.item?.purchase_order_item?.issuing_sloc_sto || props.item?.issuing_sloc_sto,
+                plant: props.item?.supplying_plant || props.item?.supplying_plant,
+                sloc: props.item?.issuing_sloc_sto || props.item?.issuing_sloc_sto,
             });
             
             toast.value = {
@@ -450,13 +520,31 @@ const getAllowedBatches = (item) => {
                     <span>If you need another batch, please contact Supply Chain.</span>
                 </v-alert>
 
-                <div v-if="item" class="mb-4 pa-3 bg-grey-lighten-4 rounded">
+                <div v-if="item" class="mb-4 bg-grey-lighten-4 rounded">
                    <div class="d-flex justify-space-between align-center">
                         <div>
-                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.purchase_order_item?.material_code || item.material_code) }}</div>
-                            <div><strong>Material Desc:</strong> {{ item.purchase_order_item?.material_description || item.material_description }}</div>
-                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.purchase_order_item?.qty || item.qty) }} {{ item.purchase_order_item?.uom || item.uom }}</div>
-                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.purchase_order_item?.open_quantity || item.open_quantity) }} {{ item.purchase_order_item?.uom || item.uom }}</div>
+                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item?.material_code || item.material_code) }}</div>
+                            <div><strong>Material Desc:</strong> {{ item?.material_description || item.material_description }}</div>
+                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.qty || item.qty) }} {{ item?.uom || item.uom }}</div>
+                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.open_quantity || item.open_quantity) }} {{ item?.uom || item.uom }}</div>
+                            <div class="mt-2" style="min-width: 320px">
+                                <v-autocomplete
+                                    v-model="selectedTruckscale"
+                                    v-model:search="truckscaleSearch"
+                                    no-filter
+                                    @update:search="onTruckscaleSearchInput"
+                                    :items="truckscales"
+                                    :loading="truckscalesLoading"
+                                    :item-title="getTruckscaleTitle"
+                                    label="Select Truckscale"
+                                    return-object
+                                    clearable
+                                    variant="outlined"
+                                    density="compact"
+                                    hide-details
+                                    bg-color="white"
+                                />
+                            </div>
                         </div>
                         <div v-if="materialConversionLoading">
                            <v-progress-circular indeterminate size="20" width="2" color="primary"></v-progress-circular> Calculating limit...
@@ -470,6 +558,28 @@ const getAllowedBatches = (item) => {
                    </div>
                 </div>
 
+                <div v-if="truckscaleType === 'gi_sto'" class="mb-4">
+                    <div class="text-subtitle-1 font-weight-bold mb-2">Select Transport</div>
+                    <v-data-table
+                        :headers="transportHeaders"
+                        :items="truckscaleTransports"
+                        class="elevation-1 border rounded"
+                        density="compact"
+                        hide-default-footer
+                    >
+                        <template #item.select="{ item: transport }">
+                            <v-radio-group v-model="selectedTransportNumber" hide-details density="compact">
+                                <v-radio :value="transport.transport_number" density="compact" />
+                            </v-radio-group>
+                        </template>
+                        <template #no-data>
+                            <div class="pa-4 text-center text-grey">No transports available.</div>
+                        </template>
+                    </v-data-table>
+                </div>
+
+                <!-- Provision for other truckscale types: add v-else-if="truckscaleType === '...'" sections here -->
+<!-- 
                 <div class="d-flex align-center justify-space-between mb-3 pa-2 bg-grey-lighten-5 rounded border">
                     <div>
                         <span>Transport: </span>
@@ -483,7 +593,7 @@ const getAllowedBatches = (item) => {
                         <span>Driver: </span>
                         <span class="font-weight-bold">{{ getDriverName(selectedTransport) }}</span>
                     </div>
-                </div>
+                </div> -->
 
                 <v-row align="center" class="mb-2">
                     <v-col cols="12" md="8">
