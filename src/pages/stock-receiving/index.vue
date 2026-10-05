@@ -129,13 +129,17 @@ const handleSearch = () => {
 };
 
 const refreshList = () => {
-    // Sync date range to form
-    if (dateRange.value && dateRange.value.length === 2) {
-        form.posting_date_from = dateRange.value[0];
-        form.posting_date_to = dateRange.value[1];
-    } else {
-        form.posting_date_from = null;
-        form.posting_date_to = null;
+    // Sync date filters to form
+    form.posting_date_from = filters.dateFrom || null;
+    form.posting_date_to = filters.dateTo || null;
+
+    if (!form.posting_date_from || !form.posting_date_to) {
+        toast.value = {
+            message: 'Please select both Posting Date From and Posting Date To.',
+            color: 'error',
+            show: true
+        };
+        return;
     }
 
     form.loading = true;
