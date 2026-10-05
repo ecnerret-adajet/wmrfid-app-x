@@ -156,7 +156,8 @@ const confirmCancelGoodsMovement = () => {
         cancel_date: cancelDate.value,
     })
         .then((response) => {
-            const { status, errors } = response.data;
+            const { status } = response.data;
+            const errors = [...(response.data.errors || []), ...(response.data.errors_913 || [])];
 
             if (status === 'S') {
                 toast.value = {
@@ -182,10 +183,9 @@ const confirmCancelGoodsMovement = () => {
 
 const actionList = (log) => {
     const actions = [{ title: 'View', key: 'view' }];
-     actions.push({ title: 'Cancel', key: 'cancel' });
-    // if (isCancellable(log)) {
-    //    actions.push({ title: 'Cancel', key: 'cancel' });
-    // }
+    if (isCancellable(log)) {
+        actions.push({ title: 'Cancel', key: 'cancel' });
+    }
 
     return actions;
 };
