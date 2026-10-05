@@ -266,6 +266,7 @@ const proceedMapping = () => {
             authUserCan('view.putaway.report') ||
             authUserCan('view.floating.pallets') ||
             authUserCan('view.open.do.picklist') ||
+            authUserCan('view.completed.do.picklist') ||
             authUserCan('view.outbound.performance.report') ||
             authUserCan('view.service.requests.report') || 
             authUserCan('view.sto.report')
@@ -284,6 +285,9 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.open.do.picklist') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Open DO Picklist', icon: 'ri-list-check', to: '/reports/open-do-picklist' }" />
+    
+    <VerticalNavLink v-if="authUserCan('view.completed.do.picklist') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
+        :item="{ title: 'Completed DO Picklist', icon: 'ri-file-check-line', to: '/reports/completed-do-picklist' }" />
     
     <VerticalNavLink
         v-if="authUserCan('view.service.requests.report') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"

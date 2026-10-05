@@ -530,6 +530,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/completed-do-picklist',
+                name: 'completed-do-picklist-report',
+                component: () => import('@/pages/reports/completedDoPicklist/index.vue'),
+                meta: {
+                    pageTitle: "Completed DO Picklist Report",
+                    breadcrumbs: [
+                            { label: "Completed DO Picklist Report", link: "/reports/completed-do-picklist" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/service-requests',
                 name: 'service-requests-report',
                 component: () => import('@/pages/reports/serviceRequests/index.vue'),
