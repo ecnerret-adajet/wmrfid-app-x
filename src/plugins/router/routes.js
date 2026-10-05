@@ -620,6 +620,18 @@ export const routes = [
             },
         },
         {
+            path: 'qc-disposition/receiving',
+            name: 'qc-disposition-receiving',
+            component: () => import('@/pages/qualityControl/QcDispositionReceiving.vue'),
+            meta: {
+              pageTitle: 'QC Disposition Receiving',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Receiving', link: '/qc-disposition/receiving' },
+              ],
+            },
+        },
+        {
             path: 'qc-disposition/approvals',
             name: 'qc-disposition-approvals',
             component: () => import('@/pages/qualityControl/QcDispositionApproval.vue'),

@@ -104,6 +104,10 @@ const proceedMapping = () => {
             to: '/qc-disposition',
             exactMatch: true,
         }" />
+        <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')" :item="{
+            title: 'Receiving',
+            to: '/qc-disposition/receiving',
+        }" />
         <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.approval')" :item="{
             title: 'Pending Disposition',
             to: '/qc-disposition/approvals',
