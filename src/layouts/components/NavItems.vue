@@ -112,6 +112,10 @@ const proceedMapping = () => {
             title: 'Disposition List',
             to: '/qc-disposition/postings',
         }" />
+        <VerticalNavLink v-if="authUserCan('can.view.quality.control') || authUserCan('can.view.qc.disposition')" :item="{
+            title: 'Goods Movement',
+            to: '/qc-disposition/goods-movement',
+        }" />
     </VerticalNavGroup>
     
 

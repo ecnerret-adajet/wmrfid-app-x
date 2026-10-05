@@ -22,6 +22,7 @@ const filters = reactive({
   dateTo: todayStr 
 })
 
+
 const selectedItems = ref([])
 const serverItems = ref([])
 const totalItems = ref(0)
@@ -30,6 +31,8 @@ const page = ref(1)
 const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
+
+const storageLocation = ref(null)
 
 onMounted(() => loadPlants())
 
@@ -175,8 +178,8 @@ const handleCreateDispo = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
-      storage_location_id: filters.storage_location_id,
+      plant_code: storageLocation.value?.plant?.plant_code,
+      storage_location_id: storageLocation.value?.id,
       from_qc_disposition: true,
       type: 'qc-disposition',
       items: selectedItems.value.map(item => ({
@@ -297,6 +300,11 @@ const handleCreateDispo = async (method) => {
       </v-card>
     </VCol>
   </VRow>
+
+  <div class="pa-4">
+    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
+  </div>
 
   <VRow class="align-center mb-3">
     <VCol cols="12" md="3" class="d-flex align-center">
