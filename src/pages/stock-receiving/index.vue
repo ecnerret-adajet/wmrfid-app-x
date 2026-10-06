@@ -69,21 +69,21 @@ const fetchDataDropdown = async () => {
         const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
 
         if (defaultPlant) {
-            filters.plant = defaultPlant;
-            // Re-fetch since the datatable's initial load already ran before the default plant/storage location resolved
-            // applyFilter();
+            filters.plant = defaultPlant.id;
         }
 
     } catch (error) {
         console.error('Error fetching dropdown data:', error);
     } finally {
         pageLoading.value = false;
+        plantsLoaded.value = true;
+        // Re-fetch since the datatable's initial load was skipped until the default plant resolved
+        handleSearch();
     }
 };
 
 const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
-    if (!filters.plant) {
-        pageLoading.value = false;
+    if (!plantsLoaded.value) {
         return;
     }
     pageLoading.value = true;
@@ -98,8 +98,10 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
         if (searchValue.value) {
             params.search = searchValue.value;
         }
-        if (filters.plant) {
-            params.plant = filters.plant;
+        // v-select holds the plant id; the API filters by plant code (backend defaults to 2110 when omitted)
+        const selectedPlant = plantsOption.value.find(p => p.id === filters.plant);
+        if (selectedPlant) {
+            params.plant = selectedPlant.plant_code;
         }
         if (filters.dateFrom) {
             params.start_date = filters.dateFrom;
@@ -147,6 +149,7 @@ const refreshList = () => {
     ApiService.query('download-313?from_date=' + form.posting_date_from + '&to_date=' + form.posting_date_to)
         .then(({ data }) => {
             form.refresh = false;
+            form.loading = false;
             loadItems({
                 page: 1,
                 itemsPerPage: itemsPerPage.value,
