@@ -3,7 +3,7 @@ import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import Swal from 'sweetalert2';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -23,6 +23,8 @@ const pageLoading = ref(false);
 const postResult = ref(null);
 const disablePost = ref(false);
 const documentHeaderText = ref('');
+const postingDate = ref('');
+const today = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 
 const toast = ref({
     message: '',
@@ -57,6 +59,8 @@ const fetchDetails = async () => {
         if (stockTransfer.value) {
             documentHeaderText.value = stockTransfer.value.document_header_text || '';
         }
+
+        postingDate.value = stockTransfer.value?.posting_date || header.value?.posting_date || '';
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -74,13 +78,28 @@ const removeLeadingZeros = (value) => {
     return String(value).replace(/^0+/, '');
 };
 
+// Changing the posting date invalidates the last simulation, so require a re-simulate before posting
+watch(postingDate, () => {
+    postResult.value = null;
+});
+
 const postStockTransferReceiving = async (method) => {
+    if (!postingDate.value || postingDate.value > today) {
+        await Swal.fire({
+            text: 'Please select a valid posting date (not later than today).',
+            icon: 'warning',
+            confirmButtonText: 'Ok, got it!',
+            customClass: { confirmButton: 'btn btn-primary' },
+        });
+        return;
+    }
+
     disablePost.value = true;
     try {
         const payload = {
             method: method,
             stock_transfer_receiving_id: id,
-            posting_date: header.value?.posting_date,
+            posting_date: postingDate.value,
             document_date: header.value?.posting_date,
             gr_gi_slip_number: header.value?.material_document,
             document_header_text: documentHeaderText.value,
@@ -193,8 +212,10 @@ onMounted(() => {
 
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="postingDate"
                                 label="Posting Date"
-                                :model-value="stockTransfer?.posting_date || header?.posting_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
                                 :readonly="!!header?.status"
                                 density="compact"
