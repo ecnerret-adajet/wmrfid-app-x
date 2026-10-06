@@ -24,6 +24,7 @@ const postResult = ref(null);
 const disablePost = ref(false);
 const documentHeaderText = ref('');
 const postingDate = ref('');
+const documentDate = ref('');
 const today = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 
 const toast = ref({
@@ -61,6 +62,7 @@ const fetchDetails = async () => {
         }
 
         postingDate.value = stockTransfer.value?.posting_date || header.value?.posting_date || '';
+        documentDate.value = stockTransfer.value?.document_date || header.value?.posting_date || '';
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -78,8 +80,8 @@ const removeLeadingZeros = (value) => {
     return String(value).replace(/^0+/, '');
 };
 
-// Changing the posting date invalidates the last simulation, so require a re-simulate before posting
-watch(postingDate, () => {
+// Changing the posting/document date invalidates the last simulation, so require a re-simulate before posting
+watch([postingDate, documentDate], () => {
     postResult.value = null;
 });
 
@@ -94,13 +96,23 @@ const postStockTransferReceiving = async (method) => {
         return;
     }
 
+    if (!documentDate.value || documentDate.value > today) {
+        await Swal.fire({
+            text: 'Please select a valid document date (not later than today).',
+            icon: 'warning',
+            confirmButtonText: 'Ok, got it!',
+            customClass: { confirmButton: 'btn btn-primary' },
+        });
+        return;
+    }
+
     disablePost.value = true;
     try {
         const payload = {
             method: method,
             stock_transfer_receiving_id: id,
             posting_date: postingDate.value,
-            document_date: header.value?.posting_date,
+            document_date: documentDate.value,
             gr_gi_slip_number: header.value?.material_document,
             document_header_text: documentHeaderText.value,
             ref_doc_number: '',
@@ -193,10 +205,12 @@ onMounted(() => {
                     <v-row class="mt-4">
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="documentDate"
                                 label="Document Date"
-                                :model-value="stockTransfer?.document_date || header?.posting_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
-                                readonly
+                                :readonly="!!header?.status"
                                 density="compact"
                             />
                         </v-col>
