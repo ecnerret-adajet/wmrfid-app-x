@@ -130,6 +130,11 @@ const handleSearch = () => {
     });
 };
 
+const handleSearchInput = (value) => {
+    searchValue.value = value;
+    handleSearch();
+};
+
 const refreshList = () => {
     // Sync date filters to form
     form.posting_date_from = filters.dateFrom || null;
@@ -224,7 +229,7 @@ onMounted(() => {
         <!-- Filter Row -->
         <div class="d-flex flex-wrap gap-4 align-center justify-center">
 
-            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="handleSearch"/>
+            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="handleSearchInput"/>
 
             <!-- Plant Filter -->
             <v-select
