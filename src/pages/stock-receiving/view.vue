@@ -75,6 +75,15 @@ const fetchDetails = async () => {
     }
 };
 
+// Material document detail modal (BU 315 / ALC 917)
+const matDocDialog = ref(false);
+const selectedStockTransferId = ref(null);
+
+const openMaterialDocument = (doc) => {
+    selectedStockTransferId.value = doc.id;
+    matDocDialog.value = true;
+};
+
 const removeLeadingZeros = (value) => {
     if (!value) return '';
     return String(value).replace(/^0+/, '');
@@ -195,8 +204,16 @@ onMounted(() => {
 
                 <!-- Material Documents -->
                 <div v-if="stockTransfer && header?.status === 'Received' && stockTransferMaterialDocument.length" class="px-4 mt-3">
-                    <h4 v-for="(doc, i) in stockTransferMaterialDocument" :key="i" class="mb-1">
+                    <h4 v-for="(doc, i) in stockTransferMaterialDocument" :key="i" class="mb-1 d-flex align-center gap-1">
                         {{ doc.stock_transfer_parent_id ? 'ALC' : 'BU' }} {{ doc.movement_type }} Material Document: {{ doc.material_document }}
+                        <v-btn
+                            icon="ri-eye-line"
+                            size="x-small"
+                            variant="text"
+                            color="secondary"
+                            title="View material document"
+                            @click="openMaterialDocument(doc)"
+                        />
                     </h4>
                 </div>
 
@@ -371,6 +388,8 @@ onMounted(() => {
                 <li v-for="(error, e) in postResult.returns" :key="e">{{ error.MESSAGE }}</li>
             </ul>
         </v-alert>
+
+        <MaterialDocumentDetailModal v-model="matDocDialog" :stock-transfer-id="selectedStockTransferId" />
 
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     </div>
