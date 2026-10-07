@@ -117,9 +117,9 @@ const errorMessage = ref('')
 const itemHeaders = [
   { title: 'Line', key: 'line', sortable: false },
   { title: 'Material', key: 'material', sortable: false },
-  { title: 'Purchase Order', key: 'po_number', sortable: false },
-  { title: 'Item', key: 'po_item', sortable: false },
-  { title: 'Ref. Doc.', key: 'ref_doc', sortable: false },
+  // { title: 'Purchase Order', key: 'po_number', sortable: false },
+  // { title: 'Item', key: 'po_item', sortable: false },
+  // { title: 'Ref. Doc.', key: 'ref_doc', sortable: false },
   { title: 'Quantity', key: 'quantity', align: 'end', sortable: false },
   { title: 'Base Unit', key: 'uom', align: 'center', sortable: false },
   { title: 'Text', key: 'item_text', sortable: false },
