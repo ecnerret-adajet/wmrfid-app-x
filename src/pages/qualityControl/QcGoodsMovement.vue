@@ -161,7 +161,7 @@ const confirmCancelGoodsMovement = () => {
 
             if (status === 'S') {
                 toast.value = {
-                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.`,
+                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${response.data.reverted_pallets ? ` ${response.data.reverted_pallets} pallet(s) returned to Quality Inspection.` : ''}`,
                     color: 'success',
                     show: true,
                 };
