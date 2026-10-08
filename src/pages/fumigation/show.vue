@@ -1,6 +1,7 @@
 <script setup>
 import { generateSlug } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { fumigationStatusColor, fumigationStatusLabel } from '@/utils/fumigation';
 import JwtService from '@/services/JwtService';
 import axios from 'axios';
 import Moment from 'moment';
@@ -130,21 +131,9 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         <v-card-text v-else>
             <div class="d-flex align-center px-4 ">
                 <h4 class="text-h4 font-weight-black text-primary mr-2">Fumigation Details</h4>
-                <v-badge v-if="requestData?.status == 'scheduled'"
-                        color="info"
-                        :content="requestData?.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="requestData?.status == 'in progress'"
-                        color="warning"
-                        :content="requestData?.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="requestData?.status == 'completed'"
-                        color="success"
-                        :content="requestData?.status"
+                <v-badge v-if="requestData?.status"
+                        :color="fumigationStatusColor(requestData.status)"
+                        :content="fumigationStatusLabel(requestData.status)"
                         class="text-uppercase"
                         inline
                 ></v-badge>

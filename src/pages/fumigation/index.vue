@@ -5,6 +5,8 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
+import { fumigationStatusColor, fumigationStatusLabel } from '@/utils/fumigation';
+import SensitiveDeliveriesTable from './components/SensitiveDeliveriesTable.vue';
 import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -15,7 +17,6 @@ const authStore = useAuthStore();
 const router = useRouter();
 const serverItems = ref([]);
 const rfidServerItems = ref([]);
-const materialsOption = ref([]);
 const plantsOption = ref([]);
 const rfidLoading = ref(false);
 const loading = ref(true);
@@ -63,15 +64,6 @@ watch(() => filters.plant_code, () => {
     page.value = 1
     loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
 })
-
-const rfidFilters = reactive({
-    start_date: null,
-    end_date: null,
-    material_id: null,
-    plant_code: null,
-    sloc: null,
-    under_fumigation: false
-});
 
 const { authUserCan } = useAuthorization();
 
@@ -176,16 +168,9 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         })
         .then((response) => {
            
-            const { table, materials } = response.data;
+            const { table } = response.data;
             totalItems.value = table.total;
             serverItems.value = table.data;
-
-            materialsOption.value = materials.map(item => ({
-                value: item.id,
-                title: `${item.plant_code} - ${item.code} - ${item.description}`,
-                plant_code: item.plant_code,
-                default_pallet_quantity: item.default_pallet_quantity
-            }));
 
             loading.value = false
 
@@ -230,9 +215,18 @@ const openDetailsModal = (item) => {
     selectedFumigationRequest.value = item;
     detailsModal.value = true;
 }
+const isClosedStatus = status => ['completed', 'cancelled'].includes(status)
+
+// Material / batch / sloc are stored per item; a request can span several
+const uniqueItemValues = (request, key) =>
+    [...new Set((request?.fumigation_items ?? []).map(item => item[key]).filter(Boolean))].join(', ') || '—'
+const requestMaterials = request => uniqueItemValues(request, 'material_description')
+const requestBatches = request => uniqueItemValues(request, 'batch')
+const requestSlocs = request => uniqueItemValues(request, 'sloc')
+
 const editItem = (item) => {
-    if (item.status === 'completed') {
-        toast.message = 'Fumigation request already completed';
+    if (isClosedStatus(item.status)) {
+        toast.message = `Fumigation request already ${item.status}`;
         toast.color = 'error';
         toast.show = true;
         return;
@@ -311,7 +305,7 @@ const confirmEndFumigation = async () => {
     } catch (error) {
         console.error('Error ending fumigation:', error);
         endFumigationLoading.value = false;
-        toast.message = error.response?.data?.message || 'Failed to end fumigation';
+        toast.message = error.response?.data?.error || error.response?.data?.message || 'Failed to end fumigation';
         toast.color = 'error';
         toast.show = true;
     }
@@ -320,8 +314,6 @@ const confirmEndFumigation = async () => {
 const handleCreateFumigate = async () => {
     fumigateLoading.value = true;
     toast.show = false;
-
-    createFumigateForm.plant_code = filters.plant_code
 
     // Build items: each assigned RFID enriched with item_number from its delivery line item
     createFumigateForm.items = selectedDeliveryItems.value
@@ -336,8 +328,8 @@ const handleCreateFumigate = async () => {
             }))
         )
 
-    if (!createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
-        errorMessage.value = 'Start Date, End Date, and Remarks are required.';
+    if (!createFumigateForm.plant_code || !createFumigateForm.startDate || !createFumigateForm.endDate || !createFumigateForm.remarks) {
+        errorMessage.value = 'Plant, Start Date, End Date, and Remarks are required.';
         fumigateLoading.value = false;
         return;
     }
@@ -372,8 +364,10 @@ const handleCreateFumigate = async () => {
         });
         showCreateFumigate.value = false;
         errorMessage.value = null;
+        sensitiveDeliveriesRef.value?.reload();
     } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'An unexpected error occurred.';
+        // 422 carries the ineligible pallet list in `error`
+        errorMessage.value = error.response?.data?.error || error.response?.data?.message || 'An unexpected error occurred.';
         console.error('Error submitting:', error);
         fumigateLoading.value = false;
     }
@@ -381,9 +375,26 @@ const handleCreateFumigate = async () => {
 
 const showCreateFumigate = ref(false);
 const selectedItems = ref([])
+const activeTab = ref('requests');
+const sensitiveDeliveriesRef = ref(null);
+
+// Pre-fill the create form from the sensitive-DO worklist
+const createFumigationFor = async (delivery) => {
+    clearFumigateForm();
+    pendingDeliveryOrderNo.value = delivery.delivery_document;
+    showCreateFumigate.value = true;
+    await nextTick();
+    createFumigateForm.plant_code = delivery.plant_code ?? plantsOption.value[0]?.value ?? null;
+    deliveryOrderSearch.value = delivery.delivery_document;
+}
 const createFumigation = () => {
     showCreateFumigate.value = true;
-    fetchDeliveryOrders();
+    // Default to the user's first assigned plant; the plant watcher then loads delivery orders
+    if (!createFumigateForm.plant_code && plantsOption.value.length > 0) {
+        createFumigateForm.plant_code = plantsOption.value[0].value;
+    } else {
+        fetchDeliveryOrders();
+    }
 }
 
 const clearFumigateForm = () => {
@@ -402,16 +413,25 @@ const deliveryOrderSearch = ref('');
 const deliveryOrderItems = ref([]);
 const deliveryOrderLoading = ref(false);
 
+// Set by "Create Request" on the sensitive-DO tab; applied once that DO shows up in the picker
+const pendingDeliveryOrderNo = ref(null);
+
 const fetchDeliveryOrders = async (search = '') => {
     deliveryOrderLoading.value = true;
     try {
         const response = await ApiService.query('fumigations/open-delivery-orders', {
             params: {
-                plant_code: filters.plant_code,
+                plant_code: createFumigateForm.plant_code,
                 search,
+                // c/o Sales: only customers tagged sensitive in Customer Master
+                sensitive_only: 1,
             },
         });
         deliveryOrderItems.value = response.data ?? [];
+        if (pendingDeliveryOrderNo.value && deliveryOrderItems.value.some(d => d.delivery_document === pendingDeliveryOrderNo.value)) {
+            createFumigateForm.delivery_order_no = pendingDeliveryOrderNo.value;
+            pendingDeliveryOrderNo.value = null;
+        }
     } catch {
         deliveryOrderItems.value = [];
     } finally {
@@ -423,6 +443,14 @@ let deliverySearchTimer = null;
 watch(deliveryOrderSearch, (val) => {
     clearTimeout(deliverySearchTimer);
     deliverySearchTimer = setTimeout(() => fetchDeliveryOrders(val), 350);
+});
+
+// Changing plant invalidates the selected delivery order and its assignments
+watch(() => createFumigateForm.plant_code, (newVal) => {
+    if (!showCreateFumigate.value || !newVal) return;
+    createFumigateForm.delivery_order_no = null;
+    deliveryOrderItems.value = [];
+    fetchDeliveryOrders(deliveryOrderSearch.value);
 });
 
 const selectedDelivery = computed(() =>
@@ -492,8 +520,7 @@ const loadRfid = ({ page, itemsPerPage, sortBy, search }) => {
             itemsPerPage,
             sort: rfidSortQuery.value,
             search: rfidSearchValue.value,
-            plant_code: filters.plant_code,
-            sloc: rfidFilters.sloc,
+            plant_code: createFumigateForm.plant_code,
             commodity_status_id: 1,
             material_code: selectedDeliveryLineItem.value?.material_number,
         }
@@ -515,61 +542,20 @@ const handleSearchRfid = debounce((search) => {
     onFilterChange();
 }, 500);
 
-// WATCHERS: react to the actual reactive changes (guaranteed to be current)
-watch(() => rfidFilters.material_id, (newVal, oldVal) => {
-    // If user clears selection, we still want to refresh
+// Pallet list is driven by the selected delivery line item (material) and the request's plant
+watch(selectedDeliveryLineItem, () => {
     page.value = 1;
     onFilterChange();
 });
 
-// Keep material selection if it still matches newly selected plant; otherwise clear it.
-watch(() => rfidFilters.plant_code, (newVal, oldVal) => {
-    if (newVal === oldVal) return;
-    page.value = 1;
-
-    rfidFilters.sloc = null;
-    storageLocation.value = null;
-
-    if (!newVal) {
-        rfidFilters.material_id = null;
-        slocOptions.value = [];
-        onFilterChange();
-        return;
-    }
-
-    const currentMaterial = materialsOption.value.find(
-        m => String(m.value) === String(rfidFilters.material_id)
-    );
-
-    if (!currentMaterial || String(currentMaterial.plant_code) !== String(newVal)) {
-        rfidFilters.material_id = null;
-    }
-
-    fetchSlocOptions(newVal);
-    onFilterChange();
-});
-
-watch(selectedDeliveryLineItem, (newVal) => {
-    page.value = 1;
-    onFilterChange();
-});
-
-// onFilterChange keeps same implementation but ensure we reset page when needed
 const onFilterChange = () => {
     loadRfid({
         page: page.value,
         itemsPerPage: rfidItemsPerPage.value,
         sortBy: [{key: 'updated_at', order: 'desc'}],
         search: rfidSearchValue.value,
-        filters: rfidFilters
     });
 }
-
-// computed filteredMaterialsOption stays the same
-const filteredMaterialsOption = computed(() => {
-    if (!rfidFilters.plant_code) return materialsOption.value;
-    return materialsOption.value.filter(m => String(m.plant_code) === String(rfidFilters.plant_code));
-});
 
 // TODO (backend): Allow create when at least one line item is satisfied.
 // Future: enforce all delivery line items must be satisfied before submitting.
@@ -606,53 +592,6 @@ const rfidServerItemsWithSelectability = computed(() =>
         }
     })
 )
-
-const storageLocation = ref(null);
-const slocOptions = ref([]);
-const slocLoading = ref(false);
-
-const fetchSlocOptions = async (plant_code) => {
-    if (!plant_code) {
-        slocOptions.value = [];
-        return;
-    }
-    slocLoading.value = true;
-    try {
-        const response = await ApiService.query('warehouse/storage-locations', {
-            params: { plant_code },
-        });
-        slocOptions.value = (response.data ?? []).map(s => ({
-            value: s.code,
-            title: `${s.code} - ${s.name}`,
-        }));
-    } catch {
-        slocOptions.value = [];
-    } finally {
-        slocLoading.value = false;
-    }
-};
-
-const fetchStorageLocationDetails = async () => {
-    if (!rfidFilters.plant_code || !rfidFilters.sloc) {
-        storageLocation.value = null;
-        return;
-    }
-    try {
-        const response = await ApiService.get(`warehouse/storage-location/${rfidFilters.plant_code}/${rfidFilters.sloc}`);
-        storageLocation.value = response.data.storage_location;
-    } catch {
-        storageLocation.value = null;
-    }
-};
-
-watch(() => rfidFilters.sloc, (newVal) => {
-    if (newVal) {
-        fetchStorageLocationDetails();
-    } else {
-        storageLocation.value = null;
-    }
-    onFilterChange();
-});
 
 // TODO: Add under_fumigation and is_reserved RFID eligibility filtering once backend support is confirmed.
 // under_fumigation=0 → available; under_fumigation=1 → skip. is_reserved=true → include.
@@ -748,7 +687,14 @@ const cancelCreateFumigation = () => {
         </v-btn>
 
     </div>
-    <v-card>
+    <v-tabs v-model="activeTab" class="mt-4">
+        <v-tab value="requests">Fumigation Requests</v-tab>
+        <v-tab value="sensitive">Sensitive DOs Without Request</v-tab>
+    </v-tabs>
+    <v-card v-show="activeTab === 'sensitive'">
+        <SensitiveDeliveriesTable ref="sensitiveDeliveriesRef" :plant-code="filters.plant_code" @create-request="createFumigationFor" />
+    </v-card>
+    <v-card v-show="activeTab === 'requests'">
         <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
@@ -781,33 +727,9 @@ const cancelCreateFumigation = () => {
             </template>
 
             <template #item.status="{ item }">
-                <v-badge v-if="item.status == 'scheduled'"
-                        color="info"
-                        :content="item.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="item.status == 'in progress'"
-                        color="warning"
-                        :content="item.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="item.status == 'completed'"
-                        color="success"
-                        :content="item.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="item.status == 'ended'"
-                        color="success"
-                        :content="item.status"
-                        class="text-uppercase"
-                        inline
-                ></v-badge>
-                <v-badge v-else-if="item.status == 'cancelled'"
-                        color="danger"
-                        :content="item.status"
+                <v-badge
+                        :color="fumigationStatusColor(item.status)"
+                        :content="fumigationStatusLabel(item.status)"
                         class="text-uppercase"
                         inline
                 ></v-badge>
@@ -832,7 +754,7 @@ const cancelCreateFumigation = () => {
                     >
                         <VIcon icon="ri-eye-line" />
                     </IconBtn>
-                    <v-menu v-if="authUserCan('update.fumigation.requests')" location="end">
+                    <v-menu v-if="authUserCan('update.fumigation.requests') && !isClosedStatus(item.status)" location="end">
                         <template v-slot:activator="{ props }">
                             <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey" size="small"></v-btn>
                         </template>
@@ -874,7 +796,7 @@ const cancelCreateFumigation = () => {
                                         <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Material</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.material?.description }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ requestMaterials(selectedFumigationRequest) }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -888,7 +810,7 @@ const cancelCreateFumigation = () => {
                                         <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Batch</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.batch }}</span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ requestBatches(selectedFumigationRequest) }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -902,9 +824,7 @@ const cancelCreateFumigation = () => {
                                         <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Plant</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.material?.plant?.plant_code }}
-                                            - {{ selectedFumigationRequest?.material?.plant?.name }}
-                                        </span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ selectedFumigationRequest?.plant_code ?? '—' }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -918,10 +838,7 @@ const cancelCreateFumigation = () => {
                                         <span class="text-h6 text-uppercase font-weight-bold text-high-emphasis" style="margin-top: 1px;">Storage Location</span>
                                     </VCol>
                                     <VCol class="d-inline-flex align-center">
-                                        <span class="font-weight-medium text-medium-emphasis">
-                                            {{ selectedFumigationRequest?.production_run?.production_line?.reader?.default_storage_location?.code}} 
-                                            - {{ selectedFumigationRequest?.production_run?.production_line?.reader?.default_storage_location?.name}}
-                                        </span>
+                                        <span class="font-weight-medium text-medium-emphasis">{{ requestSlocs(selectedFumigationRequest) }}</span>
                                     </VCol>
                                 </VRow>
                             </VCol>
@@ -1008,11 +925,11 @@ const cancelCreateFumigation = () => {
                             &nbsp;|&nbsp;
                             Status:
                             <v-chip
-                                :color="selectedFumigationRequest?.status === 'completed' ? 'success' : selectedFumigationRequest?.status === 'in progress' ? 'warning' : 'info'"
+                                :color="fumigationStatusColor(selectedFumigationRequest?.status)"
                                 size="x-small"
                                 variant="tonal"
                                 class="text-uppercase font-weight-bold"
-                            >{{ selectedFumigationRequest?.status }}</v-chip>
+                            >{{ fumigationStatusLabel(selectedFumigationRequest?.status) }}</v-chip>
                         </div>
                     </div>
                 </div>
@@ -1113,20 +1030,23 @@ const cancelCreateFumigation = () => {
     <EditingModal @close="showCreateFumigate = false" max-width="1500px" :show="showCreateFumigate"
         :dialog-title="`Fumigation Request`">
         <template #default>
-            <div v-if="storageLocation" class="mb-4 pa-3 rounded border">
-                <h4 class="text-h6 font-weight-bold mb-1">
-                    Plant: <span class="text-primary">{{ storageLocation?.plant?.plant_code }} - {{ storageLocation?.plant?.name }}</span>
-                </h4>
-                <h4 class="text-h6 font-weight-bold">
-                    Storage Location: <span class="text-primary">{{ storageLocation?.code }} - {{ storageLocation?.name }}</span>
-                </h4>
-            </div>
             <v-form @submit.prevent="handleFumigate">
                 <v-row>
-                    <v-col cols="12" md="6">
+                    <v-col cols="12" md="4">
+                        <v-autocomplete
+                            v-model="createFumigateForm.plant_code"
+                            :items="plantsOption"
+                            item-title="title"
+                            item-value="value"
+                            label="Plant"
+                            density="compact"
+                            hide-details
+                        />
+                    </v-col>
+                    <v-col cols="12" md="4">
                         <DatePicker v-model="createFumigateForm.startDate" placeholder="Select Start Date" />
                     </v-col>
-                    <v-col cols="12" md="6">
+                    <v-col cols="12" md="4">
                         <DatePicker v-model="createFumigateForm.endDate" placeholder="Select End Date" />
                     </v-col>
                 </v-row>
@@ -1152,7 +1072,7 @@ const cancelCreateFumigation = () => {
                     <template #no-data>
                         <v-list-item>
                             <v-list-item-title class="text-medium-emphasis">
-                                {{ deliveryOrderLoading ? 'Searching...' : 'No delivery orders found' }}
+                                {{ deliveryOrderLoading ? 'Searching...' : 'No open delivery orders of sensitive customers found (see Customer Master)' }}
                             </v-list-item-title>
                         </v-list-item>
                     </template>
@@ -1170,7 +1090,10 @@ const cancelCreateFumigation = () => {
                         </VCol>
                         <VCol cols="12" md="4">
                             <div class="text-caption text-uppercase font-weight-bold text-medium-emphasis">Sold To</div>
-                            <div class="font-weight-bold">{{ selectedDelivery.sold_to_name }}</div>
+                            <div class="font-weight-bold">
+                                {{ selectedDelivery.sold_to_name }}
+                                <v-chip v-if="selectedDelivery.is_sensitive_customer" color="warning" size="x-small" variant="flat" class="ml-1">Sensitive</v-chip>
+                            </div>
                             <div class="text-caption text-medium-emphasis">{{ selectedDelivery.sold_to_customer }}</div>
                         </VCol>
                     </VRow>
@@ -1240,29 +1163,8 @@ const cancelCreateFumigation = () => {
             <v-divider class="my-4"></v-divider>
 
 
-            <div class="d-flex flex-wrap gap-4 align-center justify-center">
+            <div class="d-flex flex-wrap gap-4 align-center justify-center mb-3">
                 <SearchInput class="flex-grow-1" @update:search="handleSearchRfid" />
-
-                <div class="d-flex align-center" style="min-width: 230px;">
-                    <v-autocomplete label="Select Plant" density="compact" item-title="title" item-value="value"
-                        :items="plantsOption" v-model="rfidFilters.plant_code" @update:modelValue="onFilterChange"/>
-                </div>
-                <div class="d-flex align-center" style="min-width: 260px;">
-                    <v-autocomplete
-                        label="Select Storage Location"
-                        density="compact"
-                        item-title="title"
-                        item-value="value"
-                        :items="slocOptions"
-                        :loading="slocLoading"
-                        :disabled="!rfidFilters.plant_code"
-                        v-model="rfidFilters.sloc"
-                    />
-                </div>
-                <div class="d-flex align-center" style="min-width: 330px;">
-                    <v-autocomplete label="Select Material" density="compact" @update:modelValue="onFilterChange" item-title="title" item-value="value"
-                        :items="filteredMaterialsOption" v-model="rfidFilters.material_id" />
-                </div>
             </div>
 
             <VAlert

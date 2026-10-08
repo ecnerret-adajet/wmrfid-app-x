@@ -184,10 +184,12 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/dashboard'}"/> -->
 
     <!-- Master Data Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines') || authUserCan('view.customer.masters')"
         :item="{ heading: 'Master Data' }" />
     <VerticalNavLink v-if="authUserCan('view.materials')"
         :item="{ title: 'Material List', icon: 'ri-stack-line', to: '/materials' }" />
+    <VerticalNavLink v-if="authUserCan('view.customer.masters')"
+        :item="{ title: 'Customer Master', icon: 'ri-user-star-line', to: '/customer-masters' }" />
     <VerticalNavLink v-if="authUserCan('view.production.lines')"
         :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines' }" />
 

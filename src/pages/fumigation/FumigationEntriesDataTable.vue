@@ -1,5 +1,6 @@
 <script setup>
 import ApiService from '@/services/ApiService';
+import { fumigationStatusColor, fumigationStatusLabel } from '@/utils/fumigation';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
@@ -113,11 +114,7 @@ const openDetailDialog = (fumigation) => {
     detailDialog.value = true;
 };
 
-const statusColor = (status) => {
-    if (status === 'in progress') return 'warning';
-    if (status === 'completed') return 'success';
-    return 'secondary';
-};
+const statusColor = fumigationStatusColor;
 </script>
 
 <template>
@@ -180,7 +177,7 @@ const statusColor = (status) => {
                     label
                     class="text-capitalize"
                 >
-                    {{ item.status }}
+                    {{ fumigationStatusLabel(item.status) }}
                 </v-chip>
             </template>
 
@@ -244,7 +241,7 @@ const statusColor = (status) => {
                         <v-card variant="tonal" :color="statusColor(selectedFumigation.status)" rounded="lg" class="flex-1-1">
                             <v-card-text class="pa-3">
                                 <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">Status</div>
-                                <div class="text-h6 font-weight-bold text-capitalize">{{ selectedFumigation.status }}</div>
+                                <div class="text-h6 font-weight-bold text-capitalize">{{ fumigationStatusLabel(selectedFumigation.status) }}</div>
                             </v-card-text>
                         </v-card>
                         <v-card variant="tonal" color="primary" rounded="lg" class="flex-1-1">

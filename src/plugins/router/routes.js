@@ -74,6 +74,17 @@ export const routes = [
             },
         },
         {
+            path: 'customer-masters',
+            name: 'customer-masters',
+            component: () => import('@/pages/customer-master/index.vue'),
+            meta: {
+              pageTitle: "Customer Master",
+              breadcrumbs: [
+                  { label: "Customer Master", link: "/customer-masters" },
+              ],
+            },
+        },
+        {
             path: 'production-lines',
             name: 'production-lines',
             component: () => import('@/pages/productionLines/index.vue'),
