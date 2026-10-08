@@ -38,6 +38,13 @@ const palletScanIncomplete = ref(false);
 const palletScanReservedCount = ref(0);
 const palletScanScannedCount = ref(0);
 
+// Loaded quantity vs delivery order mismatch state (reported by loadEnd)
+const quantityMismatch = ref(false);
+const quantityMismatchMessage = ref('');
+
+// Prevent sending a second load end request while one is still running
+const loadEndInFlight = ref(false);
+
 // initialize null shipment data
 const shipmentData = reactive({
     deliveries: [],
@@ -83,8 +90,12 @@ const onPicklistRefreshEvent = async (data) => {
     if (data.picklistRefresh === true) {
         await fetchShipmentDetails(shipment.value?.shipment_number);
 
-        if (palletScanIncomplete.value && is_tapping_load_end_found.value === true) {
+        // Retry load end after the blocking issue may have been fixed
+        // (pallets scanned, pallet re-read, reservation fixed, or supervisor override set)
+        if ((palletScanIncomplete.value || quantityMismatch.value) && is_tapping_load_end_found.value === true) {
             palletScanIncomplete.value = false;
+            quantityMismatch.value = false;
+            quantityMismatchMessage.value = '';
             sapLoadEnd(shipmentData.shipment.shipment);
         }
     }
@@ -214,6 +225,9 @@ const fetchData = async () => {
 };
 
 const sapLoadEnd = async (shipmentNumber) => {
+    if (loadEndInFlight.value) return;
+    loadEndInFlight.value = true;
+
     try {
         const response = await ApiService.get(`picklist/load-end/${shipmentNumber}`);
         // If the backend returns an error structure, handle it
@@ -226,6 +240,11 @@ const sapLoadEnd = async (shipmentNumber) => {
             }
             errorMessage.value = response.data.errors[0];
             dialogVisible.value = true;
+
+            // Load end already went through in SAP but picking failed: show the error, then reload
+            if (response.data.bu_shipment_status) {
+                setTimeout(() => window.location.reload(), 6000);
+            }
             return;
         }
         window.location.reload();
@@ -237,10 +256,23 @@ const sapLoadEnd = async (shipmentNumber) => {
             palletScanScannedCount.value = data.scanned_count ?? 0;
             return;
         }
+        if (data?.quantity_mismatch) {
+            quantityMismatch.value = true;
+            quantityMismatchMessage.value = data.errors?.[0] ?? '';
+            errorMessage.value = data.errors?.[0];
+            dialogVisible.value = true;
+            return;
+        }
+        // Another load end request for this shipment is already running
+        if (data?.in_progress) {
+            return;
+        }
         // Try to extract error message from backend
         let msg = data?.errors?.[0] || data?.message || 'An unexpected error occurred.';
         errorMessage.value = msg;
         dialogVisible.value = true;
+    } finally {
+        loadEndInFlight.value = false;
     }
 
     //  ApiService.get(`picklist/load-end/${shipmentNumber}`)
@@ -646,6 +678,30 @@ const goToNextCarouselPage = () => {
                         <div class="text-caption mb-1" style="color: #c62828;">Pallets Scanned</div>
                         <div class="text-h3 font-weight-black" style="color: #e53935;">
                             {{ palletScanScannedCount }} / {{ palletScanReservedCount }}
+                        </div>
+                    </VCol>
+                </VRow>
+            </v-card>
+
+            <v-card
+                v-else-if="quantityMismatch"
+                class="mb-4 pa-4 d-flex align-center" color="error" variant="tonal" elevation="3"
+                style="border-left: 6px solid #e53935;">
+                <VRow class="w-100" align="center">
+                    <VCol cols="12" md="8" class="d-flex flex-column justify-center">
+                        <div class="text-h6 font-weight-bold mb-1" style="color: #c62828;">
+                            <v-icon color="error" class="mr-2" size="32" icon="ri-scales-3-line"></v-icon>
+                            Loaded Quantity Does Not Match Delivery Order
+                        </div>
+                        <div class="text-body-1 mb-2">
+                            {{ quantityMismatchMessage }}<br>
+                            <span class="font-italic" style="color: #e53935;">Please contact warehouse supervisor.
+                                Load end will retry automatically once resolved.</span>
+                        </div>
+                    </VCol>
+                    <VCol cols="12" md="4" class="d-flex flex-column align-center justify-center">
+                        <div class="text-h4 font-weight-black" style="color: #e53935;">
+                            Load End On Hold
                         </div>
                     </VCol>
                 </VRow>

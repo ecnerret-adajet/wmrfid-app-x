@@ -1,6 +1,8 @@
 <script setup>
 import DefaultModal from '@/components/DefaultModal.vue';
 import Toast from '@/components/Toast.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
+import ApiService from '@/services/ApiService';
 import JwtService from '@/services/JwtService';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
@@ -34,6 +36,78 @@ const toast = ref({
     color: 'success',
     show: false
 });
+
+// Load-end quantity check override (supervisors only)
+const { authUserCan } = useAuthorization();
+const canOverrideQuantity = computed(() => authUserCan('can.override.loadend.quantity'));
+const overrideModalOpen = ref(false);
+const clearOverrideModalOpen = ref(false);
+const overrideReason = ref('');
+const overrideSaving = ref(false);
+
+const shipmentRecord = computed(() => shipmentData.value?.shipment ?? null);
+const isOverrideOn = computed(() => !!shipmentRecord.value?.exclude_quantity_check);
+const isLoadEnded = computed(() => !!shipmentRecord.value?.load_end_date);
+
+const openOverrideModal = () => {
+    overrideReason.value = '';
+    overrideModalOpen.value = true;
+};
+
+const applyOverrideResponse = (shipment) => {
+    if (!shipmentData.value?.shipment || !shipment) return;
+
+    Object.assign(shipmentData.value.shipment, {
+        exclude_quantity_check: shipment.exclude_quantity_check,
+        quantity_override_reason: shipment.quantity_override_reason,
+        quantity_override_by: shipment.quantity_override_by,
+        quantity_override_by_name: shipment.quantity_override_by_name,
+        quantity_override_at: shipment.quantity_override_at,
+    });
+};
+
+const showOverrideError = (error, fallback) => {
+    const errors = error.response?.data?.error;
+    toast.value.message = (typeof errors === 'string' ? errors : errors?.reason?.[0]) || fallback;
+    toast.value.color = 'error';
+    toast.value.show = true;
+};
+
+const submitOverride = async () => {
+    if (!overrideReason.value.trim()) return;
+
+    overrideSaving.value = true;
+    try {
+        const response = await ApiService.post(`shipments/${shipmentNumber}/quantity-override`, {
+            reason: overrideReason.value.trim(),
+        });
+        applyOverrideResponse(response.data?.data);
+        overrideModalOpen.value = false;
+        toast.value.message = 'Quantity check override set.';
+        toast.value.color = 'success';
+        toast.value.show = true;
+    } catch (error) {
+        showOverrideError(error, 'Failed to set the override.');
+    } finally {
+        overrideSaving.value = false;
+    }
+};
+
+const submitClearOverride = async () => {
+    overrideSaving.value = true;
+    try {
+        const response = await ApiService.delete(`shipments/${shipmentNumber}/quantity-override`);
+        applyOverrideResponse(response.data?.data);
+        clearOverrideModalOpen.value = false;
+        toast.value.message = 'Quantity check override removed.';
+        toast.value.color = 'success';
+        toast.value.show = true;
+    } catch (error) {
+        showOverrideError(error, 'Failed to remove the override.');
+    } finally {
+        overrideSaving.value = false;
+    }
+};
 
 // TODO:: Consider separating the API for calling the header and for the datatable
 // to avoid loading the header if next/prev page 
@@ -298,6 +372,41 @@ function removeLeadingZeros(value) {
                 </VList>
             </v-card-title>
         </v-card>
+        <v-card v-if="canOverrideQuantity && shipmentRecord" class="mt-2">
+            <v-card-text class="mx-2">
+                <div class="d-flex align-center justify-space-between flex-wrap" style="gap: 12px;">
+                    <h4 class="text-h4 font-weight-black text-primary">Quantity Check Override</h4>
+                    <v-chip :color="isOverrideOn ? 'warning' : 'secondary'" label>
+                        {{ isOverrideOn ? 'On' : 'Off' }}
+                    </v-chip>
+                </div>
+
+                <p class="mt-2 mb-0">
+                    When on, load end continues even if the loaded quantity does not match the delivery order.
+                    The delivery order quantity in SAP is left unchanged.
+                </p>
+
+                <div v-if="isOverrideOn" class="mt-3">
+                    <div><span class="font-weight-bold">Reason:</span> {{ shipmentRecord.quantity_override_reason }}</div>
+                    <div>
+                        <span class="font-weight-bold">Approved by:</span>
+                        {{ shipmentRecord.quantity_override_by_name }}
+                        <span v-if="shipmentRecord.quantity_override_at">
+                            on {{ Moment(shipmentRecord.quantity_override_at).format('MMM D, YYYY hh:mm A') }}
+                        </span>
+                    </div>
+                </div>
+
+                <div v-if="!isLoadEnded" class="d-flex justify-end mt-4" style="gap: 12px;">
+                    <v-btn v-if="!isOverrideOn" color="warning" @click="openOverrideModal">
+                        Set Override
+                    </v-btn>
+                    <v-btn v-else color="secondary" variant="outlined" @click="clearOverrideModalOpen = true">
+                        Clear Override
+                    </v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
         <div>
             <v-card class="mt-2">
                 <v-card-text class="mx-2">
@@ -463,6 +572,39 @@ function removeLeadingZeros(value) {
                 </tr>
             </tbody>
         </v-table>
+    </DefaultModal>
+    <DefaultModal v-if="canOverrideQuantity" :show="overrideModalOpen" dialogTitle="Set Quantity Check Override"
+        maxWidth="500px" @close="overrideModalOpen = false">
+        <template #default>
+            <p class="mb-4">
+                Load end will continue for shipment {{ shipmentNumber }} even if the loaded quantity does not match
+                the delivery order. Please enter the reason.
+            </p>
+            <v-textarea v-model="overrideReason" label="Reason" rows="3" counter="255" maxlength="255" />
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" class="px-8 mr-3" @click="overrideModalOpen = false">
+                    Cancel
+                </v-btn>
+                <v-btn color="warning" class="px-8" :loading="overrideSaving" :disabled="!overrideReason.trim()"
+                    @click="submitOverride">
+                    Set Override
+                </v-btn>
+            </div>
+        </template>
+    </DefaultModal>
+    <DefaultModal v-if="canOverrideQuantity" :show="clearOverrideModalOpen" dialogTitle="Clear Override?"
+        maxWidth="400px" @close="clearOverrideModalOpen = false">
+        <template #default>
+            <p class="mb-4">The quantity check will apply again for this shipment.</p>
+            <div class="d-flex justify-end align-center mt-4">
+                <v-btn color="secondary" variant="outlined" class="px-8 mr-3" @click="clearOverrideModalOpen = false">
+                    Cancel
+                </v-btn>
+                <v-btn color="primary" class="px-8" :loading="overrideSaving" @click="submitClearOverride">
+                    Clear Override
+                </v-btn>
+            </div>
+        </template>
     </DefaultModal>
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
 </template>
