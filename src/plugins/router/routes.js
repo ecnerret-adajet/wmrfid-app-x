@@ -508,6 +508,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/fumigation',
+                name: 'fumigation-report',
+                component: () => import('@/pages/reports/fumigation/Index.vue'),
+                meta: {
+                    pageTitle: "Fumigation Report",
+                    breadcrumbs: [
+                            { label: "Fumigation Report", link: "/reports/fumigation" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/outbound-performance',
                 name: 'outbound-performance-report',
                 component: () => import('@/pages/reports/outbound-performance/Index.vue'),
