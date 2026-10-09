@@ -5,7 +5,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
-import { fumigationItemStatusColor, fumigationItemStatusLabel, fumigationStatusColor, fumigationStatusLabel } from '@/utils/fumigation';
+import { fumigationItemStatusColor, fumigationItemStatusLabel, fumigationStatusColor, fumigationStatusLabel, fumigationTerminationStatusColor, fumigationTerminationStatusLabel } from '@/utils/fumigation';
 import CreateFumigationRequest from './components/CreateFumigationRequest.vue';
 import SensitiveDeliveriesTable from './components/SensitiveDeliveriesTable.vue';
 import { debounce } from 'lodash';
@@ -151,10 +151,19 @@ const chamberLabel = request => request?.chamber_block
     ? `${request.chamber_block.lot?.label ?? '--'} - ${request.chamber_block.label}`
     : '—';
 
-// Status-driven actions (Phase 2): edit/cancel/remove only before every pallet is in the chamber
+// Status-driven actions: edit/cancel/remove before every pallet is in the chamber (QA/SPC),
+// early termination while fumigating (Sales requests, QA/SPC decides), release once in aeration (QA/SPC)
 const isForTransfer = request => request?.status === 'for_transfer';
-const canEnd = request => ['fumigating', 'aeration'].includes(request?.status);
+const pendingTermination = request => (request?.termination_requests ?? []).find(termination => termination.status === 'pending');
+const canEdit = request => isForTransfer(request) && authUserCan('update.fumigation.requests');
+const canRelease = request => request?.status === 'aeration' && authUserCan('approve.fumigation.requests');
+const canRequestTermination = request => request?.status === 'fumigating' && !pendingTermination(request) && authUserCan('request.fumigation.termination');
+const canDecideTermination = request => request?.status === 'fumigating' && !!pendingTermination(request) && authUserCan('approve.fumigation.requests');
+const hasActions = request => canEdit(request) || canRelease(request) || canRequestTermination(request) || canDecideTermination(request);
 const canRemoveItem = (request, item) => isForTransfer(request) && item.status === 'for_transfer' && authUserCan('update.fumigation.requests');
+
+// Fumigation date passed with pallets still outside the chamber (the scheduler also alerts on Webex)
+const isOverdue = request => isForTransfer(request) && !!request?.start_date && Moment(request.start_date).isBefore(Moment(), 'day');
 
 // --- Create ---------------------------------------------------------------------
 const showCreateFumigate = ref(false);
@@ -207,6 +216,9 @@ const requestSlocs = request => uniqueItemValues(request, 'sloc')
 // New requests link TR/TO through the chamber movement; legacy ones through the item's TO
 const itemTransferRequestNo = item => item.chamber_movement?.transfer_request?.transfer_request_id ?? item.transfer_order?.transfer_request?.transfer_request_id
 const itemTransferOrderNo = item => item.chamber_movement?.transfer_order?.transfer_order_id ?? item.transfer_order?.transfer_order_id
+// Release leg back to FG (created on Release / approved early termination)
+const itemReleaseRequestNo = item => item.fg_movement?.transfer_request?.transfer_request_id
+const itemReleaseOrderNo = item => item.fg_movement?.transfer_order?.transfer_order_id
 
 // --- Edit -----------------------------------------------------------------------
 const fumigateModal = ref(false);
@@ -269,7 +281,7 @@ const handleFumigate = async () => {
     }
 }
 
-// --- Confirmed actions: end / cancel / remove pallet ------------------------------
+// --- Confirmed actions: cancel / remove pallet / release / early termination -------
 const confirmDialog = reactive({
     show: false,
     loading: false,
@@ -278,15 +290,26 @@ const confirmDialog = reactive({
     note: '',
     confirmText: '',
     color: 'warning',
+    // Optional free-text field (termination reason / decision remarks), passed to action()
+    inputLabel: '',
+    inputRequired: false,
+    inputValue: '',
     action: null,
 });
 
-const openConfirm = (options) => Object.assign(confirmDialog, { show: true, loading: false, note: '', color: 'warning', ...options });
+const openConfirm = (options) => Object.assign(confirmDialog, {
+    show: true, loading: false, note: '', color: 'warning', inputLabel: '', inputRequired: false, inputValue: '', ...options,
+});
 
 const runConfirmedAction = async () => {
+    if (confirmDialog.inputRequired && !confirmDialog.inputValue?.trim()) {
+        showToast(`${confirmDialog.inputLabel} is required.`, 'error');
+        return;
+    }
+
     confirmDialog.loading = true;
     try {
-        const message = await confirmDialog.action();
+        const message = await confirmDialog.action(confirmDialog.inputValue?.trim() || null);
         showToast(message);
         confirmDialog.show = false;
         reloadItems();
@@ -297,16 +320,49 @@ const runConfirmedAction = async () => {
     }
 }
 
-const openEndFumigationDialog = (item) => openConfirm({
-    title: 'End Fumigation',
-    message: `End the fumigation for ${item.request_no ?? item.delivery_document ?? '—'}?`,
-    note: 'This marks the fumigation as completed and returns the pallets to GOOD. It cannot be undone.',
-    confirmText: 'End Fumigation',
+const openReleaseDialog = (item) => openConfirm({
+    title: 'Release Fumigation',
+    message: `Release ${item.request_no ?? 'this request'} (${activeItems(item).length} pallet(s)) from aeration?`,
+    note: 'A transfer back to the FG warehouse is created for each pallet. Pallets become GOOD when the operator puts them away in a regular bin.',
+    confirmText: 'Release',
+    color: 'primary',
     action: async () => {
-        await ApiService.post(`fumigations/end-fumigation/${item.id}`);
-        return 'Fumigation ended successfully';
+        await ApiService.post(`fumigations/${item.id}/release`);
+        return 'Fumigation released; transfers back to the FG warehouse were created';
     },
 });
+
+const openRequestTerminationDialog = (item) => openConfirm({
+    title: 'Request Early Termination',
+    message: `Ask QA/SPC to end ${item.request_no ?? 'this fumigation'} early?`,
+    note: 'QA/SPC is notified. If approved, the pallets go to aeration and are released back to the FG warehouse.',
+    confirmText: 'Submit Request',
+    inputLabel: 'Reason',
+    inputRequired: true,
+    action: async (reason) => {
+        await ApiService.post(`fumigations/${item.id}/termination-requests`, { reason });
+        return 'Early termination requested';
+    },
+});
+
+const openDecideTerminationDialog = (item, decision) => {
+    const termination = pendingTermination(item);
+    const approve = decision === 'approved';
+    openConfirm({
+        title: approve ? 'Approve Early Termination' : 'Reject Early Termination',
+        message: `${approve ? 'Approve' : 'Reject'} early termination of ${item.request_no ?? 'this fumigation'}? Reason given: "${termination?.reason ?? '—'}" (${termination?.requested_by?.name ?? 'unknown'}).`,
+        note: approve
+            ? 'Pallets go to aeration and transfers back to the FG warehouse are created right away.'
+            : 'The fumigation continues. Sales can submit a new request.',
+        confirmText: approve ? 'Approve' : 'Reject',
+        color: approve ? 'primary' : 'error',
+        inputLabel: 'Remarks',
+        action: async (remarks) => {
+            await ApiService.post(`fumigations/termination-requests/${termination.id}/decide`, { decision, remarks });
+            return `Early termination ${decision}`;
+        },
+    });
+};
 
 const openCancelDialog = (item) => openConfirm({
     title: 'Cancel Fumigation Request',
@@ -423,6 +479,12 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                         class="text-uppercase"
                         inline
                 ></v-badge>
+                <div v-if="isOverdue(item)">
+                    <v-chip size="x-small" color="error" variant="tonal" class="mt-1">Overdue</v-chip>
+                </div>
+                <div v-else-if="pendingTermination(item)">
+                    <v-chip size="x-small" color="warning" variant="tonal" class="mt-1">Termination requested</v-chip>
+                </div>
             </template>
 
              <template #item.action="{ item }">
@@ -433,19 +495,28 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                     >
                         <VIcon icon="ri-eye-line" />
                     </IconBtn>
-                    <v-menu v-if="authUserCan('update.fumigation.requests') && (isForTransfer(item) || canEnd(item))" location="end">
+                    <v-menu v-if="hasActions(item)" location="end">
                         <template v-slot:activator="{ props }">
                             <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey" size="small"></v-btn>
                         </template>
                         <v-list>
-                            <v-list-item v-if="isForTransfer(item)" @click="editItem(item)">
+                            <v-list-item v-if="canEdit(item)" @click="editItem(item)">
                                 <v-list-item-title>Edit</v-list-item-title>
                             </v-list-item>
-                            <v-list-item v-if="isForTransfer(item)" @click="openCancelDialog(item)">
+                            <v-list-item v-if="canEdit(item)" @click="openCancelDialog(item)">
                                 <v-list-item-title class="text-error">Cancel Request</v-list-item-title>
                             </v-list-item>
-                            <v-list-item v-if="canEnd(item)" @click="openEndFumigationDialog(item)">
-                                <v-list-item-title>End Fumigation</v-list-item-title>
+                            <v-list-item v-if="canRelease(item)" @click="openReleaseDialog(item)">
+                                <v-list-item-title>Release</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item v-if="canRequestTermination(item)" @click="openRequestTerminationDialog(item)">
+                                <v-list-item-title>Request Early Termination</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item v-if="canDecideTermination(item)" @click="openDecideTerminationDialog(item, 'approved')">
+                                <v-list-item-title>Approve Early Termination</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item v-if="canDecideTermination(item)" @click="openDecideTerminationDialog(item, 'rejected')">
+                                <v-list-item-title class="text-error">Reject Early Termination</v-list-item-title>
                             </v-list-item>
                         </v-list>
                     </v-menu>
@@ -594,6 +665,16 @@ const openRemoveItemDialog = (request, item) => openConfirm({
             <v-card-text class="px-6 pt-4">
                 <p class="text-body-1">{{ confirmDialog.message }}</p>
                 <p v-if="confirmDialog.note" class="text-body-2 text-medium-emphasis mt-2">{{ confirmDialog.note }}</p>
+                <v-textarea
+                    v-if="confirmDialog.inputLabel"
+                    v-model="confirmDialog.inputValue"
+                    :label="confirmDialog.inputRequired ? `${confirmDialog.inputLabel} *` : `${confirmDialog.inputLabel} (optional)`"
+                    rows="3"
+                    auto-grow
+                    counter="1000"
+                    maxlength="1000"
+                    class="mt-4"
+                />
             </v-card-text>
             <v-divider />
             <v-card-actions class="justify-end px-6 py-3">
@@ -655,6 +736,8 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                                 <th class="text-center text-no-wrap">Reserved Qty</th>
                                 <th class="text-no-wrap">Transfer Request</th>
                                 <th class="text-no-wrap">Transfer Order</th>
+                                <th class="text-no-wrap">Release TR</th>
+                                <th class="text-no-wrap">Release TO</th>
                                 <th class="text-center text-no-wrap">Stage</th>
                                 <th class="text-center text-no-wrap">Action</th>
                             </tr>
@@ -702,6 +785,18 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                                     </v-chip>
                                     <span v-else class="text-medium-emphasis">—</span>
                                 </td>
+                                <td class="text-no-wrap">
+                                    <v-chip v-if="itemReleaseRequestNo(fumigation_item)" color="primary" variant="tonal" size="small">
+                                        {{ itemReleaseRequestNo(fumigation_item) }}
+                                    </v-chip>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
+                                <td class="text-no-wrap">
+                                    <v-chip v-if="itemReleaseOrderNo(fumigation_item)" color="primary" variant="tonal" size="small">
+                                        {{ itemReleaseOrderNo(fumigation_item) }}
+                                    </v-chip>
+                                    <span v-else class="text-medium-emphasis">—</span>
+                                </td>
                                 <td class="text-center text-no-wrap">
                                     <v-chip
                                         :color="fumigationItemStatusColor(fumigation_item.status)"
@@ -723,7 +818,7 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                                 </td>
                             </tr>
                             <tr v-if="!(selectedFumigationRequest?.fumigation_items?.length > 0)">
-                                <td colspan="10" class="text-center text-medium-emphasis py-6">No fumigation items found.</td>
+                                <td colspan="12" class="text-center text-medium-emphasis py-6">No fumigation items found.</td>
                             </tr>
                         </tbody>
                     </v-table>
@@ -731,6 +826,47 @@ const openRemoveItemDialog = (request, item) => openConfirm({
                 <div class="text-caption text-medium-emphasis mt-2 text-right">
                     {{ activeItems(selectedFumigationRequest).length }} active of {{ selectedFumigationRequest?.fumigation_items?.length ?? 0 }} item(s)
                 </div>
+
+                <div v-if="selectedFumigationRequest?.released_at" class="text-body-2 mt-4">
+                    <span class="font-weight-bold">Released</span>
+                    {{ Moment(selectedFumigationRequest.released_at).format('MMM D, YYYY hh:mm A') }}
+                    by {{ selectedFumigationRequest.released_by?.name ?? '—' }}
+                    <template v-if="selectedFumigationRequest.early_terminated_at"> (early termination)</template>
+                </div>
+
+                <template v-if="selectedFumigationRequest?.termination_requests?.length">
+                    <div class="text-subtitle-2 font-weight-bold mt-4 mb-2">Early Termination Requests</div>
+                    <v-table density="compact" class="border rounded fumigation-details-table">
+                        <thead>
+                            <tr>
+                                <th>Requested</th>
+                                <th>Reason</th>
+                                <th class="text-center">Status</th>
+                                <th>Decided</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="termination in selectedFumigationRequest.termination_requests" :key="termination.id">
+                                <td class="text-no-wrap">
+                                    {{ termination.requested_by?.name ?? '—' }}
+                                    <div class="text-caption text-medium-emphasis">{{ termination.requested_at ? Moment(termination.requested_at).format('MMM D, YYYY hh:mm A') : '' }}</div>
+                                </td>
+                                <td style="min-width: 220px;">{{ termination.reason }}</td>
+                                <td class="text-center">
+                                    <v-chip :color="fumigationTerminationStatusColor(termination.status)" size="small" variant="tonal" class="text-uppercase font-weight-bold">
+                                        {{ fumigationTerminationStatusLabel(termination.status) }}
+                                    </v-chip>
+                                </td>
+                                <td class="text-no-wrap">
+                                    {{ termination.decided_by?.name ?? '—' }}
+                                    <div class="text-caption text-medium-emphasis">{{ termination.decided_at ? Moment(termination.decided_at).format('MMM D, YYYY hh:mm A') : '' }}</div>
+                                </td>
+                                <td>{{ termination.decision_remarks ?? '—' }}</td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </template>
             </v-card-text>
 
             <v-divider />
