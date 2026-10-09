@@ -14,3 +14,18 @@ export const fumigationStatusColor = status => FUMIGATION_STATUSES[status]?.colo
 
 export const fumigationStatusOptions = Object.entries(FUMIGATION_STATUSES)
   .map(([value, { label }]) => ({ value, title: label }))
+
+// Per-pallet stage (fumigation_items.status)
+export const FUMIGATION_ITEM_STATUSES = {
+  'for_transfer': { label: 'For Transfer', color: 'info' },
+  'fumigated': { label: 'In Chamber', color: 'warning' },
+  'aeration': { label: 'Aeration', color: 'secondary' },
+  'for_release': { label: 'For Release', color: 'primary' },
+  'completed': { label: 'Completed', color: 'success' },
+  'removed': { label: 'Removed', color: 'error' },
+  'cancelled': { label: 'Cancelled', color: 'error' },
+}
+
+export const fumigationItemStatusLabel = status => FUMIGATION_ITEM_STATUSES[status]?.label ?? status ?? '—'
+
+export const fumigationItemStatusColor = status => FUMIGATION_ITEM_STATUSES[status]?.color ?? 'secondary'
