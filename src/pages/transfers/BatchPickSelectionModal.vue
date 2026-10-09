@@ -2,7 +2,7 @@
 import { numberWithComma } from '@/composables/useHelpers';
 import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import Moment from 'moment';
-import { onMounted, ref, watch } from 'vue';
+import { defineEmits, defineProps, onMounted, ref, watch } from 'vue';
 const stoBatchPickingStore = useStoBatchPickingStore();
 
 const props = defineProps({

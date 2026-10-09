@@ -1,7 +1,8 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
 import axios from 'axios';
-import { computed, onMounted, reactive, watch } from 'vue';
+import moment from 'moment';
+import { computed, defineEmits, defineProps, onMounted, reactive, watch } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 
 const props = defineProps({
@@ -11,7 +12,13 @@ const props = defineProps({
     selectedPallets: {
         type: Array,
         default: () => []
-    }
+    },
+    canAddPallet: {
+        type: Boolean,
+        default: true
+    },
+    openQuantity: Number,
+    uom: String
 });
 
 const selectedPallets = ref([...props.selectedPallets]);
@@ -41,8 +48,15 @@ const emit = defineEmits(['update:selectedPallets']);
 
 const assignPallet = (inventory) => {
     toast.value.show = false
-    const existingPallet = selectedPallets.value.find(p => p.physical_id === inventory.physical_id);
+    if (isInventoryReserved(inventory)) {
+        toast.value.message = `PHYSICAL ID ${inventory.physical_id} is already reserved and cannot be selected.`;
+        toast.value.color = 'error';
+        toast.value.show = true;
+        return;
+    }
 
+    const existingPallet = selectedPallets.value.find(p => p.physical_id === inventory.physical_id);
+   
     if (existingPallet) {
         // Pallet found, so remove it and show a removal message.
         selectedPallets.value = selectedPallets.value.filter(p => p.physical_id !== inventory.physical_id);
@@ -50,19 +64,26 @@ const assignPallet = (inventory) => {
         toast.value.color = 'warning'; // Or a different color like 'warning'
         toast.value.show = true;
     } else {
+        
+        if (!props.canAddPallet) {
+            toast.value.message = `Cannot add more pallets. Total allocated quantity already reached the open quantity (${props.openQuantity} ${props.uom ?? ''}).`;
+            toast.value.color = 'error';
+            toast.value.show = true;
+            return;
+        }
 
         const batch = props.selectedBatches.find(b => b.BATCH === inventory.batch);
-
+        
         if (batch) {
             // Count how many pallets from this batch are already selected.
             const selectedCountForBatch = selectedPallets.value.filter(p => p.batch === inventory.batch).length;
 
             // Check if adding this pallet will exceed the batch's limit.
             if (selectedCountForBatch >= batch.pallet_quantity) {
-                toast.value.message = `Cannot add more than ${batch.pallet_quantity} pallet(s) for batch ${inventory.batch}.`;
+                toast.value.message = `Cannot add more than ${batch.pallet_quantity} pallets for batch ${inventory.batch}.`;
                 toast.value.color = 'error';
                 toast.value.show = true;
-                return;
+                return; 
             }
         }
 
@@ -97,33 +118,76 @@ const filteredLayout = computed(() => {
     const selectedBatchesSet = new Set(props.selectedBatches.map(b => b.BATCH));
     const hasSelectedBatches = selectedBatchesSet.size > 0;
 
-    // If no batches are selected, return the layout without any modifications
+    // Create a Set of selected physical IDs for efficient pallet selection lookup
+    const selectedPalletsSet = new Set(selectedPallets.value.map(p => p.physical_id));
+
+    // If no batches are selected, return default states
     if (!hasSelectedBatches) {
-        return state.layout.map(item => ({ ...item, dimmed: false, clickable: true }));
+        return state.layout.map(item => {
+            // Even if no batch filters are on, check if this block contains manually selected pallets
+            const hasSelectedPallets = item.inventories 
+                ? item.inventories.some(inv => selectedPalletsSet.has(inv.physical_id))
+                : false;
+
+            return { 
+                ...item, 
+                dimmed: false, 
+                clickable: true, 
+                isFullyReserved: false,
+                isAvailable: false,
+                hasSelectedPallets
+            };
+        });
     }
 
-    // Filter based on selected batches
     return state.layout.map(item => {
         let matchedByBatch = false;
+        let isFullyReserved = false;
+        let hasSelectedPallets = false;
 
-        if (item.type === 'block' && item.inventories) {
-            matchedByBatch = item.inventories.some(inventory =>
+        if (item.type === 'block' && item.inventories && item.inventories.length > 0) {
+
+            // Check if any inventory item in this block has been clicked/selected by the user
+            hasSelectedPallets = item.inventories.some(inventory => 
+                selectedPalletsSet.has(inventory.physical_id)
+            );
+
+            // Get only the inventories that match the selected batches
+            const matchingInventories = item.inventories.filter(inventory =>
                 selectedBatchesSet.has(inventory.batch)
             );
-        } else {
-            matchedByBatch = false;
+
+            matchedByBatch = matchingInventories.length > 0;
+
+            // Check reservation status ONLY if the batch matches
+            if (matchedByBatch) {
+                isFullyReserved = matchingInventories.every(isInventoryReserved);
+            }
         }
 
-        const dimmed = !matchedByBatch;
+        // NEW HIERARCHY LOGIC:
+        // 1. If it has manually selected pallets, it turns BLUE (hasSelectedPallets = true).
+        //    We turn off orange/green flags for this block so styles don't conflict.
+        // 2. If not selected, and it's fully reserved, it turns ORANGE.
+        // 3. If not selected, not reserved, and batch matches, it turns GREEN.
+        const finalSelected = hasSelectedPallets;
+        const finalFullyReserved = !finalSelected && isFullyReserved;
+        const isAvailable = !finalSelected && matchedByBatch && !finalFullyReserved; 
+
+        // Keep clickable rules tied to batch matching
         const clickable = matchedByBatch;
 
         return {
             ...item,
-            dimmed,
-            clickable
+            dimmed: !matchedByBatch, 
+            clickable,
+            isFullyReserved: finalFullyReserved,
+            isAvailable,
+            hasSelectedPallets: finalSelected
         };
     });
 });
+
 
 const mapLoading = ref(false);
 const fetchStorageLocationInformation = async () => {
@@ -169,38 +233,92 @@ function handleBlockClick(item) {
 
 const isBatchDisabled = batch => !props.selectedBatches.some(selected => selected.BATCH === batch);
 
+const isReservationFlagSet = value => value === true || value === 1 || value === '1';
+
+const activeReservedPallets = (inventory) => {
+    const reservations = [];
+    const deliveryPallets = Array.isArray(inventory?.delivery_reserved_pallet)
+        ? inventory.delivery_reserved_pallet
+        : (inventory?.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
+
+    if (isReservationFlagSet(inventory?.is_reserved)) {
+        reservations.push(...deliveryPallets
+            .filter(pallet => pallet?.cancelled_at == null)
+            .map(pallet => ({ ...pallet, reservation_type: 'delivery' })));
+    }
+
+    if (isReservationFlagSet(inventory?.is_sto_reserved)) {
+        const stoItems = Array.isArray(inventory.sto_transaction_items)
+            ? inventory.sto_transaction_items
+            : (inventory.sto_transaction_items ? [inventory.sto_transaction_items] : []);
+        const latestStoItem = stoItems.reduce((latest, item) => {
+            if (!latest) return item;
+            const latestTime = Date.parse(latest.created_at ?? latest.updated_at ?? '') || Number(latest.id) || 0;
+            const itemTime = Date.parse(item.created_at ?? item.updated_at ?? '') || Number(item.id) || 0;
+            return itemTime > latestTime ? item : latest;
+        }, null);
+
+        reservations.push({
+            ...(latestStoItem ?? {}),
+            reservation_type: 'sto',
+            sto_transaction: latestStoItem?.sto_transaction
+        });
+    }
+
+    return reservations;
+};
+
+const isInventoryReserved = (inventory) =>
+    isReservationFlagSet(inventory?.is_sto_reserved) || activeReservedPallets(inventory).length > 0;
+
+const reservedPalletQuantity = (pallet) => {
+    return Number(pallet?.total_qty ?? 0);
+}
+
+const reservationDescription = (reservation) => {
+    if (reservation.reservation_type === 'sto') {
+        const transaction = reservation.sto_transaction;
+        const userName = transaction?.processed_by?.name ?? '—';
+        
+        // Format the date using moment if it exists, otherwise fallback to '—'
+        const formattedDate = transaction?.created_at 
+            ? moment(transaction.created_at).format('MM/DD/YY h:mm A') 
+            : '—';
+
+        return `STO (${transaction?.po_number ?? '—'} / ${transaction?.po_item ?? '—'})`;
+    }
+
+    return `${reservation?.ship_to_name ?? reservation?.sold_to_name ?? '—'} (${reservation?.delivery_document ?? '—'}) - Qty: ${reservedPalletQuantity(reservation)}`;
+}
+
 </script>
 
 <template>
     <div class="grid-scroll-wrapper">
         <v-progress-linear v-if="mapLoading" indeterminate color="primary"></v-progress-linear>
-        <GridLayout class="border mt-2 grid-layout" v-model:layout="filteredLayout" v-else :col-num="130"
-            :row-height="25" style="min-height: 200px;" :is-draggable="false" :is-resizable="false" :responsive="false"
-            :vertical-compact="false" :prevent-collision="true" :use-css-transforms="true" :margin="[2, 0]">
+        <GridLayout class="border mt-2 grid-layout" v-model:layout="filteredLayout"
+            v-else :col-num="130" :row-height="25" style="min-height: 200px;"
+            :is-draggable="false" :is-resizable="false" :responsive="false" :vertical-compact="false"
+            :prevent-collision="true" :use-css-transforms="true" :margin="[2, 0]">
             <GridItem v-for="item in filteredLayout" :key="item.i" :static="item.static" :x="item.x" :y="item.y"
                 :w="item.w" :h="item.h" :i="item.i" :min-w="2.5" :min-h="2" :class="{
                     'cursor-pointer': item.type !== 'lot' && item.clickable,
                     'bg-legend': item.type === 'lot' && (item.legend_only === true),
                     'bg-primary-light': item.type === 'lot' && !item.legend_only,
                     'under-fumigation': item.under_fumigation,
-                    'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
-                    'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
-                    'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
-                    'layer-4': item.type !== 'lot' && item.inventoriesCount === 4,
-                    'empty-layer': item.type !== 'lot' && item.inventoriesCount === 0,
-                    'dimmed-block': item.dimmed,
-                    'highlighted-block': !item.dimmed
-                }" @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)" :is-resizable="false">
+                    'selected-blue': item.hasSelectedPallets,
+                    'fully-reserved-block': item.isFullyReserved, /* Hierarchy Step 1: Orange */
+                    'available-green': item.isAvailable,           /* Hierarchy Step 2: Green */
+                }" @click="item.type !== 'lot' && item.clickable && handleBlockClick(item)"
+                :is-resizable="false">
 
-                <div v-if="item.type === 'lot' && (item.legend_only || item.legend_only === true)" class="legend-text">
+                <div v-if="item.type === 'lot' && (item.legend_only || item.legend_only === true)"
+                    class="legend-text">
                     {{ item.label }}
                 </div>
 
-                <div v-else class="text" :class="{
-                    'dimmed-block': item.dimmed,
-                    'highlighted-block': !item.dimmed
-                }">
-                    {{ item.label }}
+                <div v-else class="text">
+                     {{ item.label }}
                 </div>
             </GridItem>
         </GridLayout>
@@ -212,16 +330,32 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
                     Bin Information
                 </div>
+                <p class="text-h3 font-weight-black text-grey-700">{{ selectedBlock.lot?.label }} - {{ selectedBlock.label }}</p>
             </v-card-title>
             <v-card-text>
                 <div class="px-4 mt-4 mx-2 text-h5">
                     <VList class="py-0 mt-3" lines="two" border rounded density="compact">
                         <template v-for="(layer, index) of selectedBlock.layers" :key="layer.layer_name">
-                            <VListItem class="py-0 px-0" :class="[
-                                selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
-                                layer.assigned_inventory && (isBatchDisabled(layer.assigned_inventory.batch) || layer.assigned_inventory.is_reserved) ? 'v-list-item--disabled' : ''
-                            ]"
-                                :disabled="!!layer.assigned_inventory && (Boolean(isBatchDisabled(layer.assigned_inventory.batch)) || Boolean(layer.assigned_inventory.is_reserved))">
+                            <VListItem
+                                class="py-0 px-0"
+                                :class="[
+                                    selectedLayerIndex === index ? 'bg-primary-light' : 'bg-transparent',
+                                    layer.assigned_inventory &&
+                                    (
+                                        isBatchDisabled(layer.assigned_inventory.batch) ||
+                                        isInventoryReserved(layer.assigned_inventory)
+                                    )
+                                        ? 'v-list-item--disabled'
+                                        : ''
+                                ]"
+                                :disabled="
+                                    !!layer.assigned_inventory &&
+                                    (
+                                        Boolean(isBatchDisabled(layer.assigned_inventory.batch)) ||
+                                        isInventoryReserved(layer.assigned_inventory)
+                                    )
+                                "
+                            >
                                 <template v-if="layer.assigned_inventory">
                                     <VListItem :class="[layer.layer_class,
                                     (selectedLayerIndex === index) ? 'highlighted-item' : '']">
@@ -229,28 +363,49 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                             <div class="assigned-info text-h5 text-grey-800 ">
                                                 <div class="assigned-row">
                                                     <span class="label">Batch: </span>
-                                                    <span class="value font-weight-bold">{{
-                                                        layer.assigned_inventory?.batch }}</span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.batch }}</span>
                                                 </div>
                                                 <div class="assigned-row">
                                                     <span class="label">Physical ID: </span>
-                                                    <span class="value font-weight-bold">{{
-                                                        layer.assigned_inventory?.physical_id }}</span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.physical_id }}</span>
                                                 </div>
                                                 <div class="assigned-row">
                                                     <span class="label">Quantity: </span>
-                                                    <span class="value font-weight-bold">{{
-                                                        layer.assigned_inventory?.quantity }}</span>
+                                                    <span class="value font-weight-bold">{{ layer.assigned_inventory?.quantity }}</span>
+                                                </div>
+
+                                                <div v-if="activeReservedPallets(layer.assigned_inventory).length" class="pt-0">
+                                                    <div
+                                                        v-for="(reservedPallet, reservedIndex) in activeReservedPallets(layer.assigned_inventory)"
+                                                        :key="reservedPallet.id ?? reservedIndex"
+                                                        class="assigned-row reserved-row text-h5 font-italic"
+                                                    >
+                                                        <span class="label mr-2">Reserved to:</span>
+                                                        <span
+                                                            class="reserved-value"
+                                                            :title="reservationDescription(reservedPallet)"
+                                                        >
+                                                            {{ reservationDescription(reservedPallet) }}
+                                                        </span>
+                                                        <!-- Display reservation details on new line including who reserved it and when -->
+                                                        <div class="assigned-row reserved-row text-subtitle-1 font-italic">
+                                                            <span class="label">Reserved by: </span>
+                                                            <span class="value font-weight-bold">{{ reservedPallet?.created_by?.name ?? reservedPallet?.sto_transaction?.processed_by?.name ?? '—' }}</span>
+                                                            <span class="label ml-2">on: </span>
+                                                            <span class="value font-weight-bold">{{ reservedPallet?.created_at ? moment(reservedPallet.created_at).format('MM/DD/YY h:mm A') : '—' }}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </VListItemTitle>
                                         <template #append>
                                             <div class="d-flex gap-1">
-                                                <v-btn @click="assignPallet(layer.assigned_inventory)"
-                                                    :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'">
-                                                    {{
-                                                        isSelected(layer.assigned_inventory) ? 'Selected' : 'Assign'
-                                                    }}
+                                                <v-btn
+                                                    @click="assignPallet(layer.assigned_inventory)"
+                                                    :color="isSelected(layer.assigned_inventory) ? 'primary-light' : 'success'"
+                                                    :disabled="isBatchDisabled(layer.assigned_inventory.batch) || isInventoryReserved(layer.assigned_inventory)"
+                                                >
+                                                    {{ isSelected(layer.assigned_inventory) ? 'Selected' : '&nbsp Assign &nbsp' }}
                                                 </v-btn>
                                             </div>
                                         </template>
@@ -260,8 +415,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
                                 <template v-if="!layer.assigned_inventory">
                                     <VListItem>
                                         <VListItemTitle>
-                                            <span
-                                                :class="selectedLayerIndex === index ? 'text-grey-100' : 'text-grey-700'"
+                                            <span :class="selectedLayerIndex === index ? 'text-grey-100' : 'text-grey-700'"
                                                 class="text-h5 font-weight-bold">Empty</span>
                                         </VListItemTitle>
                                     </VListItem>
@@ -277,7 +431,7 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
             </v-card-text>
         </v-card>
     </v-dialog>
-    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
 </template>
 
 <style scoped>
@@ -296,9 +450,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .dimmed-block {
-    opacity: 0.2;
+    opacity: 0.9;
     pointer-events: none;
-    transition: opacity 0.6s ease;
 }
 
 .bg-legend {
@@ -324,8 +477,8 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 }
 
 .highlighted-block {
-    opacity: 1;
     pointer-events: auto;
+    background-color: rgb(45, 71, 6);
     transition: opacity 0.6s ease;
 }
 
@@ -394,5 +547,24 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
     border: 1px solid black;
     margin-top: 10px;
     padding: 1px;
+}
+
+.fully-reserved-block {
+    background-color: #ffc107 !important; /* Amber/Yellow warning color example */
+    border: 2px solid #ff9800 !important;
+    color: #000000 !important;
+    opacity: 0.85;
+}
+
+.available-green {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.selected-blue {
+    background-color: #2196f3 !important; 
+    border: 1px solid #0d8aee !important;
+    color: #ffffff !important;
+    font-weight: bold;
 }
 </style>

@@ -946,6 +946,22 @@ export const routes = [
             },
         },
         {
+            path: '/sto-batch-picking/:po_number/:po_item/batch-selection',
+            name: 'sto-batch-selection',
+            component: () => import('@/pages/transfers/stoBatchSelection.vue'),
+            meta: {
+                pageTitle: "STO - Batch Selection"
+            },
+        },
+        {
+            path: '/sto-batch-picking/:po_number/:po_item/warehouse-map',
+            name: 'sto-warehouse-map',
+            component: () => import('@/pages/transfers/stoWarehouseMap.vue'),
+            meta: {
+                pageTitle: "STO - Warehouse Map"
+            },
+        },
+        {
             path: '/:pathMatch(.*)*',
             name: 'error',
             component: () => import('@/pages/[...error].vue'),

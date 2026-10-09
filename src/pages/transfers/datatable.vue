@@ -8,10 +8,9 @@ import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
-import { ref } from 'vue';
+import { defineEmits, defineExpose, defineProps, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
-import BatchPickSelectionModal from './BatchPickSelectionModal.vue';
 import PalletAssignModal from './PalletAssignModal.vue';
 
 const stoBatchPickingStore = useStoBatchPickingStore();
@@ -208,11 +207,10 @@ const selectedItemForPallet = ref(null);
 const handleAction = async (sto, action) => {
     stoData.value = sto;
     selectedItemForPallet.value = sto
+    stoBatchPickingStore.selectedPoItem = sto;
     if (action == 'batch_pick') {
-        batchPickModalOpen.value = true;
+        router.push({ name: 'sto-batch-selection', params: { po_number: sto.po_number, po_item: sto.po_item } });
     } else if (action == 'view_reserved_pallets') {
-        viewReservedPallets.value = true;
-    } else if (action == 'pallet_assignment') {
         try {
             isLoading.value = true;
             // Call the API endpoint (adjust the URL/payload format if needed)
@@ -220,7 +218,7 @@ const handleAction = async (sto, action) => {
 
             // If the API returns true directly or inside data (e.g., response.data === true)
             if (response.data?.batch_picked) {
-                palletModalOpen.value = true;
+                viewReservedPallets.value = true;
             } else {
                 // Show SweetAlert2 warning if false
                 Swal.fire({
@@ -262,31 +260,19 @@ const handleBatchPickSave = async ({ transport, batches, is_alc_managed }) => {
     saveLoading.value = true;
     try {
         // 2. Build the dynamic endpoint URL and send the POST request
-        const response = await ApiService.post(`transfer-orders/sto-batch-pick/${poNumber}/${poItem}/save`, {
-            transport: transport,
-            batches: batches,
-            is_alc_managed: is_alc_managed,
-            material_code: stoData.value?.material_code,
-            plant: stoData.value?.supplying_order_plant?.plant_code
-        });
+        // const response = await ApiService.post(`transfer-orders/sto-batch-pick/${poNumber}/${poItem}/save`, {
+        //     transport: transport,
+        //     batches: batches,
+        //     is_alc_managed: is_alc_managed,
+        //     material_code: stoData.value?.material_code,
+        //     plant: stoData.value?.supplying_order_plant?.plant_code
+        // });
 
         // 3. Handle successful processing
         batchPickModalOpen.value = false;
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Saved Successfully',
-            text: 'Batch picking selection has been saved.',
-            confirmButtonColor: '#00833c',
-            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
-        });
 
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{ key: 'updated_at', order: 'desc' }],
-            search: props.search
-        })
+        stoBatchPickingStore.setOriginalBatchList(batches);
+        router.push({ name: 'sto-warehouse-map', params: { po_number: poNumber, po_item: poItem } });
 
     } catch (error) {
         console.error('Failed to save batch picking:', error);
@@ -394,20 +380,20 @@ const savePalletAssignment = async ({ pallets, transport_number }) => {
         });
     } finally {
         isSaving.value = false;
+        palletModalOpen.value = false;
     }
 };
 
 const cancelConfirmationModal = ref(false);
 const selectedCancelItem = ref(null)
-const cancelReservation = async ({ item }) => {
-    console.log(item)
-    selectedCancelItem.value = item;
+const cancelReservation = async () => {
+    selectedCancelItem.value = stoBatchPickingStore.selectedPoItem;
     cancelConfirmationModal.value = true;
 };
 
-const cancelReserveLoading = ref(false);
-const cancelReserve = async () => {
-    cancelReserveLoading.value = true;
+const cancelProposalLoading = ref(false);
+const cancelProposal = async () => {
+    cancelProposalLoading.value = true;
     try {
         // Call your API to cancel the reservation
         await ApiService.post('transfer-orders/transfer-order-remove', {
@@ -442,7 +428,8 @@ const cancelReserve = async () => {
             confirmButtonText: '<span style="color: #ffffff;">OK</span>'
         });
     } finally {
-        cancelReserveLoading.value = false;
+        cancelProposalLoading.value = false;
+        
     }
 };
 
@@ -630,20 +617,12 @@ defineExpose({
                             Picking</v-list-item>
                         <!-- <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
                             @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item> -->
-                        <v-list-item  @click="handleAction(item, 'pallet_assignment')">Pallet Assignment</v-list-item>
+                        <v-list-item  @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
                     </v-list>
                 </v-menu>
             </div>
         </template>
     </VDataTableServer>
-
-    <BatchPickSelectionModal
-        :show="batchPickModalOpen"
-        :item="stoData"
-        @close="closeBatchPickModal"
-        @save="handleBatchPickSave"
-        @cancel-reservation="cancelReservation"
-    />
 
     <v-dialog v-model="cancelConfirmationModal" min-width="400px" max-width="600px">
         <v-card class="pa-6 rounded-lg" color="surface">
@@ -657,8 +636,9 @@ defineExpose({
                 ></v-icon>
                 
                 <h3 class="text-h5 font-weight-bold mb-2">Cancel Batch Reservation?</h3>
-                <p class="text-body-2 text-medium-emphasis mb-5">
-                    Are you sure you want to cancel this batch assignment? This action cannot be undone.
+                <p class="text-body-1 text-medium-emphasis mb-5">
+                    Are you sure you want to cancel this batch assignment? The pallets will be released and made
+                    available for delivery batch reservation or another STO picking.
                 </p>
 
                 <!-- Metadata Details Container -->
@@ -669,6 +649,9 @@ defineExpose({
                         
                         <v-col cols="5" class="font-weight-bold ">PO Item:</v-col>
                         <v-col cols="7">{{ selectedCancelItem?.po_item || 'N/A' }}</v-col>
+
+                        <v-col cols="5" class="font-weight-bold ">Pallets to Cancel:</v-col>
+                        <v-col cols="7">{{ selectedCancelItem?.sto_transactions?.[0]?.items?.length ?? 0 }}</v-col>
 
                         <!-- <v-col cols="5" class="font-weight-bold" v-if="selectedCancelItem.sto_transactions?.[0]?.transport_number !== 'N/A' || selectedCancelItem.transport_number !== null">Transport No:</v-col>
                         <v-col cols="7" v-if="selectedCancelItem.sto_transactions?.[0]?.transport_number !== 'N/A' || selectedCancelItem.transport_number !== null">{{ selectedCancelItem?.transport?.transport_number || 'N/A' }}</v-col>
@@ -719,8 +702,8 @@ defineExpose({
                     </v-btn>
                     <v-btn 
                         color="error" 
-                        @click="cancelReserve" 
-                        :loading="cancelReserveLoading" 
+                        @click="cancelProposal" 
+                        :loading="cancelProposalLoading" 
                         class="px-6"
                     >
                         Yes, Proceed
@@ -742,6 +725,67 @@ defineExpose({
         @updated="fetchStockTransferDetails"
     />
 
+    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+        <v-card elevation="2">
+            <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
+                <div class="text-h4 font-weight-bold ps-2 text-primary">
+                    Reserved Pallets
+                </div>
+                <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
+            </v-card-title>
+            <v-card-text>
+                <v-row dense class="mx-4 mb-4">
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">PO Number</div>
+                        <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.po_number || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">PO Item</div>
+                        <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.po_item || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">PO Quantity</div>
+                        <div class="font-weight-bold">
+                            {{ Number(stoBatchPickingStore.selectedPoItem?.qty ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                            {{ stoBatchPickingStore.selectedPoItem?.uom || '' }}
+                        </div>
+                    </v-col>
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">Open Quantity</div>
+                        <div class="font-weight-bold">
+                            {{ Number(stoBatchPickingStore.selectedPoItem?.open_quantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                            {{ stoBatchPickingStore.selectedPoItem?.uom || '' }}
+                        </div>
+                    </v-col>
+                </v-row>
+                <v-table density="compact" class="elevation-0 border mx-4">
+                    <thead>
+                        <tr>
+                            <th>Physical ID</th>
+                            <th>Batch Code</th>
+                            <th>Mfg Date</th>
+                            <th class="text-center">Take Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in stoBatchPickingStore.selectedPoItem.sto_transactions?.[0]?.items">
+                            <td>{{ item.physical_id }}</td>
+                            <td>{{ item.batch }}</td>
+                            <td>{{ item.mfg_date ? moment(item.mfg_date).format('YYYY-MM-DD') : '-'}}</td>
+                            <td class="text-center">{{ item.quantity }} {{ item.uom }}</td>
+                        </tr>
+                    </tbody>
+                </v-table>
+                <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
+                        type="button">Close</v-btn>
+                    <v-btn color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
+                        Reservation</v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+  
 </template>
 
 <style scoped>

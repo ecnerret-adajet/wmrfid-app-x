@@ -285,21 +285,9 @@ const handleBatchPickSave = async ({ transport, batches, is_alc_managed }) => {
 
         // 3. Handle successful processing
         batchPickModalOpen.value = false;
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Saved Successfully',
-            text: 'Batch picking selection has been saved.',
-            confirmButtonColor: '#00833c',
-            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
-        });
 
-        loadItems({
-            page: page.value,
-            itemsPerPage: itemsPerPage.value,
-            sortBy: [{ key: 'updated_at', order: 'desc' }],
-            search: props.search
-        })
+        stoBatchPickingStore.setOriginalBatchList(batches);
+        router.push({ name: 'sto-warehouse-map', params: { po_number: poNumber, po_item: poItem } });
 
     } catch (error) {
         console.error('Failed to save batch picking:', error);

@@ -5,7 +5,7 @@ import ApiService from '@/services/ApiService';
 import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineEmits, defineProps, onMounted, ref, watch } from 'vue';
 
 const goodsReceiptStore = useGoodsReceiptStore();
 const { filters } = storeToRefs(goodsReceiptStore);
@@ -71,13 +71,15 @@ const truckscaleType = computed(() => {
 });
 
 const transportHeaders = [
-    { title: '', key: 'select', sortable: false, width: '60px' },
     { title: 'Transport Number', key: 'transport_number', sortable: false },
-    { title: 'Net Weight', key: 'net_weight', sortable: false },
-    { title: 'Tare Weight', key: 'tare_weight', sortable: false }
+    { title: 'Driver', key: 'driver_name', sortable: false },
+    { title: 'Vehicle Plate', key: 'plate_number', sortable: false },
 ];
 
-const truckscaleTransports = computed(() => selectedTruckscale.value?.transports || []);
+const truckscaleTransports = computed(() => {
+    const transport = selectedTruckscale.value?.transport;
+    return transport ? [transport] : [];
+});
 
 const truckscaleSearch = ref('');
 
@@ -88,7 +90,7 @@ const fetchTruckscales = async (query = '') => {
     truckscalesLoading.value = true;
     try {
         const trimmed = String(query || '').trim();
-        const response = await ApiService.query(`transfers/get-truckscales/${poNumber}`, {
+        const response = await ApiService.query(`transfers/get-truckscales/${poNumber}/${getPlantCode()}`, {
             params: trimmed ? { search: trimmed } : {}
         });
         const data = response.data?.data ?? response.data;
@@ -111,10 +113,10 @@ const onTruckscaleSearchInput = (val) => {
     }
 };
 
-const getTruckscaleTitle = (ts) => ts?.truckscale_number || ts?.ticket_number || ts?.name || ts?.id || '';
+const getTruckscaleTitle = (ts) => ts?.truckscale_no || '';
 
 watch(selectedTruckscale, () => {
-    selectedTransportNumber.value = null;
+    selectedTransportNumber.value = selectedTruckscale.value?.transport?.transport_number || null;
 });
 
 watch(selectedTransportNumber, (val) => {
@@ -169,9 +171,6 @@ const fetchMaterialConversion = async () => {
 };
 
 const fetchPallets = async (query = '') => {
-    const transportNumber = selectedTransport.value?.transport_number;
-    if (!transportNumber) return;
-
     isLoading.value = true;
     try {
         const payload = {
@@ -182,7 +181,6 @@ const fetchPallets = async (query = '') => {
             material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
             po_number: props.item?.po_number || props.item?.po_number,
             po_item: props.item?.po_item || props.item?.po_item,
-            transport_number: transportNumber,
         };
         const response = await ApiService.post('/transfers/pallet-list', payload);
         availablePallets.value = response.data.data;
@@ -203,7 +201,7 @@ const fetchAssignedPallets = async () => {
             po_number: props.item?.po_number || props.item?.po_number,
             po_item: props.item?.po_item || props.item?.po_item,
             material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
-            transport_number: selectedTransport.value?.transport_number,
+            transport_number: selectedTransportNumber.value,
         };
         const response = await ApiService.post('transfers/get-assigned-pallets', payload);
         console.log('Assigned pallets response:', response.data);  
@@ -385,16 +383,6 @@ const removePallet = async (item) => {
 };
 
 const handleSave = () => {
-    const transportNumber = selectedTransport.value?.transport_number;
-    if (!transportNumber) {
-        toast.value = {
-            message: 'Transport number is missing.',
-            color: 'error',
-            show: true
-        };
-        return;
-    }
-
     // 1. Filter out only the pallets that aren't assigned yet
     const newPallets = addedPallets.value.filter(p => !p.is_assigned);
 
@@ -415,7 +403,7 @@ const handleSave = () => {
 
     emit('save', {
         pallets: formattedPallets,
-        transport_number: transportNumber,
+        transport_number: getTransportNumber(),
     });
 };
 
@@ -527,7 +515,7 @@ const getAllowedBatches = (item) => {
                             <div><strong>Material Desc:</strong> {{ item?.material_description || item.material_description }}</div>
                             <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.qty || item.qty) }} {{ item?.uom || item.uom }}</div>
                             <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.open_quantity || item.open_quantity) }} {{ item?.uom || item.uom }}</div>
-                            <div class="mt-2" style="min-width: 320px">
+                            <div class="mt-4" style="min-width: 320px">
                                 <v-autocomplete
                                     v-model="selectedTruckscale"
                                     v-model:search="truckscaleSearch"
@@ -559,7 +547,6 @@ const getAllowedBatches = (item) => {
                 </div>
 
                 <div v-if="truckscaleType === 'gi_sto'" class="mb-4">
-                    <div class="text-subtitle-1 font-weight-bold mb-2">Select Transport</div>
                     <v-data-table
                         :headers="transportHeaders"
                         :items="truckscaleTransports"
@@ -567,10 +554,14 @@ const getAllowedBatches = (item) => {
                         density="compact"
                         hide-default-footer
                     >
-                        <template #item.select="{ item: transport }">
-                            <v-radio-group v-model="selectedTransportNumber" hide-details density="compact">
-                                <v-radio :value="transport.transport_number" density="compact" />
-                            </v-radio-group>
+                        <template #item.transport_number="{ item: transport }">
+                            {{ getTransportNumber(transport) }}
+                        </template>
+                        <template #item.driver_name="{ item: transport }">
+                            {{ getDriverName(transport) }}
+                        </template>
+                        <template #item.plate_number="{ item: transport }">
+                            {{ getPlateNumber(transport) }}
                         </template>
                         <template #no-data>
                             <div class="pa-4 text-center text-grey">No transports available.</div>

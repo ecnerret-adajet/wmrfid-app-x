@@ -420,7 +420,7 @@ const proceedReserve = async () => {
                     </tbody>
                     <tbody v-else>
                         <tr style="height: 200px;">
-                            <td colspan="6" class="text-center align-middle text-h4 text-grey-500">
+                            <td colspan="7" class="text-center align-middle text-h4 text-grey-500">
                                 No selected pallets yet --
                             </td>
                         </tr>
