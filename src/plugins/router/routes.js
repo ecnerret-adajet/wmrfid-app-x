@@ -730,15 +730,10 @@ export const routes = [
         },
 
         {
+            // Retired nomination screen: QA/SPC encodes every request from the fumigation page's create form
             path: '/:plant_code/:sloc/:forklift/fumigation',
             name: 'fumigation-nomination',
-            component: () => import('@/pages/fumigation/FumigationNomination.vue'),
-            meta: {
-                pageTitle: 'Fumigation Nomination',
-                breadcrumbs: (route) => [
-                    { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation` }
-                ],
-            },
+            redirect: { name: 'fumigations', query: { create: '1' } },
         },
 
       ],

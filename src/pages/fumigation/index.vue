@@ -11,6 +11,10 @@ import SensitiveDeliveriesTable from './components/SensitiveDeliveriesTable.vue'
 import { debounce } from 'lodash';
 import Moment from 'moment';
 import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
 
 const serverItems = ref([]);
 const plantsOption = ref([]);
@@ -168,6 +172,13 @@ const createFumigationFor = (delivery) => {
     prefillDelivery.value = delivery;
     showCreateFumigate.value = true;
 }
+
+// Nav "Create" (and the retired nomination URL) land here with ?create=1; wait for plants so the form has a default plant
+watch(() => [route.query.create, plantsLoaded.value], ([create, loaded]) => {
+    if (!create || !loaded) return;
+    router.replace({ query: { ...route.query, create: undefined } });
+    if (authUserCan('create.fumigation.requests')) createFumigation();
+}, { immediate: true });
 
 const onCreated = () => {
     showCreateFumigate.value = false;

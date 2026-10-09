@@ -163,9 +163,9 @@ const proceedMapping = () => {
             title: 'Entries',
             to: '/fumigations',
         }" />
-        <VerticalNavLink :item="{
+        <VerticalNavLink v-if="authUserCan('create.fumigation.requests')" :item="{
             title: 'Create',
-            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/fumigation`,
+            to: '/fumigations?create=1',
         }" />
     </VerticalNavGroup>
 
