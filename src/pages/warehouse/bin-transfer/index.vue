@@ -34,6 +34,7 @@
             </v-btn> -->
               <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
             <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
+            <v-select style="max-width: 180px; min-width: 140px;" v-model="filters.transfer_type" :items="transferTypeOptions" label="Type" density="compact" variant="outlined" hide-details clearable />
             <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
@@ -55,7 +56,8 @@
                 item-value="id"
             >
                 <template #item.transfer_request_id="{ item }">
-                    <span>{{ item.transfer_request_id }}</span><br />
+                    <span>{{ item.transfer_request_id }}</span>
+                    <v-chip v-if="item.is_fumigation" size="x-small" color="secondary" class="ms-2">Fumigation</v-chip><br />
                     <span v-if="item.transfer_request" class="text-subtitle-1">
                       {{ item.transfer_request ? moment(item.transfer_request.created_at).format('MM/DD/YY hh:mmA') : '-' }}
                     </span>
@@ -87,11 +89,23 @@
                     <v-chip v-else-if="item.status === 2 || item.status === '2'" size="small" dark color="success">
                         Approved
                     </v-chip>
+                    <v-chip v-else-if="item.status === 3 || item.status === '3'" size="small" dark color="error">
+                        Rejected
+                    </v-chip>
                 </template>
 
                 <template #item.putaway_status="{ item }">
                    <v-chip v-if="item.transfer_request?.status === 4 || item.transfer_request?.status === '4'" size="small" dark color="success">
                         Completed
+                    </v-chip>
+                    <v-chip v-else-if="Number(item.transfer_request?.status) === 9" size="small" dark color="success">
+                        Fumigated
+                    </v-chip>
+                    <v-chip v-else-if="Number(item.transfer_request?.status) === 7" size="small" dark color="error">
+                        Cancelled
+                    </v-chip>
+                    <v-chip v-else-if="Number(item.transfer_request?.status) === 14" size="small" dark color="info">
+                        For Fumigation
                     </v-chip>
                     <v-chip v-else size="small" dark color="info">
                         For Putaway
@@ -363,6 +377,9 @@
                 <div class="text-caption text-medium-emphasis mb-1">TR Reference #</div>
                 <div class="font-weight-bold text-h6">{{ approveItem?.transfer_request_id || '-' }}</div>
               </div>
+              <v-alert v-if="approveItem?.is_fumigation" type="info" variant="tonal" density="compact" class="mb-4">
+                Fumigation transfer: {{ Number(approveItem?.transfer_request?.status) === 14 ? 'into the fumigation chamber' : 'release back to the FG warehouse' }}.
+              </v-alert>
               <div class="mb-4">
                 <div class="text-caption text-medium-emphasis mb-1">From Location</div>
                 <div class="font-weight-bold">{{ approveItem?.from_block?.lot?.label }}-{{ approveItem?.from_block?.label }} (Layer {{ approveItem?.from_layer_position ?? '-' }})</div>
@@ -426,7 +443,13 @@ const totalPendingRequests = ref(0);
 const filters = reactive({
   dateFrom: todayStr,
   dateTo: todayStr,
+  transfer_type: null,
 });
+
+const transferTypeOptions = [
+  { title: 'Fumigation', value: 'fumigation' },
+  { title: 'Normal', value: 'normal' },
+];
 
 const toast = reactive({
     message: 'Success!',
@@ -581,7 +604,7 @@ async function submitTransfer() {
             toast.show = true;
         }
     } catch (e) {
-        toast.message = 'Failed to submit bin transfer request.';
+        toast.message = e.response?.data?.message || 'Failed to submit bin transfer request.';
         toast.color = 'error';
         toast.show = true;
         console.error(e);
@@ -784,7 +807,7 @@ async function approveTransfer() {
             toast.show = true;
         }
     } catch (e) {
-        toast.message = 'Failed to approve bin transfer request.';
+        toast.message = e.response?.data?.message || 'Failed to approve bin transfer request.';
         toast.color = 'error';
         toast.show = true;
         console.error(e);
