@@ -41,6 +41,16 @@ const response = reactive({
     color: 'primary'
 })
 
+// Pallets in the fumigation process are blocked at the curtain; reading_status set by the API
+const fumigationReadingMessages = {
+    'for-fumigation': 'is reserved for fumigation and cannot be loaded.',
+    'fumigated': 'is currently fumigated and cannot be loaded.',
+    'aeration': 'is under aeration after fumigation and cannot be loaded.',
+    'under-fumigation': 'is under fumigation and cannot be loaded.',
+}
+
+const invalidReadingStatuses = ['batch-not-exists', 'overscanning-detected', 'unregistered', 'pallet-not-reserved', 'not-good-status', ...Object.keys(fumigationReadingMessages)]
+
 const onPicklistLogsEvent = (data) => {
     console.log(data);
     // Only process if the event is for the current bay
@@ -50,8 +60,9 @@ const onPicklistLogsEvent = (data) => {
         const isPalletNotReserved = readingStatus === 'pallet-not-reserved';
         const isOverscanningDetected = readingStatus === 'overscanning-detected';
         const isUnregistered = readingStatus === 'unregistered';
-        const isFumigated = readingStatus === 'fumigated';
-        const isInvalidReadingStatus = isBatchNotExists || isPalletNotReserved || isOverscanningDetected || isUnregistered || isFumigated;
+        const fumigationMessage = fumigationReadingMessages[readingStatus];
+        const isNotGoodStatus = readingStatus === 'not-good-status';
+        const isInvalidReadingStatus = invalidReadingStatuses.includes(readingStatus);
 
         if (isBatchNotExists) {
             response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} with Batch ${data.picklistLog.inventory?.batch} does not match any batch in this shipment.`;
@@ -68,8 +79,13 @@ const onPicklistLogsEvent = (data) => {
             response.type = 'error';
             response.color = 'error';
             snackbarVisible.value = true
-        } else if (isFumigated) {
-            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} is currently fumigated and cannot be loaded.`;
+        } else if (fumigationMessage) {
+            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} ${fumigationMessage}`;
+            response.type = 'error';
+            response.color = 'error';
+            snackbarVisible.value = true
+        } else if (isNotGoodStatus) {
+            response.message = `Pallet # ${data.picklistLog.inventory?.physical_id} is not in Good status and cannot be loaded.`;
             response.type = 'error';
             response.color = 'error';
             snackbarVisible.value = true
@@ -253,8 +269,8 @@ watch(
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated', 'pallet-not-reserved'].includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="invalidReadingStatuses.includes(lastRead?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ invalidReadingStatuses.includes(lastRead?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="text-center rightBorderedGreen d-flex justify-center align-center">
@@ -376,8 +392,8 @@ watch(
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center"
                         style="border-right: 1px solid #fff;">
                         <span class="font-weight-black text-h4"
-                            :class="['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
-                            {{ ['batch-not-exists', 'overscanning-detected', 'unregistered', 'fumigated','pallet-not-reserved'].includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
+                            :class="invalidReadingStatuses.includes(log?.antenna_log?.reading_status) ? 'text-error' : 'text-success'">
+                            {{ invalidReadingStatuses.includes(log?.antenna_log?.reading_status) ? 'INVALID' : 'LOADED' }}
                         </span>
                     </VCol>
                     <VCol md="3" class="py-1 text-center rightBorderedGreen d-flex justify-center align-center">
