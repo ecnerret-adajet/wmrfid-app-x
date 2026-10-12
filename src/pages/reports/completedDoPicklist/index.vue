@@ -183,6 +183,7 @@ const baseHeaders = [
     { title: 'Delivery Order', key: 'ref_no',  sortable: false },
     { title: 'ITEM NO.', key: 'delivery_item_number', sortable: false },
     { title: 'MATERIAL', key: 'material', sortable: false },
+    { title: 'STATUS', key: 'status', sortable: false },
     { title: 'DO Created', key: 'do_created', sortable: false },
     { title: 'CHECK IN', key: 'check_in', sortable: false },
     { title: 'Batch Picked Date', key: 'batch_picked_date', sortable: false, align: 'center' },
@@ -416,6 +417,15 @@ function removeLeadingZeros(value) {
                 </v-chip>
                 <br />
                 <span class="text-subtitle-1">{{ item.delivery?.ship_to_name || '' }}</span>
+            </template>
+
+             <template class="py-1" #item.status="{ item }">
+                <v-chip class="font-weight-bold" v-if="item.status_type === 1 || item.status_type === '1'" size="x-small" variant="tonal" color="error">
+                    Late
+                </v-chip>
+                <v-chip class="font-weight-bold" v-else size="x-small" variant="tonal" color="primary">
+                    On-Time
+                </v-chip>
             </template>
     
             <template #item.material="{ item }">
