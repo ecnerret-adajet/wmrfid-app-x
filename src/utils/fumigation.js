@@ -40,3 +40,44 @@ export const FUMIGATION_TERMINATION_STATUSES = {
 export const fumigationTerminationStatusLabel = status => FUMIGATION_TERMINATION_STATUSES[status]?.label ?? status ?? '—'
 
 export const fumigationTerminationStatusColor = status => FUMIGATION_TERMINATION_STATUSES[status]?.color ?? 'secondary'
+
+// Inventory commodity statuses used by the warehouse map (mirrors App\Models\CommodityStatus)
+export const COMMODITY_STATUS = {
+  'GOOD': 1,
+  'QUALITY_INSPECTION': 3,
+  'FUMIGATED': 7,
+  'FOR_FUMIGATION': 12,
+  'AERATION': 13,
+}
+
+export const isFumigationBin = block =>
+  block?.is_fumigation_bin === true || Number(block?.is_fumigation_bin) === 1
+
+// Fumigation state of one map block: stage priority for-fumigation > fumigating > aeration,
+// so a chamber still receiving pallets is never shown as fumigating
+export const blockFumigationInfo = block => {
+  const isChamber = isFumigationBin(block)
+  const statuses = (block?.inventories || []).map(inventory => Number(inventory?.commodity_status_id))
+
+  const counts = {
+    forFumigation: statuses.filter(status => status === COMMODITY_STATUS.FOR_FUMIGATION).length,
+    fumigated: statuses.filter(status => status === COMMODITY_STATUS.FUMIGATED).length,
+    aeration: statuses.filter(status => status === COMMODITY_STATUS.AERATION).length,
+  }
+
+  const fumigationPallets = counts.forFumigation + counts.fumigated + counts.aeration
+
+  let stage = null
+
+  if (counts.forFumigation)
+    stage = 'for-fumigation'
+  else if (counts.fumigated)
+    stage = 'fumigating'
+  else if (counts.aeration)
+    stage = 'aeration'
+
+  // A chamber holding a pallet outside the fumigation process (GOOD, QI, no status...)
+  const mismatch = isChamber && statuses.length > fumigationPallets
+
+  return { isChamber, stage, mismatch, counts }
+}
