@@ -142,6 +142,8 @@ const baseHeaders = [
     { title: 'PHYSICAL ID', key: 'physical_id', fixed: true, width: 100, sortable: false },
     { title: 'DELIVERY DOC.', key: 'delivery_document', fixed: true, width: 120, sortable: false },
     { title: 'BATCH', key: 'batch', fixed: true, width: 120, sortable: false },
+    { title: 'TR NO.', key: 'tr_no', fixed: true, width: 110, sortable: false },
+    { title: 'TO NO.', key: 'to_no', fixed: true, width: 110, sortable: false },
     { title: 'HAS QR', key: 'has_qr', fixed: true, width: 90, sortable: false },
     { title: 'BAY NO.', key: 'bay_no', fixed: true, width: 90, sortable: false },
     { title: 'Status', key: 'status', fixed: true, width: 130, sortable: false },
@@ -151,6 +153,9 @@ const baseHeaders = [
     { title: 'Bay Scan Date', key: 'bay_scan_date', width: 130, sortable: false },
     { title: 'Pallet Scan-Bay Scan', key: 'pallet_bay_scan', sortable: false },
     { title: 'Reservation-Bay Scan', key: 'reservation_bay_scan', sortable: false },
+    { title: 'TR Creation', key: 'tr_creation', width: 130, sortable: false },
+    { title: 'TO Creation', key: 'to_creation', width: 130, sortable: false },
+    { title: 'TR Creation-TO Creation', key: 'tr_to_creation', sortable: false },
     { title: 'Scanned By', key: 'bay_scanned_by', sortable: false },
 ]
 
@@ -171,6 +176,7 @@ const kpi = ref({
     reservation_pallet_scan: { max: null, min: null, avg: null, count: null },
     pallet_bay_scan: { max: null, min: null, avg: null, count: null },
     reservation_bay_scan: { max: null, min: null, avg: null, count: null },
+    tr_to_creation: { max: null, min: null, avg: null, count: null },
 });
 
 const summaryChart = ref(null)
@@ -379,6 +385,38 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                         <v-chip v-else-if="item.reservation_bay_scan === 'Pending'" size="small" color="warning"
                             text-color="white">Pending</v-chip>
                         <span v-else class="text-caption text-medium-emphasis">{{ item.reservation_bay_scan }}</span>
+                    </template>
+
+                    <template #header.tr_to_creation="{ column }">
+                        <div class="d-flex flex-column py-2" style="line-height: 1.2;">
+                            <span class="mb-1">{{ column.title }}</span>
+                            <span class="text-caption text-medium-emphasis">Max: {{ kpi?.tr_to_creation?.max }}</span>
+                            <span class="text-caption text-medium-emphasis">Min: {{ kpi?.tr_to_creation?.min }}</span>
+                            <span class="text-caption text-medium-emphasis">Ave: {{ kpi?.tr_to_creation?.avg }}</span>
+                            <span class="text-caption text-medium-emphasis">No. of Pallets: {{
+                                kpi?.tr_to_creation?.count }}</span>
+                        </div>
+                    </template>
+
+                    <template #item.tr_creation="{ item }">
+                        <v-chip v-if="item.tr_creation === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.tr_creation === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.tr_creation }}</span>
+                    </template>
+
+                    <template #item.to_creation="{ item }">
+                        <v-chip v-if="item.to_creation === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.to_creation === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.to_creation }}</span>
+                    </template>
+
+                    <template #item.tr_to_creation="{ item }">
+                        <v-chip v-if="item.tr_to_creation === 'N/A'" size="small" color="secondary" variant="tonal">N/A</v-chip>
+                        <v-chip v-else-if="item.tr_to_creation === 'Pending'" size="small" color="warning"
+                            text-color="white">Pending</v-chip>
+                        <span v-else class="text-caption text-medium-emphasis">{{ item.tr_to_creation }}</span>
                     </template>
 
                     <template #item.plant_id="{ item }">
