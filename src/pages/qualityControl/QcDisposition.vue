@@ -22,6 +22,7 @@ const filters = reactive({
   dateTo: todayStr 
 })
 
+
 const selectedItems = ref([])
 const serverItems = ref([])
 const totalItems = ref(0)
@@ -30,6 +31,8 @@ const page = ref(1)
 const sortQuery = ref('-created_at')
 
 const lastOptions = ref({})
+
+const storageLocation = ref(null)
 
 onMounted(() => loadPlants())
 
@@ -167,6 +170,13 @@ const handleCreateDispo = async (method) => {
     return
   }
 
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  if (!selectedPlant?.plant_code) {
+    dialogAlert.value = { show: true, type: 'error', message: 'Please select a plant in the Filter by Plant.' }
+    dispoLoading.value = false
+    return
+  }
+
   try {
     const response = await ApiService.post('inventories/quality-inspection', {
       ...dispoForm,
@@ -175,7 +185,7 @@ const handleCreateDispo = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
+      plant_code: selectedPlant.plant_code,
       storage_location_id: filters.storage_location_id,
       from_qc_disposition: true,
       type: 'qc-disposition',
@@ -297,6 +307,11 @@ const handleCreateDispo = async (method) => {
       </v-card>
     </VCol>
   </VRow>
+
+  <div class="pa-4">
+    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
+    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
+  </div>
 
   <VRow class="align-center mb-3">
     <VCol cols="12" md="3" class="d-flex align-center">

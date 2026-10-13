@@ -29,6 +29,10 @@ const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
+const lastOptions = ref({})
+
+const storageLocation = ref(null)
+
 onMounted(() => loadPlants())
 
 const loadPlants = async () => {
@@ -49,11 +53,11 @@ const loadPlants = async () => {
     if (filters.storage_locations.length > 0) {
       filters.storage_location_id = filters.storage_locations[0].value
     }
-    loadItems({
-      page: page.value,
-      itemsPerPage: itemsPerPage.value,
-      sortBy: []
-    })
+
+    const locations = response.data.storage_locations ?? []
+    if (locations.length > 0) {
+      storageLocation.value = locations[0]
+    }
   } catch (error) {
     console.error(error)
   }
@@ -171,8 +175,8 @@ const handleApprove = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: filters.plant_code,
-      storage_location_id: filters.storage_location_id,
+      plant_code: storageLocation.value?.plant?.plant_code,
+      storage_location_id: storageLocation.value?.id,
       from_qc_disposition: true,
       type: 'qc-disposition-approval',
       items: selectedItems.value.map(item => ({
