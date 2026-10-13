@@ -7,6 +7,7 @@ import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
+import { blockFumigationInfo, COMMODITY_STATUS, fumigationStatusLabel, isFumigationBin } from '@/utils/fumigation';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Moment from 'moment';
@@ -107,27 +108,27 @@ const matchesSearchText = (item) => {
 // Evaluates status match state
 const matchesStatusFilter = (item) => {
     if (selectedStatus.value === null || selectedStatus.value === undefined) return true;
-    
+
     // Always keep structural Lot headers matching to preserve top-level map grid canvas layout context
-    if (item.type === 'lot') return true; 
+    if (item.type === 'lot') return true;
 
-    const targetStatus = selectedStatus.value;
-    const isFumigation = item.under_fumigation === true || 
-                         item.under_fumigation === 1 || 
-                         item.under_fumigation === '1' ||
-                         item.under_fumigation === 'true';
+    const fumigation = item.fumigation || {};
 
-    const isInspection = item.for_quality_inspection === true || 
-                         item.for_quality_inspection === 1 || 
-                         item.for_quality_inspection === '1' ||
-                         item.for_quality_inspection === 'true';
-
-    if (targetStatus === 7) {
-        return isFumigation; // Under Fumigation
-    } else if (targetStatus === 3) {
-        return isInspection; // For Quality Inspection
-    } else if (targetStatus === 1) {
-        return !isFumigation && !isInspection; // Good: Neither condition is active
+    switch (selectedStatus.value) {
+        case 'fumigation': // Under Fumigation (any stage)
+            return !!fumigation.stage;
+        case 'for-fumigation':
+        case 'fumigating':
+        case 'aeration':
+            return fumigation.stage === selectedStatus.value;
+        case 'chamber':
+            return !!fumigation.isChamber;
+        case 'mismatch':
+            return !!fumigation.mismatch;
+        case 'qi':
+            return item.has_quality_inspection;
+        case 'good': // Neither condition is active
+            return !fumigation.stage && !item.has_quality_inspection;
     }
 
     return false;
@@ -188,8 +189,11 @@ const fetchStorageLocationInformation = async () => {
             layers: item.layers || [],
             lot: item.lot || null,
             id: item.id || null,
-            under_fumigation: item.under_fumigation,
-            for_quality_inspection: item.for_quality_inspection,
+            // Computed once per fetch, not in filteredLayout, so search keystrokes don't redo it
+            is_fumigation_bin: isFumigationBin(item),
+            fumigation: item.type === 'block' ? blockFumigationInfo(item) : null,
+            has_quality_inspection: (item.inventories || []).some(inventory => Number(inventory?.commodity_status_id) === COMMODITY_STATUS.QUALITY_INSPECTION),
+            fumigation_requests: item.fumigation_requests || [],
             allowMultipleMaterials: item.storage_location?.blocks_allow_multiple_materials == 1 ? true : false,
             // for_quality_inspection: item.for_quality_inspection,
             max_layer_count: item.max_layer_count || 3,
@@ -273,14 +277,63 @@ const handleEditMap = () => {
 }
 
 const statusOption = [
-    { title: 'Good', label: 'Good', value: 1 },
-    { title: 'Under Fumigation', label: 'Under Fumigation', value: 7 },
-    { title: 'For Quality Inspection', label: 'For Quality Inspection', value: 3 },
+    { title: 'Good', label: 'Good', value: 'good' },
+    { title: 'For Quality Inspection', label: 'For Quality Inspection', value: 'qi' },
+    { title: 'Under Fumigation (any stage)', label: 'Under Fumigation (any stage)', value: 'fumigation' },
+    { title: 'For Fumigation', label: 'For Fumigation', value: 'for-fumigation' },
+    { title: 'Fumigating', label: 'Fumigating', value: 'fumigating' },
+    { title: 'Aeration', label: 'Aeration', value: 'aeration' },
+    { title: 'Fumigation Chamber Bins', label: 'Fumigation Chamber Bins', value: 'chamber' },
+    { title: 'Chambers to Check', label: 'Chambers to Check', value: 'mismatch' },
 ];
+
+// Warehouse-wide fumigation pallet counts for the legend chips (chamber borders are styled separately)
+const fumigationStats = computed(() => {
+    const blocks = state.layout.filter(item => item.type === 'block');
+    const sum = key => blocks.reduce((total, block) => total + (block.fumigation?.counts?.[key] || 0), 0);
+
+    return {
+        fumigated: sum('fumigated'),
+        aeration: sum('aeration'),
+        forFumigation: sum('forFumigation'),
+        chambers: blocks.filter(block => block.fumigation?.isChamber).length,
+        mismatch: blocks.filter(block => block.fumigation?.mismatch).length,
+    };
+});
+
+const showFumigationLegend = computed(() => {
+    const stats = fumigationStats.value;
+    return stats.chambers > 0 || stats.fumigated > 0 || stats.aeration > 0 || stats.forFumigation > 0;
+});
+
+const fumigationTooltip = (item) => {
+    const fumigation = item.fumigation;
+    const counts = fumigation.counts;
+    const stages = [];
+    if (counts.fumigated) stages.push(`${counts.fumigated} Fumigated`);
+    if (counts.aeration) stages.push(`${counts.aeration} Aeration`);
+    if (counts.forFumigation) stages.push(`${counts.forFumigation} For Fumigation`);
+
+    const lines = [`${item.lot?.label ?? ''}-${item.label} · Fumigation chamber`];
+    lines.push(item.inventoriesCount
+        ? `${item.inventoriesCount} pallet(s)${stages.length ? ': ' + stages.join(', ') : ''}`
+        : 'Empty');
+    if (fumigation.mismatch) lines.push('Check: holds a pallet that is not in fumigation');
+    (item.fumigation_requests || []).forEach(request => {
+        lines.push(`${request.request_no} · ${fumigationStatusLabel(request.status)} · ${Moment(request.start_date).format('MMM D')} → ${Moment(request.end_date).format('MMM D')}`);
+    });
+
+    return lines;
+};
 
 const handleFilterStatus = (statusValue) => {
     selectedStatus.value = statusValue;
     isFiltered.value = statusValue !== null && statusValue !== undefined;
+};
+
+// Legend chip click: filter to that stage, or clear the filter when it's already active
+const toggleStatusFilter = (statusValue) => {
+    handleFilterStatus(selectedStatus.value === statusValue ? null : statusValue);
 };
 
 const loadFloatingPalletItems = ({ page, itemsPerPage, sortBy }) => {
@@ -368,6 +421,17 @@ const openFloatingPalletDialog = () => {
                         <v-chip size="default" variant="elevated" color="primary">3-Pallet High: {{ statisticsData?.pallet_high_3 ?? 0 }}</v-chip>
                         <v-chip size="default" variant="elevated" color="#a06ee2">4-Pallet High: {{ statisticsData?.pallet_high_4 ?? 0 }}</v-chip>
                         <v-chip size="default" variant="elevated">Total Pallets: {{ statisticsData?.total_pallets ?? 0 }}</v-chip>
+                    </div>
+                    <!-- Fumigation legend: counts are warehouse-wide; clicking a chip filters the map to that stage -->
+                    <div v-if="showFumigationLegend" class="d-flex align-center flex-wrap ga-2 mt-2">
+                        <v-chip size="default" variant="outlined" class="fum-chip fum-chip--fumigating"
+                            @click="toggleStatusFilter('fumigating')">Fumigating: {{ fumigationStats.fumigated }}</v-chip>
+                        <v-chip size="default" variant="outlined" class="fum-chip fum-chip--aeration"
+                            @click="toggleStatusFilter('aeration')">Aeration: {{ fumigationStats.aeration }}</v-chip>
+                        <v-chip size="default" variant="outlined" class="fum-chip"
+                            @click="toggleStatusFilter('for-fumigation')">For Fumigation: {{ fumigationStats.forFumigation }}</v-chip>
+                        <v-chip v-if="fumigationStats.mismatch > 0" size="default" variant="outlined" class="fum-chip"
+                            @click="toggleStatusFilter('mismatch')">Check: {{ fumigationStats.mismatch }}</v-chip>
                     </div>
                 </v-col>
 
@@ -458,7 +522,8 @@ const openFloatingPalletDialog = () => {
                             'cursor-pointer': item.type !== 'lot' && item.clickable,
                             'bg-legend': item.type === 'lot' && (item.legend_only === true),
                             'bg-primary-light': item.type === 'lot' && !item.legend_only,
-                            'under-fumigation': item.under_fumigation,
+                            'fum-fumigating': item.fumigation?.isChamber && !item.fumigation.mismatch && item.fumigation.stage === 'fumigating',
+                            'fum-aeration': item.fumigation?.isChamber && !item.fumigation.mismatch && item.fumigation.stage === 'aeration',
                             'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
                             'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                             'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
@@ -480,6 +545,10 @@ const openFloatingPalletDialog = () => {
                         }">
                             {{ item.label }}
                         </div>
+
+                        <v-tooltip v-if="item.fumigation?.isChamber" activator="parent" location="top">
+                            <div v-for="(line, index) in fumigationTooltip(item)" :key="index">{{ line }}</div>
+                        </v-tooltip>
                     </GridItem>
                 </GridLayout>
                 <div v-else class="border mt-2"
@@ -635,6 +704,29 @@ const openFloatingPalletDialog = () => {
 
 .empty-layer {
     background-color: #f0edf2;
+}
+
+/* Fumigation chamber borders (is_fumigation_bin only). Inset so the grid doesn't shift */
+.fum-fumigating {
+    outline: 3px solid #e53935;
+    outline-offset: -4px;
+}
+
+.fum-aeration {
+    outline: 3px solid #fb8c00;
+    outline-offset: -4px;
+}
+
+.fum-chip {
+    cursor: pointer;
+}
+
+.fum-chip--fumigating {
+    border: 2px solid #e53935 !important;
+}
+
+.fum-chip--aeration {
+    border: 2px solid #fb8c00 !important;
 }
 
 .vue-grid-layout {

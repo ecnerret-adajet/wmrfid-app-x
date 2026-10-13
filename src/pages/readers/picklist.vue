@@ -110,14 +110,19 @@ const onPicklistLogsEvent = (data) => {
 
         if (batch && (is_loaded == false || is_loaded == 0)) {
             const readingStatus = data.picklistLog?.antenna_log?.reading_status;
-            const isFumigated = readingStatus === 'fumigated';
+            // Pallets in the fumigation process are blocked at the curtain; reading_status set by the API
+            const fumigationMessage = {
+                'for-fumigation': 'is reserved for fumigation and cannot be loaded.',
+                'fumigated': 'is currently fumigated and cannot be loaded.',
+                'aeration': 'is under aeration after fumigation and cannot be loaded.',
+            }[readingStatus];
             const isPalletNotReserved = readingStatus === 'pallet-not-reserved';
 
-            if (isFumigated) {
+            if (fumigationMessage) {
                 // Extract the physical ID from the nested inventory object
                 const physicalId = data.picklistLog.inventory?.physical_id || 'Unknown';
-                
-                errorMessage.value = `Pallet ID ${physicalId} is currently fumigated and cannot be loaded.`;
+
+                errorMessage.value = `Pallet ID ${physicalId} ${fumigationMessage}`;
                 dialogVisible.value = true;
                 return;
             }

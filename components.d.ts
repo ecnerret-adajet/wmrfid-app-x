@@ -26,6 +26,7 @@ declare module 'vue' {
     InventoryAgeChart: typeof import('./src/components/dashboard/InventoryAgeChart.vue')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     MapBlockAssignModal: typeof import('./src/components/MapBlockAssignModal.vue')['default']
+    MaterialDocumentDetailModal: typeof import('./src/components/MaterialDocumentDetailModal.vue')['default']
     MoreBtn: typeof import('./src/@core/components/MoreBtn.vue')['default']
     NominatePasswordModal: typeof import('./src/components/NominatePasswordModal.vue')['default']
     PalletAssignModal: typeof import('./src/components/PalletAssignModal.vue')['default']
