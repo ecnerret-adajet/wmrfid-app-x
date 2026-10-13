@@ -32,6 +32,8 @@
                 </template>
                 Create Transfer Request
             </v-btn> -->
+              <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+            <v-text-field style="max-width: 180px; min-width: 100px;" v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
             <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
                 <template #prepend>
                     <v-icon color="white"></v-icon>
@@ -46,6 +48,7 @@
                 :items-length="totalItems"
                 :loading="pageLoading"
                 :items-per-page="itemsPerPage"
+                :items-per-page-options="[25, 50, 100]"
                 :page="page"
                 class="text-no-wrap"
                 @update:options="loadItems"
@@ -398,6 +401,8 @@ import { watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 
+const todayStr = moment().format('YYYY-MM-DD');
+
 const props = defineProps({
     plant_code: String,
     sloc: String,
@@ -409,7 +414,7 @@ const { authUserCan } = useAuthorization();
 
 const searchValue = ref('');
 const serverItems = ref([]);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const totalItems = ref(0);
 const pageLoading = ref(false);
@@ -419,6 +424,8 @@ const totalApprovedRequests = ref(0);
 const totalPendingRequests = ref(0);
 
 const filters = reactive({
+  dateFrom: todayStr,
+  dateTo: todayStr,
 });
 
 const toast = reactive({

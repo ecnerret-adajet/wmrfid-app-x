@@ -120,7 +120,7 @@ const headers = computed(() => {
 const loading = ref(true);
 const serverItems = ref([]);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
 

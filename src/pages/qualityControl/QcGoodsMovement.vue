@@ -156,11 +156,12 @@ const confirmCancelGoodsMovement = () => {
         cancel_date: cancelDate.value,
     })
         .then((response) => {
-            const { status, errors } = response.data;
+            const { status } = response.data;
+            const errors = [...(response.data.errors || []), ...(response.data.errors_913 || [])];
 
             if (status === 'S') {
                 toast.value = {
-                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.`,
+                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${response.data.reverted_pallets ? ` ${response.data.reverted_pallets} pallet(s) returned to Quality Inspection.` : ''}`,
                     color: 'success',
                     show: true,
                 };
@@ -182,10 +183,9 @@ const confirmCancelGoodsMovement = () => {
 
 const actionList = (log) => {
     const actions = [{ title: 'View', key: 'view' }];
-     actions.push({ title: 'Cancel', key: 'cancel' });
-    // if (isCancellable(log)) {
-    //    actions.push({ title: 'Cancel', key: 'cancel' });
-    // }
+    if (isCancellable(log)) {
+        actions.push({ title: 'Cancel', key: 'cancel' });
+    }
 
     return actions;
 };

@@ -2,7 +2,7 @@
 import Toast from '@/components/Toast.vue'
 import ApiService from '@/services/ApiService'
 import { useSapDeliveryStore } from '@/stores/sapDeliveryStore'
-import Moment from 'moment'
+import { default as Moment, default as moment } from 'moment'
 import { ref } from 'vue'
 import { VDataTableServer } from 'vuetify/components'
 import BatchSelection from './batchSelection.vue'
@@ -40,9 +40,10 @@ const headers = [
     { title: 'DELIVERY NUMBER', key: 'delivery_document' },
     { title: 'CUSTOMER', key: 'customer', sortable: false },
     { title: 'DELIVERY DATE', key: 'delivery_date' },
-    { title: 'PICKING STATUS', key: 'picking_status' },
-    { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status' },
+    { title: 'PICKING STATUS', key: 'picking_status', align: 'center' },
+    { title: 'GOODS ISSUE STATUS', key: 'goods_issue_status', align: 'center' },
     { title: 'DELIVERY ITEMS', key: 'delivery_items', align: 'center', sortable: false },
+    { title: 'DATE CREATED', key: 'date_created' },
     // { title: 'PALLET STATUS', key: 'pallet_status', align: 'center', sortable: false },
     { title: 'ACTION', key: 'action', align: 'center', sortable: false },
 ]
@@ -240,8 +241,26 @@ defineExpose({ loadItems, applyFilters })
         @update:options="loadItems"
         class="text-no-wrap"
     >
+        <template #header.picking_status="{ column }">
+            <span>PICKING</span><br/>
+            <span>STATUS</span>
+        </template>
+        <template #header.goods_issue_status="{ column }">
+            <span>GOODS ISSUE</span><br/>
+            <span>STATUS</span>
+        </template>
+
+        <template #header.delivery_items="{ column }">
+            <span>DELIVERY</span><br/>
+            <span>ITEMS</span>
+        </template>
+
         <template #item.delivery_document="{ item }">
             {{ item.delivery_document }}
+        </template>
+
+        <template #item.date_created="{ item }">
+            {{ item.creation_date ? moment(item.creation_date).format('MM/DD/YYYY') : null}}
         </template>
 
         <template #item.customer="{ item }">
@@ -251,7 +270,9 @@ defineExpose({ loadItems, applyFilters })
             </div>
         </template>
 
-        <template #item.delivery_date="{ item }">{{ item.delivery_date }}</template>
+        <template #item.delivery_date="{ item }">
+            {{ item.delivery_date ? moment(item.delivery_date).format('MM/DD/YYYY') : null}}
+        </template>
         <template #item.picking_status="{ item }">{{ item.picking_status }}</template>
         <template #item.goods_issue_status="{ item }">{{ item.goods_issue_status }}</template>
         <template #item.delivery_items="{ item }">{{ item.delivery_items.length }}</template>

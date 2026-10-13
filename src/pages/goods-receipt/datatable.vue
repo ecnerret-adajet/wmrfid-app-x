@@ -14,6 +14,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    initialFilters: {
+        type: Object,
+        default: () => ({})
+    },
 });
 
 const router = useRouter();
@@ -22,24 +26,24 @@ const isLoading = ref(false);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
-const filters = ref(null);
+const filters = ref({ ...props.initialFilters });
 const unauthorizedFlag = ref(false);
 
 const headers = [
     {
-        title: 'Code',
-        key: 'stock_transfer_code',
+        title: 'Material Document',
+        key: 'material_document',
+    },
+    {
+        title: 'STO No.',
+        key: 'sto_number',
     },
     {
         title: 'Ref. Doc. Number',
         key: 'ref_doc_number',
-    },
-    {
-        title: 'Material Document',
-        key: 'material_document',
     },
     // {
     //     title: 'Year',
@@ -96,6 +100,14 @@ const headers = [
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+
+    // Skip fetching until both plant and storage location filters are selected
+    if (!filters.value.plant_id || !filters.value.storage_location_id) {
+        serverItems.value = [];
+        totalItems.value = 0;
+        loading.value = false;
+        return;
+    }
 
     loading.value = true
     if (sortBy && sortBy.length > 0) {
@@ -217,28 +229,24 @@ const getPalletAssignmentLabel = (item) => {
 
 <template>
 
-    <VDataTableServer v-model:items-per-page="itemsPerPage" :headers="headers" :items="serverItems"
+    <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" :headers="headers" :items="serverItems"
         :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems"
         class="text-no-wrap">
 
-        <template #item.stock_transfer_code="{ item }">
+        <template #item.material_document="{ item }">
             <span class="text-primary font-weight-bold cursor-pointer" @click="handleViewDetails(item)">
-                {{ item.stock_transfer_code }}
+                {{ item.material_document }}
             </span>
+        </template>
+
+        <template #item.sto_number="{ item }">
+            {{ item.purchase_order?.po_number }}
         </template>
         
         <template #item.posting_date="{ item }">
             {{ item.posting_date ? Moment(item.posting_date).format('MM/DD/YYYY') : '' }}
         </template>
         
-        <template #item.updated_at="{ item }">
-            {{ item.updated_at ? Moment(item.updated_at).format('MMMM D, YYYY hh:mm A') : '' }}
-        </template>
-
-        <template #item.deleted_at="{ item }">
-            {{ item.deleted_at ? Moment(item.deleted_at).format('MMMM D, YYYY hh:mm A') : '' }}
-        </template>
-
         <template #item.pallet_assignment_log="{ item }">
             <span
                 :class="

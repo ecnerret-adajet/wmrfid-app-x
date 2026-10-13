@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { authUserCan } = useAuthorization();
+const todayStr = Moment().format('YYYY-MM-DD');
 
 const searchValue = ref('');
 const serverItems = ref([]);
@@ -32,6 +33,8 @@ const toast = ref({
 
 const filters = ref({
     status: null,
+    dateFrom: todayStr,
+    dateTo: todayStr,
 });
 
 const statusOptions = [
@@ -68,6 +71,12 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage, sortBy, search 
 
         if (filters.value.status) {
             params.status = filters.value.status;
+        }
+        if (filters.value.dateFrom) {
+            params.date_from = filters.value.dateFrom;
+        }
+        if (filters.value.dateTo) {
+            params.date_to = filters.value.dateTo;
         }
 
         const response = await ApiService.query('pallet-print-requests', { params });
@@ -223,7 +232,7 @@ const handleDownloadAndMarkAsPrinted = async (item) => {
 <template>
     <div>
         <!-- Header -->
-        <div class="d-flex gap-4 align-center justify-center mb-2">
+        <div class="d-flex align-center justify-center mb-2">
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -235,6 +244,14 @@ const handleDownloadAndMarkAsPrinted = async (item) => {
                 class="flex-grow-1"
                 @keyup.enter="handleSearch"
             />
+
+            <VCol md="2" cols="12">
+                <v-text-field v-model="filters.dateFrom" label="Date Created From" type="date" density="compact" variant="outlined" hide-details />
+            </VCol>
+            <VCol md="2" cols="12">
+                <v-text-field v-model="filters.dateTo" label="Date Created To" type="date" density="compact" variant="outlined" hide-details />
+            </VCol>
+
             <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
                 Search
             </v-btn>

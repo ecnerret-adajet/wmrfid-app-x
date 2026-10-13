@@ -1,7 +1,6 @@
 <script setup>
-import DateRangePicker from '@/components/DateRangePicker.vue';
-import FilteringModal from '@/components/FilteringModal.vue';
 import ApiService from '@/services/ApiService';
+import moment from 'moment';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
@@ -10,37 +9,28 @@ const emits = defineEmits(['pagination-changed', 'update:selected']);
 
 const route = useRoute();
 
-const plantCode = route.params.plant_code;
-const sloc = route.params.sloc;
 const s_section = route.params.storage_section;
 
 const searchValue = ref('');
 
-const filterModalVisible = ref(false);
-const batchOptions = ref([]);
+const todayStr = moment().format('YYYY-MM-DD');
+
+const plantsOptions = ref([]);
+const storageLocations = ref([]);
 
 const filters = reactive({
-    date_range: null,
-    batch: null,
+    plant_id: null,
+    plant_code: route.params.plant_code ?? null,
+    sloc: route.params.sloc ?? null,
+    dateFrom: todayStr,
+    dateTo: todayStr,
 });
-
-const dateFilter = ref(null);
-
-const isFiltersEmpty = computed(() => {
-    return !filters.date_range && !filters.batch;
-});
-
-const dateFilterOptions = [
-    { title: 'Today', value: 'today' },
-    { title: 'Yesterday', value: 'yesterday' },
-    { title: 'Last 7 Days', value: 'last_7_days' },
-];
 
 const selectedItems = ref([]);
 const serverItems = ref([]);
 const loading = ref(true);
-const totalItems = ref(0);
-const itemsPerPage = ref(10);
+const totalItems = ref(0)       
+const itemsPerPage = ref(50);   
 const page = ref(1);
 const sortQuery = ref('-created_at');
 const pageLoading = ref(false);
@@ -53,18 +43,50 @@ const headers = [
     { title: 'MATERIAL', key: 'material', sortable: false },
     { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
     { title: 'LAYER', key: 'position_in_block', align: 'center', sortable: false },
+    { title: 'PUTAWAY DATE', key: 'putaway_date', align: 'center', sortable: false },
 ];
 
 
 onMounted(() => {
-    fetchStorageLocationDetails();
-    // fetchBatches();
-})
+    loadPlants();
+});
+
+const applyPlantSelection = (plantId) => {
+    const selectedPlant = plantsOptions.value.find(p => p.value === plantId);
+    if (!selectedPlant) return;
+    filters.plant_code = selectedPlant.plant_code;
+    storageLocations.value = selectedPlant.storage_locations.map(item => ({ value: item.code, title: `${item.code} - ${item.name}`, code: item.code }));
+
+    const matchedSloc = storageLocations.value.find(s => s.code === filters.sloc);
+    filters.sloc = matchedSloc ? matchedSloc.code : (storageLocations.value[0]?.code ?? null);
+};
+
+watch(() => filters.plant_id, (newVal) => applyPlantSelection(newVal));
+
+const loadPlants = async () => {
+    try {
+        const response = await ApiService.query('managed-plant-storage-locations', {});
+        plantsOptions.value = (response.data.plants ?? [])
+            .filter(item => item.name !== null)
+            .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }));
+
+        const matchedPlant = plantsOptions.value.find(p => p.plant_code === filters.plant_code) ?? plantsOptions.value[0];
+        if (matchedPlant) {
+            filters.plant_id = matchedPlant.value;
+            applyPlantSelection(matchedPlant.value);
+        }
+
+        await fetchStorageLocationDetails();
+        handleSearch();
+    } catch (error) {
+        console.error(error);
+    }
+};
 
 const fetchStorageLocationDetails = async () => {
     pageLoading.value = true;
     try {
-        const response = await ApiService.get(`quality-control/storage-location/${plantCode}/${sloc}`);
+        const response = await ApiService.get(`quality-control/storage-location/${filters.plant_code}/${filters.sloc}`);
         storageLocation.value = response.data.storage_location;
     } catch (error) {
         console.log(error);
@@ -85,57 +107,11 @@ const fetchStorageLocationDetails = async () => {
 //     }
 // };
 
-const filterModalOpen = () => {
-    if (!filterModalVisible.value) {
-        filterModalVisible.value = true;
-    }
-};
-
-const applyFilter = () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-    filterModalVisible.value = false;
-};
-
-const resetFilter = () => {
-    clearFilters();
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-    filterModalVisible.value = false;
-};
-
-const clearFilters = () => {
-    filters.date_range = null;
-    filters.batch = null;
-};
-
-watch(() => dateFilter.value, () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-});
-
-watch(() => filters.batch, () => {
-    loadItems({
-        page: page.value,
-        itemsPerPage: itemsPerPage.value,
-        sortBy: [],
-    });
-});
-
 const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
     loading.value = true;
 
-    const plant_code = route.params.plant_code;
-    const sloc = route.params.sloc;
+    const plant_code = filters.plant_code;
+    const sloc = filters.sloc;
     const forklift = route.params.forklift;
 
     if (!plant_code || !sloc || !forklift) {
@@ -157,7 +133,6 @@ const loadItems = ({ page: pageVal, itemsPerPage: perPage, sortBy }) => {
             sort: sortQuery.value,
             search: searchValue.value,
             filters: filters,
-            date_filter: dateFilter.value,
         }
     })
         .then((response) => {
@@ -342,6 +317,24 @@ defineExpose({ loadItems, selectedItems });
             <h4 class="text-h5 font-weight-bold mb-2">Total for Quality Inspection : <span class="font-bold text-primary">{{ totalItems }}</span></h4>
         </div>
         <div class="d-flex flex-wrap gap-4 align-center justify-center mb-2">
+            <v-select
+                v-model="filters.plant_id"
+                label="Plant"
+                :items="plantsOptions"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
+            <v-select
+                v-model="filters.sloc"
+                label="Storage Location"
+                :items="storageLocations"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 220px; min-width: 160px;"
+            />
             <VTextField
                 v-model="searchValue"
                 label="Search"
@@ -353,37 +346,24 @@ defineExpose({ loadItems, selectedItems });
                 class="flex-grow-1"
                 @keyup.enter="handleSearch"
             />
-
-            <!-- <v-select
-                style="max-width: 200px;"
-                class="flex-grow-1 align-center"
+            <VTextField
+                v-model="filters.dateFrom"
+                label="Date From"
+                type="date"
                 density="compact"
-                :items="dateFilterOptions"
-                v-model="dateFilter"
-                label="Date Filter"
-                clearable
-            /> -->
-
-            <!-- <v-select
-                style="max-width: 250px;"
-                class="flex-grow-1 align-center"
+                variant="outlined"
+                style="max-width: 180px; min-width: 100px;"
+                hide-details
+            />
+            <VTextField
+                v-model="filters.dateTo"
+                label="Date To"
+                type="date"
                 density="compact"
-                :items="batchOptions"
-                v-model="filters.batch"
-                label="Batch"
-                clearable
-            /> -->
-
-            <!-- <v-btn
-                class="d-flex align-center"
-                prepend-icon="ri-equalizer-line"
-                @click="filterModalOpen"
-            >
-                <template #prepend>
-                    <v-icon color="white"></v-icon>
-                </template>
-                Filter
-            </v-btn> -->
+                variant="outlined"
+                style="max-width: 180px; min-width: 100px;"
+                hide-details
+            />
 
             <v-btn
                 class="d-flex align-center"
@@ -590,24 +570,6 @@ defineExpose({ loadItems, selectedItems });
             </v-card>
         </v-dialog>
 
-        <FilteringModal @close="filterModalVisible = false" :show="filterModalVisible" :dialogTitle="'Filter Quality Inspection'">
-            <template #default>
-                <v-form>
-                    <div class="mt-4">
-                        <label class="font-weight-bold">Date Range</label>
-                        <DateRangePicker class="mt-1" v-model="filters.date_range" placeholder="Select Date Range" />
-                    </div>
-
-                    <div class="d-flex justify-end align-center mt-8">
-                        <v-btn color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter" class="px-12 mr-3">Reset Filter</v-btn>
-                        <v-btn class="px-12" type="button" color="primary" :disabled="isFiltersEmpty" @click="applyFilter">
-                            Apply Filter
-                        </v-btn>
-                    </div>
-                </v-form>
-            </template>
-        </FilteringModal>
-
         <VCard>
             <VDataTableServer
                 v-model:items-per-page="itemsPerPage"
@@ -630,6 +592,10 @@ defineExpose({ loadItems, selectedItems });
 
                 <template #item.bin_location="{ item }">
                     {{ item.block?.lot?.label ?? '--' }} - {{ item.block?.label ?? '--' }}
+                </template>
+
+                <template #item.putaway_date="{ item }">
+                    {{ item?.qr_putaway_log?.created_at ? moment(item.qr_putaway_log.created_at).format('MM/DD/YY hh:mmA') : '-' }}
                 </template>
 
                 <template #item.position_in_block="{ item }">

@@ -4,9 +4,11 @@ import Toast from '@/components/Toast.vue';
 import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
+import Moment from 'moment';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 const authStore = useAuthStore();
+const todayStr = Moment().format('YYYY-MM-DD');
 
 const searchValue = ref('');
 const isLoading = ref(false);
@@ -30,6 +32,8 @@ const filters = reactive({
     plant_code: authStore.user?.assigned_plant?.plant_code || null,
     date_filter: null,
     status_type: 1,
+    dateFrom: todayStr,
+    dateTo: todayStr,
 });
 
 const selectedKpiStatus = ref(filters.status_type);
@@ -190,6 +194,7 @@ const baseHeaders = [
     { title: 'Qty', key: 'quantity', sortable: false },
     { title: 'Reserved Qty', key: 'reserved_quantity', sortable: false },
     { title: 'Status', key: 'status', sortable: false, align: 'center' },
+    { title: 'Date Created', key: 'created_at', sortable: false },
 ]
 
 // 2. Create the computed headers layer to track totalItems state changes
@@ -338,12 +343,19 @@ function removeLeadingZeros(value) {
             @update:search="searchValue = $event"
         />
 
-        <v-select style="max-width: 350px;" class="flex-grow-1 align-center mt-1" label="Filter by Plant"
+        <v-select style="max-width: 350px;" class="flex-grow-1 align-center" label="Filter by Plant"
             density="compact"
             :items="plantsOption.length > 1 ? [{ title: 'All', value: null }, ...plantsOption] : plantsOption"
             v-model="filters.plant_code"
             :rules="[value => value !== undefined || 'Please select an item from the list']">
         </v-select>
+
+        <VCol md="2" cols="12">
+            <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        <VCol md="2" cols="12">
+            <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
 
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
@@ -410,6 +422,9 @@ function removeLeadingZeros(value) {
                 <span v-if="item.material_description" class="text-subtitle-1">{{ item?.material_description }}</span>
             </template>
 
+            <template #item.created_at="{ item }">
+                {{ item.created_at ? Moment(item.created_at).format('MM/DD/YYYY h:mm A') : '' }}
+            </template>
             
             <template #item.quantity="{ item }">
               {{ numberWithComma(item.delivery_quantity) || '' }} {{ item.sales_unit || '' }}

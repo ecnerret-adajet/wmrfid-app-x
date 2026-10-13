@@ -1,31 +1,40 @@
 <script setup>
-import DateRangePicker from '@/components/DateRangePicker.vue';
-
+import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
-import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
-import { debounce } from 'lodash';
-import { storeToRefs } from 'pinia'; // If needed, but we can access directly
-import { computed, onMounted, ref, watch } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import Moment from 'moment';
+import { onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
 
-const goodsReceiptStore = useGoodsReceiptStore();
-const { filters } = storeToRefs(goodsReceiptStore);
+const authStore = useAuthStore();
+const todayStr = Moment().format('YYYY-MM-DD');
 
-const searchValue = ref('');
+const defaultFilters = () => ({
+    plant: null, // Stores the full plant object or at least { id, title/code }
+    storageLocation: null, // Stores the full sloc object
+    dateFrom: todayStr,
+    dateTo: todayStr,
+    pallet_status: null
+});
+
+const filters = ref(defaultFilters());
+
+const searchInput = ref(''); // raw value from the search field, not yet applied
+const searchValue = ref(''); // committed search term, only updated when Search is clicked
 const datatableRef = ref(null);
 const tablePerPage = ref(10);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
+const pageLoading = ref(false)
 const toast = ref({
     message: 'Success message',
     color: 'success',
     show: false
 });
-
 
 const plantsOption = ref([]);
 const storageLocationsOption = ref([]);
@@ -35,26 +44,37 @@ const palletStatusOption = ref([
     { name: 'Pallet Assigned', value: "assigned" }
 ]);
 
-
-
 onMounted(() => {
     fetchDataDropdown();
 });
 
 const fetchDataDropdown = async () => {
+    pageLoading.value = true;
     try {
         const response = await ApiService.get('/users/get-data-dropdown');
         const { plants } = response.data;
         plantsOption.value = plants;
-        
-        // Restore storage locations if plant is already selected (from persistence)
-        if (filters.value.plant) {
-             const selectedPlant = plantsOption.value.find(p => p.id === filters.value.plant.id);
-             storageLocationsOption.value = selectedPlant ? selectedPlant.storage_locations : [];
+
+        // Default to the user's assigned plant
+        const assignedPlantId = authStore.user?.assigned_plant?.id;
+        const defaultPlant = assignedPlantId ? plantsOption.value.find(p => p.id === assignedPlantId) : null;
+        const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
+
+        if (defaultPlant) {
+            filters.value.plant = defaultPlant;
+            storageLocationsOption.value = defaultPlant.storage_locations;
+            if (defaultStorageLocation) {
+                filters.value.storageLocation = defaultStorageLocation;
+            }
+
+            // Re-fetch since the datatable's initial load already ran before the default plant/storage location resolved
+            applyFilter();
         }
 
     } catch (error) {
         console.error('Error fetching dropdown data:', error);
+    } finally {
+        pageLoading.value = false;
     }
 };
 
@@ -84,18 +104,13 @@ watch(
     }
 );
 
-const isFiltersEmpty = computed(() => {
-    return !filters.value.posting_date &&
-           !filters.value.plant &&
-           !filters.value.storageLocation && 
-           !filters.value.pallet_status
-});
-
 const applyFilter = () => {
+    searchValue.value = searchInput.value;
     if(datatableRef.value) {
         // Pass IDs to datatable as it expects
         datatableRef.value.applyFilters({
-            posting_date: filters.value.posting_date,
+            dateFrom: filters.value.dateFrom,
+            dateTo: filters.value.dateTo,
             plant_id: filters.value.plant?.id,
             storage_location_id: filters.value.storageLocation?.id,
             pallet_status: filters.value.pallet_status
@@ -103,16 +118,10 @@ const applyFilter = () => {
     }
 }
 
-const resetFilter = () => {
-    goodsReceiptStore.clearFilters();
-    if(datatableRef.value) {
-        datatableRef.value.applyFilters([]);
-    }
-}
 
-const handleSearch = debounce((search) => {
-    searchValue.value = search;
-}, 500);
+const handleSearch = (search) => {
+    searchInput.value = search;
+}
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tableSort.value = sortBy
@@ -124,11 +133,11 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
 </script>
 
 <template>
-    <VRow align="center">
-        <VCol md="2" cols="12">
+    <VRow no-gutters align="center" >
+        <VCol md="4" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <SearchInput placeholder="Material Document" @update:search="handleSearch"/>
         </VCol>
-        <VCol md="2" cols="12">
+        <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
                 label="Plant"
                 density="compact"
@@ -142,7 +151,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="1" cols="12">
+        <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
                 label="Storage Location"
                 density="compact"
@@ -157,7 +166,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="2" cols="12">
+        <VCol md="2" cols="12" class="pb-2 pb-md-0">
             <v-select
                 label="Pallet Status"
                 density="compact"
@@ -170,24 +179,41 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
                 hide-details
             ></v-select>
         </VCol>
-        <VCol md="2" cols="12">
-            <DateRangePicker v-model="filters.posting_date" placeholder="Select Posting Date"/>
+        
+    </VRow>
+
+    <VRow no-gutters align="center" class="mb-4">
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateFrom" label="Posting Date From" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12" class="d-flex align-center">
-            <PrimaryButton class="flex-grow-1 mr-2" type="button" :disabled="isFiltersEmpty" @click="applyFilter" :loading="isLoading">
-                Apply Filter
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-text-field v-model="filters.dateTo" label="Posting Date To" type="date" density="compact" variant="outlined" hide-details />
+        </VCol>
+        
+        <VCol md="6" class="d-none d-md-flex"></VCol>
+
+        <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
+            <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
+                <i class="ri-search-eye-line mr-2"></i>
+                Search
             </PrimaryButton>
-            <v-btn class="flex-grow-1" color="secondary" variant="outlined" :disabled="isFiltersEmpty" @click="resetFilter">Reset Filter</v-btn>
         </VCol>
     </VRow>
 
     <VCard>
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged" 
             :search="searchValue"
+            :initial-filters="{
+                dateFrom: filters.dateFrom,
+                dateTo: filters.dateTo,
+                plant_id: filters.plant?.id,
+                storage_location_id: filters.storageLocation?.id,
+                pallet_status: filters.pallet_status
+            }"
         />
     </VCard>
 
-
-
     <Toast :show="toast.show" :message="toast.message"/>
+    <Loader :show="pageLoading" />
+
 </template>

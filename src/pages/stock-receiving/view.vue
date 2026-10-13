@@ -3,7 +3,7 @@ import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import Swal from 'sweetalert2';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -23,6 +23,9 @@ const pageLoading = ref(false);
 const postResult = ref(null);
 const disablePost = ref(false);
 const documentHeaderText = ref('');
+const postingDate = ref('');
+const documentDate = ref('');
+const today = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 
 const toast = ref({
     message: '',
@@ -57,6 +60,9 @@ const fetchDetails = async () => {
         if (stockTransfer.value) {
             documentHeaderText.value = stockTransfer.value.document_header_text || '';
         }
+
+        postingDate.value = stockTransfer.value?.posting_date || header.value?.posting_date || '';
+        documentDate.value = stockTransfer.value?.document_date || header.value?.posting_date || '';
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -69,19 +75,53 @@ const fetchDetails = async () => {
     }
 };
 
+// Material document detail modal (BU 315 / ALC 917)
+const matDocDialog = ref(false);
+const selectedStockTransferId = ref(null);
+
+const openMaterialDocument = (doc) => {
+    selectedStockTransferId.value = doc.id;
+    matDocDialog.value = true;
+};
+
 const removeLeadingZeros = (value) => {
     if (!value) return '';
     return String(value).replace(/^0+/, '');
 };
 
+// Changing the posting/document date invalidates the last simulation, so require a re-simulate before posting
+watch([postingDate, documentDate], () => {
+    postResult.value = null;
+});
+
 const postStockTransferReceiving = async (method) => {
+    if (!postingDate.value || postingDate.value > today) {
+        await Swal.fire({
+            text: 'Please select a valid posting date (not later than today).',
+            icon: 'warning',
+            confirmButtonText: 'Ok, got it!',
+            customClass: { confirmButton: 'btn btn-primary' },
+        });
+        return;
+    }
+
+    if (!documentDate.value || documentDate.value > today) {
+        await Swal.fire({
+            text: 'Please select a valid document date (not later than today).',
+            icon: 'warning',
+            confirmButtonText: 'Ok, got it!',
+            customClass: { confirmButton: 'btn btn-primary' },
+        });
+        return;
+    }
+
     disablePost.value = true;
     try {
         const payload = {
             method: method,
             stock_transfer_receiving_id: id,
-            posting_date: header.value?.posting_date,
-            document_date: header.value?.posting_date,
+            posting_date: postingDate.value,
+            document_date: documentDate.value,
             gr_gi_slip_number: header.value?.material_document,
             document_header_text: documentHeaderText.value,
             ref_doc_number: '',
@@ -164,8 +204,16 @@ onMounted(() => {
 
                 <!-- Material Documents -->
                 <div v-if="stockTransfer && header?.status === 'Received' && stockTransferMaterialDocument.length" class="px-4 mt-3">
-                    <h4 v-for="(doc, i) in stockTransferMaterialDocument" :key="i" class="mb-1">
+                    <h4 v-for="(doc, i) in stockTransferMaterialDocument" :key="i" class="mb-1 d-flex align-center gap-1">
                         {{ doc.stock_transfer_parent_id ? 'ALC' : 'BU' }} {{ doc.movement_type }} Material Document: {{ doc.material_document }}
+                        <v-btn
+                            icon="ri-eye-line"
+                            size="x-small"
+                            variant="text"
+                            color="secondary"
+                            title="View material document"
+                            @click="openMaterialDocument(doc)"
+                        />
                     </h4>
                 </div>
 
@@ -174,10 +222,12 @@ onMounted(() => {
                     <v-row class="mt-4">
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="documentDate"
                                 label="Document Date"
-                                :model-value="stockTransfer?.document_date || header?.posting_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
-                                readonly
+                                :readonly="!!header?.status"
                                 density="compact"
                             />
                         </v-col>
@@ -193,8 +243,10 @@ onMounted(() => {
 
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="postingDate"
                                 label="Posting Date"
-                                :model-value="stockTransfer?.posting_date || header?.posting_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
                                 :readonly="!!header?.status"
                                 density="compact"
@@ -336,6 +388,8 @@ onMounted(() => {
                 <li v-for="(error, e) in postResult.returns" :key="e">{{ error.MESSAGE }}</li>
             </ul>
         </v-alert>
+
+        <MaterialDocumentDetailModal v-model="matDocDialog" :stock-transfer-id="selectedStockTransferId" />
 
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
     </div>

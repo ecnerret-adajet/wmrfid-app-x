@@ -3,19 +3,30 @@ import ApiService from '@/services/ApiService'
 import JwtService from '@/services/JwtService'
 import axios from 'axios'
 import Moment from 'moment'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
 const searchValue = ref('')
 const showCreateDialog = ref(false)
 
-const filters = reactive({ plant_id: null })
+const plantsOptions = ref([])
+const storageLocations = ref([])
+const todayStr = Moment().format('YYYY-MM-DD')
+const filters = reactive({ 
+  plant_id: null, 
+  plant_code: null, 
+  storage_locations: [], 
+  storage_location_id: null, 
+  dateFrom: todayStr, 
+  dateTo: todayStr 
+})
+
 
 const selectedItems = ref([])
 const serverItems = ref([])
 const totalItems = ref(0)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
@@ -31,11 +42,23 @@ const loadPlants = async () => {
     const response = await axios.get('/managed-plant-storage-locations', {
       headers: { Authorization: `Bearer ${token}` },
     })
-    const locations = response.data.storage_locations ?? []
-    if (locations.length > 0) {
-      storageLocation.value = locations[0]
-      filters.plant_id = locations[0].plant_id
+    plantsOptions.value = (response.data.plants ?? [])
+      .filter(item => item.name !== null)
+      .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
+    if (plantsOptions.value.length > 0) {
+      filters.plant_id = plantsOptions.value[0].value
+      filters.plant_code = plantsOptions.value[0].plant_code
+      filters.storage_locations = plantsOptions.value[0].storage_locations
     }
+    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
+    if(filters.storage_locations.length > 0) {
+      filters.storage_location_id = filters.storage_locations[0].value
+    }
+    loadItems({
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      sortBy: []
+    })
   } catch (error) {
     console.error(error)
   }
@@ -50,15 +73,13 @@ const headers = [
   { title: 'STATUS', key: 'commodity_status', sortable: false },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
+  { title: 'PUTAWAY DATE', key: 'qr_putaway_log', sortable: false },
 ]
 
+const tableLoading = ref(false)
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
-  const options = { page, itemsPerPage, sortBy, search: searchValue.value, plant_id: filters.plant_id }
-  const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options)
-  if (isSame) return
-  lastOptions.value = options
-
-  pageLoading.value = true
+  if (!filters.plant_id) return
+  tableLoading.value = true
 
   if (sortBy && sortBy.length > 0) {
     const sort = sortBy[0]
@@ -74,31 +95,32 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
       sort: sortQuery.value,
       search: searchValue.value,
       plant_id: filters.plant_id,
+      plant_code: filters.plant_code,
+      date_from: filters.dateFrom,
+      date_to: filters.dateTo,
       commodity_status_id: 1,
     },
   })
     .then((response) => {
       totalItems.value = response.data.total
       serverItems.value = response.data.data
-      pageLoading.value = false
+      tableLoading.value = false
     })
     .catch((error) => {
       console.error(error)
-      pageLoading.value = false
+      tableLoading.value = false
     })
 }
 
-// watch(() => filters.plant_id, () => {
-//   loadItems({
-//     page: page.value,
-//     itemsPerPage: itemsPerPage.value,
-//     sortBy: [{ key: sortQuery.value.replace('-', ''), order: sortQuery.value.startsWith('-') ? 'desc' : 'asc' }],
-//   })
-// })
 
 const handleSearch = () => {
-  searchValue.value = searchInput.value
-  lastOptions.value = {}
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  filters.plant_code = selectedPlant?.plant_code ?? null
+  loadItems({
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      sortBy: [],
+  });
 }
 
 const handleSelectionChange = (val) => {
@@ -148,6 +170,13 @@ const handleCreateDispo = async (method) => {
     return
   }
 
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  if (!selectedPlant?.plant_code) {
+    dialogAlert.value = { show: true, type: 'error', message: 'Please select a plant in the Filter by Plant.' }
+    dispoLoading.value = false
+    return
+  }
+
   try {
     const response = await ApiService.post('inventories/quality-inspection', {
       ...dispoForm,
@@ -156,8 +185,8 @@ const handleCreateDispo = async (method) => {
       ref_doc_number: refDocNumber.value,
       posting_date: postingDate.value,
       status: qualityInspectionStatus.value,
-      plant_code: storageLocation.value?.plant?.plant_code,
-      storage_location_id: storageLocation.value?.id,
+      plant_code: selectedPlant.plant_code,
+      storage_location_id: filters.storage_location_id,
       from_qc_disposition: true,
       type: 'qc-disposition',
       items: selectedItems.value.map(item => ({
@@ -285,7 +314,17 @@ const handleCreateDispo = async (method) => {
   </div>
 
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="8">
+    <VCol cols="12" md="3" class="d-flex align-center">
+      <v-select
+        label="Filter by Plant"
+        density="compact"
+        hide-details
+        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        @update:model-value="handleSearch"
+        v-model="filters.plant_id"
+      />
+    </VCol>
+    <VCol cols="12" md="2">
       <VTextField
         v-model="searchInput"
         placeholder="Search..."
@@ -296,18 +335,37 @@ const handleCreateDispo = async (method) => {
         @keyup.enter="handleSearch"
       />
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateFrom"
+        label="Date From"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="2">
+      <VTextField
+        v-model="filters.dateTo"
+        label="Date To"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
-        block
-        :loading="pageLoading"
-        prepend-icon="ri-search-line"
-        color="primary"
-        @click="handleSearch"
+          color="primary"
+          class="d-flex align-center"
+          prepend-icon="ri-search-eye-line"
+          @click="handleSearch"
       >
-        <template v-slot:loader>
-          <v-progress-circular indeterminate color="white" size="24" />
-        </template>
-        Search
+          <template #prepend>
+              <v-icon color="white"></v-icon>
+          </template>
+          Search
       </v-btn>
     </VCol>
     <VCol cols="12" md="2" class="d-flex align-center">
@@ -321,6 +379,7 @@ const handleCreateDispo = async (method) => {
         Create QC Dispo
       </v-btn>
     </VCol>
+   
   </VRow>
 
   <v-dialog
@@ -518,7 +577,7 @@ const handleCreateDispo = async (method) => {
       :headers="headers"
       :items="serverItems"
       :items-length="totalItems"
-      :loading="pageLoading"
+      :loading="tableLoading"
       item-value="id"
       :search="searchValue"
       show-select
@@ -532,7 +591,12 @@ const handleCreateDispo = async (method) => {
       </template>
 
       <template #item.mfg_date="{ item }">
+        
         {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
+      </template>
+
+      <template #item.qr_putaway_log="{ item }">
+        {{ item?.qr_putaway_log?.created_at ? Moment(item.qr_putaway_log.created_at).format('MM/DD/YY hh:mmA') : '-' }}
       </template>
 
       <template #item.commodity_status="{ item }">

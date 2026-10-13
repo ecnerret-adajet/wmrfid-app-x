@@ -219,13 +219,13 @@ export const routes = [
             },
         },
         {
-            path: 'transfer-orders',
-            name: 'transfer-orders',
+            path: 'goods-issuance',
+            name: 'goods-issuance',
             component: () => import('@/pages/transfers/index.vue'),
             meta: {
-              pageTitle: "Transfer Orders",
+              pageTitle: "Goods Issuance List",
               breadcrumbs: [
-                  { label: "Transfer Orders", link: "/transfer-orders" },
+                  { label: "Goods Issuance List", link: "/goods-issuance" },
               ],
             },
         },
@@ -541,6 +541,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/completed-do-picklist',
+                name: 'completed-do-picklist-report',
+                component: () => import('@/pages/reports/completedDoPicklist/index.vue'),
+                meta: {
+                    pageTitle: "Completed DO Picklist Report",
+                    breadcrumbs: [
+                            { label: "Completed DO Picklist Report", link: "/reports/completed-do-picklist" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/service-requests',
                 name: 'service-requests-report',
                 component: () => import('@/pages/reports/serviceRequests/index.vue'),
@@ -548,6 +559,17 @@ export const routes = [
                     pageTitle: "Service Requests Report",
                     breadcrumbs: [
                             { label: "Service Requests Report", link: "/reports/service-requests" },
+                    ],
+                },
+        },
+        {
+                path: 'reports/sto',
+                name: 'sto-report',
+                component: () => import('@/pages/reports/sto/index.vue'),
+                meta: {
+                    pageTitle: "STO Report",
+                    breadcrumbs: [
+                            { label: "STO Report", link: "/reports/sto" },
                     ],
                 },
         },
