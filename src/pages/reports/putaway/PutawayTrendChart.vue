@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
 import moment from 'moment'
+import { computed, defineProps } from 'vue'
 
 const props = defineProps({
   data: {
@@ -44,7 +44,7 @@ const series = computed(() => {
 
   if (targetValue.value !== null) {
     chartSeries.push({
-      name: 'Target',
+      name: 'Average',
       data: chartPoints.value.map(() => targetValue.value),
     })
   }

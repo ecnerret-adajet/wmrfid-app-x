@@ -14,11 +14,11 @@ const searchValue = ref('');
 const isLoading = ref(false);
 const plantsOption = ref([])
 const summary_count = reactive({
-    needs_processing: 0,
-    partially_processed: 0,
-    pending: 0,
-    total_pending: 0,
+    late_batch_picked: 0,
+    on_time_batch_picked: 0,
+    total_completed: 0,
 })
+const activeView = ref('table');
 
 const toast = ref({
     message: 'Success!',
@@ -176,9 +176,55 @@ const processingKpis = computed(() => {
     };
 });
 
+const batchAssignmentChartSeries = computed(() => [{
+    name: 'Items',
+    data: [
+        summary_count.late_batch_picked,
+        summary_count.on_time_batch_picked,
+        summary_count.total_completed,
+    ],
+}]);
+
+const batchAssignmentChartOptions = {
+    chart: {
+        type: 'bar',
+        toolbar: { show: false },
+    },
+    plotOptions: {
+        bar: {
+            horizontal: false,
+            distributed: true,
+            columnWidth: '75%',
+            borderRadius: 4,
+        },
+    },
+    dataLabels: {
+        enabled: true,
+        style: {
+            fontSize: '32px',
+        },
+        formatter: (value) => numberWithComma(value),
+    },
+    xaxis: {
+        categories: ['Late Batch Assigned', 'On-Time Batch Assigned', 'Total DO Items'],
+    },
+    yaxis: {
+        min: 0,
+        title: { text: 'DO Items' },
+        labels: {
+            formatter: (value) => numberWithComma(value),
+        },
+    },
+    colors: ['#E53935', '#00833c', '#16B1FF'],
+    tooltip: {
+        y: {
+            formatter: (value) => `${numberWithComma(value)} DOitems`,
+        },
+    },
+};
+
 const baseHeaders = [
-    { title: 'PLANT', key: 'plant_id', align: 'start', sortable: false },
-    { title: 'SLOC', key: 'storage_location', align: 'start', sortable: false },
+    { title: 'PLANT & SLOC', key: 'plant_id', align: 'start', sortable: false },
     { title: 'Shipment', key: 'shipment_number', align: 'start', sortable: false },
     { title: 'Delivery Order', key: 'ref_no',  sortable: false },
     { title: 'ITEM NO.', key: 'delivery_item_number', sortable: false },
@@ -187,6 +233,7 @@ const baseHeaders = [
     { title: 'DO Created', key: 'do_created', sortable: false },
     { title: 'CHECK IN', key: 'check_in', sortable: false },
     { title: 'Batch Picked Date', key: 'batch_picked_date', sortable: false, align: 'center' },
+    { title: 'RESERVED BY', key: 'created_by_name', align: 'start', sortable: false }
 ]
 
 // 2. Create the computed headers layer to track totalItems state changes
@@ -385,10 +432,23 @@ function removeLeadingZeros(value) {
         </VCol>
     </VRow>
     
-    <VCard>
-        <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" :headers="headers" :items="serverItems"
-            :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
-            :row-props="processingRowProps" class="text-no-wrap fixed-column-table">
+    <v-tabs v-model="activeView" color="primary">
+        <v-tab value="table">
+            <v-icon start>ri-table-line</v-icon>
+            Table View
+        </v-tab>
+        <v-tab value="graph">
+            <v-icon start>ri-bar-chart-line</v-icon>
+            Graph View
+        </v-tab>
+    </v-tabs>
+
+    <v-window v-model="activeView">
+        <v-window-item value="table">
+            <VCard>
+                <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" :headers="headers" :items="serverItems"
+                    :items-length="totalItems" :loading="loading" item-value="id" @update:options="loadItems"
+                    :row-props="processingRowProps" class="text-no-wrap fixed-column-table">
 
              <template #header.batch_picked_date="{ column }">
                 <span classs="mb-1">BATCH PICKED</span><br />
@@ -402,12 +462,12 @@ function removeLeadingZeros(value) {
                 </v-chip>
             </template>
 
-            <template #item.plant_id="{ item }">
-                <span class="font-weight-bold">{{ item.plant || '' }}</span><br />
-            </template>
-
-            <template #item.storage_location="{ item }">
-                <span class="font-weight-bold">{{ item.storage_location?.code || '' }}</span><br />
+           <template #item.plant_id="{ item }">
+                <span class="font-weight-bold">{{ item.plant || '' }}</span>
+                <span v-if="item.storage_location?.code" class="text-muted small ml-1">
+                    ({{ item.storage_location.code }})
+                </span>
+                <br />
             </template>
 
             <template #item.ref_no="{ item }">
@@ -449,8 +509,24 @@ function removeLeadingZeros(value) {
               {{ numberWithComma(item.delivery_quantity) || '' }} {{ item.sales_unit || '' }}
             </template>
             
-        </VDataTableServer>
-    </VCard>
+                </VDataTableServer>
+            </VCard>
+        </v-window-item>
+
+        <v-window-item value="graph">
+            <VCard>
+                <v-card-title class="mt-3 mb-2">Batch Reservation Performance</v-card-title>
+                <v-card-text>
+                    <VueApexCharts
+                        type="bar"
+                        height="350"
+                        :options="batchAssignmentChartOptions"
+                        :series="batchAssignmentChartSeries"
+                    />
+                </v-card-text>
+            </VCard>
+        </v-window-item>
+    </v-window>
 
     <v-dialog v-model="reservedPalletDialog" max-width="900">
         <v-card>
