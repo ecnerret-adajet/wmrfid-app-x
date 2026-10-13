@@ -74,6 +74,17 @@ export const routes = [
             },
         },
         {
+            path: 'customer-masters',
+            name: 'customer-masters',
+            component: () => import('@/pages/customer-master/index.vue'),
+            meta: {
+              pageTitle: "Customer Master",
+              breadcrumbs: [
+                  { label: "Customer Master", link: "/customer-masters" },
+              ],
+            },
+        },
+        {
             path: 'production-lines',
             name: 'production-lines',
             component: () => import('@/pages/productionLines/index.vue'),
@@ -508,6 +519,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/fumigation',
+                name: 'fumigation-report',
+                component: () => import('@/pages/reports/fumigation/Index.vue'),
+                meta: {
+                    pageTitle: "Fumigation Report",
+                    breadcrumbs: [
+                            { label: "Fumigation Report", link: "/reports/fumigation" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/outbound-performance',
                 name: 'outbound-performance-report',
                 component: () => import('@/pages/reports/outbound-performance/Index.vue'),
@@ -742,15 +764,10 @@ export const routes = [
         },
 
         {
+            // Retired nomination screen: QA/SPC encodes every request from the fumigation page's create form
             path: '/:plant_code/:sloc/:forklift/fumigation',
             name: 'fumigation-nomination',
-            component: () => import('@/pages/fumigation/FumigationNomination.vue'),
-            meta: {
-                pageTitle: 'Fumigation Nomination',
-                breadcrumbs: (route) => [
-                    { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation` }
-                ],
-            },
+            redirect: { name: 'fumigations', query: { create: '1' } },
         },
 
       ],

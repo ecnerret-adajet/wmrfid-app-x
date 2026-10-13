@@ -169,9 +169,9 @@ const proceedMapping = () => {
             title: 'Entries',
             to: '/fumigations',
         }" />
-        <VerticalNavLink :item="{
+        <VerticalNavLink v-if="authUserCan('create.fumigation.requests')" :item="{
             title: 'Create',
-            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/fumigation`,
+            to: '/fumigations?create=1',
         }" />
     </VerticalNavGroup>
 
@@ -190,10 +190,12 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/dashboard'}"/> -->
 
     <!-- Master Data Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines') || authUserCan('view.customer.masters')"
         :item="{ heading: 'Master Data' }" />
     <VerticalNavLink v-if="authUserCan('view.materials')"
         :item="{ title: 'Material List', icon: 'ri-stack-line', to: '/materials' }" />
+    <VerticalNavLink v-if="authUserCan('view.customer.masters')"
+        :item="{ title: 'Customer Master', icon: 'ri-user-star-line', to: '/customer-masters' }" />
     <VerticalNavLink v-if="authUserCan('view.production.lines')"
         :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines' }" />
 
@@ -278,8 +280,9 @@ const proceedMapping = () => {
             authUserCan('view.open.do.picklist') ||
             authUserCan('view.completed.do.picklist') ||
             authUserCan('view.outbound.performance.report') ||
-            authUserCan('view.service.requests.report') || 
-            authUserCan('view.sto.report')
+            authUserCan('view.service.requests.report') ||
+            authUserCan('view.sto.report') ||
+            authUserCan('view.fumigation.report')
         "
         :item="{ heading: 'Reports' }"
     />
@@ -310,6 +313,9 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.sto.report') || authStore.user?.is_super_admin"
         :item="{ title: 'STO Report', icon: 'ri-file-chart-line', to: '/reports/sto' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.fumigation.report') || authStore.user?.is_super_admin"
+        :item="{ title: 'Fumigation Report', icon: 'ri-bug-line', to: '/reports/fumigation' }" />
 
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
