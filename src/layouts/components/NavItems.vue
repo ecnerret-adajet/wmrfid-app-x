@@ -337,13 +337,16 @@ const proceedMapping = () => {
         :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions' }" />
 
     <!-- Admin Components Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.inventory.recon')" :item="{ heading: 'Admin' }" />
+    <VerticalNavSectionTitle v-if="authUserCan(['view.inventory.recon', 'manage.sap.movement.sloc.configs'])" :item="{ heading: 'Admin' }" />
     <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
     <VerticalNavLink v-if="authUserCan('view.inventory.recon')"
         :item="{ title: 'Inventory Recon', icon: 'ri-database-2-line', to: '/inventory-recon' }" />
 
     <VerticalNavLink v-if="authUserCan('view.pallet.checker')"
         :item="{ title: 'Pallet Checker', icon: 'ri-checkbox-multiple-line', to: '/pallet-checker' }" />
+
+    <VerticalNavLink v-if="authUserCan('manage.sap.movement.sloc.configs')"
+        :item="{ title: 'SAP Movement SLOC Config', icon: 'ri-route-line', to: '/sap-movement-sloc-configs' }" />
     
     <!-- // Add version release link -->
     <!-- <VerticalNavLink v-if="authUserCan('view.version.releases')"

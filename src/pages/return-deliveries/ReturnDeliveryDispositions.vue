@@ -1,15 +1,14 @@
 <script setup>
 import ApiService from '@/services/ApiService'
-import JwtService from '@/services/JwtService'
-import axios from 'axios'
 import Moment from 'moment'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const pageLoading = ref(false)
 const searchInput = ref('')
 const searchValue = ref('')
 
 const plantsOptions = ref([])
+const plantsLoaded = ref(false)
 const filters = reactive({ plant_id: null, plant_code: null })
 
 const serverItems = ref([])
@@ -33,19 +32,29 @@ const dispositionStatusOptions = [
   { title: 'Disposal', value: 'disposal' },
 ]
 const dispositionRemarks = ref('')
+const simulateCompleted = ref(false)
+const simulationErrors = ref([])
+const dialogAlert = ref({ show: false, type: 'info', message: '' })
+const chunkResults = ref([])
 
 const totalSelectedQuantity = computed(() =>
   selectedItems.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
 )
 
-onMounted(() => loadPlants())
+// Any change after a simulation must be simulated again before posting.
+watch(
+  [dispositionStatus, grGiSlipNumber, refDocNumber, postingDate, () => selectedItems.value.length],
+  () => { simulateCompleted.value = false }
+)
+
+onMounted(async () => {
+  await loadPlants()
+  reloadTable()
+})
 
 const loadPlants = async () => {
   try {
-    const token = JwtService.getToken()
-    const response = await axios.get('/managed-plant-storage-locations', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await ApiService.get('managed-plant-storage-locations')
     plantsOptions.value = (response.data.plants ?? [])
       .filter(item => item.name !== null)
       .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code }))
@@ -55,7 +64,20 @@ const loadPlants = async () => {
     }
   } catch (error) {
     console.error(error)
+  } finally {
+    plantsLoaded.value = true
   }
+}
+
+const reloadTable = () => {
+  lastOptions.value = {}
+  selectedItems.value = []
+  loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
+}
+
+const onPlantChange = (val) => {
+  filters.plant_code = plantsOptions.value.find(p => p.value === val)?.plant_code ?? null
+  reloadTable()
 }
 
 const headers = [
@@ -73,6 +95,9 @@ const headers = [
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
+  // Wait for the default plant, otherwise the first fetch runs unfiltered.
+  if (!plantsLoaded.value) return
+
   const options = { page, itemsPerPage, sortBy, search: searchValue.value, plant_code: filters.plant_code }
   const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options)
   if (isSame) return
@@ -109,8 +134,7 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 
 const handleSearch = () => {
   searchValue.value = searchInput.value
-  lastOptions.value = {}
-  selectedItems.value = []
+  reloadTable()
 }
 
 const handleSelectionChange = (val) => {
@@ -125,34 +149,82 @@ const handleConfirm = () => {
   postingDate.value = new Date().toISOString().split('T')[0]
   dispositionStatus.value = null
   dispositionRemarks.value = ''
+  simulateCompleted.value = false
+  simulationErrors.value = []
+  chunkResults.value = []
+  dialogAlert.value = { show: false, type: 'info', message: '' }
   showDispositionDialog.value = true
 }
 
-const submitDisposition = () => {
+const showDialogError = (message) => {
+  dialogAlert.value = { show: true, type: 'error', message }
+}
+
+const submitDisposition = async (method) => {
   if (selectedItems.value.length === 0) return
+
+  simulationErrors.value = []
+  chunkResults.value = []
+  dialogAlert.value = { show: false, type: 'info', message: '' }
+
+  if (!filters.plant_code) return showDialogError('Please select a plant in the Filter by Plant.')
+  if (!dispositionStatus.value) return showDialogError('Status is required.')
+  if (!grGiSlipNumber.value) return showDialogError('GR GI Slip Number is required.')
+  if (!refDocNumber.value) return showDialogError('Ref Doc Number is required.')
+  if (!dispositionRemarks.value) return showDialogError('Remarks is required.')
 
   confirmLoading.value = true
 
-  ApiService.post('return-deliveries/confirm-disposition-items', {
-    ids: selectedItems.value.map(item => item.id),
-    gr_gi_slip_number: grGiSlipNumber.value,
-    ref_doc_number: refDocNumber.value,
-    posting_date: postingDate.value,
-    status: dispositionStatus.value,
-    remarks: dispositionRemarks.value,
-  })
-    .then(() => {
+  try {
+    const response = await ApiService.post('return-deliveries/confirm-disposition-items', {
+      method,
+      plant_code: filters.plant_code,
+      ids: selectedItems.value.map(item => item.id),
+      gr_gi_slip_number: grGiSlipNumber.value,
+      ref_doc_number: refDocNumber.value,
+      posting_date: postingDate.value,
+      status: dispositionStatus.value,
+      remarks: dispositionRemarks.value,
+    }, { timeout: 300000 })
+
+    const data = response.data
+    chunkResults.value = data.results ?? []
+    const failedChunks = chunkResults.value.filter(r => r.status !== 'S')
+    const succeededChunks = chunkResults.value.filter(r => r.status === 'S')
+
+    if (failedChunks.length > 0) {
+      simulationErrors.value = failedChunks.flatMap(r => (r.errors ?? []).map(e => e.MESSAGE))
+
+      if (method === 'simulate') {
+        simulateCompleted.value = false
+        dialogAlert.value = { show: true, type: 'error', message: `Simulation completed with errors. ${succeededChunks.length} of ${chunkResults.value.length} chunk(s) succeeded.` }
+      } else {
+        const totalSuccess = succeededChunks.reduce((sum, r) => sum + (r.item_count || 0), 0)
+        dialogAlert.value = { show: true, type: 'warning', message: `RDO Disposition completed with errors. ${totalSuccess} of ${data.total_items} items processed.` }
+
+        // Posted chunks have left the list; refresh so only unposted pallets remain.
+        const failedIds = new Set(failedChunks.flatMap(r => r.item_physical_ids ?? []))
+        const remaining = selectedItems.value.filter(item => failedIds.has(item.physical_id))
+        lastOptions.value = {}
+        loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
+        selectedItems.value = remaining
+      }
+      return
+    }
+
+    if (method === 'simulate') {
+      simulateCompleted.value = true
+      dialogAlert.value = { show: true, type: 'info', message: 'Simulation completed. You may now confirm the RDO disposition.' }
+    } else {
+      simulateCompleted.value = false
       showDispositionDialog.value = false
-      selectedItems.value = []
-      lastOptions.value = {}
-      loadItems({ page: 1, itemsPerPage: itemsPerPage.value, sortBy: [] })
-    })
-    .catch((error) => {
-      console.error(error)
-    })
-    .finally(() => {
-      confirmLoading.value = false
-    })
+      reloadTable()
+    }
+  } catch (error) {
+    showDialogError(error.response?.data?.message || 'An unexpected error occurred.')
+  } finally {
+    confirmLoading.value = false
+  }
 }
 </script>
 
@@ -184,8 +256,9 @@ const submitDisposition = () => {
         density="compact"
         hide-details
         :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        :loading="!plantsLoaded"
         v-model="filters.plant_id"
-        @update:model-value="(val) => { filters.plant_code = plantsOptions.find(p => p.value === val)?.plant_code ?? null; lastOptions.value = {} }"
+        @update:model-value="onPlantChange"
       />
     </VCol>
     <VCol cols="12" md="5">
@@ -241,6 +314,55 @@ const submitDisposition = () => {
       </v-card-title>
       <v-divider />
       <v-card-text class="pa-4">
+        <v-alert
+          v-if="dialogAlert.show"
+          :type="dialogAlert.type"
+          variant="tonal"
+          class="mb-4"
+          closable
+          @click:close="dialogAlert.show = false"
+        >
+          <div>{{ dialogAlert.message }}</div>
+          <ul v-if="simulationErrors.length > 0" class="ml-4 mt-1">
+            <li v-for="(err, i) in simulationErrors" :key="i">{{ err }}</li>
+          </ul>
+        </v-alert>
+
+        <div v-if="chunkResults.length > 0" class="mb-4">
+          <v-card
+            v-for="chunk in chunkResults"
+            :key="chunk.chunk_index"
+            variant="tonal"
+            :color="chunk.status === 'S' ? 'success' : 'error'"
+            class="mb-2"
+            rounded="lg"
+          >
+            <v-card-text class="pa-3">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="font-weight-bold">
+                  Chunk {{ chunk.chunk_index + 1 }}
+                  <span class="text-medium-emphasis">({{ chunk.item_count }} items)</span>
+                </span>
+                <v-badge
+                  :color="chunk.status === 'S' ? 'success' : 'error'"
+                  :content="chunk.status === 'S' ? 'Success' : 'Failed'"
+                  inline
+                />
+              </div>
+              <div v-if="chunk.material_document_313 || chunk.material_document_913" class="text-body-2">
+                <span v-if="chunk.material_document_313">Material Doc 313: <strong>{{ chunk.material_document_313 }}</strong></span>
+                <span v-if="chunk.material_document_913" class="ml-4">Material Doc 913: <strong>{{ chunk.material_document_913 }}</strong></span>
+              </div>
+              <div v-if="chunk.item_physical_ids && chunk.item_physical_ids.length > 0" class="text-body-2 text-medium-emphasis mt-1">
+                Physical IDs: {{ chunk.item_physical_ids.join(', ') }}
+              </div>
+              <ul v-if="chunk.errors && chunk.errors.length > 0" class="ml-4 mt-1">
+                <li v-for="(err, i) in chunk.errors" :key="i" class="text-body-2">{{ err.MESSAGE }}</li>
+              </ul>
+            </v-card-text>
+          </v-card>
+        </div>
+
         <VTextField
           v-model="grGiSlipNumber"
           label="GR GI Slip Number"
@@ -350,11 +472,20 @@ const submitDisposition = () => {
         </v-btn>
         <v-spacer />
         <v-btn
-          color="success"
-          :loading="confirmLoading"
-          @click="submitDisposition"
+          color="secondary"
+          :disabled="!dispositionStatus || confirmLoading"
+          :loading="confirmLoading && !simulateCompleted"
+          @click="submitDisposition('simulate')"
         >
-          Submit
+          Simulate
+        </v-btn>
+        <v-btn
+          v-if="simulateCompleted"
+          color="primary"
+          :loading="confirmLoading && simulateCompleted"
+          @click="submitDisposition('')"
+        >
+          Confirm
         </v-btn>
       </v-card-actions>
     </v-card>

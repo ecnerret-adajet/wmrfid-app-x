@@ -85,6 +85,17 @@ export const routes = [
             },
         },
         {
+            path: 'sap-movement-sloc-configs',
+            name: 'sap-movement-sloc-configs',
+            component: () => import('@/pages/sap-movement-sloc-config/index.vue'),
+            meta: {
+              pageTitle: "SAP Movement SLOC Config",
+              breadcrumbs: [
+                  { label: "SAP Movement SLOC Config", link: "/sap-movement-sloc-configs" },
+              ],
+            },
+        },
+        {
             path: 'production-lines',
             name: 'production-lines',
             component: () => import('@/pages/productionLines/index.vue'),
