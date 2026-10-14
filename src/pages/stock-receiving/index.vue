@@ -35,7 +35,15 @@ const filters = reactive({
     plant_code: null,
     dateFrom: todayStr,
     dateTo: todayStr,
+    source: null,
 });
+
+// RDO disposition 313s are tagged by the API; For RTM / Disposal ones are never received here
+const sourceOptions = [
+    { title: 'RDO Disposition', value: 'rdo' },
+    { title: 'Other', value: 'other' },
+];
+const nonReceivableStatuses = ['For RTM', 'For Disposal'];
 
 
 const form = reactive({
@@ -109,6 +117,9 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
         }
         if (filters.dateTo) {
             params.end_date = filters.dateTo;
+        }
+        if (filters.source) {
+            params.source = filters.source;
         }
 
         await stockReceivingStore.fetchStockReceiving(params);
@@ -304,6 +315,17 @@ onMounted(() => {
                 clearable
             />
 
+            <!-- Source Filter -->
+            <v-select
+                style="max-width: 220px;"
+                class="flex-grow-1 align-center"
+                label="Filter by Source"
+                density="compact"
+                :items="sourceOptions"
+                v-model="filters.source"
+                clearable
+            />
+
             <VCol md="2" cols="12" >
                 <v-text-field v-model="filters.dateFrom" label="Posting Date From" type="date" density="compact" variant="outlined" hide-details />
             </VCol>
@@ -354,6 +376,7 @@ onMounted(() => {
 
                 <template #item.material_document="{ item }">
                     <span class="font-weight-bold">{{ item.material_document }}</span>
+                    <v-chip v-if="item.source === 'rdo-disposition'" size="x-small" color="info" class="ms-2" label>RDO</v-chip>
                 </template>
 
                 <template #item.year="{ item }">
@@ -394,6 +417,12 @@ onMounted(() => {
                         <v-chip size="small" color="error" text-color="white">
                             <v-icon start size="small">ri-error-warning-line</v-icon>
                             Reversed
+                        </v-chip>
+                    </div>
+                    <div v-else-if="nonReceivableStatuses.includes(item.status)">
+                        <v-chip size="small" color="secondary" text-color="white">
+                            <v-icon start size="small">ri-forbid-line</v-icon>
+                            {{ item.status }}
                         </v-chip>
                     </div>
                     <div v-else>

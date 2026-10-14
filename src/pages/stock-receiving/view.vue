@@ -3,7 +3,7 @@ import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
 import ApiService from '@/services/ApiService';
 import Swal from 'sweetalert2';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -19,6 +19,7 @@ const stockTransfer = ref(null);
 const movementType = ref(null);
 const stockTransferMaterialDocument = ref([]);
 const alcStockTransfer = ref([]);
+const rdo = ref(null);
 const pageLoading = ref(false);
 const postResult = ref(null);
 const disablePost = ref(false);
@@ -34,6 +35,18 @@ const toast = ref({
 });
 
 const itemsPerPage = ref(15);
+
+// RDO disposition 313: only Good is received here; For RTM / Disposal are not
+const rdoStatusLabels = { good: 'Good', 'for-rtm': 'For RTM', disposal: 'Disposal' };
+const isNonReceivable = computed(() =>
+    ['For RTM', 'For Disposal'].includes(header.value?.status)
+    || ['for-rtm', 'disposal'].includes(rdo.value?.status_text));
+const rdoPalletHeaders = [
+    { title: 'Physical ID', key: 'physical_id', sortable: false },
+    { title: 'Batch', key: 'batch', sortable: false },
+    { title: 'Qty', key: 'entry_qty', align: 'center', sortable: false },
+    { title: 'UOM', key: 'entry_uom', align: 'center', sortable: false },
+];
 
 const headers = [
     { title: 'Material', key: 'material_code', sortable: false },
@@ -55,6 +68,7 @@ const fetchDetails = async () => {
         movementType.value = response.data.movement_type;
         stockTransferMaterialDocument.value = response.data.stock_transfer_material_document;
         alcStockTransfer.value = response.data.alc_stock_transfer;
+        rdo.value = response.data.rdo;
 
         // Set document header text from stock transfer if exists
         if (stockTransfer.value) {
@@ -269,6 +283,27 @@ onMounted(() => {
             </v-card-title>
         </v-card>
 
+        <!-- RDO Disposition 313 -->
+        <v-card v-if="rdo" class="mt-2">
+            <v-card-text class="mx-2">
+                <v-alert :type="isNonReceivable ? 'warning' : 'info'" variant="tonal" density="compact" class="mb-3">
+                    <strong>RDO Disposition &mdash; {{ rdoStatusLabels[rdo.status_text] || rdo.status_text }}</strong>
+                    &middot; 313 {{ header?.material_document }}
+                    &middot; {{ rdo.issuing_sloc }} &rarr; {{ rdo.receiving_sloc }}
+                    &middot; posted by {{ rdo.posted_by || '--' }} on {{ rdo.posting_date }}
+                    <div v-if="isNonReceivable" class="mt-1">
+                        This RDO {{ rdoStatusLabels[rdo.status_text] }} 313 is not received through Stock Receiving.
+                    </div>
+                </v-alert>
+                <VDataTable
+                    :headers="rdoPalletHeaders"
+                    :items="rdo.pallets"
+                    density="compact"
+                    class="text-no-wrap"
+                />
+            </v-card-text>
+        </v-card>
+
         <!-- Details Table -->
         <v-card class="mt-2">
             <v-card-text class="mx-2">
@@ -344,7 +379,7 @@ onMounted(() => {
                         </v-btn>
                     </template>
                 </template>
-                <template v-else>
+                <template v-else-if="!isNonReceivable">
                     <v-btn
                         color="primary"
                         size="small"

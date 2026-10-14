@@ -30,6 +30,16 @@ const toast = ref({
     show: false,
 });
 
+// Where cancelled pallets went back to: QC 313 → Quality Inspection, RDO disposition 313 → RDO Disposition
+const revertedPalletsMessage = (log, data) => {
+    if (!data.reverted_pallets) return '';
+    if (data.reverted_to === 'rdo-disposition') {
+        const needsPutaway = ['for-rtm', 'disposal'].includes(log?.status_text) ? ' They need putaway again.' : '';
+        return ` ${data.reverted_pallets} pallet(s) returned to RDO Disposition.${needsPutaway}`;
+    }
+    return ` ${data.reverted_pallets} pallet(s) returned to Quality Inspection.`;
+};
+
 const cancelDialog = ref(false);
 const cancelTarget = ref(null);
 const cancelDate = ref(null);
@@ -161,7 +171,7 @@ const confirmCancelGoodsMovement = () => {
 
             if (status === 'S') {
                 toast.value = {
-                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${response.data.reverted_pallets ? ` ${response.data.reverted_pallets} pallet(s) returned to Quality Inspection.` : ''}`,
+                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${revertedPalletsMessage(cancelTarget.value, response.data)}`,
                     color: 'success',
                     show: true,
                 };
@@ -249,6 +259,7 @@ const handleAction = (item, action) => {
                 >
                     {{ item.movement_type }}
                 </v-chip>
+                <v-chip v-if="item.type === 'rdo-disposition'" size="x-small" color="info" class="ms-1" label>RDO</v-chip>
             </template>
 
             <template #item.issuing_sloc="{ item }">
