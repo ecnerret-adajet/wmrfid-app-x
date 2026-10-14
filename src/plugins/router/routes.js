@@ -682,8 +682,8 @@ export const routes = [
             meta: {
               pageTitle: 'Return Delivery Dispositions',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
-                  { label: 'Return Delivery Dispositions', link: '/return-deliveries/dispositions' },
+                  { label: 'QC Dispositions', link: '/qc-disposition' },
+                  { label: 'Return Deliveries', link: '/return-deliveries/dispositions' },
               ],
             },
         },

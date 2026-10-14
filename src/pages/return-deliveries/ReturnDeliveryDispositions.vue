@@ -44,9 +44,23 @@ const simulationErrors = ref([])
 const dialogAlert = ref({ show: false, type: 'info', message: '' })
 const chunkResults = ref([])
 
+const statusError = ref('')
+
 const totalSelectedQuantity = computed(() =>
   selectedItems.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
 )
+
+const assignmentOf = item => item.return_delivery_pallet_assignment_item?.return_delivery_pallet_assignment
+
+// Distinct material documents across the selection; GR GI Slip / Ref Doc are prefilled from it.
+const selectedMaterialDocuments = computed(() =>
+  [...new Set(selectedItems.value.map(item => assignmentOf(item)?.material_document).filter(Boolean))]
+)
+
+// Locked once the value comes from the RDO's material document.
+const isDocNumberLocked = computed(() => selectedMaterialDocuments.value.length === 1)
+
+watch(dispositionStatus, val => { if (val) statusError.value = '' })
 
 // Any change after a simulation must be simulated again before posting.
 watch(
@@ -88,11 +102,14 @@ const onPlantChange = (val) => {
 }
 
 const headers = [
-  { title: 'BATCH', key: 'batch' },
   { title: 'MATERIAL', key: 'material_id' },
+  { title: 'BATCH', key: 'batch' },
   { title: 'PHYSICAL ID', key: 'physical_id' },
-  { title: 'MFG DATE', key: 'mfg_date' },
   { title: 'QUANTITY', key: 'quantity', align: 'center' },
+  { title: 'UOM', key: 'uom', sortable: false },
+  { title: 'MFG DATE', key: 'mfg_date' },
+  { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
+  { title: 'MAT DOC ID', key: 'material_document_item', sortable: false },
   { title: 'STATUS', key: 'commodity_status', sortable: false, align: 'center' },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
@@ -163,15 +180,21 @@ const handleSelectionChange = (val) => {
 const handleConfirm = () => {
   if (selectedItems.value.length === 0) return
 
-  grGiSlipNumber.value = ''
-  refDocNumber.value = ''
+  const materialDocument = isDocNumberLocked.value ? selectedMaterialDocuments.value[0] : ''
+
+  grGiSlipNumber.value = materialDocument
+  refDocNumber.value = materialDocument
   postingDate.value = new Date().toISOString().split('T')[0]
   dispositionStatus.value = null
+  statusError.value = ''
   dispositionRemarks.value = ''
   simulateCompleted.value = false
   simulationErrors.value = []
   chunkResults.value = []
   dialogAlert.value = { show: false, type: 'info', message: '' }
+  if (selectedMaterialDocuments.value.length > 1) {
+    showDialogError(`Selected pallets belong to different material documents (${selectedMaterialDocuments.value.join(', ')}). Select pallets from one material document only.`)
+  }
   showDispositionDialog.value = true
 }
 
@@ -187,7 +210,11 @@ const submitDisposition = async (method) => {
   dialogAlert.value = { show: false, type: 'info', message: '' }
 
   if (!filters.plant_code) return showDialogError('Please select a plant in the Filter by Plant.')
-  if (!dispositionStatus.value) return showDialogError('Status is required.')
+  if (selectedMaterialDocuments.value.length > 1) return showDialogError('Selected pallets belong to different material documents. Select pallets from one material document only.')
+  if (!dispositionStatus.value) {
+    statusError.value = 'Status is required.'
+    return showDialogError('Status is required.')
+  }
   if (!grGiSlipNumber.value) return showDialogError('GR GI Slip Number is required.')
   if (!refDocNumber.value) return showDialogError('Ref Doc Number is required.')
   if (!dispositionRemarks.value) return showDialogError('Remarks is required.')
@@ -401,55 +428,6 @@ const submitDisposition = async (method) => {
           </v-card>
         </div>
 
-        <VTextField
-          v-model="grGiSlipNumber"
-          label="GR GI Slip Number"
-          placeholder="Enter GR GI Slip Number"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <VTextField
-          v-model="refDocNumber"
-          label="Ref Doc Number"
-          placeholder="Enter Ref Doc Number"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <VTextField
-          v-model="postingDate"
-          label="Posting Date"
-          type="date"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <v-select
-          v-model="dispositionStatus"
-          label="Select Status"
-          :items="dispositionStatusOptions"
-          item-title="title"
-          item-value="value"
-          density="compact"
-          variant="outlined"
-          class="mb-3"
-          hide-details="auto"
-        />
-        <v-textarea
-          v-model="dispositionRemarks"
-          class="mb-4"
-          clear-icon="ri-close-line"
-          label="Remarks"
-          lines="1"
-          variant="outlined"
-          density="compact"
-          clearable
-        />
-        <v-divider class="mb-4" />
         <div class="d-flex gap-3 mb-4">
           <v-card
             variant="tonal"
@@ -474,6 +452,64 @@ const submitDisposition = async (method) => {
             </v-card-text>
           </v-card>
         </div>
+
+        <VTextField
+          v-model="grGiSlipNumber"
+          label="GR GI Slip Number"
+          placeholder="Enter GR GI Slip Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+          :readonly="isDocNumberLocked"
+          :bg-color="isDocNumberLocked ? 'grey-lighten-4' : undefined"
+        />
+        <VTextField
+          v-model="refDocNumber"
+          label="Ref Doc Number"
+          placeholder="Enter Ref Doc Number"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+          :readonly="isDocNumberLocked"
+          :bg-color="isDocNumberLocked ? 'grey-lighten-4' : undefined"
+        />
+        <VTextField
+          v-model="postingDate"
+          label="Posting Date"
+          type="date"
+          density="compact"
+          variant="outlined"
+          class="mb-3"
+          hide-details="auto"
+        />
+        <v-radio-group
+          v-model="dispositionStatus"
+          label="Select Status"
+          inline
+          class="mb-3"
+          hide-details="auto"
+          :error-messages="statusError"
+        >
+          <v-radio
+            v-for="option in dispositionStatusOptions"
+            :key="option.value"
+            :label="option.title"
+            :value="option.value"
+          />
+        </v-radio-group>
+        <v-textarea
+          v-model="dispositionRemarks"
+          class="mb-4"
+          clear-icon="ri-close-line"
+          label="Remarks"
+          lines="1"
+          variant="outlined"
+          density="compact"
+          clearable
+        />
+        <v-divider class="mb-4" />
         <v-table density="compact">
           <thead>
             <tr>
@@ -511,7 +547,7 @@ const submitDisposition = async (method) => {
         <v-spacer />
         <v-btn
           color="secondary"
-          :disabled="!dispositionStatus || confirmLoading"
+          :disabled="confirmLoading"
           :loading="confirmLoading && !simulateCompleted"
           @click="submitDisposition('simulate')"
         >
@@ -546,6 +582,18 @@ const submitDisposition = async (method) => {
     >
       <template #item.material_id="{ item }">
         {{ item.material?.description }}
+      </template>
+
+      <template #item.uom="{ item }">
+        {{ assignmentOf(item)?.uom ?? '' }}
+      </template>
+
+      <template #item.material_document="{ item }">
+        {{ assignmentOf(item)?.material_document ?? '' }}
+      </template>
+
+      <template #item.material_document_item="{ item }">
+        {{ assignmentOf(item)?.material_document_item ?? '' }}
       </template>
 
       <template #item.mfg_date="{ item }">
