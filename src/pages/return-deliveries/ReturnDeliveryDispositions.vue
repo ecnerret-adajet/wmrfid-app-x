@@ -9,7 +9,14 @@ const searchValue = ref('')
 
 const plantsOptions = ref([])
 const plantsLoaded = ref(false)
-const filters = reactive({ plant_id: null, plant_code: null })
+
+const today = Moment()
+const filters = reactive({
+  plant_id: null,
+  plant_code: null,
+  dateFrom: today.clone().subtract(1, 'day').format('YYYY-MM-DD'),
+  dateTo: today.format('YYYY-MM-DD'),
+})
 
 const serverItems = ref([])
 const totalItems = ref(0)
@@ -86,10 +93,11 @@ const headers = [
   { title: 'PHYSICAL ID', key: 'physical_id' },
   { title: 'MFG DATE', key: 'mfg_date' },
   { title: 'QUANTITY', key: 'quantity', align: 'center' },
-  { title: 'STATUS', key: 'commodity_status', sortable: false },
+  { title: 'STATUS', key: 'commodity_status', sortable: false, align: 'center' },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
-  { title: 'RETURN DATE', key: 'return_date', sortable: false },
+  { title: 'PROCESSED AT', key: 'processed_at', sortable: false },
+  // { title: 'RETURN DATE', key: 'return_date', sortable: false },
   { title: 'CONFIRMED BY', key: 'confirmed_by', sortable: false },
   { title: 'CONFIRMED AT', key: 'confirmed_at', sortable: false },
 ]
@@ -98,7 +106,16 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
   // Wait for the default plant, otherwise the first fetch runs unfiltered.
   if (!plantsLoaded.value) return
 
-  const options = { page, itemsPerPage, sortBy, search: searchValue.value, plant_code: filters.plant_code }
+  const options = {
+    page,
+    itemsPerPage,
+    sortBy,
+    search: searchValue.value,
+    plant_code: filters.plant_code,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  }
+  
   const isSame = JSON.stringify(lastOptions.value) === JSON.stringify(options)
   if (isSame) return
   lastOptions.value = options
@@ -119,6 +136,8 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
       sort: sortQuery.value,
       search: searchValue.value,
       plant_code: filters.plant_code,
+      date_from: filters.dateFrom,
+      date_to: filters.dateTo,
     },
   })
     .then((response) => {
@@ -250,18 +269,7 @@ const submitDisposition = async (method) => {
   </VRow>
 
   <VRow class="align-center mb-3">
-    <VCol cols="12" md="3" class="d-flex align-center">
-      <v-select
-        label="Filter by Plant"
-        density="compact"
-        hide-details
-        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
-        :loading="!plantsLoaded"
-        v-model="filters.plant_id"
-        @update:model-value="onPlantChange"
-      />
-    </VCol>
-    <VCol cols="12" md="5">
+    <VCol cols="12" md="4">
       <VTextField
         v-model="searchInput"
         placeholder="Search..."
@@ -273,6 +281,36 @@ const submitDisposition = async (method) => {
       />
     </VCol>
     <VCol cols="12" md="2" class="d-flex align-center">
+      <v-select
+        label="Filter by Plant"
+        density="compact"
+        hide-details
+        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        v-model="filters.plant_id"
+        @update:model-value="(val) => { filters.plant_code = plantsOptions.find(p => p.value === val)?.plant_code ?? null; lastOptions.value = {} }"
+      />
+    </VCol>
+    <VCol cols="12" sm="6" md="2" class="d-flex align-center">
+      <v-text-field
+        v-model="filters.dateFrom"
+        label="Date From"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" sm="6" md="2" class="d-flex align-center">
+      <v-text-field
+        v-model="filters.dateTo"
+        label="Date To"
+        type="date"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
+    </VCol>
+    <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
         block
         :loading="pageLoading"
@@ -286,7 +324,7 @@ const submitDisposition = async (method) => {
         Search
       </v-btn>
     </VCol>
-    <VCol cols="12" md="2" class="d-flex align-center">
+    <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
         block
         :loading="confirmLoading"
@@ -500,7 +538,6 @@ const submitDisposition = async (method) => {
       :items-length="totalItems"
       :loading="pageLoading"
       item-value="id"
-      :search="searchValue"
       show-select
       return-object
       @update:options="loadItems"
@@ -516,9 +553,15 @@ const submitDisposition = async (method) => {
       </template>
 
       <template #item.commodity_status="{ item }">
-        <span class="font-weight-bold">
-          {{ item.commodity_status?.name ?? '' }}
-        </span>
+        <v-chip 
+          v-if="item.commodity_status_id === 14"
+          color="warning" 
+          class="font-weight-bold"
+          label
+          small
+        >
+          For Inspection
+        </v-chip>
       </template>
 
       <template #item.bin_location="{ item }">
@@ -529,16 +572,24 @@ const submitDisposition = async (method) => {
         {{ item.position_in_block }}
       </template>
 
-      <template #item.return_date="{ item }">
-        {{ item.return_delivery_pallet_assignment_item?.created_at ? Moment(item.return_delivery_pallet_assignment_item.created_at).format('MMMM D, YYYY h:mm A') : '' }}
+      <template #item.processed_at="{ item }">
+        {{ 
+          item.return_delivery_pallet_assignment_item?.return_delivery_pallet_assignment?.created_at 
+          ? Moment(item.return_delivery_pallet_assignment_item.return_delivery_pallet_assignment?.created_at).format('M/D/YY h:mm A') 
+          : '' 
+        }}
       </template>
+
+      <!-- <template #item.return_date="{ item }">
+        {{ item.return_delivery_pallet_assignment_item?.created_at ? Moment(item.return_delivery_pallet_assignment_item.created_at).format('M/D/YY h:mm A') : '' }}
+      </template> -->
 
       <template #item.confirmed_by="{ item }">
         {{ item.return_delivery_pallet_assignment_item?.confirmed_by?.name ?? '' }}
       </template>
 
       <template #item.confirmed_at="{ item }">
-        {{ item.return_delivery_pallet_assignment_item?.confirmed_at ? Moment(item.return_delivery_pallet_assignment_item.confirmed_at).format('MMMM D, YYYY h:mm A') : '' }}
+        {{ item.return_delivery_pallet_assignment_item?.confirmed_at ? Moment(item.return_delivery_pallet_assignment_item.confirmed_at).format('M/D/YY h:mm A') : '' }}
       </template>
     </VDataTableServer>
   </VCard>

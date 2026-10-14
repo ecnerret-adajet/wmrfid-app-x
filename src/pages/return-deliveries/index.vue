@@ -2,10 +2,12 @@
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
-import { onMounted, ref } from 'vue';
+import Moment from 'moment';
+import { nextTick, onMounted, ref } from 'vue';
 import datatable from './datatable.vue';
 
 const authStore = useAuthStore();
+const today = Moment();
 
 const plantsOption = ref([]);
 const plantsLoaded = ref(false);
@@ -54,20 +56,25 @@ const toast = ref({
 
 const filters = reactive({
     plant: null,
+    dateFrom: today.clone().subtract(1, 'day').format('YYYY-MM-DD'),
+    dateTo: today.format('YYYY-MM-DD'),
 });
 
 const applyFilter = () => {
     if(datatableRef.value) {
         datatableRef.value.applyFilters(filters);
     }
+    loadStatusCounts();
 }
 
 const onPlantChange = () => {
     applyFilter();
 }
 
-const handleSearch = () => {
+const handleSearch = async () => {
     searchValue.value = searchInput.value;
+    await nextTick();
+    applyFilter();
 };
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
@@ -148,7 +155,7 @@ const loadStatusCounts = async () => {
     </VRow>
 
     <VRow align="center" class="mt-1">
-        <VCol md="7">
+        <VCol cols="12" md="4">
             <VTextField
                 v-model="searchInput"
                 placeholder="Search ..."
@@ -159,7 +166,7 @@ const loadStatusCounts = async () => {
                 @keyup.enter="handleSearch"
             />
         </VCol>
-        <VCol md="3">
+        <VCol cols="12" md="2">
             <v-select
                 density="compact"
                 label="Filter by Plant"
@@ -172,7 +179,27 @@ const loadStatusCounts = async () => {
                 @update:model-value="onPlantChange"
             />
         </VCol>
-        <VCol md="2" class="d-flex justify-center align-center">
+        <VCol cols="12" sm="6" md="2">
+            <v-text-field
+                v-model="filters.dateFrom"
+                label="Date From"
+                type="date"
+                density="compact"
+                variant="outlined"
+                hide-details
+            />
+        </VCol>
+        <VCol cols="12" sm="6" md="2">
+            <v-text-field
+                v-model="filters.dateTo"
+                label="Date To"
+                type="date"
+                density="compact"
+                variant="outlined"
+                hide-details
+            />
+        </VCol>
+        <VCol cols="12" md="2" class="d-flex justify-center align-center">
             <v-btn block prepend-icon="ri-search-line" class="w-full" @click="handleSearch">
                 Search
             </v-btn>
