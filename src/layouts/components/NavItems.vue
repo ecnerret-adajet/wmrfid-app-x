@@ -112,7 +112,7 @@ const proceedMapping = () => {
             title: 'Disposition List',
             to: '/qc-disposition/postings',
         }" />
-        <VerticalNavLink v-if="authUserCan('can.view.qc.postings') && authUserCan('view.deliveries')" :item="{
+        <VerticalNavLink v-if="authUserCan('can.view.qc.postings')" :item="{
             title: 'Return Deliveries',
             to: '/return-deliveries/dispositions',
         }" />
