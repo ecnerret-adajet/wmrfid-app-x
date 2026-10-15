@@ -60,6 +60,21 @@ const selectedMaterialDocuments = computed(() =>
 // Locked once the value comes from the RDO's material document.
 const isDocNumberLocked = computed(() => selectedMaterialDocuments.value.length === 1)
 
+const binLocationOf = item => item.block?.label && item.block?.lot?.label ? `${item.block.lot.label} - ${item.block.label}` : ''
+
+// BU plant/sloc of the return delivery item; the 313 issues from here.
+const originOf = item => {
+  const assignment = assignmentOf(item)
+
+  return assignment?.issuing_plant && assignment?.issuing_sloc ? `${assignment.issuing_plant} / ${assignment.issuing_sloc}` : ''
+}
+
+// Only put-away pallets with a known return delivery origin can be dispositioned.
+const isSelectable = item => !!binLocationOf(item) && !!originOf(item)
+
+// One 313 per post, so the selection must share one origin.
+const selectedOrigins = computed(() => [...new Set(selectedItems.value.map(originOf).filter(Boolean))])
+
 watch(dispositionStatus, val => { if (val) statusError.value = '' })
 
 // Any change after a simulation must be simulated again before posting.
@@ -110,6 +125,7 @@ const headers = [
   { title: 'MFG DATE', key: 'mfg_date' },
   { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
   { title: 'MAT DOC ID', key: 'material_document_item', sortable: false },
+  { title: 'ORIGIN', key: 'origin', sortable: false },
   { title: 'STATUS', key: 'commodity_status', sortable: false, align: 'center' },
   { title: 'BIN LOCATION', key: 'bin_location', sortable: false },
   { title: 'LAYER', key: 'layer', sortable: false },
@@ -160,6 +176,10 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     .then((response) => {
       totalItems.value = response.data.total
       serverItems.value = response.data.data
+
+      // Drop selected pallets that came back unselectable (e.g. lost their bin)
+      const fresh = new Map(serverItems.value.map(item => [item.id, item]))
+      selectedItems.value = selectedItems.value.filter(item => !fresh.has(item.id) || isSelectable(fresh.get(item.id)))
       pageLoading.value = false
     })
     .catch((error) => {
@@ -195,6 +215,9 @@ const handleConfirm = () => {
   if (selectedMaterialDocuments.value.length > 1) {
     showDialogError(`Selected pallets belong to different material documents (${selectedMaterialDocuments.value.join(', ')}). Select pallets from one material document only.`)
   }
+  if (selectedOrigins.value.length > 1) {
+    showDialogError(`Selected pallets come from different storage locations (${selectedOrigins.value.join(', ')}). Select pallets from one storage location only.`)
+  }
   showDispositionDialog.value = true
 }
 
@@ -211,6 +234,7 @@ const submitDisposition = async (method) => {
 
   if (!filters.plant_code) return showDialogError('Please select a plant in the Filter by Plant.')
   if (selectedMaterialDocuments.value.length > 1) return showDialogError('Selected pallets belong to different material documents. Select pallets from one material document only.')
+  if (selectedOrigins.value.length > 1) return showDialogError('Selected pallets come from different storage locations. Select pallets from one storage location only.')
   if (!dispositionStatus.value) {
     statusError.value = 'Status is required.'
     return showDialogError('Status is required.')
@@ -451,6 +475,17 @@ const submitDisposition = async (method) => {
               <div class="text-h5 font-weight-bold">{{ totalSelectedQuantity }}</div>
             </v-card-text>
           </v-card>
+          <v-card
+            variant="tonal"
+            color="info"
+            rounded="lg"
+            class="flex-1-1"
+          >
+            <v-card-text class="pa-3">
+              <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold mb-1">313 Issuing From</div>
+              <div class="text-h5 font-weight-bold">{{ selectedOrigins.join(', ') || '--' }}</div>
+            </v-card-text>
+          </v-card>
         </div>
 
         <VTextField
@@ -528,7 +563,7 @@ const submitDisposition = async (method) => {
               <td>{{ item.physical_id }}</td>
               <td>{{ item.batch }}</td>
               <td class="text-center">{{ item.quantity }}</td>
-              <td>{{ item.block?.lot?.label && item.block?.label ? `${item.block.lot.label} - ${item.block.label}` : '--' }}</td>
+              <td>{{ binLocationOf(item) || '--' }}</td>
               <td class="text-center">{{ item.position_in_block ?? '--' }}</td>
             </tr>
           </tbody>
@@ -576,6 +611,7 @@ const submitDisposition = async (method) => {
       item-value="id"
       show-select
       return-object
+      :item-selectable="isSelectable"
       @update:options="loadItems"
       @update:model-value="handleSelectionChange"
       class="text-no-wrap"
@@ -596,6 +632,18 @@ const submitDisposition = async (method) => {
         {{ assignmentOf(item)?.material_document_item ?? '' }}
       </template>
 
+      <template #item.origin="{ item }">
+        <span v-if="originOf(item)">{{ originOf(item) }}</span>
+        <v-chip
+          v-else
+          color="error"
+          size="small"
+          label
+        >
+          No delivery found
+        </v-chip>
+      </template>
+
       <template #item.mfg_date="{ item }">
         {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
       </template>
@@ -613,7 +661,22 @@ const submitDisposition = async (method) => {
       </template>
 
       <template #item.bin_location="{ item }">
-        {{ item.block?.label && item.block?.lot?.label ? `${item.block.lot.label} - ${item.block.label}` : '' }}
+        <span v-if="binLocationOf(item)">{{ binLocationOf(item) }}</span>
+        <v-tooltip
+          v-else
+          text="Put away the pallet before disposition"
+        >
+          <template #activator="{ props }">
+            <v-chip
+              v-bind="props"
+              color="grey"
+              size="small"
+              label
+            >
+              No bin
+            </v-chip>
+          </template>
+        </v-tooltip>
       </template>
 
       <template #item.layer="{ item }">

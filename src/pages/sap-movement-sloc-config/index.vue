@@ -333,6 +333,11 @@ const confirmDelete = async () => {
         <template #default>
             <v-form @submit.prevent="submitForm">
                 <VRow class="mt-4">
+                    <VCol v-if="form.transaction_type === 'rdo-disposition'" cols="12">
+                        <v-alert type="info" variant="tonal" density="compact">
+                            For RDO Disposition, the 313 issues from the return delivery item's plant/SLOC, and the 913 runs when that SLOC has an ALC plant/SLOC mapping. Issuing SLOC and "Also post 913" below are not used.
+                        </v-alert>
+                    </VCol>
                     <VCol cols="12" md="6">
                         <v-select v-model="form.transaction_type" label="Transaction Type" density="compact" :items="options.transaction_types" />
                     </VCol>
