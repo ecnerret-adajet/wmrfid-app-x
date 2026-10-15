@@ -36,14 +36,14 @@ const toast = ref({
 
 const headers = [
   { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
-  { title: 'DO NUMBER', key: 'do_number' },
-  { title: 'ITEM', key: 'item_number', sortable: false, width: '1%' },
+  { title: 'MATDOC ITEM', key: 'material_document_item', sortable: false },
+  { title: 'RDO NUMBER', key: 'do_number' },
+  { title: 'RDO ITEM', key: 'item_number', sortable: false },
   { title: 'MATERIAL', key: 'material' },
   { title: 'QUANTITY', key: 'quantity', align: 'end', sortable: false },
   { title: 'TRUCKSCALE NUMBER', key: 'truck_scale_num', sortable: false },
   { title: 'PLATE NUMBER', key: 'plate_number', sortable: false, width: '1%' },
   { title: 'VENDOR', key: 'vendor', sortable: false },
-  { title: 'SHIP TO NAME', key: 'ship_to_name', sortable: false },
   { title: 'CUSTOMER', key: 'customer', sortable: false },
   { title: 'ASSIGNED PALLETS', key: 'assigned_pallets_total', align: 'center', sortable: false },
   { title: '', key: 'action', align: 'center', sortable: false },
@@ -138,6 +138,7 @@ const savePalletAssignment = async ({ pallets }) => {
     plant: selectedDelivery.value?.customer_delivery?.plant?.plant_code || selectedItemForPallet.value.plant,
     storage_location: selectedItemForPallet.value.storage_location,
     uom: selectedItemForPallet.value.sales_unit,
+    delivery_document: selectedDelivery.value?.customer_delivery?.delivery_document,
   }
 
   try {
@@ -191,7 +192,6 @@ defineExpose({
 
     <template #item.do_number="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.delivery?.do_number }}</span>
         <span class="text-sm text-muted">{{ item.delivery?.customer_delivery?.delivery_document }}</span>
       </div>
     </template>
@@ -229,7 +229,6 @@ defineExpose({
 
     <template #item.customer="{ item }">
       <div class="d-flex flex-column py-1">
-        <span class="font-weight-bold text-sm">{{ item.delivery?.customer_delivery?.ship_to_customer }}</span>
         <span class="text-sm">{{ item.delivery?.customer_delivery?.ship_to_name }}</span>
       </div>
     </template>
