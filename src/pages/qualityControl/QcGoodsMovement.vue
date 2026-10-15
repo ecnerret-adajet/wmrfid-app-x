@@ -152,8 +152,15 @@ const openMaterialDocument = (doc) => {
     matDocDialog.value = true;
 };
 
+const has913ToCancel = (log) => (log.linked913?.active_items_count ?? 0) > 0;
+
+// 313 already reversed but its linked 913 failed to cancel: a retry cancels only the 913
+const isOnly913Cancel = (log) => {
+    return log.movement_type === '313' && !(log.items?.some(item => !item.cancel) ?? false) && has913ToCancel(log);
+};
+
 const isCancellable = (log) => {
-    return log.movement_type === '313' && (log.items?.some(item => !item.cancel) ?? false);
+    return log.movement_type === '313' && ((log.items?.some(item => !item.cancel) ?? false) || has913ToCancel(log));
 };
 
 const openCancelDialog = (log) => {
@@ -186,7 +193,9 @@ const confirmCancelGoodsMovement = () => {
 
             if (status === 'S') {
                 toast.value = {
-                    message: `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${revertedPalletsMessage(cancelTarget.value, response.data)}`,
+                    message: response.data.only_913
+                        ? `Linked ALC 913 ${cancelTarget.value.linked913?.material_document || ''} cancelled successfully.`
+                        : `Goods movement ${cancelTarget.value.material_document || ''} cancelled successfully.${revertedPalletsMessage(cancelTarget.value, response.data)}`,
                     color: 'success',
                     show: true,
                 };
@@ -450,7 +459,13 @@ const handleAction = (item, action) => {
                 </v-card-title>
                 <v-divider />
                 <v-card-text>
-                    <p class="mb-4">
+                    <p v-if="cancelTarget && isOnly913Cancel(cancelTarget)" class="mb-4">
+                        The 313 <strong>{{ cancelTarget.material_document || '--' }}</strong> is already cancelled.
+                        This will reverse only the linked ALC material document
+                        <strong>{{ cancelTarget.linked913?.material_document || '--' }}</strong> (movement type 913).
+                        This action cannot be undone.
+                    </p>
+                    <p v-else class="mb-4">
                         This will reverse the SAP material document
                         <strong>{{ cancelTarget?.material_document || '--' }}</strong> (movement type 313).
                         This action cannot be undone.
