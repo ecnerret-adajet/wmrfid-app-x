@@ -137,6 +137,21 @@ const openDetailDialog = (log) => {
     detailDialog.value = true;
 };
 
+// BU 313 + its linked ALC 913 (if posted), like the stock receiving BU 315 / ALC 917 labels
+const materialDocuments = (log) => [
+    { label: 'BU', id: log.id, movement_type: log.movement_type, material_document: log.material_document },
+    log.linked913 && { label: 'ALC', id: log.linked913.id, movement_type: log.linked913.movement_type, material_document: log.linked913.material_document },
+].filter(doc => doc?.material_document);
+
+// Material document detail modal (view only)
+const matDocDialog = ref(false);
+const selectedGoodsMovementLogId = ref(null);
+
+const openMaterialDocument = (doc) => {
+    selectedGoodsMovementLogId.value = doc.id;
+    matDocDialog.value = true;
+};
+
 const isCancellable = (log) => {
     return log.movement_type === '313' && (log.items?.some(item => !item.cancel) ?? false);
 };
@@ -267,7 +282,13 @@ const handleAction = (item, action) => {
             </template>
 
             <template #item.material_document="{ item }">
-                {{ item.material_document || '--' }}
+                <template v-if="item.linked913">
+                    <div v-for="doc in materialDocuments(item)" :key="doc.id">
+                        <span class="text-caption font-weight-bold">{{ doc.label }} {{ doc.movement_type }}:</span>
+                        {{ doc.material_document }}
+                    </div>
+                </template>
+                <template v-else>{{ item.material_document || '--' }}</template>
             </template>
 
             <template #item.items_count="{ item }">
@@ -361,7 +382,22 @@ const handleAction = (item, action) => {
                         </v-col>
                         <v-col cols="6">
                             <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Material Document</div>
-                            <div class="text-body-1">{{ selectedLog.material_document || '--' }}</div>
+                            <div
+                                v-for="doc in materialDocuments(selectedLog)"
+                                :key="doc.id"
+                                class="text-body-1 d-flex align-center gap-1"
+                            >
+                                {{ doc.label }} {{ doc.movement_type }}: {{ doc.material_document }}
+                                <v-btn
+                                    icon="ri-eye-line"
+                                    size="x-small"
+                                    variant="text"
+                                    color="secondary"
+                                    title="View material document"
+                                    @click="openMaterialDocument(doc)"
+                                />
+                            </div>
+                            <div v-if="!materialDocuments(selectedLog).length" class="text-body-1">--</div>
                         </v-col>
                         <v-col cols="6">
                             <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Material Document Year</div>
@@ -441,6 +477,8 @@ const handleAction = (item, action) => {
                 </v-card-actions>
             </v-card>
         </v-dialog>
+
+        <MaterialDocumentDetailModal v-model="matDocDialog" :goods-movement-log-id="selectedGoodsMovementLogId" />
 
         <Toast v-model:show="toast.show" :message="toast.message" :color="toast.color" />
     </div>

@@ -105,6 +105,11 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  // Local GoodsMovementLog id (BU 313 or ALC 913) — used instead of stockTransferId
+  goodsMovementLogId: {
+    type: [Number, String],
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -146,7 +151,7 @@ const generalFields = computed(() => {
 // Sync v-model; refetch on every open so a previous document never shows stale
 watch(() => props.modelValue, (val) => {
   dialog.value = val
-  if (val && props.stockTransferId) {
+  if (val && (props.goodsMovementLogId || props.stockTransferId)) {
     fetchDetail()
   } else if (!val) {
     detail.value = null
@@ -163,7 +168,9 @@ async function fetchDetail() {
   detail.value = null
   errorMessage.value = ''
   try {
-    const { data } = await ApiService.get('stock-transfer-receiving-material-document', String(props.stockTransferId))
+    const { data } = props.goodsMovementLogId
+      ? await ApiService.get('goods-movement-material-document', String(props.goodsMovementLogId))
+      : await ApiService.get('stock-transfer-receiving-material-document', String(props.stockTransferId))
     detail.value = data.data
   } catch (err) {
     errorMessage.value = err?.response?.data?.message || 'Failed to load material document.'
