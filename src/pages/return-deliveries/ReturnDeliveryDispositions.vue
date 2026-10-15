@@ -123,6 +123,7 @@ const headers = [
   { title: 'QUANTITY', key: 'quantity', align: 'center' },
   { title: 'UOM', key: 'uom', sortable: false },
   { title: 'MFG DATE', key: 'mfg_date' },
+  { title: 'RDO REFERENCE', key: 'rdo_reference', sortable: false },
   { title: 'MATERIAL DOCUMENT', key: 'material_document', sortable: false },
   { title: 'MAT DOC ID', key: 'material_document_item', sortable: false },
   { title: 'ORIGIN', key: 'origin', sortable: false },
@@ -622,6 +623,10 @@ const submitDisposition = async (method) => {
 
       <template #item.uom="{ item }">
         {{ assignmentOf(item)?.uom ?? '' }}
+      </template>
+
+      <template #item.rdo_reference="{ item }">
+        {{ assignmentOf(item)?.do_number ?? '' }}
       </template>
 
       <template #item.material_document="{ item }">
