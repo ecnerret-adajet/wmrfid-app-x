@@ -417,7 +417,7 @@ const submitDisposition = async (method) => {
           </ul>
         </v-alert>
 
-        <div v-if="chunkResults.length > 0" class="mb-4">
+        <!-- <div v-if="chunkResults.length > 0" class="mb-4">
           <v-card
             v-for="chunk in chunkResults"
             :key="chunk.chunk_index"
@@ -450,7 +450,7 @@ const submitDisposition = async (method) => {
               </ul>
             </v-card-text>
           </v-card>
-        </div>
+        </div> -->
 
         <div class="d-flex gap-3 mb-4">
           <v-card
