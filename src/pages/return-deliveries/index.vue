@@ -28,12 +28,11 @@ const loadPlants = async () => {
             filters.plant = plantsOption.value[0].value;
         }
 
-        if (filters.plant) {
-            applyFilter();
-        }
+        applyFilter();
     } catch (error) {
         console.error(error);
         plantsLoaded.value = true;
+        applyFilter();
     }
 };
 
@@ -83,7 +82,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tablePerPage.value = itemsPerPage
     searchValue.value = search
 
-    loadStatusCounts();
 }
 
 const statusCounts = ref({
@@ -91,8 +89,10 @@ const statusCounts = ref({
     without_assigned_pallets: 0,
 });
 const statusCountsLoading = ref(false);
+let latestStatusCountsRequest = 0;
 
 const loadStatusCounts = async () => {
+    const requestId = ++latestStatusCountsRequest;
     statusCountsLoading.value = true;
     try {
         const response = await ApiService.query('return-deliveries/status-counts', {
@@ -101,14 +101,16 @@ const loadStatusCounts = async () => {
                 filters,
             },
         });
+        if (requestId !== latestStatusCountsRequest) return;
+
         statusCounts.value = {
             total: response.data.total ?? 0,
             without_assigned_pallets: response.data.without_assigned_pallets ?? 0,
         };
     } catch (error) {
-        console.error(error);
+        if (requestId === latestStatusCountsRequest) console.error(error);
     } finally {
-        statusCountsLoading.value = false;
+        if (requestId === latestStatusCountsRequest) statusCountsLoading.value = false;
     }
 };
 

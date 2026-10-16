@@ -21,6 +21,7 @@ const itemsPerPage = ref(10)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 const filters = ref(null)
+let latestItemsRequest = 0
 
 const selectedDelivery = ref(null)
 
@@ -55,7 +56,10 @@ const stripLeadingZeros = value => {
   return String(value).replace(/^0+(?=\d)/, '')
 }
 
-const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+const loadItems = async ({ page, itemsPerPage, sortBy, search }) => {
+  if (filters.value === null) return
+
+  const requestId = ++latestItemsRequest
   loading.value = true
   if (sortBy && sortBy.length > 0) {
     const sort = sortBy[0]
@@ -65,26 +69,28 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
     sortQuery.value = '-created_at'
   }
 
-  ApiService.query('datatable/return-deliveries', {
-    params: {
-      page,
-      itemsPerPage,
-      sort: sortQuery.value,
-      search: props.search,
-      filters: filters.value,
-    },
-  })
-    .then(response => {
+  try {
+    const response = await ApiService.query('datatable/return-deliveries', {
+      params: {
+        page,
+        itemsPerPage,
+        sort: sortQuery.value,
+        search: props.search,
+        filters: filters.value,
+      },
+    })
+
+    if (requestId === latestItemsRequest) {
       totalItems.value = response.data.total
       serverItems.value = response.data.data
-      loading.value = false
 
       emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search })
-    })
-    .catch(error => {
-      console.log(error)
-      loading.value = false
-    })
+    }
+  } catch (error) {
+    if (requestId === latestItemsRequest) console.error(error)
+  } finally {
+    if (requestId === latestItemsRequest) loading.value = false
+  }
 }
 
 const applyFilters = data => {
