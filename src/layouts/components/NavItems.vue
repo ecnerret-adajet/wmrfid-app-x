@@ -99,11 +99,6 @@ const proceedMapping = () => {
         :item="{ title: 'QC Inspection', icon: 'ri-database-2-line', 
         to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`}"/>
     <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
-        <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')" :item="{
-            title: 'Disposition Request',
-            to: '/qc-disposition',
-            exactMatch: true,
-        }" />
         <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.approval')" :item="{
             title: 'Pending Disposition',
             to: '/qc-disposition/approvals',
@@ -140,7 +135,8 @@ const proceedMapping = () => {
         authUserCan('view.deliveries') ||
         authUserCan('view.sto') ||
         authUserCan('view.sto.outbound') ||
-        authUserCan('view.sto.inbound')" :item="{ heading: 'Transactions' }" />
+        authUserCan('view.sto.inbound') ||
+        authUserCan('can.view.qc.dispo.request')" :item="{ heading: 'Transactions' }" />
     <VerticalNavLink v-if="authUserCan('view.shipments')"
         :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments' }" />
     <VerticalNavLink v-if="authUserCan('view.goods.receipt')"
@@ -160,6 +156,8 @@ const proceedMapping = () => {
     
     <VerticalNavLink v-if="authUserCan('view.sto')"
         :item="{ title: 'Stock Receiving', icon: 'ri-inbox-archive-line', to: '/stock-receiving' }" />
+    <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')"
+        :item="{ title: 'Disposition Requests', icon: 'ri-file-warning-line', to: '/qc-disposition', exactMatch: true }" />
     <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"

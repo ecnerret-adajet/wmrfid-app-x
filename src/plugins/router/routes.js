@@ -657,9 +657,9 @@ export const routes = [
             name: 'qc-disposition',
             component: () => import('@/pages/qualityControl/QcDisposition.vue'),
             meta: {
-              pageTitle: 'QC Disposition',
+              pageTitle: 'Disposition Requests',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Disposition Requests', link: '/qc-disposition' },
               ],
             },
         },
@@ -670,8 +670,7 @@ export const routes = [
             meta: {
               pageTitle: 'QC Disposition Approvals',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
-                  { label: 'Approvals', link: '/qc-disposition/approvals' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
               ],
             },
         },
@@ -682,7 +681,7 @@ export const routes = [
             meta: {
               pageTitle: 'Return Delivery Dispositions',
               breadcrumbs: [
-                  { label: 'QC Dispositions', link: '/qc-disposition' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
                   { label: 'Return Deliveries', link: '/return-deliveries/dispositions' },
               ],
             },
@@ -694,7 +693,7 @@ export const routes = [
             meta: {
               pageTitle: 'QC Disposition Postings',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
                   { label: 'Postings', link: '/qc-disposition/postings' },
               ],
             },
@@ -706,7 +705,7 @@ export const routes = [
             meta: {
               pageTitle: 'Goods Movement',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
                   { label: 'Goods Movement', link: '/qc-disposition/goods-movement' },
               ],
             },
