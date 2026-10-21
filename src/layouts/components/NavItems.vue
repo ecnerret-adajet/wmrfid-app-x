@@ -326,6 +326,9 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.service.requests') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/service-requests' }" />
 
+    <VerticalNavLink v-if="authUserCan('view.help-desk.requests') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
+        :item="{ title: 'Help Desk Requests', icon: 'ri-customer-service-2-line', to: '/help-desk-requests' }" />
+
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"
         :item="{ heading: 'Authentication' }" />

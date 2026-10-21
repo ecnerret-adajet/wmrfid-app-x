@@ -723,7 +723,17 @@ export const routes = [
               ],
             },
         },
-
+        {
+            path: 'help-desk-requests',
+            name: 'help-desk-requests',
+            component: () => import('@/pages/helpDeskRequests/index.vue'),
+            meta: {
+                pageTitle: "Help Desk Requests",
+                breadcrumbs: [
+                  { label: "Help Desk Requests", link: "/help-desk-requests" },
+              ],
+            },
+        },
         {
           path: 'account-settings',
           name: 'account-settings',
