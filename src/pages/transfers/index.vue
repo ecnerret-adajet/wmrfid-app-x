@@ -7,8 +7,6 @@ import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
 import { onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
-import NewBatchPickModal from './NewBatchPickModal.vue';
-import nonAlcDatatable from './nonAlcDatatable.vue';
 
 const authStore = useAuthStore();
 const todayStr = Moment().format('YYYY-MM-DD');
@@ -27,12 +25,10 @@ const filters = ref(defaultFilters());
 const searchInput = ref(''); // committed search term, only updated when Search is clicked
 const searchValue = ref(''); // committed search term, only updated when Search is clicked
 const datatableRef = ref(null);
-const nonAlcDatatableRef = ref(null);
 const tablePerPage = ref(50);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
 const isLoading = ref(false);
-const activeView = ref('alc-managed'); // 'table' or 'summary'
 const pageLoading = ref(false);
 const toast = ref({
     message: 'Success message',
@@ -42,7 +38,6 @@ const toast = ref({
 
 const plantsOption = ref([]);
 const storageLocationsOption = ref([]);
-const newBatchPickModalOpen = ref(false);
 
 onMounted(() => {
     fetchDataDropdown();
@@ -100,18 +95,8 @@ watch(
 
 const applyFilter = () => {
     searchValue.value = searchInput.value;
-    if(activeView.value === 'alc-managed' && datatableRef.value) {
-        // Pass IDs to datatable as it expects
+    if (datatableRef.value) {
         datatableRef.value.applyFilters({
-            search: searchValue.value,
-            dateFrom: filters.value.dateFrom,
-            dateTo: filters.value.dateTo,
-            plant_id: filters.value.plant?.id,
-            storage_location_id: filters.value.storageLocation?.id,
-            valid_material_only: true,
-        });
-    } else if(activeView.value === 'non-alc-managed' && nonAlcDatatableRef.value) {
-        nonAlcDatatableRef.value.applyFilters({
             search: searchValue.value,
             dateFrom: filters.value.dateFrom,
             dateTo: filters.value.dateTo,
@@ -126,27 +111,10 @@ const resetFilter = () => {
     filters.value = defaultFilters();
     searchInput.value = '';
     searchValue.value = '';
-    if(activeView.value === 'alc-managed' && datatableRef.value) {
+    if (datatableRef.value) {
         datatableRef.value.applyFilters([]);
-    } else if(activeView.value === 'non-alc-managed' && nonAlcDatatableRef.value) {
-        nonAlcDatatableRef.value.applyFilters([]);
     }
 }
-
-const handleNewBatchPickSaved = () => {
-    newBatchPickModalOpen.value = false;
-    if (nonAlcDatatableRef.value) {
-        nonAlcDatatableRef.value.applyFilters({
-            search: searchValue.value,
-            dateFrom: filters.value.dateFrom,
-            dateTo: filters.value.dateTo,
-            plant_id: filters.value.plant?.id,
-            storage_location_id: filters.value.storageLocation?.id,
-            valid_material_only: true,
-        });
-    }
-};
-
 
 const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     tableSort.value = sortBy
@@ -240,36 +208,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
     </VRow>
 
     <VCard>
-        <v-tabs v-model="activeView" color="primary">
-            <!-- 1. ALC-Managed Tab (Truck Icon) -->
-            <v-tab value="alc-managed">
-                <v-icon start>ri-truck-line</v-icon>
-                ALC-Managed
-            </v-tab>
-
-            <!-- 2. Non-ALC Managed Tab (Stack/Packages Icon) -->
-            <v-tab value="non-alc-managed">
-                <v-icon start>ri-stack-line</v-icon>
-                Non-ALC Managed
-            </v-tab>
-        </v-tabs>
-
-        <div v-if="activeView === 'non-alc-managed'" class="d-flex justify-end mb-4">
-            <v-btn color="primary" class="mx-4 mt-4" @click="newBatchPickModalOpen = true">
-                New Batch Pick
-            </v-btn>
-        </div>
-
-        <datatable v-if="activeView === 'alc-managed'" ref="datatableRef" @pagination-changed="onPaginationChanged"
-            :initial-filters="{
-                dateFrom: filters.dateFrom,
-                dateTo: filters.dateTo,
-                plant_id: filters.plant?.id,
-                storage_location_id: filters.storageLocation?.id,
-                valid_material_only: true,
-            }"
-        />
-        <non-alc-datatable v-if="activeView === 'non-alc-managed'" ref="nonAlcDatatableRef" @pagination-changed="onPaginationChanged"
+        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
             :initial-filters="{
                 dateFrom: filters.dateFrom,
                 dateTo: filters.dateTo,
@@ -279,12 +218,6 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
             }"
         />
     </VCard>
-
-    <NewBatchPickModal
-        :show="newBatchPickModalOpen"
-        @close="newBatchPickModalOpen = false"
-        @saved="handleNewBatchPickSaved"
-    />
 
     <Toast :show="toast.show" :message="toast.message"/>
     <Loader :show="pageLoading" />

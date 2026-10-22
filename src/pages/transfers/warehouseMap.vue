@@ -241,16 +241,14 @@ const activeReservedPallets = (inventory) => {
         ? inventory.delivery_reserved_pallet
         : (inventory?.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
 
-    if (isReservationFlagSet(inventory?.is_reserved)) {
-        reservations.push(...deliveryPallets
-            .filter(pallet => pallet?.cancelled_at == null)
-            .map(pallet => ({ ...pallet, reservation_type: 'delivery' })));
-    }
+    reservations.push(...deliveryPallets
+        .filter(pallet => pallet?.cancelled_at == null)
+        .map(pallet => ({ ...pallet, reservation_type: 'delivery' })));
 
-    if (isReservationFlagSet(inventory?.is_sto_reserved)) {
-        const stoItems = Array.isArray(inventory.sto_transaction_items)
-            ? inventory.sto_transaction_items
-            : (inventory.sto_transaction_items ? [inventory.sto_transaction_items] : []);
+    const stoItems = Array.isArray(inventory?.sto_transaction_items)
+        ? inventory.sto_transaction_items
+        : (inventory?.sto_transaction_items ? [inventory.sto_transaction_items] : []);
+    if (stoItems.length || isReservationFlagSet(inventory?.is_sto_reserved)) {
         const latestStoItem = stoItems.reduce((latest, item) => {
             if (!latest) return item;
             const latestTime = Date.parse(latest.created_at ?? latest.updated_at ?? '') || Number(latest.id) || 0;
@@ -269,7 +267,7 @@ const activeReservedPallets = (inventory) => {
 };
 
 const isInventoryReserved = (inventory) =>
-    isReservationFlagSet(inventory?.is_sto_reserved) || activeReservedPallets(inventory).length > 0;
+    isReservationFlagSet(inventory?.is_reserved) || isReservationFlagSet(inventory?.is_sto_reserved);
 
 const reservedPalletQuantity = (pallet) => {
     return Number(pallet?.total_qty ?? 0);
@@ -285,7 +283,7 @@ const reservationDescription = (reservation) => {
             ? moment(transaction.created_at).format('MM/DD/YY h:mm A') 
             : '—';
 
-        return `STO (${transaction?.po_number ?? '—'} / ${transaction?.po_item ?? '—'})`;
+        return `STO (${transaction?.po_number ?? '—'} / ${transaction?.po_item ?? '—'}) - Qty: ${Number(reservation?.quantity ?? 0)}`;
     }
 
     return `${reservation?.ship_to_name ?? reservation?.sold_to_name ?? '—'} (${reservation?.delivery_document ?? '—'}) - Qty: ${reservedPalletQuantity(reservation)}`;

@@ -1,6 +1,7 @@
 <script setup>
 import Toast from '@/components/Toast.vue';
 import axios from 'axios';
+import moment from 'moment';
 import { computed, onMounted, reactive, watch } from 'vue';
 import { GridItem, GridLayout } from 'vue-grid-layout-v3';
 
@@ -147,7 +148,7 @@ const filteredLayout = computed(() => {
 
             // Check reservation status ONLY if the batch matches
             if (matchedByBatch) {
-                isFullyReserved = matchingInventories.every(inventory => inventory.is_reserved === 1);
+                isFullyReserved = matchingInventories.every(isInventoryReserved);
             }
         }
 
@@ -219,21 +220,53 @@ function handleBlockClick(item) {
 
 const isBatchDisabled = batch => !props.selectedBatches.some(selected => selected.BATCH === batch);
 
+const isReservationFlagSet = value => value === true || value === 1 || value === '1';
 
 const activeReservedPallets = (inventory) => {
-    if (!inventory?.is_reserved) return [];
-
-    const pallets = Array.isArray(inventory.delivery_reserved_pallet)
+    const reservations = [];
+    const deliveryPallets = Array.isArray(inventory?.delivery_reserved_pallet)
         ? inventory.delivery_reserved_pallet
-        : (inventory.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
+        : (inventory?.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
 
-    return pallets.filter(pallet => pallet?.cancelled_at === null);
+    reservations.push(...deliveryPallets
+        .filter(pallet => pallet?.cancelled_at == null)
+        .map(pallet => ({ ...pallet, reservation_type: 'delivery' })));
+
+    const stoItems = Array.isArray(inventory?.sto_transaction_items)
+        ? inventory.sto_transaction_items
+        : (inventory?.sto_transaction_items ? [inventory.sto_transaction_items] : []);
+    if (stoItems.length || isReservationFlagSet(inventory?.is_sto_reserved)) {
+        const latestStoItem = stoItems.reduce((latest, item) => {
+            if (!latest) return item;
+            const latestTime = Date.parse(latest.created_at ?? latest.updated_at ?? '') || Number(latest.id) || 0;
+            const itemTime = Date.parse(item.created_at ?? item.updated_at ?? '') || Number(item.id) || 0;
+            return itemTime > latestTime ? item : latest;
+        }, null);
+
+        reservations.push({
+            ...(latestStoItem ?? {}),
+            reservation_type: 'sto',
+            sto_transaction: latestStoItem?.sto_transaction
+        });
+    }
+
+    return reservations;
 }
 
-const isInventoryReserved = (inventory) => activeReservedPallets(inventory).length > 0;
+const isInventoryReserved = (inventory) =>
+    isReservationFlagSet(inventory?.is_reserved) || isReservationFlagSet(inventory?.is_sto_reserved);
 
 const reservedPalletQuantity = (pallet) => {
     return Number(pallet?.total_qty ?? 0);
+}
+
+const reservationDescription = (reservation) => {
+    if (reservation.reservation_type === 'sto') {
+        const transaction = reservation.sto_transaction;
+        return `STO (${transaction?.po_number ?? '—'} / ${transaction?.po_item ?? '—'}) - Qty: ${Number(reservation?.quantity ?? 0)}`;
+    }
+
+    return `${reservation?.ship_to_name ?? reservation?.sold_to_name ?? '—'} (${reservation?.delivery_document ?? '—'}) - Qty: ${reservedPalletQuantity(reservation)}`;
 }
 
 </script>
@@ -325,13 +358,19 @@ const reservedPalletQuantity = (pallet) => {
                                                         :key="reservedPallet.id ?? reservedIndex"
                                                         class="assigned-row reserved-row text-h5 font-italic"
                                                     >
-                                                        <span class="label">Reserved to:</span>
+                                                        <span class="label mr-2">Reserved to:</span>
                                                         <span
                                                             class="reserved-value"
-                                                            :title="`${reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—'} (${reservedPallet.delivery_document}) - Qty: ${reservedPalletQuantity(reservedPallet)}`"
+                                                            :title="reservationDescription(reservedPallet)"
                                                         >
-                                                            {{ reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—' }} ({{ reservedPallet.delivery_document }}) - Qty: {{ reservedPalletQuantity(reservedPallet) }}
+                                                            {{ reservationDescription(reservedPallet) }}
                                                         </span>
+                                                        <div class="assigned-row reserved-row text-subtitle-1 font-italic">
+                                                            <span class="label">Reserved by: </span>
+                                                            <span class="value font-weight-bold">{{ reservedPallet?.created_by?.name ?? reservedPallet?.sto_transaction?.processed_by?.name ?? '—' }}</span>
+                                                            <span class="label ml-2">on: </span>
+                                                            <span class="value font-weight-bold">{{ reservedPallet?.created_at ? moment(reservedPallet.created_at).format('MM/DD/YY h:mm A') : '—' }}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
