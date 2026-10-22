@@ -11,7 +11,6 @@ const searchValue = ref('')
 const showApprovalDialog = ref(false)
 
 const plantsOptions = ref([])
-const storageLocations = ref([])
 const todayStr = Moment().format('YYYY-MM-DD')
 const filters = reactive({ 
   plant_id: null, 
@@ -29,11 +28,16 @@ const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
-const lastOptions = ref({})
-
 const storageLocation = ref(null)
 
 onMounted(() => loadPlants())
+
+const applySelectedPlant = () => {
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  filters.plant_code = selectedPlant?.plant_code ?? null
+  filters.storage_locations = selectedPlant?.storage_locations ?? []
+  filters.storage_location_id = filters.storage_locations[0]?.id ?? null
+}
 
 const loadPlants = async () => {
   try {
@@ -44,15 +48,8 @@ const loadPlants = async () => {
     plantsOptions.value = (response.data.plants ?? [])
       .filter(item => item.name !== null)
       .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
-    if (plantsOptions.value.length > 0) {
-      filters.plant_id = plantsOptions.value[0].value
-      filters.plant_code = plantsOptions.value[0].plant_code
-      filters.storage_locations = plantsOptions.value[0].storage_locations
-    }
-    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
-    if (filters.storage_locations.length > 0) {
-      filters.storage_location_id = filters.storage_locations[0].value
-    }
+    filters.plant_id = plantsOptions.value[0]?.value ?? null
+    applySelectedPlant()
 
     const locations = response.data.storage_locations ?? []
     if (locations.length > 0) {
@@ -111,6 +108,12 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
 }
 
 const handleSearch = () => {
+  applySelectedPlant()
+  if (searchValue.value !== searchInput.value) {
+    // The table's :search binding re-emits update:options, which calls loadItems
+    searchValue.value = searchInput.value
+    return
+  }
   loadItems({
       page: page.value,
       itemsPerPage: itemsPerPage.value,
@@ -228,7 +231,6 @@ const handleApprove = async (method) => {
         simulateCompleted.value = false
         showApprovalDialog.value = false
         selectedItems.value = []
-        lastOptions.value = {}
         loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
       }
       return
@@ -262,7 +264,6 @@ const handleApprove = async (method) => {
       simulateCompleted.value = false
       showApprovalDialog.value = false
       selectedItems.value = []
-      lastOptions.value = {}
       loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
     }
   } catch (error) {
@@ -304,7 +305,7 @@ const handleApprove = async (method) => {
         label="Filter by Plant"
         density="compact"
         hide-details
-        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        :items="plantsOptions"
         v-model="filters.plant_id"
       />
     </VCol>

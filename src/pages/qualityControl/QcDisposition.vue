@@ -11,17 +11,15 @@ const searchValue = ref('')
 const showCreateDialog = ref(false)
 
 const plantsOptions = ref([])
-const storageLocations = ref([])
 const todayStr = Moment().format('YYYY-MM-DD')
-const filters = reactive({ 
-  plant_id: null, 
-  plant_code: null, 
-  storage_locations: [], 
-  storage_location_id: null, 
-  dateFrom: todayStr, 
-  dateTo: todayStr 
+const filters = reactive({
+  plant_id: null,
+  plant_code: null,
+  storage_locations: [],
+  storage_location_id: null,
+  dateFrom: todayStr,
+  dateTo: todayStr,
 })
-
 
 const selectedItems = ref([])
 const serverItems = ref([])
@@ -30,11 +28,14 @@ const itemsPerPage = ref(50)
 const page = ref(1)
 const sortQuery = ref('-created_at')
 
-const lastOptions = ref({})
-
-const storageLocation = ref(null)
-
 onMounted(() => loadPlants())
+
+const applySelectedPlant = () => {
+  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
+  filters.plant_code = selectedPlant?.plant_code ?? null
+  filters.storage_locations = selectedPlant?.storage_locations ?? []
+  filters.storage_location_id = filters.storage_locations[0]?.id ?? null
+}
 
 const loadPlants = async () => {
   try {
@@ -45,15 +46,8 @@ const loadPlants = async () => {
     plantsOptions.value = (response.data.plants ?? [])
       .filter(item => item.name !== null)
       .map(item => ({ value: item.id, title: item.name, plant_code: item.plant_code, storage_locations: item.storage_locations }))
-    if (plantsOptions.value.length > 0) {
-      filters.plant_id = plantsOptions.value[0].value
-      filters.plant_code = plantsOptions.value[0].plant_code
-      filters.storage_locations = plantsOptions.value[0].storage_locations
-    }
-    storageLocations.value = filters.storage_locations.map(item => ({ value: item.id, title: item.name, code: item.code, plant_code: item.plant_code }))
-    if(filters.storage_locations.length > 0) {
-      filters.storage_location_id = filters.storage_locations[0].value
-    }
+    filters.plant_id = plantsOptions.value[0]?.value ?? null
+    applySelectedPlant()
     loadItems({
       page: page.value,
       itemsPerPage: itemsPerPage.value,
@@ -112,10 +106,13 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
     })
 }
 
-
 const handleSearch = () => {
-  const selectedPlant = plantsOptions.value.find(p => p.value === filters.plant_id)
-  filters.plant_code = selectedPlant?.plant_code ?? null
+  applySelectedPlant()
+  if (searchValue.value !== searchInput.value) {
+    // The table's :search binding re-emits update:options, which calls loadItems
+    searchValue.value = searchInput.value
+    return
+  }
   loadItems({
       page: page.value,
       itemsPerPage: itemsPerPage.value,
@@ -238,7 +235,6 @@ const handleCreateDispo = async (method) => {
         simulateCompleted.value = false
         showCreateDialog.value = false
         selectedItems.value = []
-        lastOptions.value = {}
         loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
       }
       return
@@ -272,7 +268,6 @@ const handleCreateDispo = async (method) => {
       simulateCompleted.value = false
       showCreateDialog.value = false
       selectedItems.value = []
-      lastOptions.value = {}
       loadItems({ page: page.value, itemsPerPage: itemsPerPage.value, sortBy: [] })
     }
   } catch (error) {
@@ -308,18 +303,13 @@ const handleCreateDispo = async (method) => {
     </VCol>
   </VRow>
 
-  <div class="pa-4">
-    <h4 class="text-h5 font-weight-bold mb-2">Plant : <span class="font-bold text-primary">{{storageLocation?.plant?.plant_code}} - {{ storageLocation?.plant?.name }}</span></h4>
-    <h4 class="text-h5 font-weight-bold mb-2">Storage Location : <span class="font-bold text-primary">{{storageLocation?.code}} - {{ storageLocation?.name }}</span></h4>
-  </div>
-
   <VRow class="align-center mb-3">
     <VCol cols="12" md="3" class="d-flex align-center">
       <v-select
         label="Filter by Plant"
         density="compact"
         hide-details
-        :items="plantsOptions.length > 1 ? [{ title: 'All', value: null }, ...plantsOptions] : plantsOptions"
+        :items="plantsOptions"
         @update:model-value="handleSearch"
         v-model="filters.plant_id"
       />
@@ -357,15 +347,16 @@ const handleCreateDispo = async (method) => {
     </VCol>
     <VCol cols="12" md="1" class="d-flex align-center">
       <v-btn
-          color="primary"
-          class="d-flex align-center"
-          prepend-icon="ri-search-eye-line"
-          @click="handleSearch"
+        block
+        :loading="pageLoading"
+        prepend-icon="ri-search-line"
+        color="primary"
+        @click="handleSearch"
       >
-          <template #prepend>
-              <v-icon color="white"></v-icon>
-          </template>
-          Search
+        <template v-slot:loader>
+          <v-progress-circular indeterminate color="white" size="24" />
+        </template>
+        Search
       </v-btn>
     </VCol>
     <VCol cols="12" md="2" class="d-flex align-center">
@@ -379,7 +370,6 @@ const handleCreateDispo = async (method) => {
         Create QC Dispo
       </v-btn>
     </VCol>
-   
   </VRow>
 
   <v-dialog
@@ -591,7 +581,6 @@ const handleCreateDispo = async (method) => {
       </template>
 
       <template #item.mfg_date="{ item }">
-        
         {{ item.mfg_date ? Moment(item.mfg_date).format('MMMM D, YYYY') : '' }}
       </template>
 
