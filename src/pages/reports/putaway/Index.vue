@@ -7,6 +7,7 @@ import ApiService from '@/services/ApiService';
 import moment from 'moment';
 import { ref } from 'vue';
 import PutawayChart from './PutawayChart.vue';
+import PutawayTrendChart from './PutawayTrendChart.vue';
 
 import { useAuthStore } from '@/stores/auth';
 
@@ -202,6 +203,10 @@ const kpi = ref({
 });
 
 const summaryChart = ref(null)
+const kpiTrend = ref({
+    tr_creation_putaway_daily: [],
+    target_avg_minutes: null,
+})
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
     loading.value = true
@@ -241,6 +246,11 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             if (payload.summary_chart) {
                 summaryChart.value = payload.summary_chart;
             }
+
+            kpiTrend.value = payload.kpi_trend || {
+                tr_creation_putaway_daily: [],
+                target_avg_minutes: null,
+            };
 
             loading.value = false;
         })
@@ -361,6 +371,11 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             <v-tab value="summary">
                 <v-icon start>ri-bar-chart-line</v-icon>
                 Summary View
+            </v-tab>
+
+            <v-tab value="graph">
+                <v-icon start>ri-line-chart-line</v-icon>
+                Graph View
             </v-tab>
         </v-tabs>
     </section>
@@ -616,6 +631,12 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                     <PutawayChart :data="summaryChart" />
                 </VCardText>
             </VCard>
+        </v-window-item>
+        <v-window-item value="graph">
+            <PutawayTrendChart
+                :data="kpiTrend.tr_creation_putaway_daily"
+                :target="kpiTrend.target_avg_minutes"
+            />
         </v-window-item>
     </v-window>
 

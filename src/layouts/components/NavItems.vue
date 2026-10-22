@@ -99,11 +99,6 @@ const proceedMapping = () => {
         :item="{ title: 'QC Inspection', icon: 'ri-database-2-line', 
         to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/qc-inspection`}"/>
     <VerticalNavGroup v-if="authUserCan('can.view.qc.disposition')" :item="{ title: 'QC Disposition', icon: 'ri-test-tube-line' }">
-        <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')" :item="{
-            title: 'Disposition Request',
-            to: '/qc-disposition',
-            exactMatch: true,
-        }" />
         <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.approval')" :item="{
             title: 'Pending Disposition',
             to: '/qc-disposition/approvals',
@@ -111,6 +106,14 @@ const proceedMapping = () => {
         <VerticalNavLink v-if="authUserCan('can.view.qc.postings')" :item="{
             title: 'Disposition List',
             to: '/qc-disposition/postings',
+        }" />
+        <VerticalNavLink v-if="authUserCan('can.view.qc.postings')" :item="{
+            title: 'Return Deliveries',
+            to: '/return-deliveries/dispositions',
+        }" />
+        <VerticalNavLink v-if="authUserCan('can.view.quality.control') || authUserCan('can.view.qc.disposition')" :item="{
+            title: 'Goods Movement',
+            to: '/qc-disposition/goods-movement',
         }" />
     </VerticalNavGroup>
     
@@ -132,7 +135,8 @@ const proceedMapping = () => {
         authUserCan('view.deliveries') ||
         authUserCan('view.sto') ||
         authUserCan('view.sto.outbound') ||
-        authUserCan('view.sto.inbound')" :item="{ heading: 'Transactions' }" />
+        authUserCan('view.sto.inbound') ||
+        authUserCan('can.view.qc.dispo.request')" :item="{ heading: 'Transactions' }" />
     <VerticalNavLink v-if="authUserCan('view.shipments')"
         :item="{ title: 'Shipments', icon: 'ri-truck-line', to: '/shipments' }" />
     <VerticalNavLink v-if="authUserCan('view.goods.receipt')"
@@ -142,7 +146,9 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink v-if="authUserCan('view.deliveries')"
         :item="{ title: 'Deliveries', icon: 'ri-inbox-unarchive-line', to: '/deliveries' }" /> -->
     <VerticalNavLink v-if="authUserCan('view.deliveries')"
-        :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-unarchive-line', to: '/sap-deliveries' }" />
+        :item="{ title: 'SAP Deliveries', icon: 'ri-inbox-archive-line', to: '/sap-deliveries' }" />
+    <VerticalNavLink v-if="authUserCan('view.deliveries')"
+        :item="{ title: 'Return Deliveries', icon: 'ri-arrow-go-back-line', to: '/return-deliveries', exactMatch: true }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
         :item="{ title: 'Reserved Orders', icon: 'ri-bookmark-line', to: '/reserved-delivery-orders' }" />
     <VerticalNavLink v-if="authUserCan('view.deliveries') || authUserCan('can.view.reserved.pallets')"
@@ -150,6 +156,8 @@ const proceedMapping = () => {
     
     <VerticalNavLink v-if="authUserCan('view.sto')"
         :item="{ title: 'Stock Receiving', icon: 'ri-inbox-archive-line', to: '/stock-receiving' }" />
+    <VerticalNavLink v-if="authUserCan('can.view.qc.dispo.request')"
+        :item="{ title: 'Disposition Requests', icon: 'ri-file-warning-line', to: '/qc-disposition', exactMatch: true }" />
     <!-- <VerticalNavLink v-if="authUserCan('view.sto.outbound')"
         :item="{ title: 'STO Outbound', icon: 'ri-upload-2-line', to: '/sto-outbound' }" />
     <VerticalNavLink v-if="authUserCan('view.sto.inbound')"
@@ -159,9 +167,9 @@ const proceedMapping = () => {
             title: 'Entries',
             to: '/fumigations',
         }" />
-        <VerticalNavLink :item="{
+        <VerticalNavLink v-if="authUserCan('create.fumigation.requests')" :item="{
             title: 'Create',
-            to: `/${authStore.user?.assigned_plant?.plant_code}/${authStore.user?.assigned_plant?.default_storage_location?.code}/1/fumigation`,
+            to: '/fumigations?create=1',
         }" />
     </VerticalNavGroup>
 
@@ -180,10 +188,12 @@ const proceedMapping = () => {
     <!-- <VerticalNavLink :item="{ title: 'Purchase Orders', icon: 'ri-shopping-cart-line', to: '/dashboard'}"/> -->
 
     <!-- Master Data Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines')"
+    <VerticalNavSectionTitle v-if="authUserCan('view.materials') || authUserCan('view.production.lines') || authUserCan('view.customer.masters')"
         :item="{ heading: 'Master Data' }" />
     <VerticalNavLink v-if="authUserCan('view.materials')"
         :item="{ title: 'Material List', icon: 'ri-stack-line', to: '/materials' }" />
+    <VerticalNavLink v-if="authUserCan('view.customer.masters')"
+        :item="{ title: 'Customer Master', icon: 'ri-user-star-line', to: '/customer-masters' }" />
     <VerticalNavLink v-if="authUserCan('view.production.lines')"
         :item="{ title: 'Production Lines', icon: 'ri-function-line', to: '/production-lines' }" />
 
@@ -268,8 +278,9 @@ const proceedMapping = () => {
             authUserCan('view.open.do.picklist') ||
             authUserCan('view.completed.do.picklist') ||
             authUserCan('view.outbound.performance.report') ||
-            authUserCan('view.service.requests.report') || 
-            authUserCan('view.sto.report')
+            authUserCan('view.service.requests.report') ||
+            authUserCan('view.sto.report') ||
+            authUserCan('view.fumigation.report')
         "
         :item="{ heading: 'Reports' }"
     />
@@ -301,6 +312,9 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.sto.report') || authStore.user?.is_super_admin"
         :item="{ title: 'STO Report', icon: 'ri-file-chart-line', to: '/reports/sto' }" />
 
+    <VerticalNavLink v-if="authUserCan('view.fumigation.report') || authStore.user?.is_super_admin"
+        :item="{ title: 'Fumigation Report', icon: 'ri-bug-line', to: '/reports/fumigation' }" />
+
     <!-- <VerticalNavLink v-if="authUserCan('view.pallet.inverter')"
         :item="{ title: 'Pallet Inverter', icon: 'ri-clockwise-line', to: '/pallet-inverter' }" /> -->
 
@@ -309,6 +323,9 @@ const proceedMapping = () => {
 
     <VerticalNavLink v-if="authUserCan('view.service.requests') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Service Requests', icon: 'ri-inbox-unarchive-line', to: '/service-requests' }" />
+
+    <VerticalNavLink v-if="authUserCan('view.help-desk.requests') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
+        :item="{ title: 'Help Desk Requests', icon: 'ri-customer-service-2-line', to: '/help-desk-requests' }" />
 
     <!-- Authentication Section  -->
     <VerticalNavSectionTitle v-if="authStore.user?.is_super_admin || authStore.user?.is_warehouse_admin"
@@ -321,13 +338,16 @@ const proceedMapping = () => {
         :item="{ title: 'Permissions', icon: 'ri-shield-user-line', to: '/permissions' }" />
 
     <!-- Admin Components Section  -->
-    <VerticalNavSectionTitle v-if="authUserCan('view.inventory.recon')" :item="{ heading: 'Admin' }" />
+    <VerticalNavSectionTitle v-if="authUserCan(['view.inventory.recon', 'manage.sap.movement.sloc.configs'])" :item="{ heading: 'Admin' }" />
     <!-- <VerticalNavLink :item="{ title: 'RFID Master', icon: 'ri-dashboard-2-line' }" @click="openRfidRegistrationModal"/> -->
     <VerticalNavLink v-if="authUserCan('view.inventory.recon')"
         :item="{ title: 'Inventory Recon', icon: 'ri-database-2-line', to: '/inventory-recon' }" />
 
     <VerticalNavLink v-if="authUserCan('view.pallet.checker')"
         :item="{ title: 'Pallet Checker', icon: 'ri-checkbox-multiple-line', to: '/pallet-checker' }" />
+
+    <VerticalNavLink v-if="authUserCan('manage.sap.movement.sloc.configs')"
+        :item="{ title: 'SAP Movement SLOC Config', icon: 'ri-route-line', to: '/sap-movement-sloc-configs' }" />
     
     <!-- // Add version release link -->
     <!-- <VerticalNavLink v-if="authUserCan('view.version.releases')"

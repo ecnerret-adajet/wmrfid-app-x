@@ -16,6 +16,9 @@ const stockTransferMaterialDocument = ref([]);
 const alcMaterialDocument = ref(null);
 const pageLoading = ref(false);
 const disableCancel = ref(false);
+const cancelDate = ref('');
+const documentDate = ref('');
+const today = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 
 const toast = ref({
     message: '',
@@ -48,6 +51,8 @@ const fetchDetails = async () => {
         stockTransferMaterialDocument.value = response.data.stock_transfer_material_document || [];
         alcMaterialDocument.value = response.data.alc_material_document;
         items.value = response.data.stock_transfer?.stock_transfer_items || [];
+        cancelDate.value = response.data.stock_transfer?.posting_date || '';
+        documentDate.value = response.data.stock_transfer?.document_date || '';
     } catch (error) {
         console.error(error);
         toast.value = {
@@ -66,6 +71,24 @@ const removeLeadingZeros = (value) => {
 };
 
 const cancelReceiving = async () => {
+    if (!cancelDate.value || cancelDate.value > today) {
+        toast.value = {
+            message: 'Please select a valid posting date (not later than today).',
+            color: 'error',
+            show: true
+        };
+        return;
+    }
+
+    if (!documentDate.value || documentDate.value > today) {
+        toast.value = {
+            message: 'Please select a valid document date (not later than today).',
+            color: 'error',
+            show: true
+        };
+        return;
+    }
+
     const confirm = await Swal.fire({
         title: 'Are you sure?',
         text: 'You want to cancel this document?',
@@ -80,7 +103,11 @@ const cancelReceiving = async () => {
 
     disableCancel.value = true;
     try {
-        const response = await ApiService.post('stock-transfer-receiving-cancel', { id });
+        const response = await ApiService.post('stock-transfer-receiving-cancel', {
+            id,
+            cancel_date: cancelDate.value,
+            document_date: documentDate.value,
+        });
 
         if (response.data.status === 'S') {
             toast.value = {
@@ -163,10 +190,11 @@ onMounted(() => {
                     <v-row class="mt-4">
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="documentDate"
                                 label="Document Date"
-                                :model-value="stockTransfer?.document_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
-                                readonly
                                 density="compact"
                             />
                         </v-col>
@@ -182,10 +210,11 @@ onMounted(() => {
 
                         <v-col cols="12" md="6">
                             <v-text-field
+                                v-model="cancelDate"
                                 label="Posting Date"
-                                :model-value="stockTransfer?.posting_date || '-'"
+                                type="date"
+                                :max="today"
                                 variant="outlined"
-                                readonly
                                 density="compact"
                             />
                         </v-col>

@@ -74,6 +74,28 @@ export const routes = [
             },
         },
         {
+            path: 'customer-masters',
+            name: 'customer-masters',
+            component: () => import('@/pages/customer-master/index.vue'),
+            meta: {
+              pageTitle: "Customer Master",
+              breadcrumbs: [
+                  { label: "Customer Master", link: "/customer-masters" },
+              ],
+            },
+        },
+        {
+            path: 'sap-movement-sloc-configs',
+            name: 'sap-movement-sloc-configs',
+            component: () => import('@/pages/sap-movement-sloc-config/index.vue'),
+            meta: {
+              pageTitle: "SAP Movement SLOC Config",
+              breadcrumbs: [
+                  { label: "SAP Movement SLOC Config", link: "/sap-movement-sloc-configs" },
+              ],
+            },
+        },
+        {
             path: 'production-lines',
             name: 'production-lines',
             component: () => import('@/pages/productionLines/index.vue'),
@@ -226,6 +248,17 @@ export const routes = [
               pageTitle: "Goods Issuance List",
               breadcrumbs: [
                   { label: "Goods Issuance List", link: "/goods-issuance" },
+              ],
+            },
+        },
+        {
+            path: 'return-deliveries',
+            name: 'return-deliveries',
+            component: () => import('@/pages/return-deliveries/index.vue'),
+            meta: {
+              pageTitle: "Return Deliveries",
+              breadcrumbs: [
+                  { label: "Return Deliveries", link: "/return-deliveries" },
               ],
             },
         },
@@ -497,6 +530,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/fumigation',
+                name: 'fumigation-report',
+                component: () => import('@/pages/reports/fumigation/Index.vue'),
+                meta: {
+                    pageTitle: "Fumigation Report",
+                    breadcrumbs: [
+                            { label: "Fumigation Report", link: "/reports/fumigation" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/outbound-performance',
                 name: 'outbound-performance-report',
                 component: () => import('@/pages/reports/outbound-performance/Index.vue'),
@@ -613,9 +657,9 @@ export const routes = [
             name: 'qc-disposition',
             component: () => import('@/pages/qualityControl/QcDisposition.vue'),
             meta: {
-              pageTitle: 'QC Disposition',
+              pageTitle: 'Disposition Requests',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'Disposition Requests', link: '/qc-disposition' },
               ],
             },
         },
@@ -626,8 +670,19 @@ export const routes = [
             meta: {
               pageTitle: 'QC Disposition Approvals',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
-                  { label: 'Approvals', link: '/qc-disposition/approvals' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
+              ],
+            },
+        },
+        {
+            path: 'return-deliveries/dispositions',
+            name: 'return-delivery-dispositions',
+            component: () => import('@/pages/return-deliveries/ReturnDeliveryDispositions.vue'),
+            meta: {
+              pageTitle: 'Return Delivery Dispositions',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
+                  { label: 'Return Deliveries', link: '/return-deliveries/dispositions' },
               ],
             },
         },
@@ -638,8 +693,20 @@ export const routes = [
             meta: {
               pageTitle: 'QC Disposition Postings',
               breadcrumbs: [
-                  { label: 'QC Disposition', link: '/qc-disposition' },
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
                   { label: 'Postings', link: '/qc-disposition/postings' },
+              ],
+            },
+        },
+        {
+            path: 'qc-disposition/goods-movement',
+            name: 'qc-disposition-goods-movement',
+            component: () => import('@/pages/qualityControl/QcGoodsMovement.vue'),
+            meta: {
+              pageTitle: 'Goods Movement',
+              breadcrumbs: [
+                  { label: 'QC Disposition', link: '/qc-disposition/approvals' },
+                  { label: 'Goods Movement', link: '/qc-disposition/goods-movement' },
               ],
             },
         },
@@ -655,7 +722,17 @@ export const routes = [
               ],
             },
         },
-
+        {
+            path: 'help-desk-requests',
+            name: 'help-desk-requests',
+            component: () => import('@/pages/helpDeskRequests/index.vue'),
+            meta: {
+                pageTitle: "Help Desk Requests",
+                breadcrumbs: [
+                  { label: "Help Desk Requests", link: "/help-desk-requests" },
+              ],
+            },
+        },
         {
           path: 'account-settings',
           name: 'account-settings',
@@ -707,15 +784,10 @@ export const routes = [
         },
 
         {
+            // Retired nomination screen: QA/SPC encodes every request from the fumigation page's create form
             path: '/:plant_code/:sloc/:forklift/fumigation',
             name: 'fumigation-nomination',
-            component: () => import('@/pages/fumigation/FumigationNomination.vue'),
-            meta: {
-                pageTitle: 'Fumigation Nomination',
-                breadcrumbs: (route) => [
-                    { label: 'Fumigation Nomination', link: `/${route.params.plant_code}/${route.params.sloc}/${route.params.forklift}/fumigation` }
-                ],
-            },
+            redirect: { name: 'fumigations', query: { create: '1' } },
         },
 
       ],

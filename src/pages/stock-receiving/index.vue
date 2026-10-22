@@ -35,7 +35,15 @@ const filters = reactive({
     plant_code: null,
     dateFrom: todayStr,
     dateTo: todayStr,
+    source: null,
 });
+
+// RDO disposition 313s are tagged by the API; For RTM / Disposal ones are never received here
+const sourceOptions = [
+    { title: 'RDO Disposition', value: 'rdo' },
+    { title: 'Other', value: 'other' },
+];
+const nonReceivableStatuses = ['For RTM', 'For Disposal'];
 
 
 const form = reactive({
@@ -53,6 +61,7 @@ const headers = [
     { title: 'Receiving', key: 'receiving', sortable: false },
     { title: 'Items', key: 'items_count', align: 'center', sortable: false },
     { title: 'Received', key: 'status', align: 'center', sortable: false },
+    { title: 'Cancel Mat Doc', key: 'cancel_material_document', align: 'center', sortable: false },
     { title: 'Action', key: 'actions', align: 'center', sortable: false },
 ];
 
@@ -69,21 +78,21 @@ const fetchDataDropdown = async () => {
         const defaultStorageLocation = defaultPlant?.storage_locations?.[0] || null;
 
         if (defaultPlant) {
-            filters.plant = defaultPlant;
-            // Re-fetch since the datatable's initial load already ran before the default plant/storage location resolved
-            // applyFilter();
+            filters.plant = defaultPlant.id;
         }
 
     } catch (error) {
         console.error('Error fetching dropdown data:', error);
     } finally {
         pageLoading.value = false;
+        plantsLoaded.value = true;
+        // Re-fetch since the datatable's initial load was skipped until the default plant resolved
+        handleSearch();
     }
 };
 
 const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
-    if (!filters.plant) {
-        pageLoading.value = false;
+    if (!plantsLoaded.value) {
         return;
     }
     pageLoading.value = true;
@@ -98,14 +107,19 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
         if (searchValue.value) {
             params.search = searchValue.value;
         }
-        if (filters.plant) {
-            params.plant = filters.plant;
+        // v-select holds the plant id; the API filters by plant code (backend defaults to 2110 when omitted)
+        const selectedPlant = plantsOption.value.find(p => p.id === filters.plant);
+        if (selectedPlant) {
+            params.plant = selectedPlant.plant_code;
         }
         if (filters.dateFrom) {
             params.start_date = filters.dateFrom;
         }
         if (filters.dateTo) {
             params.end_date = filters.dateTo;
+        }
+        if (filters.source) {
+            params.source = filters.source;
         }
 
         await stockReceivingStore.fetchStockReceiving(params);
@@ -133,14 +147,23 @@ const handleSearch = () => {
     });
 };
 
+const handleSearchInput = (value) => {
+    searchValue.value = value;
+    handleSearch();
+};
+
 const refreshList = () => {
-    // Sync date range to form
-    if (dateRange.value && dateRange.value.length === 2) {
-        form.posting_date_from = dateRange.value[0];
-        form.posting_date_to = dateRange.value[1];
-    } else {
-        form.posting_date_from = null;
-        form.posting_date_to = null;
+    // Sync date filters to form
+    form.posting_date_from = filters.dateFrom || null;
+    form.posting_date_to = filters.dateTo || null;
+
+    if (!form.posting_date_from || !form.posting_date_to) {
+        toast.value = {
+            message: 'Please select both Posting Date From and Posting Date To.',
+            color: 'error',
+            show: true
+        };
+        return;
     }
 
     form.loading = true;
@@ -148,6 +171,7 @@ const refreshList = () => {
     ApiService.query('download-313?from_date=' + form.posting_date_from + '&to_date=' + form.posting_date_to)
         .then(({ data }) => {
             form.refresh = false;
+            form.loading = false;
             loadItems({
                 page: 1,
                 itemsPerPage: itemsPerPage.value,
@@ -184,22 +208,83 @@ const viewReceiving = (item) => {
     });
 };
 
-const cancelReceiving = (item) => {
-    router.push({
-        name: 'apps-stock-transfer-receiving-cancel',
-        params: { id: item.stock_transfer_id }
-    });
+// BU 315 items reversed in one SAP cancellation share a single cancel material document
+const cancelMatDoc = (item) => item?.stock_transfer?.cancelled_stock_transfer_items?.[0]?.cancel_material_document || null;
+
+const alcTransfer = (item) => item?.stock_transfer?.alc_stock_transfer || null;
+
+// BU 315 already reversed, but the ALC 917 reversal failed and is still active → allow a retry
+const hasPendingAlcCancel = (item) => !!cancelMatDoc(item) && (alcTransfer(item)?.active_stock_transfer_items_count ?? 0) > 0;
+
+const isCancellable = (item) => !!item.stock_transfer_id && (item.status === 'Received' || hasPendingAlcCancel(item));
+
+const rowProps = ({ item }) => (cancelMatDoc(item) ? { class: 'row-cancelled' } : {});
+
+const cancelDialog = ref(false);
+const cancelTarget = ref(null);
+const cancelDate = ref(null);
+const cancelSubmitting = ref(false);
+const cancelErrors = ref([]);
+
+const openCancelDialog = (item) => {
+    cancelTarget.value = item;
+    cancelDate.value = item.posting_date ? Moment(item.posting_date).format('YYYY-MM-DD') : todayStr;
+    cancelErrors.value = [];
+    cancelDialog.value = true;
+};
+
+const closeCancelDialog = () => {
+    cancelDialog.value = false;
+    cancelTarget.value = null;
+    cancelDate.value = null;
+    cancelErrors.value = [];
+};
+
+const confirmCancelReceiving = () => {
+    if (!cancelTarget.value) return;
+
+    if (!cancelDate.value || cancelDate.value > todayStr) {
+        cancelErrors.value = ['Please select a valid posting date (not later than today).'];
+        return;
+    }
+
+    cancelSubmitting.value = true;
+    cancelErrors.value = [];
+
+    ApiService.post('stock-transfer-receiving-cancel', {
+        id: cancelTarget.value.stock_transfer_id,
+        cancel_date: cancelDate.value,
+    })
+        .then(({ data }) => {
+            if (data.status === 'S') {
+                toast.value = {
+                    message: `Stock receiving ${cancelTarget.value.material_document || ''} cancelled successfully.`,
+                    color: 'success',
+                    show: true
+                };
+                closeCancelDialog();
+            } else {
+                const errors = [...(data.errors || []), ...(data.errors_917 || [])];
+                cancelErrors.value = errors.length
+                    ? errors.map(e => e.MESSAGE || e.message).filter(Boolean)
+                    : ['Failed to cancel stock transfer receiving.'];
+            }
+        })
+        .catch((error) => {
+            cancelErrors.value = [error.response?.data?.message || 'Failed to cancel stock transfer receiving.'];
+        })
+        .finally(() => {
+            cancelSubmitting.value = false;
+            // Reload even on failure: a 917 error can follow a successful 315 reversal
+            loadItems({ page: page.value, itemsPerPage: itemsPerPage.value });
+        });
 };
 
 const actionList = (item) => {
-    const actions = [
-        { title: 'View', key: 'view' },
-        { title: 'Cancel', key: 'cancel' },
-    ];
-
-    // if (item.status == 'Received' || item.status == 'Reversed') {
-    //     actions.push({ title: 'Cancel', key: 'cancel' });
-    // }
+    const actions = [{ title: 'View', key: 'view' }];
+    if (isCancellable(item)) {
+        actions.push({ title: 'Cancel', key: 'cancel' });
+    }
 
     return actions;
 };
@@ -208,7 +293,7 @@ const handleAction = (item, action) => {
     if (action.key == 'view') {
         viewReceiving(item);
     } else if (action.key == 'cancel') {
-        cancelReceiving(item);
+        openCancelDialog(item);
     }
 };
 
@@ -222,7 +307,7 @@ onMounted(() => {
         <!-- Filter Row -->
         <div class="d-flex flex-wrap gap-4 align-center justify-center">
 
-            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="onSearchInput"/>
+            <SearchInput class="flex-grow-1" placeholder="Search material document.." @update:search="handleSearchInput"/>
 
             <!-- Plant Filter -->
             <v-select
@@ -232,6 +317,17 @@ onMounted(() => {
                 density="compact"
                 :items="plantsOption"
                 v-model="filters.plant"
+                clearable
+            />
+
+            <!-- Source Filter -->
+            <v-select
+                style="max-width: 220px;"
+                class="flex-grow-1 align-center"
+                label="Filter by Source"
+                density="compact"
+                :items="sourceOptions"
+                v-model="filters.source"
                 clearable
             />
 
@@ -275,6 +371,7 @@ onMounted(() => {
                 :items-length="stockReceivingStore.totalItems"
                 :loading="pageLoading"
                 item-value="id"
+                :row-props="rowProps"
                 @update:options="loadItems"
                 class="text-no-wrap"
             >
@@ -284,6 +381,7 @@ onMounted(() => {
 
                 <template #item.material_document="{ item }">
                     <span class="font-weight-bold">{{ item.material_document }}</span>
+                    <v-chip v-if="item.source === 'rdo-disposition'" size="x-small" color="info" class="ms-2" label>RDO</v-chip>
                 </template>
 
                 <template #item.year="{ item }">
@@ -326,16 +424,23 @@ onMounted(() => {
                             Reversed
                         </v-chip>
                     </div>
-                    <div v-else class="d-flex flex-column align-center ga-1">
+                    <div v-else-if="nonReceivableStatuses.includes(item.status)">
+                        <v-chip size="small" color="secondary" text-color="white">
+                            <v-icon start size="small">ri-forbid-line</v-icon>
+                            {{ item.status }}
+                        </v-chip>
+                    </div>
+                    <div v-else>
                         <v-chip size="small" color="warning" text-color="white">
                             <v-icon start size="small">ri-alert-line</v-icon>
                             For Receiving
                         </v-chip>
-                        <v-chip v-if="item?.stock_transfer?.cancelled_stock_transfer_items.length > 0" size="small" color="error" text-color="white">
-                            <v-icon start size="small">ri-close-circle-line</v-icon>
-                            With Cancelled Item(s)
-                        </v-chip>
                     </div>
+                </template>
+
+                <template #item.cancel_material_document="{ item }">
+                    <span v-if="cancelMatDoc(item)" class="font-weight-bold text-error">{{ cancelMatDoc(item) }}</span>
+                    <span v-else>-</span>
                 </template>
 
                 <template #item.actions="{ item }">
@@ -360,6 +465,65 @@ onMounted(() => {
             </VDataTableServer>
         </VCard>
 
+        <v-dialog v-model="cancelDialog" max-width="480" persistent>
+            <v-card>
+                <v-card-title class="text-h6 font-weight-bold">
+                    Cancel Stock Receiving
+                </v-card-title>
+                <v-divider />
+                <v-card-text>
+                    <p class="mb-4">
+                        <template v-if="cancelTarget && hasPendingAlcCancel(cancelTarget)">
+                            BU 315 is already cancelled (<strong>{{ cancelMatDoc(cancelTarget) }}</strong>).
+                            This will retry reversing the ALC 917 material document
+                            <strong>{{ alcTransfer(cancelTarget)?.material_document || '--' }}</strong>.
+                        </template>
+                        <template v-else>
+                            This will reverse the SAP material document of receiving
+                            <strong>{{ cancelTarget?.material_document || '--' }}</strong>
+                            (BU 315 and ALC 917, if posted).
+                        </template>
+                        This action cannot be undone.
+                    </p>
+                    <v-alert
+                        v-if="cancelTarget && !alcTransfer(cancelTarget)"
+                        type="error"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-4"
+                    >
+                        ALC is not yet posted. Please cancel this document and try again.
+                    </v-alert>
+                    <VTextField
+                        v-model="cancelDate"
+                        type="date"
+                        label="Cancel Posting Date"
+                        :max="todayStr"
+                        density="compact"
+                        hide-details
+                    />
+                    <v-alert v-if="cancelErrors.length" type="error" density="compact" class="mt-4">
+                        <div v-for="(err, i) in cancelErrors" :key="i">{{ err }}</div>
+                    </v-alert>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn variant="outlined" color="secondary" :disabled="cancelSubmitting" @click="closeCancelDialog">
+                        Close
+                    </v-btn>
+                    <v-btn color="error" :loading="cancelSubmitting" :disabled="!cancelDate" @click="confirmCancelReceiving">
+                        Confirm Cancel
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <Toast :show="toast.show" :color="toast.color" :message="toast.message" @update:show="toast.show = $event" />
     </div>
 </template>
+
+<style scoped>
+:deep(.row-cancelled) > td {
+    background-color: rgba(var(--v-theme-error), 0.08);
+}
+</style>
