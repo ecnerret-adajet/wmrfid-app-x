@@ -235,14 +235,19 @@ const isBatchDisabled = batch => !props.selectedBatches.some(selected => selecte
 
 const isReservationFlagSet = value => value === true || value === 1 || value === '1';
 
-const activeReservedPallets = (inventory) => {
-    const reservations = [];
-    const deliveryPallets = Array.isArray(inventory?.delivery_reserved_pallet)
+const deliveryReservedPallets = inventory => {
+    const pallets = Array.isArray(inventory?.delivery_reserved_pallet)
         ? inventory.delivery_reserved_pallet
         : (inventory?.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
 
-    reservations.push(...deliveryPallets
-        .filter(pallet => pallet?.cancelled_at == null)
+    return pallets.filter(pallet =>
+        pallet?.cancelled_at == null && pallet?.sap_delivery?.goods_issue_status !== 'C'
+    );
+};
+
+const activeReservedPallets = (inventory) => {
+    const reservations = [];
+    reservations.push(...deliveryReservedPallets(inventory)
         .map(pallet => ({ ...pallet, reservation_type: 'delivery' })));
 
     const stoItems = Array.isArray(inventory?.sto_transaction_items)
@@ -266,7 +271,7 @@ const activeReservedPallets = (inventory) => {
     return reservations;
 };
 
-const isInventoryReserved = (inventory) =>
+const isInventoryReserved = inventory =>
     isReservationFlagSet(inventory?.is_reserved) || isReservationFlagSet(inventory?.is_sto_reserved);
 
 const reservedPalletQuantity = (pallet) => {

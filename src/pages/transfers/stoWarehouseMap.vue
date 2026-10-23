@@ -273,7 +273,6 @@ const bagsToKg = (bagsCount) => {
 
                 <v-row dense class="mt-4">
                      <v-col cols="6" md="3">
-                        <div>PO Number</div>
                         <v-chip @click="batchSelected(null)" color="primary" class="ml-1 cursor-pointer"
                             v-if="computedBatchList.length > 0" :key="'all'"
                             :variant="selectedBatch === null ? 'elevated' : 'outlined'" label>

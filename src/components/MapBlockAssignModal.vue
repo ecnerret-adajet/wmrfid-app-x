@@ -2,6 +2,7 @@
 import ApiService from '@/services/ApiService';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import moment from 'moment';
 import { onMounted, reactive, ref } from 'vue';
 import BlockQrCodeModal from './BlockQrCodeModal.vue';
 import DefaultModal from './DefaultModal.vue';
@@ -405,19 +406,50 @@ function onQrGenerated({ block_id, qr_code_path }) {
     }
 }
 
-// delivery_reserved_pallet can hold multiple splits of a single inventory's quantity across deliveries
+const isReservationFlagSet = value => value === true || value === 1 || value === '1';
+
 const activeReservedPallets = (inventory) => {
-    if (!inventory?.is_reserved) return [];
-
-    const pallets = Array.isArray(inventory.delivery_reserved_pallet)
+    const deliveryPallets = Array.isArray(inventory?.delivery_reserved_pallet)
         ? inventory.delivery_reserved_pallet
-        : (inventory.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
+        : (inventory?.delivery_reserved_pallet ? [inventory.delivery_reserved_pallet] : []);
 
-    return pallets.filter(pallet => pallet?.cancelled_at === null);
+    const reservations = deliveryPallets
+        .filter(pallet => pallet?.cancelled_at == null && pallet?.sap_delivery?.goods_issue_status !== 'C')
+        .map(pallet => ({ ...pallet, reservation_type: 'delivery' }));
+
+    const stoItems = Array.isArray(inventory?.sto_transaction_items)
+        ? inventory.sto_transaction_items
+        : (inventory?.sto_transaction_items ? [inventory.sto_transaction_items] : []);
+
+    if (stoItems.length || isReservationFlagSet(inventory?.is_sto_reserved)) {
+        const latestStoItem = stoItems.reduce((latest, item) => {
+            if (!latest) return item;
+            const latestTime = Date.parse(latest.created_at ?? latest.updated_at ?? '') || Number(latest.id) || 0;
+            const itemTime = Date.parse(item.created_at ?? item.updated_at ?? '') || Number(item.id) || 0;
+            return itemTime > latestTime ? item : latest;
+        }, null);
+
+        reservations.push({
+            ...(latestStoItem ?? {}),
+            reservation_type: 'sto',
+            sto_transaction: latestStoItem?.sto_transaction
+        });
+    }
+
+    return reservations;
 }
 
 const reservedPalletQuantity = (pallet) => {
     return Number(pallet?.quantity ?? pallet?.total_qty ?? pallet?.reserved_quantity ?? 0);
+}
+
+const reservationDescription = (reservation) => {
+    if (reservation.reservation_type === 'sto') {
+        const transaction = reservation.sto_transaction;
+        return `STO (${transaction?.po_number ?? '—'} / ${transaction?.po_item ?? '—'}) - Qty: ${Number(reservation?.quantity ?? 0)}`;
+    }
+
+    return `${reservation?.ship_to_name ?? reservation?.sold_to_name ?? '—'} (${reservation?.delivery_document ?? '—'}) - Qty: ${reservedPalletQuantity(reservation)}`;
 }
 
 </script>
@@ -451,7 +483,7 @@ const reservedPalletQuantity = (pallet) => {
                                     </div>
                                     <div class="assigned-row">
                                         <span class="label">Remaining Quantity:</span>
-                                        <span class="value">{{ layer.assigned_inventory.is_reserved == 1 ? 0 : layer.assigned_inventory?.quantity }}</span>
+                                        <span class="value">{{ isReservationFlagSet(layer.assigned_inventory?.is_reserved) || isReservationFlagSet(layer.assigned_inventory?.is_sto_reserved) ? 0 : layer.assigned_inventory?.quantity }}</span>
                                     </div>
                                 </div>
                                   
@@ -473,16 +505,22 @@ const reservedPalletQuantity = (pallet) => {
                             <v-col v-if="activeReservedPallets(layer.assigned_inventory).length" cols="12" class="pt-0">
                                 <div
                                     v-for="(reservedPallet, reservedIndex) in activeReservedPallets(layer.assigned_inventory)"
-                                    :key="reservedPallet.id ?? reservedIndex"
-                                    class="assigned-row reserved-row text-h5 text-white font-italic"
+                                    :key="`${reservedPallet.reservation_type}-${reservedPallet.id ?? reservedIndex}`"
+                                    class="assigned-row reserved-row text-h5 font-italic text-white"
                                 >
-                                    <span class="label">Reserved to:</span>
+                                    <span class="label mr-2">Reserved to:</span>
                                     <span
                                         class="reserved-value"
-                                        :title="`${reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—'} (${reservedPallet.delivery_document}) - Qty: ${reservedPalletQuantity(reservedPallet)}`"
+                                        :title="reservationDescription(reservedPallet)"
                                     >
-                                        {{ reservedPallet?.ship_to_name ?? reservedPallet?.sold_to_name ?? '—' }} ({{ reservedPallet.delivery_document }}) - Qty: {{ reservedPalletQuantity(reservedPallet) }}
+                                        {{ reservationDescription(reservedPallet) }}
                                     </span>
+                                    <div class="assigned-row reserved-row text-subtitle-1 text-white font-italic">
+                                        <span class="label">Reserved by: </span>
+                                        <span class="value font-weight-bold">{{ reservedPallet?.created_by?.name ?? reservedPallet?.sto_transaction?.processed_by?.name ?? '—' }}</span>
+                                        <span class="label ml-2">on: </span>
+                                        <span class="value font-weight-bold">{{ reservedPallet?.created_at ? moment(reservedPallet.created_at).format('MM/DD/YY h:mm A') : '—' }}</span>
+                                    </div>
                                 </div>
                             </v-col>
                         </v-row>
@@ -685,17 +723,23 @@ const reservedPalletQuantity = (pallet) => {
     background-color: #FFB400;
 }
 
+
+.reserved-row {
+  white-space: normal;
+}
+
+.reserved-value {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .assigned-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.assigned-row {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
 
 .assigned-row .label {
   min-width: 200px; /* aligns the values */
@@ -706,15 +750,5 @@ const reservedPalletQuantity = (pallet) => {
 .assigned-row .value {
   font-weight: 800;
   margin-left: 8px;
-}
-
-.reserved-row {
-  white-space: normal;
-}
-
-.reserved-value {
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
 }
 </style>
