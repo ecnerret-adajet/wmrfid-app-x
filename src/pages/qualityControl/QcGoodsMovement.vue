@@ -287,7 +287,17 @@ const handleAction = (item, action) => {
             </template>
 
             <template #item.issuing_sloc="{ item }">
-                {{ item.issuing_sloc || '--' }}
+                <div>{{ item.issuing_sloc || '--' }}</div>
+                <div v-if="item.issuing_storage_location?.name" class="text-caption text-medium-emphasis">
+                    {{ item.issuing_storage_location.name }}
+                </div>
+            </template>
+
+            <template #item.receiving_sloc="{ item }">
+                <div>{{ item.receiving_sloc || '--' }}</div>
+                <div v-if="item.receiving_storage_location?.name" class="text-caption text-medium-emphasis">
+                    {{ item.receiving_storage_location.name }}
+                </div>
             </template>
 
             <template #item.material_document="{ item }">
