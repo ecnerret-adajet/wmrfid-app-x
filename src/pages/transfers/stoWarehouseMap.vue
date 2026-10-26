@@ -150,6 +150,7 @@ const proceedReserve = async () => {
     formData.append('plant', poItemData?.supplying_plant ?? '');
     formData.append('sloc', poItemData?.issuing_sloc_sto ?? '');
     formData.append('sap_server', poItemData?.sap_server ?? '');
+    formData.append('base_unit', poItemData?.uom ?? '');
     formData.append('pallets', JSON.stringify(pallets));
 
     submitProposalLoading.value = true;
