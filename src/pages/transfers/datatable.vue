@@ -2,13 +2,14 @@
 import Loader from '@/components/Loader.vue';
 import Toast from '@/components/Toast.vue';
 import { useAuthorization } from '@/composables/useAuthorization';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
-import { defineEmits, defineExpose, defineProps, ref } from 'vue';
+import { computed, defineEmits, defineExpose, defineProps, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import PalletAssignModal from './PalletAssignModal.vue';
@@ -42,6 +43,23 @@ const filters = ref({ ...props.initialFilters });
 const showDeliveryItems = ref(false);
 const showReservedPallets = ref(false);
 const stoData = ref([]);
+const assignTruckscaleDialog = ref(false);
+const selectedTruckscaleItem = ref(null);
+const selectedTruckscale = ref(null);
+const selectedTruckscalePalletIds = ref([]);
+const isSavingTruckscale = ref(false);
+const truckscales = ref([]);
+const truckscalesLoading = ref(false);
+const truckscalesError = ref('');
+const assignedPallets = computed(() =>
+    selectedTruckscaleItem.value?.sto_transactions?.flatMap(transaction => transaction.items || []) || []
+);
+const selectedTruckscaleDetails = computed(() =>
+    truckscales.value.find(truckscale => truckscale.truckscale_no === selectedTruckscale.value) || null
+);
+const availablePalletCount = computed(() =>
+    assignedPallets.value.filter(pallet => !pallet.truckscale_no && pallet.physical_id).length
+);
 
 const headers = [
     {
@@ -50,12 +68,12 @@ const headers = [
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'TRANSACTION NO.',
-        key: 'transaction_number',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'TRANSACTION NO.',
+    //     key: 'transaction_number',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'STO NO.',
         key: 'po_number',
@@ -148,6 +166,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         serverItems.value = [];
         totalItems.value = 0;
         loading.value = false;
+        emits('pagination-changed', {
+            page,
+            itemsPerPage,
+            sortBy: sortQuery.value,
+            search: props.search,
+            totalItems: totalItems.value,
+        });
         return;
     }
 
@@ -176,7 +201,13 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             serverItems.value = response.data.data
             loading.value = false
 
-            emits('pagination-changed', { page, itemsPerPage, sortBy: sortQuery.value, search: props.search });
+            emits('pagination-changed', {
+                page,
+                itemsPerPage,
+                sortBy: sortQuery.value,
+                search: props.search,
+                totalItems: totalItems.value,
+            });
         })
         .catch((error) => {
             console.log(error);
@@ -204,12 +235,48 @@ const palletModalOpen = ref(false);
 const isSaving = ref(false);
 const selectedItemForPallet = ref(null);
 
+const fetchTruckscales = async (sto) => {
+    const plantCode = sto.supplying_order_plant?.plant_code || sto.supplying_plant;
+    const storageLocation = sto.issuing_storage_location?.code || sto.issuing_sloc_sto;
+
+    truckscales.value = [];
+    truckscalesError.value = '';
+    if (!plantCode || !storageLocation || !sto.po_number) {
+        truckscalesError.value = 'Plant, storage location, or STO number is missing. Truckscales could not be loaded.';
+        return;
+    }
+
+    truckscalesLoading.value = true;
+    try {
+        const response = await ApiService.query(
+            `transfer-orders/${encodeURIComponent(plantCode)}/${encodeURIComponent(storageLocation)}/${encodeURIComponent(sto.po_number)}/fetch-sto-truckscales`,
+            {}
+        );
+        const fetchedTruckscales = response.data?.truckscales ?? response.data?.data?.truckscales;
+        if (!Array.isArray(fetchedTruckscales)) {
+            throw new Error('Unexpected response while loading truckscales.');
+        }
+        truckscales.value = fetchedTruckscales;
+    } catch (error) {
+        console.error('Failed to fetch truckscales:', error);
+        truckscalesError.value = error.response?.data?.message || error.message || 'Could not load truckscales. Please try again.';
+    } finally {
+        truckscalesLoading.value = false;
+    }
+};
+
 const handleAction = async (sto, action) => {
     stoData.value = sto;
     selectedItemForPallet.value = sto
     stoBatchPickingStore.selectedPoItem = sto;
     if (action == 'batch_pick') {
         router.push({ name: 'sto-batch-selection', params: { po_number: sto.po_number, po_item: sto.po_item } });
+    } else if (action == 'assign_truckscale') {
+        selectedTruckscaleItem.value = sto;
+        selectedTruckscale.value = null;
+        selectedTruckscalePalletIds.value = [];
+        assignTruckscaleDialog.value = true;
+        fetchTruckscales(sto);
     } else if (action == 'view_reserved_pallets') {
         try {
             isLoading.value = true;
@@ -243,6 +310,62 @@ const handleAction = async (sto, action) => {
     }
 
 }
+
+const saveTruckscaleAssignment = async () => {
+    if (!selectedTruckscaleItem.value || !selectedTruckscale.value || !selectedTruckscalePalletIds.value.length) return;
+
+    const selectedPalletIds = new Set(selectedTruckscalePalletIds.value);
+    const pallets = assignedPallets.value
+        .filter(pallet =>
+            selectedPalletIds.has(pallet.physical_id)
+            && pallet.physical_id
+            && !pallet.truckscale_no
+        )
+        .map(pallet => ({
+            physical_id: pallet.physical_id,
+            batch: pallet.batch || null,
+        }));
+
+    if (!pallets.length) return;
+
+    isSavingTruckscale.value = true;
+    try {
+        await ApiService.post('transfer-orders/assign-truckscale', {
+            po_number: selectedTruckscaleItem.value.po_number,
+            po_item: selectedTruckscaleItem.value.po_item,
+            truckscale_no: selectedTruckscale.value,
+            pallets,
+        });
+
+        assignTruckscaleDialog.value = false;
+        selectedTruckscalePalletIds.value = [];
+        Swal.fire({
+            icon: 'success',
+            title: 'Truckscale Assigned',
+            text: 'Truckscale assigned to the selected pallets.',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>'
+        });
+        loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: props.search
+        });
+    } catch (error) {
+        console.error('Failed to assign truckscale:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Truckscale Assignment Failed',
+            text: error.response?.data?.message || 'Could not assign the selected pallets to this truckscale. Please try again.',
+            confirmButtonColor: '#d33',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>'
+        });
+    } finally {
+        isSavingTruckscale.value = false;
+        assignTruckscaleDialog.value = false;
+    }
+};
 
 const selectedTransportId = ref(null);
 
@@ -429,7 +552,7 @@ const cancelProposal = async () => {
         });
     } finally {
         cancelProposalLoading.value = false;
-        
+        viewReservedPallets.value = false;
     }
 };
 
@@ -464,7 +587,7 @@ defineExpose({
         <template #item.transaction_number="{ item }">
             <v-chip v-if="!item.sto_transactions || item.sto_transactions.length === 0" 
                 size="x-small" 
-                label 
+                label
                 color="warning"
                 variant="tonal"
             >
@@ -500,7 +623,7 @@ defineExpose({
         <template #item.pallet_assignment="{ item }">
             <v-chip v-if="item.pallet_assignment === 'Completed'" size="x-small" label color="primary"
                 variant="tonal">Completed</v-chip>
-            <v-chip v-else-if="item.pallet_assignment === 'Pending'" size="x-small" label color="warning"
+            <v-chip v-else-if="item.pallet_assignment === 'Pending'" size="x-small" style="color: #424242 !important; background-color: #FFB400;" 
                 variant="tonal">Pending</v-chip>
             <v-chip v-else-if="item.pallet_assignment === 'Partial'" size="x-small" label color="info"
                 variant="tonal">Partial</v-chip>
@@ -613,11 +736,18 @@ defineExpose({
                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
                     <v-list>
-                        <v-list-item v-if="item.open_quantity > 0 && (authUserCan('can.sto.batch.pick') || authStore.user?.is_super_admin)" @click="handleAction(item, 'batch_pick')">Batch
+                        <v-list-item prepend-icon="ri-hand" v-if="item.open_quantity > 0 && (authUserCan('can.sto.batch.pick') || authStore.user?.is_super_admin)" @click="handleAction(item, 'batch_pick')">Batch
                             Picking</v-list-item>
                         <!-- <v-list-item v-if="item.reserved_pallets && item.reserved_pallets.length > 0"
                             @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item> -->
-                        <v-list-item  @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
+                        <v-list-item prepend-icon="ri-stack-line"  @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
+                        <v-list-item
+                            v-if="item.batch_pick_status === 'Batch Picked' && (authUserCan('can.sto.assign.truckscale') || authStore.user?.is_super_admin)"
+                            prepend-icon="ri-scales-3-line"
+                            @click="handleAction(item, 'assign_truckscale')"
+                        >
+                            Assign Truckscale
+                        </v-list-item>
                     </v-list>
                 </v-menu>
             </div>
@@ -725,6 +855,239 @@ defineExpose({
         @updated="fetchStockTransferDetails"
     />
 
+    <v-dialog v-model="assignTruckscaleDialog" max-width="1000px" scrollable>
+        <v-card>
+            <v-card-title class="d-flex justify-space-between align-center px-6 pt-6">
+                <div>
+                    <div class="text-h5 font-weight-bold">Assign Truckscale</div>
+                    <div class="text-body-2 text-medium-emphasis mt-1">
+                        Choose a truckscale for the pallets reserved against this STO item.
+                    </div>
+                </div>
+                <v-btn icon="ri-close-line" variant="text" aria-label="Close dialog"
+                    @click="assignTruckscaleDialog = false"></v-btn>
+            </v-card-title>
+            <v-card-text class="px-6">
+                <v-row dense class="mb-2">
+                    <v-col cols="6" sm="3">
+                        <div class="text-caption text-medium-emphasis">STO Number</div>
+                        <div class="font-weight-bold">{{ selectedTruckscaleItem?.po_number || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" sm="3">
+                        <div class="text-caption text-medium-emphasis">PO Item</div>
+                        <div class="font-weight-bold">{{ selectedTruckscaleItem?.po_item || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" sm="3">
+                        <div class="text-caption text-medium-emphasis">Available pallets</div>
+                        <div class="font-weight-bold">{{ availablePalletCount }}</div>
+                    </v-col>
+                </v-row>
+
+                <v-alert type="info" variant="tonal" density="comfortable" class="mb-4">
+                    Choose a truckscale, then select unassigned pallets to assign to it.
+                </v-alert>
+
+                <v-alert
+                    v-if="truckscalesError"
+                    type="error"
+                    variant="tonal"
+                    density="comfortable"
+                    class="mb-4"
+                >
+                    {{ truckscalesError }}
+                </v-alert>
+
+                <v-select
+                    v-model="selectedTruckscale"
+                    :items="truckscales"
+                    item-title="truckscale_no"
+                    item-value="truckscale_no"
+                    label="Truckscale"
+                    placeholder="Select a truckscale"
+                    prepend-inner-icon="ri-scales-3-line"
+                    variant="outlined"
+                    density="comfortable"
+                    clearable
+                    class="mb-4"
+                    :loading="truckscalesLoading"
+                    :disabled="truckscalesLoading || Boolean(truckscalesError)"
+                    no-data-text="No truckscales available for this STO"
+                    @update:model-value="selectedTruckscalePalletIds = []"
+                />
+
+                <v-card
+                    v-if="selectedTruckscaleDetails"
+                    variant="tonal"
+                    color="primary"
+                    class="mb-5 overflow-hidden"
+                >
+                    <v-card-text class="pa-3">
+                        <!-- Header Block -->
+                        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-2">
+                            <div class="d-flex align-center ga-2">
+                                <v-avatar color="primary" variant="flat" rounded="md" size="36">
+                                    <v-icon icon="ri-truck-line" color="white" size="20"></v-icon>
+                                </v-avatar>
+                                <div>
+                                    <div class="text-caption text-medium-emphasis lh-1" style="font-size: 0.7rem !important; text-transform: uppercase; letter-spacing: 0.05em;">Selected truckscale</div>
+                                    <div class="text-subtitle-1 font-weight-bold lh-1">{{ selectedTruckscaleDetails.truckscale_no }}</div>
+                                </div>
+                            </div>
+                            <v-chip color="primary" variant="flat" size="small" prepend-icon="ri-checkbox-circle-line">
+                                Ready for pallet assignment
+                            </v-chip>
+                        </div>
+
+                        <v-row dense>
+                            <!-- Driver & Plate (Single Row Tighter Layout) -->
+                            <v-col cols="12" sm="6">
+                                <v-card variant="flat" >
+                                    <v-card-text class="d-flex align-center ga-2 pa-2">
+                                        <v-icon icon="ri-user-line" color="primary" size="18"></v-icon>
+                                        <div class="min-width-0">
+                                            <div class="text-medium-emphasis">Driver name</div>
+                                            <div class="font-weight-medium text-truncate">
+                                                {{ selectedTruckscaleDetails.driver_name || '—' }}
+                                            </div>
+                                        </div>
+                                    </v-card-text>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                                <v-card variant="flat" >
+                                    <v-card-text class="d-flex align-center ga-2 pa-2">
+                                        <v-icon icon="ri-car-line" color="primary" size="18"></v-icon>
+                                        <div class="min-width-0">
+                                            <div class=" text-medium-emphasis" >Plate No.</div>
+                                            <div class="font-weight-medium text-truncate">
+                                                {{ selectedTruckscaleDetails.plate_number || '—' }}
+                                            </div>
+                                        </div>
+                                    </v-card-text>
+                                </v-card>
+                            </v-col>
+
+                            <!-- Divider & Section Heading -->
+                            <v-col cols="12" class="py-1">
+                                <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase" style="letter-spacing: 0.05em;">Weight details</div>
+                            </v-col>
+
+                            <!-- Weights Row (Reduced from h-100 blocks to compact row items) -->
+                            <v-col cols="4">
+                                <v-card variant="flat">
+                                    <v-card-text class="pa-2 text-center text-sm-left">
+                                        <div class=" text-medium-emphasis" >Tare Weight</div>
+                                        <div class=" font-weight-bold">
+                                            {{ numberWithComma(selectedTruckscaleDetails.tare_weight) ?? '—' }}
+                                        </div>
+                                    </v-card-text>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="4">
+                                <v-card variant="flat">
+                                    <v-card-text class="pa-2 text-center text-sm-left">
+                                        <div class=" text-medium-emphasis" >Gross Weight</div>
+                                        <div class="font-weight-bold">
+                                            {{ numberWithComma(selectedTruckscaleDetails.gross_weight) ?? '—' }}
+                                        </div>
+                                    </v-card-text>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="4">
+                                <v-card variant="flat">
+                                    <v-card-text class="pa-2 text-center text-sm-left">
+                                        <div class=" text-primary" >Outgoing Net Weight</div>
+                                        <div class=" font-weight-bold text-primary">
+                                            {{ numberWithComma(selectedTruckscaleDetails.outgoing_net_weight) ?? '—' }}
+                                        </div>
+                                    </v-card-text>
+                                </v-card>
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+
+                </v-card>
+
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <div>
+                        <div class="text-subtitle-1 font-weight-bold">Select pallets</div>
+                        <div class="text-body-2 text-medium-emphasis">
+                            {{ selectedTruckscale ? 'Choose unassigned pallets to send to this truckscale.' : 'Select a truckscale to enable pallet selection.' }}
+                        </div>
+                    </div>
+                    <v-chip size="small" color="primary" variant="tonal">
+                        {{ selectedTruckscalePalletIds.length }} selected
+                    </v-chip>
+                </div>
+
+                <v-table v-if="assignedPallets.length" density="comfortable" class="border rounded">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Select</th>
+                            <th>Physical ID</th>
+                            <th>Batch Code</th>
+                            <th>Manufactured</th>
+                            <th class="text-right">Quantity</th>
+                            <th class="text-center">Truckscale No.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(pallet, index) in assignedPallets" :key="`${pallet.physical_id || 'pallet'}-${index}`">
+                            <td class="text-center">
+                                <v-checkbox-btn
+                                    v-model="selectedTruckscalePalletIds"
+                                    :value="pallet.physical_id"
+                                    :disabled="!selectedTruckscale || Boolean(pallet.truckscale_no) || !pallet.physical_id"
+                                    :aria-label="`Select pallet ${pallet.physical_id || ''}`"
+                                />
+                            </td>
+                            <td class="font-weight-medium">{{ pallet.physical_id || '-' }}</td>
+                            <td>{{ pallet.batch || '-' }}</td>
+                            <td>{{ pallet.mfg_date ? moment(pallet.mfg_date).format('YYYY-MM-DD') : '-' }}</td>
+                            <td class="text-right">{{ pallet.quantity ?? '-' }} {{ pallet.uom || '' }}</td>
+                            <td class="text-center">
+                                <v-chip
+                                    v-if="pallet.truckscale_no"
+                                    color="primary"
+                                    label
+                                    small
+                                >
+                                    {{ pallet.truckscale_no }}
+                                </v-chip>
+                                <v-chip
+                                    v-else
+                                    :color="selectedTruckscale ? 'success' : 'warning'"
+                                    variant="tonal"
+                                    size="x-small"
+                                >
+                                    {{ selectedTruckscale ? 'AVAILABLE' : 'NOT ASSIGNED' }}
+                                </v-chip>
+                            </td>
+                        </tr>
+                    </tbody>
+                </v-table>
+                <v-card v-else variant="tonal" class="pa-6 text-center">
+                    <v-icon icon="ri-inbox-line" size="32" color="medium-emphasis" class="mb-2"></v-icon>
+                    <div class="text-body-1 font-weight-medium">No assigned pallets found</div>
+                    <div class="text-body-2 text-medium-emphasis">This STO item has no pallet records to assign.</div>
+                </v-card>
+            </v-card-text>
+            <v-card-actions class="px-6 pb-6">
+                <v-spacer />
+                <v-btn variant="outlined" color="secondary" @click="assignTruckscaleDialog = false">Close</v-btn>
+                <v-btn
+                    color="primary"
+                    prepend-icon="ri-check-line"
+                    :disabled="!selectedTruckscale || !selectedTruckscalePalletIds.length"
+                    :loading="isSavingTruckscale"
+                    @click="saveTruckscaleAssignment"
+                >
+                    Assign {{ selectedTruckscalePalletIds.length || '' }} {{ selectedTruckscalePalletIds.length === 1 ? 'Pallet' : 'Pallets' }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
     <v-dialog v-model="viewReservedPallets" max-width="1000px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
@@ -765,6 +1128,9 @@ defineExpose({
                             <th>Batch Code</th>
                             <th>Mfg Date</th>
                             <th class="text-center">Take Quantity</th>
+                            <th class="text-center">Truckscale No.</th>
+                            <th class="text-center">Bin Location</th>
+                            <th class="text-center">Layer</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -773,6 +1139,26 @@ defineExpose({
                             <td>{{ item.batch }}</td>
                             <td>{{ item.mfg_date ? moment(item.mfg_date).format('YYYY-MM-DD') : '-'}}</td>
                             <td class="text-center">{{ item.quantity }} {{ item.uom }}</td>
+                            <td class="text-center">
+                                <v-chip
+                                    v-if="item.truckscale_no"
+                                    color="primary"
+                                    label
+                                    small
+                                >
+                                    {{ item.truckscale_no }}
+                                </v-chip>
+                                <v-chip
+                                    v-else
+                                    variant="tonal"
+                                    size="x-small"
+                                    style="color: #424242 !important; background-color: #FFB400;" 
+                                >
+                                    {{ 'NOT ASSIGNED' }}
+                                </v-chip>
+                            </td>
+                            <td class="text-center">{{ item.bin_location || '-' }}</td>
+                            <td class="text-center">{{ item.layer_position || '-' }}</td>
                         </tr>
                     </tbody>
                 </v-table>

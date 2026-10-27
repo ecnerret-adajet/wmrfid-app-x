@@ -28,6 +28,7 @@ const datatableRef = ref(null);
 const tablePerPage = ref(50);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
+const totalItems = ref(0);
 const isLoading = ref(false);
 const pageLoading = ref(false);
 const toast = ref({
@@ -116,16 +117,43 @@ const resetFilter = () => {
     }
 }
 
-const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
+const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: itemCount }) => {
     tableSort.value = sortBy
     tablePage.value = page
     tablePerPage.value = itemsPerPage
     searchValue.value = search
+    totalItems.value = itemCount ?? 0
 }
 
 </script>
 
 <template>
+    <VCard variant="flat" border class="mb-5 position-relative bg-grey-75" 
+        style="border-left: 4px solid rgb(var(--v-theme-primary)) !important;
+        background-color: rgb(var(--v-table-header-color));">
+        <VCardText class="pa-4 pa-sm-6">
+            <VRow align="center" justify="space-between" class="ga-3">
+                <VCol cols="12" sm="8">
+                    <div class="d-flex align-center ga-4">
+                        <VAvatar color="primary" variant="tonal" rounded="lg" size="52">
+                            <VIcon icon="ri-truck-line" size="28" />
+                        </VAvatar>
+                        <div>
+                            <div class="text-h4 font-weight-bold">STO Issuance</div>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Batch and pallet reservation for STO line items
+                            </div>
+                        </div>
+                    </div>
+                </VCol>
+                <VCol cols="12" sm="auto" class="d-flex justify-sm-end">
+                    <VChip color="primary" variant="tonal" size="large" prepend-icon="ri-file-list-3-line">
+                        {{ totalItems.toLocaleString('en-US') }} {{ totalItems === 1 ? 'item' : 'items' }}
+                    </VChip>
+                </VCol>
+            </VRow>
+        </VCardText>
+    </VCard>
     <VRow no-gutters align="center">
         <VCol md="6" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <VTextField
