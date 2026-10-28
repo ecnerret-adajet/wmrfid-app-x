@@ -1,16 +1,20 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
+import { useAuthorization } from '@/composables/useAuthorization';
 import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
+import { useAuthStore } from '@/stores/auth';
 import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import Moment from 'moment';
 import Swal from 'sweetalert2';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const stoBatchPickingStore = useStoBatchPickingStore();
+const { authUserCan } = useAuthorization();
 
 const item = ref(null);
 const pageLoading = ref(false);
@@ -132,6 +136,7 @@ const cancelReserve = async () => {
         });
     } finally {
         cancelReserveLoading.value = false;
+        cancelConfirmationModal.value = false;
     }
 };
 </script>
@@ -350,7 +355,7 @@ const cancelReserve = async () => {
                     <v-btn color="secondary" variant="outlined" @click="cancelConfirmationModal = false" class="px-6 mr-3">
                         Cancel
                     </v-btn>
-                    <v-btn color="error" @click="cancelReserve" :loading="cancelReserveLoading" class="px-6">
+                    <v-btn v-if="authUserCan('can.cancel.sto.batch.pick') || authStore.user?.is_super_admin" color="error" @click="cancelReserve" :loading="cancelReserveLoading" class="px-6">
                         Yes, Proceed
                     </v-btn>
                 </div>

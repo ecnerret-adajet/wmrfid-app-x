@@ -140,18 +140,18 @@ const headers = [
         align: 'center',
         sortable: false,
     },
-    {
-        title: 'GR qty',
-        key: 'gr_quantity',
-        align: 'center',
-        sortable: false,
-    },
-    {
-        title: 'GR Remaining qty',
-        key: 'gr_remaining_qty',
-        align: 'center',
-        sortable: false,
-    },
+    // {
+    //     title: 'GR qty',
+    //     key: 'gr_quantity',
+    //     align: 'center',
+    //     sortable: false,
+    // },
+    // {
+    //     title: 'GR Remaining qty',
+    //     key: 'gr_remaining_qty',
+    //     align: 'center',
+    //     sortable: false,
+    // },
     {
         title: 'DATE CREATED',
         key: 'created_at',
@@ -532,7 +532,6 @@ const cancelProposal = async () => {
             confirmButtonColor: '#00833c',
             confirmButtonText: '<span style="color: #ffffff;">OK</span>',
         });
-        cancelConfirmationModal.value = false;
         batchPickModalOpen.value = false;
         // fetchStockTransferDetails();
         loadItems({
@@ -553,6 +552,7 @@ const cancelProposal = async () => {
     } finally {
         cancelProposalLoading.value = false;
         viewReservedPallets.value = false;
+        cancelConfirmationModal.value = false;
     }
 };
 
@@ -563,6 +563,11 @@ function fetchStockTransferDetails() {
         sortBy: [{ key: 'updated_at', order: 'desc' }],
         search: props.search
     });
+}
+
+function removeLeadingZeros(value) {
+    if (!value) return '';
+    return value.replace(/^0+/, '');
 }
 
 defineExpose({
@@ -855,7 +860,7 @@ defineExpose({
         @updated="fetchStockTransferDetails"
     />
 
-    <v-dialog v-model="assignTruckscaleDialog" max-width="1000px" scrollable>
+    <v-dialog v-model="assignTruckscaleDialog" max-width="1300px" scrollable>
         <v-card>
             <v-card-title class="d-flex justify-space-between align-center px-6 pt-6">
                 <div>
@@ -908,6 +913,7 @@ defineExpose({
                     variant="outlined"
                     density="comfortable"
                     clearable
+                    width="50%"
                     class="mb-4"
                     :loading="truckscalesLoading"
                     :disabled="truckscalesLoading || Boolean(truckscalesError)"
@@ -1019,16 +1025,26 @@ defineExpose({
                         {{ selectedTruckscalePalletIds.length }} selected
                     </v-chip>
                 </div>
-
+           
                 <v-table v-if="assignedPallets.length" density="comfortable" class="border rounded">
                     <thead>
                         <tr>
                             <th class="text-center">Select</th>
                             <th>Physical ID</th>
+                            <th>Material</th>
                             <th>Batch Code</th>
-                            <th>Manufactured</th>
-                            <th class="text-right">Quantity</th>
+                            <th>Mfg Date</th>
+                            <th class="text-center">Qty</th>
                             <th class="text-center">Truckscale No.</th>
+                            <th class="text-center">Loaded</th>
+                            <th>
+                                <span>Transfer</span><br/>
+                                <span>Request #</span>
+                            </th>
+                            <th>
+                                <span>Transfer</span><br/>
+                                <span>Order #</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1042,9 +1058,13 @@ defineExpose({
                                 />
                             </td>
                             <td class="font-weight-medium">{{ pallet.physical_id || '-' }}</td>
+                            <td>
+                                <span class="font-weight-bold">{{ pallet.material_code }}</span><br />
+                                <span v-if="pallet.material_description" class="text-subtitle-1">{{ pallet.material_description }}</span>
+                            </td>
                             <td>{{ pallet.batch || '-' }}</td>
                             <td>{{ pallet.mfg_date ? moment(pallet.mfg_date).format('YYYY-MM-DD') : '-' }}</td>
-                            <td class="text-right">{{ pallet.quantity ?? '-' }} {{ pallet.uom || '' }}</td>
+                            <td class="text-center">{{ pallet.quantity ?? '-' }} {{ pallet.uom || '' }}</td>
                             <td class="text-center">
                                 <v-chip
                                     v-if="pallet.truckscale_no"
@@ -1063,6 +1083,13 @@ defineExpose({
                                     {{ selectedTruckscale ? 'AVAILABLE' : 'NOT ASSIGNED' }}
                                 </v-chip>
                             </td>
+                             <td class="text-center">
+                                <i v-if="pallet.is_loaded" style="font-size: 30px; background-color: green;"
+                                    class="ri-checkbox-circle-line"></i>
+                                <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                            </td>
+                            <td>{{ pallet.transfer_request?.transfer_request_id || '-' }}</td>
+                            <td>{{ pallet.transfer_request?.transfer_order?.transfer_order_id || '-' }}</td>
                         </tr>
                     </tbody>
                 </v-table>
@@ -1088,7 +1115,7 @@ defineExpose({
         </v-card>
     </v-dialog>
 
-    <v-dialog v-model="viewReservedPallets" max-width="1000px">
+    <v-dialog v-model="viewReservedPallets" max-width="1400px">
         <v-card elevation="2">
             <v-card-title class="d-flex justify-space-between align-center mx-4 px-4 mt-6">
                 <div class="text-h4 font-weight-bold ps-2 text-primary">
@@ -1097,7 +1124,7 @@ defineExpose({
                 <v-btn icon="ri-close-line" variant="text" @click="viewReservedPallets = false"></v-btn>
             </v-card-title>
             <v-card-text>
-                <v-row dense class="mx-4 mb-4">
+                <v-row dense class="mx-4 mb-2">
                     <v-col cols="6" md="3">
                         <div class="text-caption text-medium-emphasis">PO Number</div>
                         <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.po_number || '-' }}</div>
@@ -1114,6 +1141,23 @@ defineExpose({
                         </div>
                     </v-col>
                     <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">GI Quantity</div>
+                        <div class="font-weight-bold">
+                            {{ Number(stoBatchPickingStore.selectedPoItem?.gi_quantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                            {{ stoBatchPickingStore.selectedPoItem?.uom || '' }}
+                        </div>
+                    </v-col>
+                </v-row>
+                <v-row dense class="mx-4 mb-4">
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">Material Code</div>
+                        <div class="font-weight-bold">{{ removeLeadingZeros(stoBatchPickingStore.selectedPoItem?.material_code) || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" md="3">
+                        <div class="text-caption text-medium-emphasis">Material Description</div>
+                        <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.material_description || '-' }}</div>
+                    </v-col>
+                    <v-col cols="6" md="3">
                         <div class="text-caption text-medium-emphasis">Open Quantity</div>
                         <div class="font-weight-bold">
                             {{ Number(stoBatchPickingStore.selectedPoItem?.open_quantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
@@ -1121,16 +1165,31 @@ defineExpose({
                         </div>
                     </v-col>
                 </v-row>
-                <v-table density="compact" class="elevation-0 border mx-4">
+                <v-table density="comfortable" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
                             <th>Physical ID</th>
-                            <th>Batch Code</th>
+                            <th>Batch</th>
                             <th>Mfg Date</th>
-                            <th class="text-center">Take Quantity</th>
-                            <th class="text-center">Truckscale No.</th>
+                            <th class="text-center">
+                                <span>Quantity</span><br/>
+                                <span>& UOM</span>
+                            </th>
+                            <th class="text-center">
+                                <span>Truckscale</span><br/>
+                                <span>No.</span>
+                            </th>
                             <th class="text-center">Bin Location</th>
                             <th class="text-center">Layer</th>
+                            <th class="text-center">Loaded</th>
+                            <th>
+                                <span>Transfer</span><br/>
+                                <span>Request #</span>
+                            </th>
+                            <th>
+                                <span>Transfer</span><br/>
+                                <span>Order #</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1159,13 +1218,20 @@ defineExpose({
                             </td>
                             <td class="text-center">{{ item.bin_location || '-' }}</td>
                             <td class="text-center">{{ item.layer_position || '-' }}</td>
+                            <td class="text-center">
+                                <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
+                                    class="ri-checkbox-circle-line"></i>
+                                <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                            </td>
+                            <td>{{ item.transfer_request?.transfer_request_id || '-' }}</td>
+                            <td>{{ item.transfer_request?.transfer_order?.transfer_order_id || '-' }}</td>
                         </tr>
                     </tbody>
                 </v-table>
                 <div class="d-flex justify-end mt-8 mx-4">
                     <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
                         type="button">Close</v-btn>
-                    <v-btn color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
+                    <v-btn v-if="authUserCan('can.cancel.sto.batch.pick') || authStore.user?.is_super_admin" color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
                         Reservation</v-btn>
                 </div>
             </v-card-text>
