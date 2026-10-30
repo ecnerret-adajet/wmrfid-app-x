@@ -9,7 +9,7 @@ import { useStoBatchPickingStore } from '@/stores/stoBatchPickingStore';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
-import { computed, defineEmits, defineExpose, defineProps, ref } from 'vue';
+import { computed, defineEmits, defineExpose, defineProps, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { VDataTableServer } from 'vuetify/components';
 import PalletAssignModal from './PalletAssignModal.vue';
@@ -264,6 +264,9 @@ const fetchTruckscales = async (sto) => {
         truckscalesLoading.value = false;
     }
 };
+
+const getReservedPallets = (item) =>
+    item?.sto_transactions?.flatMap(transaction => transaction.items || []) || [];
 
 const handleAction = async (sto, action) => {
     if (action == 'batch_pick' && sto.purchase_order?.release_indicator == 'X') {
@@ -525,6 +528,71 @@ const cancelReservation = async () => {
     cancelConfirmationModal.value = true;
 };
 
+const canUnreservePallet = computed(() =>
+    authUserCan('can.sto.batch.pick.unreserve.pallet') || authStore.user?.is_super_admin
+);
+const reservedPalletItems = computed(() =>
+    stoBatchPickingStore.selectedPoItem?.sto_transactions?.[0]?.items || []
+);
+const isPalletLocked = (item) => Boolean(item.truckscale_no && item.is_loaded);
+const selectableReservedItems = computed(() =>
+    reservedPalletItems.value.filter(item => !isPalletLocked(item))
+);
+const selectedUnreserveIds = ref([]);
+const unreserveLoading = ref(false);
+const allReservedSelected = computed(() =>
+    selectableReservedItems.value.length > 0 && selectedUnreserveIds.value.length === selectableReservedItems.value.length
+);
+const toggleAllReserved = (checked) => {
+    selectedUnreserveIds.value = checked ? selectableReservedItems.value.map(item => item.id) : [];
+};
+
+watch(viewReservedPallets, (open) => {
+    if (!open) selectedUnreserveIds.value = [];
+});
+
+const unreserveConfirmationModal = ref(false);
+const selectedUnreservePallets = computed(() =>
+    reservedPalletItems.value.filter(item => selectedUnreserveIds.value.includes(item.id))
+);
+
+const unreservePallets = () => {
+    if (!selectedUnreserveIds.value.length) return;
+    unreserveConfirmationModal.value = true;
+};
+
+const confirmUnreservePallets = async () => {
+    const po = stoBatchPickingStore.selectedPoItem;
+    unreserveLoading.value = true;
+    try {
+        await ApiService.post('transfer-orders/unreserve-pallets', {
+            po_number: po?.po_number,
+            po_item: po?.po_item,
+            sto_transaction_item_ids: selectedUnreserveIds.value,
+        });
+        Swal.fire({
+            icon: 'success',
+            title: 'Pallets Unreserved',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
+        viewReservedPallets.value = false;
+        fetchStockTransferDetails();
+    } catch (error) {
+        console.error(error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error Unreserving Pallets',
+            text: error.response?.data?.message || 'Failed to unreserve pallets',
+            confirmButtonColor: '#d33',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
+    } finally {
+        unreserveLoading.value = false;
+        unreserveConfirmationModal.value = false;
+    }
+};
+
 const cancelProposalLoading = ref(false);
 const cancelProposal = async () => {
     cancelProposalLoading.value = true;
@@ -637,12 +705,15 @@ defineExpose({
         </template>
 
         <template #item.pallet_assignment="{ item }">
-            <v-chip v-if="item.pallet_assignment === 'Completed'" size="x-small" label color="primary"
-                variant="tonal">Completed</v-chip>
-            <v-chip v-else-if="item.pallet_assignment === 'Pending'" size="x-small" style="color: #424242 !important; background-color: #FFB400;" 
-                variant="tonal">Pending</v-chip>
-            <v-chip v-else-if="item.pallet_assignment === 'Partial'" size="x-small" label color="info"
-                variant="tonal">Partial</v-chip>
+            <div class="d-flex flex-column  g-1">
+                <v-chip color="info" label small>
+                    Reserved: <span class="font-weight-bold ml-1">{{ getReservedPallets(item).length }}</span>
+                </v-chip>
+                
+                <v-chip color="primary" class="mt-1" label small>
+                    &nbsp;&nbsp;&nbsp;Loaded: <span class="font-weight-bold ml-1">{{ getReservedPallets(item).filter(pallet => pallet.is_loaded).length }}</span>
+                </v-chip>
+            </div>
         </template>
 
         <template #item.batch_pick_status="{ item }">
@@ -871,7 +942,7 @@ defineExpose({
         @updated="fetchStockTransferDetails"
     />
 
-    <v-dialog v-model="assignTruckscaleDialog" max-width="1300px" scrollable>
+    <v-dialog v-model="assignTruckscaleDialog" max-width="1350px" scrollable>
         <v-card>
             <v-card-title class="d-flex justify-space-between align-center px-6 pt-6">
                 <div>
@@ -1178,6 +1249,15 @@ defineExpose({
                 <v-table density="comfortable" class="elevation-0 border mx-4">
                     <thead>
                         <tr>
+                            <th v-if="canUnreservePallet" style="width: 48px;">
+                                <v-checkbox-btn
+                                    :model-value="allReservedSelected"
+                                    :indeterminate="selectedUnreserveIds.length > 0 && !allReservedSelected"
+                                    :disabled="selectableReservedItems.length === 0"
+                                    density="compact"
+                                    @update:model-value="toggleAllReserved"
+                                />
+                            </th>
                             <th>Physical ID</th>
                             <th>Batch</th>
                             <th>Mfg Date</th>
@@ -1203,7 +1283,10 @@ defineExpose({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in stoBatchPickingStore.selectedPoItem.sto_transactions?.[0]?.items">
+                        <tr v-for="(item, index) in reservedPalletItems" :key="item.id ?? index">
+                            <td v-if="canUnreservePallet">
+                                <v-checkbox-btn v-model="selectedUnreserveIds" :value="item.id" density="compact" :disabled="isPalletLocked(item)" />
+                            </td>
                             <td>{{ item.physical_id }}</td>
                             <td>{{ item.batch }}</td>
                             <td>{{ item.mfg_date ? moment(item.mfg_date).format('YYYY-MM-DD') : '-'}}</td>
@@ -1239,10 +1322,87 @@ defineExpose({
                     </tbody>
                 </v-table>
                 <div class="d-flex justify-end mt-8 mx-4">
+                    <v-btn
+                        v-if="canUnreservePallet"
+                        color="warning"
+                        variant="tonal"
+                        style="color: #424242 !important; background-color: #FFB400;" 
+                        class="me-auto"
+                        prepend-icon="ri-lock-unlock-line"
+                        :disabled="!selectedUnreserveIds.length"
+                        :loading="unreserveLoading"
+                        type="button"
+                        @click="unreservePallets"
+                    >Unreserve Pallet{{ selectedUnreserveIds.length > 1 ? 's' : '' }}<template v-if="selectedUnreserveIds.length"> ({{ selectedUnreserveIds.length }})</template></v-btn>
                     <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
                         type="button">Close</v-btn>
                     <v-btn v-if="authUserCan('can.cancel.sto.batch.pick') || authStore.user?.is_super_admin" color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
                         Reservation</v-btn>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="unreserveConfirmationModal" max-width="620px" :persistent="unreserveLoading">
+        <v-card class="rounded-lg overflow-hidden">
+            <v-card-text class="pa-6">
+                <div class="d-flex align-start ga-4 mb-5">
+                    <v-avatar color="warning" variant="tonal" size="52">
+                        <v-icon icon="ri-lock-unlock-line" size="28"></v-icon>
+                    </v-avatar>
+                    <div>
+                        <h3 class="text-h5 font-weight-bold mb-1">Unreserve Pallets?</h3>
+                        <p class="text-body-1 text-medium-emphasis mb-0">
+                            The selected pallets will be released from this STO and become available for sales picking or other STO reservations.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="d-flex ga-6 mb-4">
+                    <div>
+                        <div class="text-caption text-medium-emphasis">PO Number</div>
+                        <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.po_number || 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-caption text-medium-emphasis">PO Item</div>
+                        <div class="font-weight-bold">{{ stoBatchPickingStore.selectedPoItem?.po_item || 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-caption text-medium-emphasis">Pallets</div>
+                        <div class="font-weight-bold text-warning">{{ selectedUnreserveIds.length }}</div>
+                    </div>
+                </div>
+
+                <div class="rounded border pa-2 mb-5" style="max-height: 160px; overflow-y: auto;">
+                    <div
+                        v-for="pallet in selectedUnreservePallets"
+                        :key="pallet.id"
+                        class="d-flex align-center justify-space-between py-1 px-1"
+                    >
+                        <div class="d-flex align-center ga-2">
+                            <v-icon icon="ri-stack-line" size="16" class="text-medium-emphasis"></v-icon>
+                            <span class="font-weight-medium">{{ pallet.physical_id }}</span>
+                        </div>
+                        <v-chip size="x-small" label variant="tonal" color="primary">{{ pallet.batch || '-' }}</v-chip>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-end">
+                    <v-btn
+                        variant="outlined"
+                        color="secondary"
+                        class="px-6 me-3"
+                        :disabled="unreserveLoading"
+                        @click="unreserveConfirmationModal = false"
+                    >Cancel</v-btn>
+                    <v-btn
+                        color="warning"
+                        class="px-6"
+                        style="color: #424242 !important; background-color: #FFB400;" 
+                        prepend-icon="ri-lock-unlock-line"
+                        :loading="unreserveLoading"
+                        @click="confirmUnreservePallets"
+                    >Yes, Unreserve</v-btn>
                 </div>
             </v-card-text>
         </v-card>

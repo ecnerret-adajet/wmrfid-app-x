@@ -204,7 +204,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+        <!-- <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select label="Pallet Assignment"
                 density="compact" :items="[
                     { title: 'All', value: null },
@@ -213,7 +213,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                     { title: 'Completed', value: 3 }
                 ]" v-model="filters.pallet_assignment">
             </v-select>
-        </VCol>
+        </VCol> -->
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select label="Batch Pick"
                 density="compact" :items="[
