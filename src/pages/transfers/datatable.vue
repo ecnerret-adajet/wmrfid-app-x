@@ -266,6 +266,17 @@ const fetchTruckscales = async (sto) => {
 };
 
 const handleAction = async (sto, action) => {
+    if (action == 'batch_pick' && sto.purchase_order?.release_indicator == 'X') {
+        Swal.fire({
+            icon: 'error',
+            title: 'STO not yet released',
+            text: 'Please contact supply chain.',
+            confirmButtonColor: '#00833c',
+            confirmButtonText: '<span style="color: #ffffff;">OK</span>',
+        });
+        return;
+    }
+
     stoData.value = sto;
     selectedItemForPallet.value = sto
     stoBatchPickingStore.selectedPoItem = sto;
@@ -923,95 +934,94 @@ defineExpose({
 
                 <v-card
                     v-if="selectedTruckscaleDetails"
-                    variant="tonal"
-                    color="primary"
-                    class="mb-5 overflow-hidden"
+                    variant="outlined"
+                    class="mb-5"
                 >
-                    <v-card-text class="pa-3">
-                        <!-- Header Block -->
-                        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-2">
-                            <div class="d-flex align-center ga-2">
-                                <v-avatar color="primary" variant="flat" rounded="md" size="36">
-                                    <v-icon icon="ri-truck-line" color="white" size="20"></v-icon>
-                                </v-avatar>
-                                <div>
-                                    <div class="text-caption text-medium-emphasis lh-1" style="font-size: 0.7rem !important; text-transform: uppercase; letter-spacing: 0.05em;">Selected truckscale</div>
-                                    <div class="text-subtitle-1 font-weight-bold lh-1">{{ selectedTruckscaleDetails.truckscale_no }}</div>
-                                </div>
-                            </div>
-                            <v-chip color="primary" variant="flat" size="small" prepend-icon="ri-checkbox-circle-line">
-                                Ready for pallet assignment
-                            </v-chip>
+                    <v-card-text class="pa-4">
+                        <!-- Truckscale -->
+                        <div class="d-flex align-center ga-2 mb-3">
+                            <v-icon icon="ri-scales-3-line" size="18" class="text-medium-emphasis"></v-icon>
+                            <span class="text-caption text-medium-emphasis text-uppercase" style="letter-spacing: 0.05em;">Truckscale</span>
+                            <span class="font-weight-bold">{{ selectedTruckscaleDetails.truckscale_no }}</span>
                         </div>
 
+                        <!-- Transport (priority) -->
+                        <div
+                            v-if="selectedTruckscaleDetails.transport_id"
+                            class="d-flex align-center justify-space-between flex-wrap ga-3 pa-3 mb-3 rounded border-primary"
+                            style="border: 1px solid rgb(var(--v-theme-primary)); border-left-width: 4px;"
+                        >
+                            <div class="d-flex align-center ga-3 min-width-0">
+                                <v-icon icon="ri-route-line" size="24" color="primary"></v-icon>
+                                <div class="min-width-0">
+                                    <div class="text-caption text-medium-emphasis text-uppercase" style="letter-spacing: 0.05em;">Transport No.</div>
+                                    <div class="text-h6 font-weight-bold text-primary text-truncate">
+                                        {{ selectedTruckscaleDetails.transport?.transport_number || '—' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-start ga-2 text-body-2 text-medium-emphasis" style="max-width: 280px;">
+                                <v-icon icon="ri-information-line" size="20" color="info" class="mt-1"></v-icon>
+                                <span><span class="font-weight-bold">ALC-Managed:</span> Please process GI-STO on MM Transport Screen.</span>
+                            </div>
+                        </div>
+                        <div
+                            v-else
+                            class="d-flex align-center ga-3 pa-3 mb-3 rounded text-medium-emphasis"
+                            style="border: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));"
+                        >
+                            <v-icon icon="ri-link-unlink" size="24" color="warning"></v-icon>
+                            <span class="text-body-2">No transport assigned</span>
+                        </div>
+
+                        <!-- Driver & Plate -->
+                        <v-row dense class="mb-1">
+                            <v-col cols="12" sm="6">
+                                <div class="d-flex align-center ga-2">
+                                    <v-icon icon="ri-user-line" size="18" class="text-medium-emphasis"></v-icon>
+                                    <div class="min-width-0">
+                                        <div class="text-caption text-medium-emphasis">Driver</div>
+                                        <div class="font-weight-medium text-truncate">{{ selectedTruckscaleDetails.driver_name || '—' }}</div>
+                                    </div>
+                                </div>
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                                <div class="d-flex align-center ga-2">
+                                    <v-icon icon="ri-car-line" size="18" class="text-medium-emphasis"></v-icon>
+                                    <div class="min-width-0">
+                                        <div class="text-caption text-medium-emphasis">Plate No.</div>
+                                        <div class="font-weight-medium text-truncate">{{ selectedTruckscaleDetails.plate_number || '—' }}</div>
+                                    </div>
+                                </div>
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-3"></v-divider>
+
+                        <!-- Weights -->
                         <v-row dense>
-                            <!-- Driver & Plate (Single Row Tighter Layout) -->
-                            <v-col cols="12" sm="6">
-                                <v-card variant="flat" >
-                                    <v-card-text class="d-flex align-center ga-2 pa-2">
-                                        <v-icon icon="ri-user-line" color="primary" size="18"></v-icon>
-                                        <div class="min-width-0">
-                                            <div class="text-medium-emphasis">Driver name</div>
-                                            <div class="font-weight-medium text-truncate">
-                                                {{ selectedTruckscaleDetails.driver_name || '—' }}
-                                            </div>
-                                        </div>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
-                            <v-col cols="12" sm="6">
-                                <v-card variant="flat" >
-                                    <v-card-text class="d-flex align-center ga-2 pa-2">
-                                        <v-icon icon="ri-car-line" color="primary" size="18"></v-icon>
-                                        <div class="min-width-0">
-                                            <div class=" text-medium-emphasis" >Plate No.</div>
-                                            <div class="font-weight-medium text-truncate">
-                                                {{ selectedTruckscaleDetails.plate_number || '—' }}
-                                            </div>
-                                        </div>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
-
-                            <!-- Divider & Section Heading -->
-                            <v-col cols="12" class="py-1">
-                                <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase" style="letter-spacing: 0.05em;">Weight details</div>
-                            </v-col>
-
-                            <!-- Weights Row (Reduced from h-100 blocks to compact row items) -->
                             <v-col cols="4">
-                                <v-card variant="flat">
-                                    <v-card-text class="pa-2 text-center text-sm-left">
-                                        <div class=" text-medium-emphasis" >Tare Weight</div>
-                                        <div class=" font-weight-bold">
-                                            {{ numberWithComma(selectedTruckscaleDetails.tare_weight) ?? '—' }}
-                                        </div>
-                                    </v-card-text>
-                                </v-card>
+                                <div class="d-flex align-center ga-1 text-caption text-medium-emphasis">
+                                    <v-icon icon="ri-arrow-down-line" size="14"></v-icon>Tare
+                                </div>
+                                <div class="font-weight-medium">{{ numberWithComma(selectedTruckscaleDetails.tare_weight) ?? '—' }}</div>
                             </v-col>
                             <v-col cols="4">
-                                <v-card variant="flat">
-                                    <v-card-text class="pa-2 text-center text-sm-left">
-                                        <div class=" text-medium-emphasis" >Gross Weight</div>
-                                        <div class="font-weight-bold">
-                                            {{ numberWithComma(selectedTruckscaleDetails.gross_weight) ?? '—' }}
-                                        </div>
-                                    </v-card-text>
-                                </v-card>
+                                <div class="d-flex align-center ga-1 text-caption text-medium-emphasis">
+                                    <v-icon icon="ri-arrow-up-line" size="14"></v-icon>Gross
+                                </div>
+                                <v-chip v-if="!Number(selectedTruckscaleDetails.gross_weight)" size="x-small" label color="warning" variant="tonal" prepend-icon="ri-time-line">Pending</v-chip>
+                                <div v-else class="font-weight-medium">{{ numberWithComma(selectedTruckscaleDetails.gross_weight) }}</div>
                             </v-col>
                             <v-col cols="4">
-                                <v-card variant="flat">
-                                    <v-card-text class="pa-2 text-center text-sm-left">
-                                        <div class=" text-primary" >Outgoing Net Weight</div>
-                                        <div class=" font-weight-bold text-primary">
-                                            {{ numberWithComma(selectedTruckscaleDetails.outgoing_net_weight) ?? '—' }}
-                                        </div>
-                                    </v-card-text>
-                                </v-card>
+                                <div class="d-flex align-center ga-1 text-caption text-primary">
+                                    <v-icon icon="ri-scales-line" size="14"></v-icon>Net (outgoing)
+                                </div>
+                                <v-chip v-if="!Number(selectedTruckscaleDetails.outgoing_net_weight)" size="x-small" label color="warning" variant="tonal" prepend-icon="ri-time-line">Pending</v-chip>
+                                <div v-else class="text-subtitle-1 font-weight-bold text-primary">{{ numberWithComma(selectedTruckscaleDetails.outgoing_net_weight) }}</div>
                             </v-col>
                         </v-row>
                     </v-card-text>
-
                 </v-card>
 
                 <div class="d-flex align-center justify-space-between mb-2">
