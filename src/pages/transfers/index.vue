@@ -223,7 +223,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 ]" v-model="filters.batch_pick">
             </v-select>
         </VCol>
-        <VCol md="2" class="d-none d-md-flex"></VCol>
+        <VCol md="4" class="d-none d-md-flex"></VCol>
        
         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
             <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
