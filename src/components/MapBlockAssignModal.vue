@@ -452,6 +452,31 @@ const reservedPalletQuantity = (pallet) => {
                                     <div class="assigned-row">
                                         <span class="label">Remaining Quantity:</span>
                                         <span class="value">{{ layer.assigned_inventory.is_reserved == 1 ? 0 : layer.assigned_inventory?.quantity }}</span>
+                                        
+
+                                        <v-tooltip v-if="layer.assigned_inventory?.is_loose == 1 && Number(layer.assigned_inventory?.quantity) > 0" location="top">
+                                            <template #activator="{ props }">
+                                                     <span v-bind="props" class="d-inline-flex align-center justify-center ms-1" style="position: relative; width: 30px; height: 30px;">
+                                                        <!-- Background Red Circle -->
+                                                        <v-icon
+                                                            icon="ri-checkbox-blank-circle-fill"
+                                                            color="error"
+                                                            size="30"
+                                                            style="position: absolute;"
+                                                        >
+                                                        </v-icon>
+                                                        <!-- Foreground Black Exclamation Line (Use the line variant to show black inside) -->
+                                                        <v-icon
+                                                            icon="ri-error-warning-line"
+                                                            color="black"
+                                                            size="30"
+                                                            style="position: absolute; z-index: 1; font-weight: bold;"
+                                                        >
+                                                        </v-icon>
+                                                    </span>
+                                            </template>
+                                            <span>This pallet contains loose quantity</span>
+                                        </v-tooltip>
                                     </div>
                                 </div>
                                   

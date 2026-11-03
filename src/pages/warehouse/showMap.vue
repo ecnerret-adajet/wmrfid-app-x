@@ -421,6 +421,10 @@ const openFloatingPalletDialog = () => {
                         <v-chip size="default" variant="elevated" color="primary">3-Pallet High: {{ statisticsData?.pallet_high_3 ?? 0 }}</v-chip>
                         <v-chip size="default" variant="elevated" color="#a06ee2">4-Pallet High: {{ statisticsData?.pallet_high_4 ?? 0 }}</v-chip>
                         <v-chip size="default" variant="elevated">Total Pallets: {{ statisticsData?.total_pallets ?? 0 }}</v-chip>
+                        <v-chip size="default" variant="outlined">
+                            <span class="loose-legend-badge me-2">!</span>
+                            Has Loose Pallet
+                        </v-chip>
                     </div>
                     <!-- Fumigation legend: counts are warehouse-wide; clicking a chip filters the map to that stage -->
                     <div v-if="showFumigationLegend" class="d-flex align-center flex-wrap ga-2 mt-2">
@@ -525,6 +529,7 @@ const openFloatingPalletDialog = () => {
                             'fum-fumigating': item.fumigation?.isChamber && !item.fumigation.mismatch && item.fumigation.stage === 'fumigating',
                             'fum-aeration': item.fumigation?.isChamber && !item.fumigation.mismatch && item.fumigation.stage === 'aeration',
                             'layer-1': item.type !== 'lot' && item.inventoriesCount === 1,
+                            'has-loose': item.type !== 'lot' && (item.inventories || []).some(inv => Number(inv?.is_loose) === 1 && Number(inv?.quantity) > 0),
                             'layer-2': item.type !== 'lot' && item.inventoriesCount === 2,
                             'layer-3': item.type !== 'lot' && item.inventoriesCount === 3,
                             'layer-4': item.type !== 'lot' && item.inventoriesCount === 4,
@@ -545,6 +550,12 @@ const openFloatingPalletDialog = () => {
                         }">
                             {{ item.label }}
                         </div>
+
+                        <span v-if="item.type !== 'lot' && (item.inventories || []).some(inv => Number(inv?.is_loose) === 1 && Number(inv?.quantity) > 0)"
+                            class="loose-badge">
+                            !
+                            <v-tooltip activator="parent" location="top">This bin has 1 or more loose pallets</v-tooltip>
+                        </span>
 
                         <v-tooltip v-if="item.fumigation?.isChamber" activator="parent" location="top">
                             <div v-for="(line, index) in fumigationTooltip(item)" :key="index">{{ line }}</div>
@@ -685,6 +696,41 @@ const openFloatingPalletDialog = () => {
 .layer-1 {
     background-color: #ebc965;
     color: white;
+}
+
+.has-loose {
+    z-index: 5;
+}
+
+.loose-legend-badge {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #e53935;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+}
+
+.loose-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #e53935;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 0 0 2px #fff;
+    cursor: help;
+    z-index: 2;
 }
 
 .layer-2 {
