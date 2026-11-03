@@ -45,7 +45,7 @@
     </div>
 
         <!-- KPI Cards and Assign Button Row -->
-        <div class="d-flex flex-wrap justify-between align-center mb-6 mt-2 gap-4">
+        <div class="d-flex flex-wrap justify-between align-center mt-2 mb-3">
             <div class="kpi-grid py-2">
                 <v-card
                     v-for="kpi in kpiCards"
@@ -66,27 +66,27 @@
                 </v-card>
             </div>
             <div class="d-flex gap-4 py-2 align-center">
-                <v-btn v-if="selectedBlocks.length > 0" color="primary" class="ml-2" @click="showPriority1Dialog = true" style="height: 56px; min-width: 180px;">
+                <v-btn v-if="selectedBlocks.length > 0" color="primary"  @click="showPriority1Dialog = true" style="height: 40px; min-width: 180px;">
                     Update Priority 1
                 </v-btn>
-                <v-btn v-if="selectedBlocks.length > 0" color="warning" class="ml-2" @click="showPriority2Dialog = true" style="height: 56px; min-width: 180px;">
+                <v-btn v-if="selectedBlocks.length > 0" color="warning"  @click="showPriority2Dialog = true" style="height: 40px; min-width: 180px;">
                     Update Priority 2
                 </v-btn>
                 <v-btn
                     v-if="selectedBlocks.length > 0"
                     color="info"
-                    class="ml-2"
+                    
                     @click="showLoosePalletDialog = true"
-                    style="height: 56px; min-width: 220px;"
+                    style="height: 40px; min-width: 220px;"
                 >
                     Tag as Loose Pallet Area
                 </v-btn>
                 <v-btn
                     v-if="selectedBlocks.length > 0"
                     color="success"
-                    class="ml-2"
+                    
                     @click="showFumigationPalletDialog = true"
-                    style="height: 56px; "
+                    style="height: 40px; "
                 >
                     Tag as Fumigation Pallet Area
                 </v-btn>
