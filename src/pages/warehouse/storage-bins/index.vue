@@ -45,36 +45,53 @@
     </div>
 
         <!-- KPI Cards and Assign Button Row -->
-        <div class="d-flex justify-between align-center mb-6 mt-2 gap-4">
-            <div class="d-flex gap-4 py-2 align-center">
-                <v-card class="text-center pt-3" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
-                    <div class="text-h6 font-weight-bold mb-1">Total Bins</div>
-                    <div class="text-h4 font-weight-bold" style="margin-top: -10px">{{totalBlock || 0}}</div>
-                </v-card>
-                <v-card class="pt-3 text-center" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
-                    <div class="text-h6 font-weight-bold mb-1">Available Bins</div>
-                    <div class="text-h4 font-weight-bold" style="color: #43A047; margin-top: -10px">{{ availableCount || 0 }}</div>
-                </v-card>
-                <v-card class="pt-3 text-center" color="#F5F7FA" elevation="2" style="min-width: 220px; height: 56px; display: flex; flex-direction: column; justify-content: center;">
-                    <div class="text-h6 font-weight-bold mb-1">Occupied Bins</div>
-                    <div class="text-h4 font-weight-bold" style="color: #E53935; margin-top: -10px;">{{ occupiedCount || 0 }}</div>
+        <div class="d-flex flex-wrap justify-between align-center mb-6 mt-2 gap-4">
+            <div class="kpi-grid py-2">
+                <v-card
+                    v-for="kpi in kpiCards"
+                    :key="kpi.key"
+                    variant="flat"
+                    border
+                    rounded="lg"
+                    class="kpi-card pa-3 d-flex align-center"
+                    :style="{ borderLeft: `4px solid ${kpi.color}` }"
+                >
+                    <v-avatar :color="kpi.color" variant="tonal" rounded="lg" size="44" class="me-3">
+                        <v-icon :icon="kpi.icon" size="24" />
+                    </v-avatar>
+                    <div class="d-flex flex-column">
+                        <span class="text-caption text-medium-emphasis text-uppercase font-weight-medium kpi-label">{{ kpi.label }}</span>
+                        <span class="text-h5 font-weight-bold lh-1" :style="{ color: kpi.color }">{{ kpi.value || 0 }}</span>
+                    </div>
                 </v-card>
             </div>
-            <v-btn v-if="selectedBlocks.length > 0" color="primary" class="ml-2" @click="showPriority1Dialog = true" style="height: 56px; min-width: 180px;">
-                Update Priority 1
-            </v-btn>
-            <v-btn v-if="selectedBlocks.length > 0" color="warning" class="ml-2" @click="showPriority2Dialog = true" style="height: 56px; min-width: 180px;">
-                Update Priority 2
-            </v-btn>
-            <v-btn
-                v-if="selectedBlocks.length > 0"
-                color="info"
-                class="ml-2"
-                @click="showLoosePalletDialog = true"
-                style="height: 56px; min-width: 220px;"
-            >
-                Tag as Loose Pallet Area
-            </v-btn>
+            <div class="d-flex gap-4 py-2 align-center">
+                <v-btn v-if="selectedBlocks.length > 0" color="primary" class="ml-2" @click="showPriority1Dialog = true" style="height: 56px; min-width: 180px;">
+                    Update Priority 1
+                </v-btn>
+                <v-btn v-if="selectedBlocks.length > 0" color="warning" class="ml-2" @click="showPriority2Dialog = true" style="height: 56px; min-width: 180px;">
+                    Update Priority 2
+                </v-btn>
+                <v-btn
+                    v-if="selectedBlocks.length > 0"
+                    color="info"
+                    class="ml-2"
+                    @click="showLoosePalletDialog = true"
+                    style="height: 56px; min-width: 220px;"
+                >
+                    Tag as Loose Pallet Area
+                </v-btn>
+                <v-btn
+                    v-if="selectedBlocks.length > 0"
+                    color="success"
+                    class="ml-2"
+                    @click="showFumigationPalletDialog = true"
+                    style="height: 56px; "
+                >
+                    Tag as Fumigation Pallet Area
+                </v-btn>
+            </div>
+            
             <!-- Priority 1 Dialog -->
             <v-dialog v-model="showPriority1Dialog" max-width="500">
                 <v-card class="pa-4">
@@ -123,45 +140,73 @@
 
             <!-- Loose pallet tagging dialog -->
             <v-dialog v-model="showLoosePalletDialog" max-width="700">
-                <v-card class="pa-4">
-                    <v-card-title class="text-h6 font-weight-bold">
-                        Assign Loose Pallet Area
-                    </v-card-title>
+                <v-card rounded="lg">
+                    <div class="d-flex align-center pa-5 pb-4">
+                        <v-avatar color="info" variant="tonal" size="48" rounded="lg" class="me-4">
+                            <v-icon icon="ri-stack-line" size="28" />
+                        </v-avatar>
+                        <div class="flex-grow-1">
+                            <div class="text-h6 font-weight-bold">Assign Loose Pallet Area</div>
+                            <div class="text-body-2 text-medium-emphasis">
+                                Designate the selected storage bins for loose pallets
+                            </div>
+                        </div>
+                        <v-btn
+                            icon="ri-close-line"
+                            variant="text"
+                            size="small"
+                            color="secondary"
+                            @click="showLoosePalletDialog = false"
+                        />
+                    </div>
 
-                    <v-card-text>
-                        <p class="mb-4">
-                            You are about to designate the following storage bins as
-                            <strong>Loose Pallet Areas</strong>.
-                        </p>
+                    <v-divider />
 
-                        <p class="mb-4">
-                            Loose pallet areas are intended for partially filled or not full pallets.
-                        </p>
+                    <v-card-text class="pa-5">
+                        <v-alert
+                            type="info"
+                            variant="tonal"
+                            density="comfortable"
+                            icon="ri-information-line"
+                            class="mb-5"
+                        >
+                            Loose pallet areas are intended for partially filled (not full) pallets.
+                        </v-alert>
 
-                        <p class="font-weight-bold mb-2">
-                            Selected Bins:
-                        </p>
+                        <div class="d-flex align-center justify-space-between mb-2">
+                            <div class="font-weight-medium">
+                                <v-icon icon="ri-inbox-line" size="20" class="me-1" />
+                                Selected Bins
+                            </div>
+                            <v-chip size="small" color="info" variant="tonal">
+                                {{ selectedBlocks.length }} {{ selectedBlocks.length === 1 ? 'bin' : 'bins' }}
+                            </v-chip>
+                        </div>
 
                         <v-sheet
                             border
-                            rounded
-                            class="pa-3"
-                            max-height="300"
+                            rounded="lg"
+                            class="pa-3 d-flex flex-wrap ga-2"
+                            max-height="260"
                             style="overflow-y: auto;"
                         >
-                            <div
+                            <v-chip
                                 v-for="block in selectedBlocks"
                                 :key="block.id"
-                                class="mb-2"
+                                size="small"
+                                label
+                                prepend-icon="ri-map-pin-line"
                             >
-                                • {{ block.lot?.label }} - {{ block.label }}
-                            </div>
+                                {{ block.lot?.label }} - {{ block.label }}
+                            </v-chip>
                         </v-sheet>
 
-                        <p class="mt-4 text-medium-emphasis">
+                        <p class="mt-4 mb-0 text-body-1 text-medium-emphasis">
                             Do you want to continue assigning these bins as loose pallet areas?
                         </p>
                     </v-card-text>
+
+                    <v-divider />
 
                     <v-card-actions class="pa-4">
                         <v-spacer />
@@ -177,7 +222,102 @@
                         <v-btn
                             color="info"
                             variant="flat"
+                            prepend-icon="ri-check-line"
                             @click="handleAssignLoosePallet"
+                            :loading="pageLoading"
+                        >
+                            Confirm
+                        </v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <!-- Fumigation pallet tagging dialog -->
+            <v-dialog v-model="showFumigationPalletDialog" max-width="700">
+                <v-card rounded="lg">
+                    <div class="d-flex align-center pa-5 pb-4">
+                        <v-avatar color="success" variant="tonal" size="48" rounded="lg" class="me-4">
+                            <v-icon icon="ri-bug-line" size="28" />
+                        </v-avatar>
+                        <div class="flex-grow-1">
+                            <div class="text-h6 font-weight-bold">Assign Fumigation Pallet Area</div>
+                            <div class="text-body-2 text-medium-emphasis">
+                                Designate the selected storage bins for fumigation pallets
+                            </div>
+                        </div>
+                        <v-btn
+                            icon="ri-close-line"
+                            variant="text"
+                            size="small"
+                            color="secondary"
+                            @click="showFumigationPalletDialog = false"
+                        />
+                    </div>
+
+                    <v-divider />
+
+                    <v-card-text class="pa-5">
+                        <v-alert
+                            type="success"
+                            variant="tonal"
+                            density="comfortable"
+                            icon="ri-information-line"
+                            class="mb-5"
+                        >
+                            Fumigation pallet areas are intended for pallets that require or have undergone fumigation.
+                        </v-alert>
+
+                        <div class="d-flex align-center justify-space-between mb-2">
+                            <div class="font-weight-medium">
+                                <v-icon icon="ri-inbox-line" size="20" class="me-1" />
+                                Selected Bins
+                            </div>
+                            <v-chip size="small" color="success" variant="tonal">
+                                {{ selectedBlocks.length }} {{ selectedBlocks.length === 1 ? 'bin' : 'bins' }}
+                            </v-chip>
+                        </div>
+
+                        <v-sheet
+                            border
+                            rounded="lg"
+                            class="pa-3 d-flex flex-wrap ga-2"
+                            max-height="260"
+                            style="overflow-y: auto;"
+                        >
+                            <v-chip
+                                v-for="block in selectedBlocks"
+                                :key="block.id"
+                                size="small"
+                                label
+                                prepend-icon="ri-map-pin-line"
+                            >
+                                {{ block.lot?.label }} - {{ block.label }}
+                            </v-chip>
+                        </v-sheet>
+
+                        <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">
+                            Do you want to continue assigning these bins as fumigation pallet areas?
+                        </p>
+                    </v-card-text>
+
+                    <v-divider />
+
+                    <v-card-actions class="pa-4">
+                        <v-spacer />
+
+                        <v-btn
+                            color="secondary"
+                            variant="outlined"
+                            @click="showFumigationPalletDialog = false"
+                        >
+                            Cancel
+                        </v-btn>
+
+                        <v-btn
+                            color="success"
+                            variant="flat"
+                            prepend-icon="ri-check-line"
+                            @click="handleAssignFumigationPallet"
                             :loading="pageLoading"
                         >
                             Confirm
@@ -235,6 +375,11 @@
                     Yes
                 </v-chip>
             </template>
+            <template #item.is_fumigation_bin="{ item }">
+                <v-chip v-if="item.is_fumigation_bin" size="small" color="info" text-color="white">
+                    Yes
+                </v-chip>
+            </template>
             <template #item.actions="{ item }">
                 <v-btn icon="ri-qr-code-line" @click="() => openQrModal(item)" color="primary"></v-btn>
             </template>
@@ -277,7 +422,17 @@ const sortQuery = ref('-created_at');
 const totalBlock = ref(0);
 const occupiedCount = ref(0);
 const availableCount = ref(0);
+const loosePalletCount = ref(0);
+const fumigationCount = ref(0);
+const kpiCards = computed(() => [
+    { key: 'total', label: 'Total Bins', value: totalBlock.value, icon: 'ri-archive-line', color: '#8C57FF' },
+    { key: 'available', label: 'Available Bins', value: availableCount.value, icon: 'ri-checkbox-circle-line', color: '#56CA00' },
+    { key: 'occupied', label: 'Occupied Bins', value: occupiedCount.value, icon: 'ri-inbox-archive-line', color: '#FF4C51' },
+    { key: 'loose', label: 'Loose Pallet Bins', value: loosePalletCount.value, icon: 'ri-stack-line', color: '#FFB400' },
+    { key: 'fumigation', label: 'Fumigation Bins', value: fumigationCount.value, icon: 'ri-bug-line', color: '#16B1FF' },
+]);
 const showLoosePalletDialog = ref(false);
+const showFumigationPalletDialog = ref(false);
 const lotOptions = ref([]);
 
 const availabilityOptions = [
@@ -312,6 +467,7 @@ const headers = computed(() => [
     { title: 'Priority 1', key: 'priority_1', align: 'center', sortable: false },
     { title: 'Priority 2', key: 'priority_2', align: 'center', sortable: false },
     { title: 'Loose Area?', key: 'is_loose_pallet_bin', align: 'center', sortable: false },
+    { title: 'Fumigation Area?', key: 'is_fumigation_bin', align: 'center', sortable: false },
     { title: 'Availability', key: 'availability', align: 'center', sortable: false },
     { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]);
@@ -343,6 +499,8 @@ const fetchDropdownData = async () => {
         totalBlock.value = response.data.total_blocks;
         occupiedCount.value = response.data.occupied_blocks;
         availableCount.value = response.data.available_blocks;
+        loosePalletCount.value = response.data.loose_blocks;
+        fumigationCount.value = response.data.fumigation_blocks;
   
     } catch (error) {
         console.log(error);
@@ -554,4 +712,71 @@ const handleAssignLoosePallet = async () => {
     }
 };
 
+const handleAssignFumigationPallet = async () => {
+    try {
+        pageLoading.value = true;
+
+        await ApiService.post(
+            '/warehouse/storage-bins/tag-fumigation-pallet-area',
+            {
+                block_ids: selectedBlocks.value.map(b => b.id),
+                is_fumigation_pallet_area: true,
+            }
+        );
+
+        toast.message = 'Selected bins successfully tagged as Fumigation Pallet Areas.';
+        toast.color = 'success';
+        toast.show = true;
+
+        showFumigationPalletDialog.value = false;
+
+        selectedBlocks.value = [];
+
+        await loadItems({
+            page: page.value,
+            itemsPerPage: itemsPerPage.value,
+            sortBy: [{ key: 'updated_at', order: 'desc' }],
+            search: searchValue.value
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        toast.message = 'Failed to update selected bins.';
+        toast.color = 'error';
+        toast.show = true;
+
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
 </script>
+
+<style scoped>
+.kpi-grid {
+    display: grid;
+    flex: 1 1 100%;
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+}
+
+.kpi-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-label {
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.lh-1 {
+    line-height: 1.1;
+}
+</style>
