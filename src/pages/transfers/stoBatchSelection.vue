@@ -193,7 +193,7 @@ const cancelReserve = async () => {
                     </v-col>
                 </v-row>
                 <v-row dense>
-                    <v-col cols="12" md="12">
+                    <v-col cols="6">
                         <v-sheet border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
                             <span class="text-primary font-weight-medium">PO Item Qty</span>
                             <span class="text-h6 text-primary font-weight-bold">
@@ -201,19 +201,23 @@ const cancelReserve = async () => {
                             </span>
                         </v-sheet>
                     </v-col>
-                </v-row>
-                <v-row dense>
-                    <v-col cols="12" md="12">
+                    <v-col cols="6">
                         <v-sheet border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
-                            <span class="text-error font-weight-medium">Open Qty</span>
+                            <span class="text-primary font-weight-medium">GI Qty</span>
+                            <span class="text-h6 text-primary font-weight-bold">
+                                {{ numberWithComma(stoBatchPickingStore.selectedPoItem?.gi_quantity ?? 0) }} {{ item?.uom}}
+                            </span>
+                        </v-sheet>
+                    </v-col>
+                    <v-col cols="6">
+                        <v-sheet border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
+                            <span class="text-error font-weight-medium">Open Qty (GI QTY + Reserved Pallets QTY)</span>
                             <span class="text-h6 text-error font-weight-bold">
                                 {{ numberWithComma(stoBatchPickingStore.selectedPoItem?.open_quantity ?? 0) }} {{ item?.uom}}
                             </span>
                         </v-sheet>
                     </v-col>
-                </v-row>
-                 <v-row dense>
-                    <v-col cols="12" md="12">
+                    <v-col cols="6">
                         <v-sheet border="primary md" rounded="lg" class="pa-3 d-flex justify-space-between align-center">
                             <span class="text-error font-weight-medium">Estimated Pallet Count</span>
                             <span class="text-h6 text-error font-weight-bold">
