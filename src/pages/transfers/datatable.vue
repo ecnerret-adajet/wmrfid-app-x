@@ -1336,8 +1336,8 @@ defineExpose({
                     >Unreserve Pallet{{ selectedUnreserveIds.length > 1 ? 's' : '' }}<template v-if="selectedUnreserveIds.length"> ({{ selectedUnreserveIds.length }})</template></v-btn>
                     <v-btn color="secondary" variant="outlined" @click="viewReservedPallets = false"
                         type="button">Close</v-btn>
-                    <v-btn v-if="authUserCan('can.cancel.sto.batch.pick') || authStore.user?.is_super_admin" color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
-                        Reservation</v-btn>
+                    <!-- <v-btn v-if="authUserCan('can.cancel.sto.batch.pick') || authStore.user?.is_super_admin" color="error" class="ml-3" @click="cancelReservation" type="button">Cancel
+                        Reservation</v-btn> -->
                 </div>
             </v-card-text>
         </v-card>

@@ -290,7 +290,7 @@ const cancelReserve = async () => {
 
             <v-card-actions class="pa-4 justify-end">
                 <v-btn variant="text" @click="goBack">Close</v-btn>
-                <v-btn
+                <!-- <v-btn
                     v-if="hasTransactions"
                     color="error"
                     type="button"
@@ -298,7 +298,7 @@ const cancelReserve = async () => {
                     @click="cancelConfirmationModal = true"
                 >
                     Cancel Reservation
-                </v-btn>
+                </v-btn> -->
                 <v-btn
                     v-if="canSelectBatches"
                     color="success"
