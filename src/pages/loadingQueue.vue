@@ -26,20 +26,20 @@
             <section class="band" :class="{ empty: totalCount === 0 }">
                 <div class="seg seg-queue">
                     <div><div class="seg-count">{{ summaryData.waiting }}</div><div class="seg-label">On Queue</div></div>
-                    <svg class="seg-icon" style="width:calc(5.938 * var(--u));height:calc(3.958 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+                    <svg class="seg-icon" style="width:calc(4.2 * var(--u));height:calc(2.8 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
                         <path d="M3 3H66V54H3Z M66 20H88L108 38V54H66"/><circle cx="24" cy="58" r="12" fill="var(--seg-bg)"/><circle cx="88" cy="58" r="12" fill="var(--seg-bg)"/>
                     </svg>
                 </div>
                 <div class="seg seg-progress">
                     <div><div class="seg-count">{{ summaryData.in_progress }}</div><div class="seg-label">In Progress</div></div>
-                    <svg class="seg-icon" style="width:calc(5.0 * var(--u));height:calc(5.0 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
+                    <svg class="seg-icon" style="width:calc(3.4 * var(--u));height:calc(3.4 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
                         <circle cx="48" cy="48" r="7" fill="currentColor" stroke="none"/>
                         <path d="M34 34a20 20 0 0 0 0 28 M20 20a40 40 0 0 0 0 56 M62 34a20 20 0 0 1 0 28 M76 20a40 40 0 0 1 0 56"/>
                     </svg>
                 </div>
                 <div class="seg seg-done">
                     <div><div class="seg-count">{{ summaryData.completed }}</div><div class="seg-label">Completed</div></div>
-                    <svg class="seg-icon" style="width:calc(5.0 * var(--u));height:calc(5.0 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="seg-icon" style="width:calc(3.4 * var(--u));height:calc(3.4 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="48" cy="48" r="42"/><path d="M28 50L43 65L69 34"/>
                     </svg>
                 </div>
@@ -211,7 +211,7 @@ const getQueueStatus = row => {
     };
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 8;
 
 // completed trucks only count in the totals; in-progress first, then queue no.
 const queueRowsList = computed(() => normalizedQueueRows.value
@@ -324,7 +324,7 @@ const fetchSummary = async () => {
 .timer-unit { font-size: calc(1.354 * var(--u)); font-weight: 500; }
 .timer-page { font-size: calc(0.938 * var(--u)); font-weight: 700; }
 
-.band { flex: none; height: calc(9.167 * var(--u)); display: flex; }
+.band { flex: none; height: calc(5.9 * var(--u)); display: flex; }
 .seg {
     --seg-bg: #D9EEE3;
     flex: 1;
@@ -337,8 +337,8 @@ const fetchSummary = async () => {
 }
 .seg + .seg { margin-left: calc(-1.979 * var(--u)); padding-left: calc(4.583 * var(--u)); clip-path: polygon(0 0, calc(100% - calc(2.5 * var(--u))) 0, 100% 50%, calc(100% - calc(2.5 * var(--u))) 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
 .seg:last-child { padding-right: calc(2.292 * var(--u)); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
-.seg-count { font-size: calc(5.417 * var(--u)); font-weight: 800; line-height: 1; }
-.seg-label { font-size: calc(1.667 * var(--u)); font-weight: 700; }
+.seg-count { font-size: calc(3.5 * var(--u)); font-weight: 800; line-height: 1; }
+.seg-label { font-size: calc(1.35 * var(--u)); font-weight: 700; }
 .seg-queue .seg-icon { color: #007F54; }
 .seg-progress { --seg-bg: #FFB020; }
 .seg-done { --seg-bg: #00A36C; color: #fff; }
@@ -365,20 +365,20 @@ const fetchSummary = async () => {
 .queue-table th:last-child { border-right: 0; }
 
 .queue-body td { line-height: 1; text-align: center; border: calc(0.104 * var(--u)) solid #5FBF97; padding: 0 calc(0.625 * var(--u)); white-space: nowrap; overflow: hidden; }
-.queue-body tr { height: calc(100% / 6); }
+.queue-body tr { height: calc(100% / 8); }
 .queue-body tr.row-progress { background: #FFF4DC; }
-.c-queue { font-size: calc(2.292 * var(--u)); font-weight: 600; color: #007F54; }
-.c-plate { font-size: calc(2.083 * var(--u)); font-weight: 700; }
-.c-driver { font-size: calc(1.875 * var(--u)); font-weight: 500; text-transform: uppercase; }
-.c-ship { font-size: calc(1.979 * var(--u)); font-weight: 500; }
-.c-bay { font-size: calc(3.75 * var(--u)); font-weight: 800; }
+.c-queue { font-size: calc(1.9 * var(--u)); font-weight: 600; color: #007F54; }
+.c-plate { font-size: calc(1.75 * var(--u)); font-weight: 700; }
+.c-driver { font-size: calc(1.6 * var(--u)); font-weight: 500; text-transform: uppercase; }
+.c-ship { font-size: calc(1.65 * var(--u)); font-weight: 500; }
+.c-bay { font-size: calc(2.6 * var(--u)); font-weight: 800; }
 .c-bay.none { color: #5C6C64; }
 
 .tag {
     display: inline-block;
-    font-size: calc(1.354 * var(--u));
+    font-size: calc(1.15 * var(--u));
     font-weight: 700;
-    padding: calc(0.521 * var(--u)) calc(1.875 * var(--u)) calc(0.521 * var(--u)) calc(0.833 * var(--u));
+    padding: calc(0.35 * var(--u)) calc(1.875 * var(--u)) calc(0.35 * var(--u)) calc(0.833 * var(--u));
     background: #D9EEE3;
     clip-path: polygon(0 0, calc(100% - calc(1.042 * var(--u))) 0, 100% 50%, calc(100% - calc(1.042 * var(--u))) 100%, 0 100%);
 }
