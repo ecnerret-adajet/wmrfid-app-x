@@ -261,10 +261,10 @@ function formatStatusText(status) {
 	</VRow>
 
 	<VRow align="center" class="mb-2">
-		<VCol cols="12" sm="6" md="2">
+		<!-- <VCol cols="12" sm="6" md="2">
 			<v-select v-model="filters.mode" label="Mode" :items="modes" density="compact" hide-details />
-		</VCol>
-		<VCol md="8" class="d-none d-md-flex"></VCol>
+		</VCol> -->
+		<VCol md="10" class="d-none d-md-flex"></VCol>
 		<VCol cols="12" md="2" class="d-flex align-center">
 			<v-btn block prepend-icon="ri-search-eye-line" @click="handleSearch">
 				Search
