@@ -7,28 +7,24 @@
         <section class="board-card" :style="{ minHeight: cardMinHeight }">
             <header class="board-header">
                 <div class="title-row">
-                    <h1 class="text-white font-bold">Warehouse Queue</h1>
-                    <div class="header-timer" aria-label="30 second reload countdown">
-                        <span class="header-timer-label">Reloading in</span>
-                        <span class="header-timer-value">{{ refreshTimer }}</span>
-                        <span class="header-timer-unit">seconds</span>
+                    <h1 class="text-uppercase font-weight-black">Warehouse Queue</h1>
+                    <div class="header-timer" aria-label="reload countdown">
+                        <span v-if="queuePages.length > 1" class="page-label">
+                            Page {{ pageIndex + 1 }} of {{ queuePages.length }}
+                        </span>
+                        <span>Reloading in</span>
+                        <span class="text-h4 font-weight-black">{{ refreshTimer }}</span>
+                        <span>seconds</span>
                     </div>
                 </div>
             </header>
 
             <section class="summary-row">
-                <article class="summary-item queued">
-                    <p class="label">On Queue</p>
-                    <p class="value">{{ summaryCounts.onQueue }}</p>
-                </article>
-                <article class="summary-item active">
-                    <p class="label">In Progress</p>
-                    <p class="value">{{ summaryCounts.inProgress }}</p>
-                </article>
-                <article class="summary-item complete">
-                    <p class="label">Completed</p>
-                    <p class="value">{{ summaryCounts.completed }}</p>
-                </article>
+                <v-card v-for="card in summaryCards" :key="card.label" variant="tonal" :color="card.color"
+                    class="pa-4" :style="{ borderLeft: `6px solid ${card.color}` }">
+                    <div class="text-caption text-uppercase font-weight-black">{{ card.label }}</div>
+                    <div class="text-h3 font-weight-black">{{ card.value }}</div>
+                </v-card>
             </section>
             <div class="table-wrap">
                 <table class="queue-table">
@@ -42,36 +38,43 @@
                             <th>STATUS</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr v-for="(row, index) in displayedQueueRows" :key="`${row.queue_no}-${index}`"
-                            :class="{ 'placeholder-row': row.isPlaceholder }">
-                            <td>{{ row.queue_no }}</td>
-                            <td>{{ row.plate_no }}</td>
-                            <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
-                            <td>
-                                <template v-if="row.shipment_number && !row.isPlaceholder">
-                                    {{ row.shipment_number }}
-                                </template>
-                                <template v-else>
-                                    <span class="placeholder-text">No queue yet</span>
-                                </template>
-                            </td>
-                            <td>
-                                <template v-if="row.warehouse_bay">
-                                    {{ row.warehouse_bay?.name }}
-                                </template>
-                                <template v-else>
-                                    <span class="status" :class="'on-queue'">
-                                        ON QUEUE
-                                    </span>
-                                </template>
-                            </td>
-                            <td>
-                                <span class="status" :class="row.statusClass">{{ row.statusLabel }}</span>
-                            </td>
-                        </tr>
-                    </tbody>
                 </table>
+                <v-carousel v-model="pageIndex" class="queue-carousel" height="100%" hide-delimiters
+                    :show-arrows="false" :cycle="queuePages.length > 1" :interval="SLIDE_MS">
+                    <v-carousel-item v-for="(page, pageNo) in queuePages" :key="pageNo">
+                        <table class="queue-table queue-body">
+                            <tbody>
+                                <tr v-for="(row, index) in page" :key="`${row.queue_no}-${index}`"
+                                    :class="{ 'placeholder-row': row.isPlaceholder }">
+                                    <td>{{ row.queue_no }}</td>
+                                    <td>{{ row.plate_no }}</td>
+                                    <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
+                                    <td>
+                                        <template v-if="row.shipment_number && !row.isPlaceholder">
+                                            {{ row.shipment_number }}
+                                        </template>
+                                        <template v-else>
+                                            <span class="placeholder-text">No queue yet</span>
+                                        </template>
+                                    </td>
+                                    <td>
+                                        <template v-if="row.warehouse_bay">
+                                            {{ row.warehouse_bay?.name }}
+                                        </template>
+                                        <template v-else>
+                                            <span class="status" :class="'on-queue'">
+                                                ON QUEUE
+                                            </span>
+                                        </template>
+                                    </td>
+                                    <td>
+                                        <span class="status" :class="row.statusClass">{{ row.statusLabel }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </v-carousel-item>
+                </v-carousel>
             </div>
         
             <marquee scrollamount="20" v-if="banner_message"
@@ -93,7 +96,9 @@ const route = useRoute();
 const plant_code = Array.isArray(route.params.plant_code) ? route.params.plant_code[0] : route.params.plant_code;
 const storage_location = Array.isArray(route.params.storage_location) ? route.params.storage_location[0] : route.params.storage_location;
 
+const SLIDE_MS = 10000
 const refreshTimer = ref(30)
+const pageIndex = ref(0)
 let countdownInterval
 
 const startCountdown = () => {
@@ -216,8 +221,29 @@ const getQueueStatus = row => {
     };
 };
 
-const displayedQueueRows = computed(() => {
-    const rows = normalizedQueueRows.value.slice(0, 5).map(row => {
+const chunkArray = (arr, size) => {
+    const result = []
+    for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size))
+    }
+    return result
+}
+
+const padPage = rows => {
+    while (rows.length < 5) {
+        const placeholder = createPlaceholderRow(rows.length + 1);
+        rows.push({
+            ...placeholder,
+            statusLabel: 'No queue yet',
+            statusClass: placeholder.statusClass,
+        });
+    }
+    return rows;
+};
+
+// 5 rows per slide, each slide padded to 5; zero rows = one page of placeholders
+const queuePages = computed(() => {
+    const rows = normalizedQueueRows.value.map(row => {
         // If this is a placeholder row, keep its properties as is
         if (row.isPlaceholder) {
             return row;
@@ -231,23 +257,15 @@ const displayedQueueRows = computed(() => {
         };
     });
 
-    while (rows.length < 5) {
-        const placeholder = createPlaceholderRow(rows.length + 1);
-        rows.push({
-            ...placeholder,
-            statusLabel: 'No queue yet',
-            statusClass: placeholder.statusClass,
-        });
-    }
-
-    return rows;
+    const pages = chunkArray(rows, 5).map(padPage);
+    return pages.length ? pages : [padPage([])];
 });
 
-const summaryCounts = computed(() => ({
-    onQueue: Number(summaryData.value.waiting) || 0,
-    inProgress: Number(summaryData.value.in_progress) || 0,
-    completed: Number(summaryData.value.completed) || 0,
-}));
+const summaryCards = computed(() => [
+    { label: 'On Queue', color: '#607d8b', value: Number(summaryData.value.waiting) || 0 },
+    { label: 'In Progress', color: '#ff9800', value: Number(summaryData.value.in_progress) || 0 },
+    { label: 'Completed', color: '#43a047', value: Number(summaryData.value.completed) || 0 },
+]);
 
 const fetchData = async () => {
 
@@ -257,6 +275,8 @@ const fetchData = async () => {
             queueRows.value = response.data;
             banner_message.value = response.data.banner_message;
             loading_banner_message.value = response.data.loading_banner_message;
+            // stretch the reload so every page is shown once (10 s per page, min 30 s)
+            refreshTimer.value = Math.max(30, queuePages.value.length * SLIDE_MS / 1000);
         }
     } catch (error) {
         console.error('Error fetching loading queue data:', error);
@@ -305,11 +325,8 @@ const getDriverNameClass = (name) => {
     width: 100%;
     min-height: 100vh;
     padding: 0;
-    background:
-        radial-gradient(circle at 15% 20%, rgba(0, 109, 165, 0.2), transparent 30%),
-        radial-gradient(circle at 85% 10%, rgba(191, 13, 37, 0.15), transparent 25%),
-        linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f8fafc 100%);
-    color: #0f172a;
+    background: #ffffff;
+    color: #212121;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -325,9 +342,9 @@ const getDriverNameClass = (name) => {
 }
 
 .board-header {
-    padding: 26px 30px;
-    background: linear-gradient(90deg, #075985 0%, #0e7490 100%);
-    color: #ffffff;
+    padding: 14px 24px;
+    background: #ffffff;
+    border-bottom: 6px solid #00A36C;
 }
 
 .title-row {
@@ -339,9 +356,8 @@ const getDriverNameClass = (name) => {
 
 .board-header h1 {
     margin: 0;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-size: clamp(1.8rem, 3.2vw, 3rem);
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
     line-height: 1.2;
 }
 
@@ -351,149 +367,79 @@ const getDriverNameClass = (name) => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #d7efff;
-    text-align: center;
     font-size: clamp(1.05rem, 1.15vw, 1.4rem);
     font-weight: 600;
 }
 
-.header-timer-label,
-.header-timer-unit {
-    color: #d7efff;
-}
-
-.header-timer-value {
-    color: #ffffff;
-    font-size: clamp(1.5rem, 1.9vw, 2.2rem);
+.page-label {
+    margin-right: 16px;
     font-weight: 900;
-    line-height: 1;
-}
-
-.meta-row {
-    margin-top: 12px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.badge {
-    font-size: clamp(1.2rem, 1.15vw, 1.05rem);
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #00A36C;
 }
 
 .summary-row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
-    padding: 16px 20px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.summary-item {
-    border-radius: 12px;
-    padding: 14px 16px;
-    border: 1px solid transparent;
-}
-
-.summary-item .label {
-    margin: 0;
-    font-size: clamp(1rem, 1vw, 1.2rem);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #334155;
-}
-
-.summary-item .value {
-    margin: 4px 0 0;
-    font-size: clamp(1.5rem, 2vw, 2rem);
-    font-weight: 700;
-}
-
-.summary-item.waiting {
-    background: #fff7ed;
-    border-color: #fdba74;
-    color: #9a3412;
-}
-
-.summary-item.queued {
-    background: #e2e8f0;
-    border-color: #cbd5e1;
-    color: #334155;
-}
-
-.summary-item.active {
-    background: #ecfeff;
-    border-color: #67e8f9;
-    color: #155e75;
-}
-
-.summary-item.complete {
-    background: #f0fdf4;
-    border-color: #86efac;
-    color: #166534;
+    padding: 12px 20px;
 }
 
 .table-wrap {
+    display: flex;
+    flex-direction: column;
     overflow: auto;
+}
+
+.queue-carousel {
+    flex: 1;
 }
 
 .queue-table {
     width: 100%;
-    height: 100%;
     border-collapse: collapse;
     table-layout: fixed;
     min-width: 1180px;
 }
 
+.queue-body {
+    height: 100%;
+}
+
 .queue-table th,
 .queue-table td {
     text-align: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #329b62;
     font-weight: 700;
 }
 
 .queue-table th {
-    padding: 4px 1px;
-    background: #0b6a99;
+    padding: 8px 4px;
+    background: #00A36C;
     color: #ffffff;
-    font-size: clamp(2.5rem, 1.6vw, 2.5rem);
-    font-weight: 700;
-}
-
-.queue-table tbody tr:nth-child(odd) {
-    background: #f8fafc;
-}
-
-.queue-table tbody tr:nth-child(even) {
-    background: #f1f5f9;
+    text-transform: uppercase;
+    font-size: 1.4rem;
+    font-weight: 900;
 }
 
 .queue-table td {
-    font-size: clamp(2.5rem, 1.75vw, 2.5rem);
+    padding: 6px 4px;
+    font-size: 2rem;
     line-height: 1.25;
 }
 
-.queue-table tbody tr.placeholder-row {
-    background: #f8fafc;
-}
-
 .queue-table tbody tr.placeholder-row td {
-    color: #94a3b8;
-    font-style: italic;
+    color: #9e9e9e;
+    font-size: 1.4rem;
 }
 
 .queue-table td.driver-name {
     overflow-wrap: anywhere;
     word-break: break-word;
-    font-size: clamp(1.8rem, 1.5vw, 2.3rem);
+    font-size: clamp(1.6rem, 1.4vw, 2rem);
 }
 
 .queue-table td.driver-name.is-long {
-    font-size: clamp(1.4rem, 1.2vw, 1.9rem);
+    font-size: clamp(1.4rem, 1.2vw, 1.8rem);
 }
 
 .queue-table td.driver-name.is-very-long {
@@ -504,11 +450,11 @@ const getDriverNameClass = (name) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: clamp(160px, 11vw, 220px);
-    padding: 10px 20px;
+    min-width: clamp(140px, 10vw, 200px);
+    padding: 6px 14px;
     border-radius: 999px;
     font-weight: 700;
-    font-size: clamp(1.4rem, 1.6vw, 1.8rem);
+    font-size: 1.2rem;
 }
 
 .status.on-queue {
@@ -534,17 +480,6 @@ const getDriverNameClass = (name) => {
 .status.placeholder {
     background: #e2e8f0;
     color: #64748b;
-}
-
-.notice-bar {
-    background: #b91c1c;
-    color: #ffffff;
-    text-align: center;
-    font-size: clamp(1.1rem, 2vw, 2rem);
-    text-transform: uppercase;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    padding: 14px 16px;
 }
 
 .loading-banner-marquee {
