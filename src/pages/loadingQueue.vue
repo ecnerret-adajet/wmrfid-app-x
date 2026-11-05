@@ -26,20 +26,20 @@
             <section class="band" :class="{ empty: totalCount === 0 }">
                 <div class="seg seg-queue">
                     <div><div class="seg-count">{{ summaryData.waiting }}</div><div class="seg-label">On Queue</div></div>
-                    <svg class="seg-icon" style="width:5.938vw;height:3.958vw" viewBox="0 0 114 76" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+                    <svg class="seg-icon" style="width:calc(5.938 * var(--u));height:calc(3.958 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
                         <path d="M3 3H66V54H3Z M66 20H88L108 38V54H66"/><circle cx="24" cy="58" r="12" fill="var(--seg-bg)"/><circle cx="88" cy="58" r="12" fill="var(--seg-bg)"/>
                     </svg>
                 </div>
                 <div class="seg seg-progress">
                     <div><div class="seg-count">{{ summaryData.in_progress }}</div><div class="seg-label">In Progress</div></div>
-                    <svg class="seg-icon" style="width:5.0vw;height:5.0vw" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
+                    <svg class="seg-icon" style="width:calc(5.0 * var(--u));height:calc(5.0 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
                         <circle cx="48" cy="48" r="7" fill="currentColor" stroke="none"/>
                         <path d="M34 34a20 20 0 0 0 0 28 M20 20a40 40 0 0 0 0 56 M62 34a20 20 0 0 1 0 28 M76 20a40 40 0 0 1 0 56"/>
                     </svg>
                 </div>
                 <div class="seg seg-done">
                     <div><div class="seg-count">{{ summaryData.completed }}</div><div class="seg-label">Completed</div></div>
-                    <svg class="seg-icon" style="width:5.0vw;height:5.0vw" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="seg-icon" style="width:calc(5.0 * var(--u));height:calc(5.0 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="48" cy="48" r="42"/><path d="M28 50L43 65L69 34"/>
                     </svg>
                 </div>
@@ -47,7 +47,7 @@
 
             <div class="table-wrap">
                 <table class="queue-table queue-head">
-                    <colgroup><col style="width:17.708vw"><col style="width:16.667vw"><col><col style="width:16.667vw"><col style="width:7.812vw"><col style="width:14.583vw"></colgroup>
+                    <colgroup><col style="width:calc(17.708 * var(--u))"><col style="width:calc(16.667 * var(--u))"><col><col style="width:calc(16.667 * var(--u))"><col style="width:calc(7.812 * var(--u))"><col style="width:calc(14.583 * var(--u))"></colgroup>
                     <thead>
                         <tr>
                             <th>QUEUE NO.</th>
@@ -60,7 +60,7 @@
                     </thead>
                 </table>
                 <div v-if="!queueRowsList.length" class="empty-msg">
-                    <svg style="width:8.75vw;height:5.833vw" viewBox="0 0 114 76" fill="none" stroke="#00A36C" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+                    <svg style="width:calc(8.75 * var(--u));height:calc(5.833 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="#00A36C" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
                         <path d="M3 3H66V54H3Z M66 20H88L108 38V54H66"/><circle cx="24" cy="58" r="12" fill="#fff"/><circle cx="88" cy="58" r="12" fill="#fff"/>
                     </svg>
                     <div class="empty-title">No trucks in the queue</div>
@@ -70,7 +70,7 @@
                     :show-arrows="false" :cycle="queuePages.length > 1" :interval="SLIDE_MS">
                     <v-carousel-item v-for="(page, pageNo) in queuePages" :key="pageNo">
                         <table class="queue-table queue-body">
-                            <colgroup><col style="width:17.708vw"><col style="width:16.667vw"><col><col style="width:16.667vw"><col style="width:7.812vw"><col style="width:14.583vw"></colgroup>
+                            <colgroup><col style="width:calc(17.708 * var(--u))"><col style="width:calc(16.667 * var(--u))"><col><col style="width:calc(16.667 * var(--u))"><col style="width:calc(7.812 * var(--u))"><col style="width:calc(14.583 * var(--u))"></colgroup>
                             <tbody>
                                 <tr v-for="(row, index) in page" :key="`${row.queue_no}-${index}`"
                                     :class="{ 'row-progress': row.statusClass === 'in-progress' }">
@@ -287,6 +287,7 @@ const fetchSummary = async () => {
     color: #37343F;
     font-family: 'Rubik', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
+    --u: min(1vw, 1.7778vh);
 }
 
 .queue-body-wrap {
@@ -294,36 +295,36 @@ const fetchSummary = async () => {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.833vw;
-    padding: 0.833vw 1.25vw;
+    gap: calc(0.833 * var(--u));
+    padding: calc(0.833 * var(--u)) calc(1.25 * var(--u));
 }
 
 .banner {
     flex: none;
-    height: 6.458vw;
+    height: calc(6.458 * var(--u));
     display: flex;
     align-items: center;
-    gap: 3.333vw;
-    padding: 0 2.083vw;
+    gap: calc(3.333 * var(--u));
+    padding: 0 calc(2.083 * var(--u));
     background: #D9EEE3;
-    border-radius: 0.312vw;
+    border-radius: calc(0.312 * var(--u));
 }
 
 .banner-main { flex: 1; min-width: 0; }
 .banner-line { display: flex; justify-content: space-between; align-items: baseline; }
-.banner h1 { margin: 0; font-size: 2.396vw; font-weight: 800; letter-spacing: 0.02em; line-height: 1.2; }
-.banner-count { font-size: 1.354vw; font-weight: 500; color: #2F4F40; }
-.progress-track { margin-top: 0.521vw; height: 0.625vw; border-radius: 0.312vw; background: #B9DDCA; overflow: hidden; }
-.progress-fill { height: 100%; background: #00A36C; border-radius: 0.312vw; }
+.banner h1 { margin: 0; font-size: calc(2.396 * var(--u)); font-weight: 800; letter-spacing: 0.02em; line-height: 1.2; }
+.banner-count { font-size: calc(1.354 * var(--u)); font-weight: 500; color: #2F4F40; }
+.progress-track { margin-top: calc(0.521 * var(--u)); height: calc(0.625 * var(--u)); border-radius: calc(0.312 * var(--u)); background: #B9DDCA; overflow: hidden; }
+.progress-fill { height: 100%; background: #00A36C; border-radius: calc(0.312 * var(--u)); }
 
-.banner-timer { width: 14.583vw; text-align: center; color: #2F4F40; }
-.timer-label { font-size: 1.302vw; font-weight: 500; }
-.timer-row { display: flex; justify-content: center; align-items: baseline; gap: 0.625vw; }
-.timer-num { font-size: 3.125vw; font-weight: 800; color: #007F54; line-height: 1.1; }
-.timer-unit { font-size: 1.354vw; font-weight: 500; }
-.timer-page { font-size: 0.938vw; font-weight: 700; }
+.banner-timer { width: calc(14.583 * var(--u)); text-align: center; color: #2F4F40; }
+.timer-label { font-size: calc(1.302 * var(--u)); font-weight: 500; }
+.timer-row { display: flex; justify-content: center; align-items: baseline; gap: calc(0.625 * var(--u)); }
+.timer-num { font-size: calc(3.125 * var(--u)); font-weight: 800; color: #007F54; line-height: 1.1; }
+.timer-unit { font-size: calc(1.354 * var(--u)); font-weight: 500; }
+.timer-page { font-size: calc(0.938 * var(--u)); font-weight: 700; }
 
-.band { flex: none; height: 9.167vw; display: flex; }
+.band { flex: none; height: calc(9.167 * var(--u)); display: flex; }
 .seg {
     --seg-bg: #D9EEE3;
     flex: 1;
@@ -331,55 +332,55 @@ const fetchSummary = async () => {
     align-items: center;
     justify-content: space-between;
     background: var(--seg-bg);
-    padding: 0 4.792vw 0 2.083vw;
-    clip-path: polygon(0 0, calc(100% - 2.5vw) 0, 100% 50%, calc(100% - 2.5vw) 100%, 0 100%);
+    padding: 0 calc(4.792 * var(--u)) 0 calc(2.083 * var(--u));
+    clip-path: polygon(0 0, calc(100% - calc(2.5 * var(--u))) 0, 100% 50%, calc(100% - calc(2.5 * var(--u))) 100%, 0 100%);
 }
-.seg + .seg { margin-left: -1.979vw; padding-left: 4.583vw; clip-path: polygon(0 0, calc(100% - 2.5vw) 0, 100% 50%, calc(100% - 2.5vw) 100%, 0 100%, 2.5vw 50%); }
-.seg:last-child { padding-right: 2.292vw; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 2.5vw 50%); }
-.seg-count { font-size: 5.417vw; font-weight: 800; line-height: 1; }
-.seg-label { font-size: 1.667vw; font-weight: 700; }
+.seg + .seg { margin-left: calc(-1.979 * var(--u)); padding-left: calc(4.583 * var(--u)); clip-path: polygon(0 0, calc(100% - calc(2.5 * var(--u))) 0, 100% 50%, calc(100% - calc(2.5 * var(--u))) 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
+.seg:last-child { padding-right: calc(2.292 * var(--u)); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
+.seg-count { font-size: calc(5.417 * var(--u)); font-weight: 800; line-height: 1; }
+.seg-label { font-size: calc(1.667 * var(--u)); font-weight: 700; }
 .seg-queue .seg-icon { color: #007F54; }
 .seg-progress { --seg-bg: #FFB020; }
 .seg-done { --seg-bg: #00A36C; color: #fff; }
 .band.empty .seg { --seg-bg: #EEF3F0; color: #4A5A52; }
 .band.empty .seg-icon { color: #7E8C85; }
 
-.table-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.queue-carousel { flex: 1; }
+.table-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.queue-carousel { flex: 1; min-height: 0; }
 .queue-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .queue-body { height: 100%; }
 
 .queue-table th {
-    height: 3.021vw;
+    height: calc(3.021 * var(--u));
     background: #00A36C;
     color: #fff;
-    font-size: 1.354vw;
+    font-size: calc(1.354 * var(--u));
     font-weight: 700;
     letter-spacing: 0.02em;
     text-align: center;
-    border: 0.104vw solid #fff;
+    border: calc(0.104 * var(--u)) solid #fff;
     border-top: 0;
 }
 .queue-table th:first-child { border-left: 0; }
 .queue-table th:last-child { border-right: 0; }
 
-.queue-body td { text-align: center; border: 0.104vw solid #5FBF97; padding: 0 0.625vw; white-space: nowrap; overflow: hidden; }
+.queue-body td { line-height: 1; text-align: center; border: calc(0.104 * var(--u)) solid #5FBF97; padding: 0 calc(0.625 * var(--u)); white-space: nowrap; overflow: hidden; }
 .queue-body tr { height: calc(100% / 6); }
 .queue-body tr.row-progress { background: #FFF4DC; }
-.c-queue { font-size: 2.292vw; font-weight: 600; color: #007F54; }
-.c-plate { font-size: 2.083vw; font-weight: 700; }
-.c-driver { font-size: 1.875vw; font-weight: 500; text-transform: uppercase; }
-.c-ship { font-size: 1.979vw; font-weight: 500; }
-.c-bay { font-size: 3.75vw; font-weight: 800; }
+.c-queue { font-size: calc(2.292 * var(--u)); font-weight: 600; color: #007F54; }
+.c-plate { font-size: calc(2.083 * var(--u)); font-weight: 700; }
+.c-driver { font-size: calc(1.875 * var(--u)); font-weight: 500; text-transform: uppercase; }
+.c-ship { font-size: calc(1.979 * var(--u)); font-weight: 500; }
+.c-bay { font-size: calc(3.75 * var(--u)); font-weight: 800; }
 .c-bay.none { color: #5C6C64; }
 
 .tag {
     display: inline-block;
-    font-size: 1.354vw;
+    font-size: calc(1.354 * var(--u));
     font-weight: 700;
-    padding: 0.521vw 1.875vw 0.521vw 0.833vw;
+    padding: calc(0.521 * var(--u)) calc(1.875 * var(--u)) calc(0.521 * var(--u)) calc(0.833 * var(--u));
     background: #D9EEE3;
-    clip-path: polygon(0 0, calc(100% - 1.042vw) 0, 100% 50%, calc(100% - 1.042vw) 100%, 0 100%);
+    clip-path: polygon(0 0, calc(100% - calc(1.042 * var(--u))) 0, 100% 50%, calc(100% - calc(1.042 * var(--u))) 100%, 0 100%);
 }
 .tag.in-progress { background: #FFB020; }
 
@@ -389,23 +390,23 @@ const fetchSummary = async () => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.938vw;
-    border: 0.104vw solid #5FBF97;
+    gap: calc(0.938 * var(--u));
+    border: calc(0.104 * var(--u)) solid #5FBF97;
     border-top: 0;
 }
-.empty-title { font-size: 3.542vw; font-weight: 800; }
-.empty-sub { font-size: 1.667vw; font-weight: 500; color: #4A5A52; }
+.empty-title { font-size: calc(3.542 * var(--u)); font-weight: 800; }
+.empty-sub { font-size: calc(1.667 * var(--u)); font-weight: 500; color: #4A5A52; }
 
 .loading-banner-marquee,
 .next-loading-banner-marquee {
     flex: none;
     color: #ffffff;
     font-weight: bold;
-    padding: 19px 0;
-    font-size: 2.3rem;
+    padding: calc(0.5 * var(--u)) 0;
+    font-size: calc(1.9 * var(--u));
     width: 100%;
     z-index: 10;
-    min-height: 70px;
+    min-height: calc(3.2 * var(--u));
     display: flex;
     align-items: center;
     justify-content: center;
