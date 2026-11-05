@@ -398,7 +398,6 @@ const getDriverNameClass = (name) => {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    min-width: 1180px;
 }
 
 .queue-body {
