@@ -4,34 +4,50 @@
             class="loading-banner-marquee">
             {{ loading_banner_message.join(' | ') }}
         </marquee>
-        <section class="board-card" :style="{ minHeight: cardMinHeight }">
-            <header class="board-header">
-                <div class="title-row">
-                    <h1 class="text-white font-bold">Warehouse Queue</h1>
-                    <div class="header-timer" aria-label="30 second reload countdown">
-                        <span class="header-timer-label">Reloading in</span>
-                        <span class="header-timer-value">{{ refreshTimer }}</span>
-                        <span class="header-timer-unit">seconds</span>
+        <div class="queue-body-wrap">
+            <header class="banner">
+                <div class="banner-main">
+                    <div class="banner-line">
+                        <h1>WAREHOUSE QUEUE</h1>
+                        <span class="banner-count">{{ completedCount }} of {{ totalCount }} trucks completed</span>
                     </div>
+                    <div class="progress-track"><div class="progress-fill" :style="{ width: progressPct + '%' }"></div></div>
+                </div>
+                <div class="banner-timer">
+                    <div class="timer-label">Reloading in</div>
+                    <div class="timer-row">
+                        <span class="timer-num">{{ refreshTimer }}</span>
+                        <span class="timer-unit">seconds</span>
+                    </div>
+                    <div v-if="queuePages.length > 1" class="timer-page">Page {{ pageIndex + 1 }} of {{ queuePages.length }}</div>
                 </div>
             </header>
 
-            <section class="summary-row">
-                <article class="summary-item queued">
-                    <p class="label">On Queue</p>
-                    <p class="value">{{ summaryCounts.onQueue }}</p>
-                </article>
-                <article class="summary-item active">
-                    <p class="label">In Progress</p>
-                    <p class="value">{{ summaryCounts.inProgress }}</p>
-                </article>
-                <article class="summary-item complete">
-                    <p class="label">Completed</p>
-                    <p class="value">{{ summaryCounts.completed }}</p>
-                </article>
+            <section class="band" :class="{ empty: totalCount === 0 }">
+                <div class="seg seg-queue">
+                    <div><div class="seg-count">{{ summaryData.waiting }}</div><div class="seg-label">On Queue</div></div>
+                    <svg class="seg-icon" style="width:calc(4.2 * var(--u));height:calc(2.8 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+                        <path d="M3 3H66V54H3Z M66 20H88L108 38V54H66"/><circle cx="24" cy="58" r="12" fill="var(--seg-bg)"/><circle cx="88" cy="58" r="12" fill="var(--seg-bg)"/>
+                    </svg>
+                </div>
+                <div class="seg seg-progress">
+                    <div><div class="seg-count">{{ summaryData.in_progress }}</div><div class="seg-label">In Progress</div></div>
+                    <svg class="seg-icon" style="width:calc(3.4 * var(--u));height:calc(3.4 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
+                        <circle cx="48" cy="48" r="7" fill="currentColor" stroke="none"/>
+                        <path d="M34 34a20 20 0 0 0 0 28 M20 20a40 40 0 0 0 0 56 M62 34a20 20 0 0 1 0 28 M76 20a40 40 0 0 1 0 56"/>
+                    </svg>
+                </div>
+                <div class="seg seg-done">
+                    <div><div class="seg-count">{{ summaryData.completed }}</div><div class="seg-label">Completed</div></div>
+                    <svg class="seg-icon" style="width:calc(3.4 * var(--u));height:calc(3.4 * var(--u))" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="48" cy="48" r="42"/><path d="M28 50L43 65L69 34"/>
+                    </svg>
+                </div>
             </section>
+
             <div class="table-wrap">
-                <table class="queue-table">
+                <table class="queue-table queue-head">
+                    <colgroup><col style="width:calc(17.708 * var(--u))"><col style="width:calc(16.667 * var(--u))"><col><col style="width:calc(16.667 * var(--u))"><col style="width:calc(7.812 * var(--u))"><col style="width:calc(14.583 * var(--u))"></colgroup>
                     <thead>
                         <tr>
                             <th>QUEUE NO.</th>
@@ -42,43 +58,39 @@
                             <th>STATUS</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr v-for="(row, index) in displayedQueueRows" :key="`${row.queue_no}-${index}`"
-                            :class="{ 'placeholder-row': row.isPlaceholder }">
-                            <td>{{ row.queue_no }}</td>
-                            <td>{{ row.plate_no }}</td>
-                            <td :class="getDriverNameClass(row.driver_name)">{{ row.driver_name }}</td>
-                            <td>
-                                <template v-if="row.shipment_number && !row.isPlaceholder">
-                                    {{ row.shipment_number }}
-                                </template>
-                                <template v-else>
-                                    <span class="placeholder-text">No queue yet</span>
-                                </template>
-                            </td>
-                            <td>
-                                <template v-if="row.warehouse_bay">
-                                    {{ row.warehouse_bay?.name }}
-                                </template>
-                                <template v-else>
-                                    <span class="status" :class="'on-queue'">
-                                        ON QUEUE
-                                    </span>
-                                </template>
-                            </td>
-                            <td>
-                                <span class="status" :class="row.statusClass">{{ row.statusLabel }}</span>
-                            </td>
-                        </tr>
-                    </tbody>
                 </table>
+                <div v-if="!queueRowsList.length" class="empty-msg">
+                    <svg style="width:calc(8.75 * var(--u));height:calc(5.833 * var(--u))" viewBox="0 0 114 76" fill="none" stroke="#00A36C" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+                        <path d="M3 3H66V54H3Z M66 20H88L108 38V54H66"/><circle cx="24" cy="58" r="12" fill="#fff"/><circle cx="88" cy="58" r="12" fill="#fff"/>
+                    </svg>
+                    <div class="empty-title">No trucks in the queue</div>
+                    <div class="empty-sub">New entries appear here at the next reload.</div>
+                </div>
+                <v-carousel v-else v-model="pageIndex" class="queue-carousel" height="100%" hide-delimiters
+                    :show-arrows="false" :cycle="queuePages.length > 1" :interval="SLIDE_MS">
+                    <v-carousel-item v-for="(page, pageNo) in queuePages" :key="pageNo">
+                        <table class="queue-table queue-body">
+                            <colgroup><col style="width:calc(17.708 * var(--u))"><col style="width:calc(16.667 * var(--u))"><col><col style="width:calc(16.667 * var(--u))"><col style="width:calc(7.812 * var(--u))"><col style="width:calc(14.583 * var(--u))"></colgroup>
+                            <tbody>
+                                <tr v-for="(row, index) in page" :key="`${row.queue_no}-${index}`"
+                                    :class="{ 'row-progress': row.statusClass === 'in-progress' }">
+                                    <td class="c-queue">{{ row.queue_no }}</td>
+                                    <td class="c-plate">{{ row.plate_no }}</td>
+                                    <td class="c-driver">{{ row.driver_name }}</td>
+                                    <td class="c-ship">{{ row.shipment_number }}</td>
+                                    <td v-if="row.queue_no" class="c-bay" :class="{ none: !row.warehouse_bay }">{{ row.warehouse_bay?.name ?? '–' }}</td>
+                                    <td v-else></td>
+                                    <td><span v-if="row.queue_no" class="tag" :class="row.statusClass">{{ row.statusLabel }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </v-carousel-item>
+                </v-carousel>
             </div>
-        
-            <marquee scrollamount="20" v-if="banner_message"
-                class="next-loading-banner-marquee">
-                 {{ banner_message }}
-            </marquee>
-        </section>
+        </div>
+        <marquee scrollamount="20" v-if="banner_message" class="next-loading-banner-marquee">
+            {{ banner_message }}
+        </marquee>
     </main>
 </template>
 
@@ -93,7 +105,9 @@ const route = useRoute();
 const plant_code = Array.isArray(route.params.plant_code) ? route.params.plant_code[0] : route.params.plant_code;
 const storage_location = Array.isArray(route.params.storage_location) ? route.params.storage_location[0] : route.params.storage_location;
 
+const SLIDE_MS = 10000
 const refreshTimer = ref(30)
+const pageIndex = ref(0)
 let countdownInterval
 
 const startCountdown = () => {
@@ -144,25 +158,6 @@ const summaryData = ref({
     in_progress: 0,
     completed: 0,
 });
-const createPlaceholderRow = (index) => ({
-    queue_no: 'No queue yet',
-    plate_no: 'No queue yet',
-    driver_name: 'No queue yet',
-    warehouse_bay: { name: 'No queue yet' },
-    status: 'No queue yet',
-    statusClass: 'placeholder',
-    isPlaceholder: true,
-    id: `placeholder-${index}`,
-});
-
-const cardMinHeight = computed(() => {
-    if (loading_banner_message.value.length > 0) {
-        return banner_message.value ? '92vh' : '95vh';
-    }
-    return '100vh';
-});
-
-
 const normalizedQueueRows = computed(() => {
     if (Array.isArray(queueRows.value?.data)) {
         return queueRows.value.data;
@@ -216,38 +211,32 @@ const getQueueStatus = row => {
     };
 };
 
-const displayedQueueRows = computed(() => {
-    const rows = normalizedQueueRows.value.slice(0, 5).map(row => {
-        // If this is a placeholder row, keep its properties as is
-        if (row.isPlaceholder) {
-            return row;
-        }
-        const queueStatus = getQueueStatus(row);
-        return {
-            ...row,
-            statusLabel: queueStatus.label,
-            statusClass: queueStatus.className,
-            isPlaceholder: false,
-        };
-    });
+const PAGE_SIZE = 8;
 
-    while (rows.length < 5) {
-        const placeholder = createPlaceholderRow(rows.length + 1);
-        rows.push({
-            ...placeholder,
-            statusLabel: 'No queue yet',
-            statusClass: placeholder.statusClass,
-        });
+// completed trucks only count in the totals; in-progress first, then queue no.
+const queueRowsList = computed(() => normalizedQueueRows.value
+    .map(row => {
+        const s = getQueueStatus(row);
+        return { ...row, statusLabel: s.label === 'IN PROGRESS' ? s.label : 'ON QUEUE', statusClass: s.className };
+    })
+    .filter(row => row.statusClass !== 'complete')
+    .sort((x, y) => (y.statusClass === 'in-progress') - (x.statusClass === 'in-progress')
+        || String(x.queue_no).localeCompare(String(y.queue_no))));
+
+// PAGE_SIZE rows per slide; last page padded with blank rows so row heights stay equal
+const queuePages = computed(() => {
+    const pages = [];
+    for (let i = 0; i < queueRowsList.value.length; i += PAGE_SIZE) {
+        const page = queueRowsList.value.slice(i, i + PAGE_SIZE);
+        while (page.length < PAGE_SIZE) page.push({});
+        pages.push(page);
     }
-
-    return rows;
+    return pages.length ? pages : [[]];
 });
 
-const summaryCounts = computed(() => ({
-    onQueue: Number(summaryData.value.waiting) || 0,
-    inProgress: Number(summaryData.value.in_progress) || 0,
-    completed: Number(summaryData.value.completed) || 0,
-}));
+const completedCount = computed(() => Number(summaryData.value.completed) || 0);
+const totalCount = computed(() => (Number(summaryData.value.waiting) || 0) + (Number(summaryData.value.in_progress) || 0) + completedCount.value);
+const progressPct = computed(() => totalCount.value ? (completedCount.value / totalCount.value) * 100 : 0);
 
 const fetchData = async () => {
 
@@ -257,6 +246,8 @@ const fetchData = async () => {
             queueRows.value = response.data;
             banner_message.value = response.data.banner_message;
             loading_banner_message.value = response.data.loading_banner_message;
+            // stretch the reload so every page is shown once (10 s per page, min 30 s)
+            refreshTimer.value = Math.max(30, queuePages.value.length * SLIDE_MS / 1000);
         }
     } catch (error) {
         console.error('Error fetching loading queue data:', error);
@@ -283,355 +274,143 @@ const fetchSummary = async () => {
     } finally {
     }
 };
-
-
-const getDriverNameClass = (name) => {
-    const normalizedLength = (name ?? '').replace(/\s+/g, '').length
-
-    if (normalizedLength >= 20) {
-        return ['driver-name', 'is-very-long']
-    }
-
-    if (normalizedLength >= 16) {
-        return ['driver-name', 'is-long']
-    }
-
-    return 'driver-name'
-}
 </script>
 
 <style scoped>
 .queue-screen {
     width: 100%;
-    min-height: 100vh;
-    padding: 0;
-    background:
-        radial-gradient(circle at 15% 20%, rgba(0, 109, 165, 0.2), transparent 30%),
-        radial-gradient(circle at 85% 10%, rgba(191, 13, 37, 0.15), transparent 25%),
-        linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f8fafc 100%);
-    color: #0f172a;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.board-card {
-    width: 100%;
-    border-radius: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    box-shadow: none;
-    background: #ffffff;
-    border: none;
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    background: #fff;
+    color: #37343F;
+    font-family: 'Rubik', Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    --u: min(1vw, 1.7778vh);
 }
 
-.board-header {
-    padding: 26px 30px;
-    background: linear-gradient(90deg, #075985 0%, #0e7490 100%);
-    color: #ffffff;
+.queue-body-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.833 * var(--u));
+    padding: calc(0.833 * var(--u)) calc(1.25 * var(--u));
 }
 
-.title-row {
+.banner {
+    flex: none;
+    height: calc(6.458 * var(--u));
+    display: flex;
+    align-items: center;
+    gap: calc(3.333 * var(--u));
+    padding: 0 calc(2.083 * var(--u));
+    background: #D9EEE3;
+    border-radius: calc(0.312 * var(--u));
+}
+
+.banner-main { flex: 1; min-width: 0; }
+.banner-line { display: flex; justify-content: space-between; align-items: baseline; }
+.banner h1 { margin: 0; font-size: calc(2.396 * var(--u)); font-weight: 800; letter-spacing: 0.02em; line-height: 1.2; }
+.banner-count { font-size: calc(1.354 * var(--u)); font-weight: 500; color: #2F4F40; }
+.progress-track { margin-top: calc(0.521 * var(--u)); height: calc(0.625 * var(--u)); border-radius: calc(0.312 * var(--u)); background: #B9DDCA; overflow: hidden; }
+.progress-fill { height: 100%; background: #00A36C; border-radius: calc(0.312 * var(--u)); }
+
+.banner-timer { width: calc(14.583 * var(--u)); text-align: center; color: #2F4F40; }
+.timer-label { font-size: calc(1.302 * var(--u)); font-weight: 500; }
+.timer-row { display: flex; justify-content: center; align-items: baseline; gap: calc(0.625 * var(--u)); }
+.timer-num { font-size: calc(3.125 * var(--u)); font-weight: 800; color: #007F54; line-height: 1.1; }
+.timer-unit { font-size: calc(1.354 * var(--u)); font-weight: 500; }
+.timer-page { font-size: calc(0.938 * var(--u)); font-weight: 700; }
+
+.band { flex: none; height: calc(5.9 * var(--u)); display: flex; }
+.seg {
+    --seg-bg: #D9EEE3;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    background: var(--seg-bg);
+    padding: 0 calc(4.792 * var(--u)) 0 calc(2.083 * var(--u));
+    clip-path: polygon(0 0, calc(100% - calc(2.5 * var(--u))) 0, 100% 50%, calc(100% - calc(2.5 * var(--u))) 100%, 0 100%);
 }
+.seg + .seg { margin-left: calc(-1.979 * var(--u)); padding-left: calc(4.583 * var(--u)); clip-path: polygon(0 0, calc(100% - calc(2.5 * var(--u))) 0, 100% 50%, calc(100% - calc(2.5 * var(--u))) 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
+.seg:last-child { padding-right: calc(2.292 * var(--u)); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, calc(2.5 * var(--u)) 50%); }
+.seg-count { font-size: calc(3.5 * var(--u)); font-weight: 800; line-height: 1; }
+.seg-label { font-size: calc(1.35 * var(--u)); font-weight: 700; }
+.seg-queue .seg-icon { color: #007F54; }
+.seg-progress { --seg-bg: #FFB020; }
+.seg-done { --seg-bg: #00A36C; color: #fff; }
+.band.empty .seg { --seg-bg: #EEF3F0; color: #4A5A52; }
+.band.empty .seg-icon { color: #7E8C85; }
 
-.board-header h1 {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: clamp(1.8rem, 3.2vw, 3rem);
-    line-height: 1.2;
-}
-
-.header-timer {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: #d7efff;
-    text-align: center;
-    font-size: clamp(1.05rem, 1.15vw, 1.4rem);
-    font-weight: 600;
-}
-
-.header-timer-label,
-.header-timer-unit {
-    color: #d7efff;
-}
-
-.header-timer-value {
-    color: #ffffff;
-    font-size: clamp(1.5rem, 1.9vw, 2.2rem);
-    font-weight: 900;
-    line-height: 1;
-}
-
-.meta-row {
-    margin-top: 12px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.badge {
-    font-size: clamp(1.2rem, 1.15vw, 1.05rem);
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.summary-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    padding: 16px 20px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.summary-item {
-    border-radius: 12px;
-    padding: 14px 16px;
-    border: 1px solid transparent;
-}
-
-.summary-item .label {
-    margin: 0;
-    font-size: clamp(1rem, 1vw, 1.2rem);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #334155;
-}
-
-.summary-item .value {
-    margin: 4px 0 0;
-    font-size: clamp(1.5rem, 2vw, 2rem);
-    font-weight: 700;
-}
-
-.summary-item.waiting {
-    background: #fff7ed;
-    border-color: #fdba74;
-    color: #9a3412;
-}
-
-.summary-item.queued {
-    background: #e2e8f0;
-    border-color: #cbd5e1;
-    color: #334155;
-}
-
-.summary-item.active {
-    background: #ecfeff;
-    border-color: #67e8f9;
-    color: #155e75;
-}
-
-.summary-item.complete {
-    background: #f0fdf4;
-    border-color: #86efac;
-    color: #166534;
-}
-
-.table-wrap {
-    overflow: auto;
-}
-
-.queue-table {
-    width: 100%;
-    height: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    min-width: 1180px;
-}
-
-.queue-table th,
-.queue-table td {
-    text-align: center;
-    border: 1px solid #e2e8f0;
-    font-weight: 700;
-}
+.table-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.queue-carousel { flex: 1; min-height: 0; }
+.queue-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.queue-body { height: 100%; }
 
 .queue-table th {
-    padding: 4px 1px;
-    background: #0b6a99;
-    color: #ffffff;
-    font-size: clamp(2.5rem, 1.6vw, 2.5rem);
+    height: calc(3.021 * var(--u));
+    background: #00A36C;
+    color: #fff;
+    font-size: calc(1.354 * var(--u));
     font-weight: 700;
-}
-
-.queue-table tbody tr:nth-child(odd) {
-    background: #f8fafc;
-}
-
-.queue-table tbody tr:nth-child(even) {
-    background: #f1f5f9;
-}
-
-.queue-table td {
-    font-size: clamp(2.5rem, 1.75vw, 2.5rem);
-    line-height: 1.25;
-}
-
-.queue-table tbody tr.placeholder-row {
-    background: #f8fafc;
-}
-
-.queue-table tbody tr.placeholder-row td {
-    color: #94a3b8;
-    font-style: italic;
-}
-
-.queue-table td.driver-name {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    font-size: clamp(1.8rem, 1.5vw, 2.3rem);
-}
-
-.queue-table td.driver-name.is-long {
-    font-size: clamp(1.4rem, 1.2vw, 1.9rem);
-}
-
-.queue-table td.driver-name.is-very-long {
-    font-size: clamp(1.1rem, 1vw, 1.5rem);
-}
-
-.status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: clamp(160px, 11vw, 220px);
-    padding: 10px 20px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: clamp(1.4rem, 1.6vw, 1.8rem);
-}
-
-.status.on-queue {
-    background: #e2e8f0;
-    color: #334155;
-}
-
-.status.waiting-to-tap {
-    background: #fff7ed;
-    color: #c2410c;
-}
-
-.status.in-progress {
-    background: #dbeafe;
-    color: #1d4ed8;
-}
-
-.status.complete {
-    background: #dcfce7;
-    color: #15803d;
-}
-
-.status.placeholder {
-    background: #e2e8f0;
-    color: #64748b;
-}
-
-.notice-bar {
-    background: #b91c1c;
-    color: #ffffff;
+    letter-spacing: 0.02em;
     text-align: center;
-    font-size: clamp(1.1rem, 2vw, 2rem);
-    text-transform: uppercase;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    padding: 14px 16px;
+    border: calc(0.104 * var(--u)) solid #fff;
+    border-top: 0;
 }
+.queue-table th:first-child { border-left: 0; }
+.queue-table th:last-child { border-right: 0; }
 
-.loading-banner-marquee {
-    background: #257c02;
-    color: #ffffff;
-    font-weight: bold;
-    padding: 19px 0;
-    font-size: 2.3rem;
-    width: 100%;
-    z-index: 10;
-    min-height: 70px;
+.queue-body td { line-height: 1; text-align: center; border: calc(0.104 * var(--u)) solid #5FBF97; padding: 0 calc(0.625 * var(--u)); white-space: nowrap; overflow: hidden; }
+.queue-body tr { height: calc(100% / 8); }
+.queue-body tr.row-progress { background: #FFF4DC; }
+.c-queue { font-size: calc(1.9 * var(--u)); font-weight: 600; color: #007F54; }
+.c-plate { font-size: calc(1.75 * var(--u)); font-weight: 700; }
+.c-driver { font-size: calc(1.6 * var(--u)); font-weight: 500; text-transform: uppercase; }
+.c-ship { font-size: calc(1.65 * var(--u)); font-weight: 500; }
+.c-bay { font-size: calc(2.6 * var(--u)); font-weight: 800; }
+.c-bay.none { color: #5C6C64; }
+
+.tag {
+    display: inline-block;
+    font-size: calc(1.15 * var(--u));
+    font-weight: 700;
+    padding: calc(0.35 * var(--u)) calc(1.875 * var(--u)) calc(0.35 * var(--u)) calc(0.833 * var(--u));
+    background: #D9EEE3;
+    clip-path: polygon(0 0, calc(100% - calc(1.042 * var(--u))) 0, 100% 50%, calc(100% - calc(1.042 * var(--u))) 100%, 0 100%);
+}
+.tag.in-progress { background: #FFB020; }
+
+.empty-msg {
+    flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: calc(0.938 * var(--u));
+    border: calc(0.104 * var(--u)) solid #5FBF97;
+    border-top: 0;
 }
+.empty-title { font-size: calc(3.542 * var(--u)); font-weight: 800; }
+.empty-sub { font-size: calc(1.667 * var(--u)); font-weight: 500; color: #4A5A52; }
 
+.loading-banner-marquee,
 .next-loading-banner-marquee {
-    background: #FFCC33;
+    flex: none;
     color: #ffffff;
     font-weight: bold;
-    padding: 19px 0;
-    font-size: 2.3rem;
+    padding: calc(0.5 * var(--u)) 0;
+    font-size: calc(1.9 * var(--u));
     width: 100%;
     z-index: 10;
-    min-height: 70px;
+    min-height: calc(3.2 * var(--u));
     display: flex;
     align-items: center;
     justify-content: center;
 }
-
-@media (max-width: 768px) {
-    .queue-screen {
-        min-height: auto;
-    }
-
-    .board-card {
-        min-height: auto;
-        grid-template-rows: auto auto auto auto;
-    }
-
-    .summary-row {
-        grid-template-columns: 1fr;
-    }
-
-    .title-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .header-timer {
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-
-    .queue-table th,
-    .queue-table td {
-        padding: 10px 8px;
-        font-size: 0.95rem;
-    }
-
-    .loading-banner-marquee {
-        background: #257c02;
-        color: #ffffff;
-        font-weight: bold;
-        padding: 19px 0;
-        font-size: 1.4rem;
-        border-bottom: 1px solid #ffd700;
-        width: 100%;
-        z-index: 10;
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-    }
-
-    .next-loading-banner-marquee {
-        background: #FFCC33;
-        color: #ffffff;
-        font-weight: bold;
-        padding: 19px 0;
-        font-size: 1.4rem;
-        border-bottom: 1px solid #ffd700;
-        width: 100%;
-        z-index: 10;
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-    }
-
-}
+.loading-banner-marquee { background: #257c02; }
+.next-loading-banner-marquee { background: #FFCC33; }
 </style>
