@@ -1,12 +1,11 @@
 <script setup>
 import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
-import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import datatable from './datatable.vue';
 
 const authStore = useAuthStore();
@@ -17,16 +16,19 @@ const defaultFilters = () => ({
     storageLocation: null, // Stores the full sloc object
     dateFrom: todayStr,
     dateTo: todayStr,
+    pallet_assignment: 1,
+    batch_pick: 1,
 });
 
 const filters = ref(defaultFilters());
 
-const searchInput = ref(''); // raw value from the search field, not yet applied
+const searchInput = ref(''); // committed search term, only updated when Search is clicked
 const searchValue = ref(''); // committed search term, only updated when Search is clicked
 const datatableRef = ref(null);
 const tablePerPage = ref(50);
 const tablePage = ref(1);
 const tableSort = ref('-created_at')
+const totalItems = ref(0);
 const isLoading = ref(false);
 const pageLoading = ref(false);
 const toast = ref({
@@ -92,18 +94,11 @@ watch(
     }
 );
 
-const isFiltersEmpty = computed(() => {
-    return !filters.value.dateFrom &&
-           !filters.value.dateTo &&
-           !filters.value.plant &&
-           !filters.value.storageLocation
-});
-
 const applyFilter = () => {
     searchValue.value = searchInput.value;
-    if(datatableRef.value) {
-        // Pass IDs to datatable as it expects
+    if (datatableRef.value) {
         datatableRef.value.applyFilters({
+            search: searchValue.value,
             dateFrom: filters.value.dateFrom,
             dateTo: filters.value.dateTo,
             plant_id: filters.value.plant?.id,
@@ -117,28 +112,59 @@ const resetFilter = () => {
     filters.value = defaultFilters();
     searchInput.value = '';
     searchValue.value = '';
-    if(datatableRef.value) {
+    if (datatableRef.value) {
         datatableRef.value.applyFilters([]);
     }
 }
 
-const handleSearch = (search) => {
-    searchInput.value = search;
-}
-
-const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
+const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: itemCount }) => {
     tableSort.value = sortBy
     tablePage.value = page
     tablePerPage.value = itemsPerPage
     searchValue.value = search
+    totalItems.value = itemCount ?? 0
 }
 
 </script>
 
 <template>
+    <VCard variant="flat" border class="mb-5 position-relative bg-grey-75" 
+        style="border-left: 4px solid rgb(var(--v-theme-primary)) !important;
+        background-color: rgb(var(--v-table-header-color));">
+        <VCardText class="pa-4 pa-sm-6">
+            <VRow align="center" justify="space-between" class="ga-3">
+                <VCol cols="12" sm="8">
+                    <div class="d-flex align-center ga-4">
+                        <VAvatar color="primary" variant="tonal" rounded="lg" size="52">
+                            <VIcon icon="ri-truck-line" size="28" />
+                        </VAvatar>
+                        <div>
+                            <div class="text-h4 font-weight-bold">STO Issuance</div>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Batch and pallet reservation for STO line items
+                            </div>
+                        </div>
+                    </div>
+                </VCol>
+                <VCol cols="12" sm="auto" class="d-flex justify-sm-end">
+                    <VChip color="primary" variant="tonal" size="large" prepend-icon="ri-file-list-3-line">
+                        {{ totalItems.toLocaleString('en-US') }} {{ totalItems === 1 ? 'item' : 'items' }}
+                    </VChip>
+                </VCol>
+            </VRow>
+        </VCardText>
+    </VCard>
     <VRow no-gutters align="center">
         <VCol md="6" cols="12" class="pe-md-2 pb-2 pb-md-0">
-            <SearchInput placeholder="PO Number" @update:search="handleSearch"/>
+            <VTextField
+                v-model="searchInput"
+                persistent-placeholder
+                placeholder="Search PO Number"
+                append-inner-icon="ri-search-line"
+                single-line
+                hide-details
+                density="compact"
+            />
         </VCol>
         <VCol md="3" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-select
@@ -171,25 +197,46 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search }) => {
         </VCol>
     </VRow>
 
-    <VRow no-gutters align="center" class="mb-4">
+    <VRow no-gutters align="center" class="mb-4 mt-4">
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateFrom" label="Date From" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
         <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
             <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
-        <VCol md="6" class="d-none d-md-flex"></VCol>
+        <!-- <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-select label="Pallet Assignment"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'Pending', value: 1 },
+                    { title: 'Partial', value: 2 },
+                    { title: 'Completed', value: 3 }
+                ]" v-model="filters.pallet_assignment">
+            </v-select>
+        </VCol> -->
+        <VCol md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-select label="Batch Pick"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'No Batch Picked', value: 1 },
+                    { title: 'Batch Picked', value: 2 }
+                ]" v-model="filters.batch_pick">
+            </v-select>
+        </VCol>
+        <VCol md="4" class="d-none d-md-flex"></VCol>
+       
         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
             <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
                 <i class="ri-search-eye-line mr-2"></i>
                 Search
             </PrimaryButton>
         </VCol>
+
+
     </VRow>
 
     <VCard>
         <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
-            :search="searchValue"
             :initial-filters="{
                 dateFrom: filters.dateFrom,
                 dateTo: filters.dateTo,
