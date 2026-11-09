@@ -1,7 +1,7 @@
 <script setup>
 import SearchInput from '@/components/SearchInput.vue';
 import Toast from '@/components/Toast.vue';
-import { numberWithComma } from '@/composables/useHelpers';
+import { exportExcel, numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
@@ -371,6 +371,24 @@ function removeLeadingZeros(value) {
     return value.replace(/^0+/, '');
 }
 
+const exportLoading = ref(false);
+const exportData = async () => {
+    try {
+        exportLoading.value = true;
+        await exportExcel({
+            url: `/reports/completed-delivery-order-picklist/export`,
+            params: {
+                filters: filters
+            },
+            filename: 'completed-picklist-report.xlsx',
+        });
+    } catch (error) {
+        console.error('Export error:', error);
+    } finally {
+        exportLoading.value = false;
+    }
+}
+
 </script>
 
 <template>
@@ -394,6 +412,13 @@ function removeLeadingZeros(value) {
         <VCol md="2" cols="12">
             <v-text-field v-model="filters.dateTo" label="Date To" type="date" density="compact" variant="outlined" hide-details />
         </VCol>
+
+        <v-btn :loading="exportLoading" class="d-flex align-center" prepend-icon="ri-download-line" @click="exportData">
+            <template #prepend>
+                <v-icon color="white"></v-icon>
+            </template>
+            Export
+        </v-btn> 
 
         <v-btn class="d-flex align-center" prepend-icon="ri-search-eye-line" @click="handleSearch">
             <template #prepend>
