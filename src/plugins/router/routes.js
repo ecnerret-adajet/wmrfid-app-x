@@ -585,6 +585,17 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/sto-picklist',
+                name: 'sto-picklist-report',
+                component: () => import('@/pages/reports/stoPicklist/index.vue'),
+                meta: {
+                    pageTitle: "STO Picklist Report",
+                    breadcrumbs: [
+                            { label: "STO Picklist Report", link: "/reports/sto-picklist" },
+                    ],
+                },
+        },
+        {
                 path: 'reports/service-requests',
                 name: 'service-requests-report',
                 component: () => import('@/pages/reports/serviceRequests/index.vue'),
@@ -1015,6 +1026,22 @@ export const routes = [
             component: () => import('@/pages/login.vue'),
             meta: {
                 pageTitle: "Login"
+            },
+        },
+        {
+            path: '/sto-batch-picking/:po_number/:po_item/batch-selection',
+            name: 'sto-batch-selection',
+            component: () => import('@/pages/transfers/stoBatchSelection.vue'),
+            meta: {
+                pageTitle: "STO - Batch Selection"
+            },
+        },
+        {
+            path: '/sto-batch-picking/:po_number/:po_item/warehouse-map',
+            name: 'sto-warehouse-map',
+            component: () => import('@/pages/transfers/stoWarehouseMap.vue'),
+            meta: {
+                pageTitle: "STO - Warehouse Map"
             },
         },
         {

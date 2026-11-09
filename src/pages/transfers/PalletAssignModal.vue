@@ -5,7 +5,7 @@ import ApiService from '@/services/ApiService';
 import { useGoodsReceiptStore } from '@/stores/goodsReceiptStore';
 import { debounce } from 'lodash';
 import { storeToRefs } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, defineEmits, defineProps, onMounted, ref, watch } from 'vue';
 
 const goodsReceiptStore = useGoodsReceiptStore();
 const { filters } = storeToRefs(goodsReceiptStore);
@@ -34,9 +34,6 @@ const emit = defineEmits(['close', 'save', 'updated']);
 const dialogVisible = ref(props.show);
 const selectedPallet = ref(null);
 const addedPallets = ref([]);
-const availableBlocks = ref([]);
-const selectedBlock = ref(null);
-const isLoadingBlocks = ref(false);
 const availablePallets = ref([]);
 const isLoading = ref(false);
 const search = ref('');
@@ -55,33 +52,115 @@ const headers = [
 ];
 
 const maxPallets = ref(0);
+const totalAssignedPallets = ref(0);
 const materialConversionLoading = ref(false);
 
+const palletCount = computed(() => totalAssignedPallets.value + addedPallets.value.filter(pallet => !pallet.is_assigned).length);
+
+const truckscales = ref([]);
+const truckscalesLoading = ref(false);
+const selectedTruckscale = ref(null);
+const selectedTransportNumber = ref(null);
+
+// Map the selected truckscale to a section type; add new types here and a matching section in the template.
+const truckscaleType = computed(() => {
+    const ts = selectedTruckscale.value;
+    if (!ts) return null;
+    if (ts.is_gi_sto) return 'gi_sto';
+    return 'other';
+});
+
+const transportHeaders = [
+    { title: 'Transport Number', key: 'transport_number', sortable: false },
+    { title: 'Driver', key: 'driver_name', sortable: false },
+    { title: 'Vehicle Plate', key: 'plate_number', sortable: false },
+];
+
+const truckscaleTransports = computed(() => {
+    const transport = selectedTruckscale.value?.transport;
+    return transport ? [transport] : [];
+});
+
+const truckscaleSearch = ref('');
+
+const fetchTruckscales = async (query = '') => {
+    const poNumber = props.item?.po_number;
+    if (!poNumber) return;
+
+    truckscalesLoading.value = true;
+    try {
+        const trimmed = String(query || '').trim();
+        const response = await ApiService.query(`transfers/get-truckscales/${poNumber}/${getPlantCode()}`, {
+            params: trimmed ? { search: trimmed } : {}
+        });
+        const data = response.data?.data ?? response.data;
+        truckscales.value = Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Failed to fetch truckscales:', error);
+        truckscales.value = [];
+    } finally {
+        truckscalesLoading.value = false;
+    }
+};
+
+const debouncedFetchTruckscales = debounce((val) => {
+    fetchTruckscales(val);
+}, 400);
+
+const onTruckscaleSearchInput = (val) => {
+    if (val !== getTruckscaleTitle(selectedTruckscale.value)) {
+        debouncedFetchTruckscales(val);
+    }
+};
+
+const getTruckscaleTitle = (ts) => ts?.truckscale_no || '';
+
+watch(selectedTruckscale, () => {
+    selectedTransportNumber.value = selectedTruckscale.value?.transport?.transport_number || null;
+});
+
+watch(selectedTransportNumber, (val) => {
+    if (!val) return;
+    fetchPallets();
+    fetchAssignedPallets();
+});
+
+const selectedTransport = computed(() => {
+    const rawTransport = props.item?.transport || props.item;
+    return {
+        ...rawTransport,
+        transport_number: selectedTransportNumber.value || rawTransport?.transport_number || props.item?.transport_number || props.item?.transport?.transport_number,
+        driver_name: rawTransport?.driver_name || rawTransport?.driver?.full_name || props.item?.driver_name || props.item?.transport?.driver?.full_name,
+        plate_number: rawTransport?.plate_number || rawTransport?.vehicle?.plate_number || props.item?.plate_number || props.item?.transport?.vehicle?.plate_number,
+        batch: rawTransport?.batch || props.item?.batch || props.item?.transport?.batch
+    };
+});
+
 const getPlantCode = () => {
-    return props.stockTransfer?.purchase_order?.supplying_plant;
+    return props.item?.supplying_plant || props.item?.supplying_plant;
 };
 
 function removeLeadingZeros(value) {
     if (!value) return '';
-    return value.replace(/^0+/, '');
+    return String(value).replace(/^0+/, '');
 }
 
 const fetchMaterialConversion = async () => {
     if (!props.item) return;
     
     materialConversionLoading.value = true;
-    console.log('props item:', props.item);
+    
     try {
         const payload = {
-            material_code: removeLeadingZeros(props.item?.material_code),
-            quantity: props.item?.qty,
-            uom: props.item?.uom
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+            quantity: props.item?.qty || props.item?.qty,
+            uom: props.item?.uom || props.item?.uom
         };
         const response = await ApiService.post('/transfers/get-material-conversion', payload);
         if (response.data && response.data.quantity) {
              maxPallets.value = response.data.quantity;
         } else {
-             maxPallets.value = 0; // Or some default
+             maxPallets.value = 0;
         }
     } catch (error) {
         console.error('Failed to fetch material conversion:', error);
@@ -91,7 +170,6 @@ const fetchMaterialConversion = async () => {
     }
 };
 
-
 const fetchPallets = async (query = '') => {
     isLoading.value = true;
     try {
@@ -100,7 +178,9 @@ const fetchPallets = async (query = '') => {
             page: 1,
             per_page: 20,
             plant_code: getPlantCode(),
-            material_code: removeLeadingZeros(props.item?.material_code)
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
         };
         const response = await ApiService.post('/transfers/pallet-list', payload);
         availablePallets.value = response.data.data;
@@ -111,15 +191,17 @@ const fetchPallets = async (query = '') => {
     }
 };
 
-
 const fetchAssignedPallets = async () => {
-    if (!props.item || !props.stockTransfer?.id) return;
+    if (!props.item) return;
+
+    addedPallets.value = [];
 
     try {
         const payload = {
-            po_number: props.item?.po_number,
-            po_item: props.item?.po_item,
-            material_code: removeLeadingZeros(props.item?.material_code),
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+            transport_number: selectedTransportNumber.value,
         };
         const response = await ApiService.post('transfers/get-assigned-pallets', payload);
         console.log('Assigned pallets response:', response.data);  
@@ -132,10 +214,29 @@ const fetchAssignedPallets = async () => {
                     quantity: item.quantity,
                     batch: item.batch,
                 };
-            }).filter(p => p.physical_id); // Filter out any undefined pallets
+            }).filter(p => p.physical_id);
         }
     } catch (error) {
         console.error("Failed to fetch assigned pallets", error);
+    }
+};
+
+const fetchTotalAssignedPallets = async () => {
+    if (!props.item) return;
+
+    try {
+        const payload = {
+            po_number: props.item?.po_number || props.item?.po_number,
+            po_item: props.item?.po_item || props.item?.po_item,
+            material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+        };
+        const response = await ApiService.post('transfers/get-total-assigned-pallets', payload);
+        totalAssignedPallets.value = Array.isArray(response.data)
+            ? response.data.filter(item => item?.physical_id).length
+            : 0;
+    } catch (error) {
+        console.error('Failed to fetch total assigned pallets:', error);
+        totalAssignedPallets.value = 0;
     }
 };
 
@@ -145,21 +246,37 @@ const debouncedFetchPallets = debounce((query) => {
 
 const resetPalletSelection = () => {
     selectedPallet.value = null;
-    if (addedPallets.value) {
-        addedPallets.value = addedPallets.value.filter(pallet => pallet.is_assigned);
-    }
+    addedPallets.value = [];
+    totalAssignedPallets.value = 0;
+    maxPallets.value = 0;
     search.value = '';
+    availablePallets.value = [];
+    truckscales.value = [];
+    selectedTruckscale.value = null;
+    selectedTransportNumber.value = null;
 };
+
+const loadModalData = async () => {
+    resetPalletSelection();
+    await Promise.all([
+        fetchTruckscales(),
+        fetchMaterialConversion(),
+        fetchTotalAssignedPallets(),
+        fetchPallets(),
+        fetchAssignedPallets()
+    ]);
+};
+
+onMounted(() => {
+    if (props.show) {
+        loadModalData();
+    }
+});
 
 watch(() => props.show, (newVal) => {
     dialogVisible.value = newVal;
     if (newVal) {
-        resetPalletSelection();
-        selectedBlock.value = null; // Reset block selection
-        maxPallets.value = 0; // Reset max pallets
-        fetchPallets(); // Load initial data
-        fetchMaterialConversion(); // Fetch conversion
-        fetchAssignedPallets(); // Fetch existing assignments
+        loadModalData();
     }
 });
 
@@ -170,7 +287,7 @@ watch(() => dialogVisible.value, (newVal) => {
 });
 
 watch(search, (newVal) => {
-    if (newVal !== selectedPallet.value?.physical_id) { // Avoid refetching when selecting an item
+    if (selectedTransport.value?.transport_number && newVal !== selectedPallet.value?.physical_id) {
          debouncedFetchPallets(newVal);
     }
 });
@@ -178,8 +295,7 @@ watch(search, (newVal) => {
 const addPallet = () => {
     if (selectedPallet.value) {
         // Check limit
-        if (maxPallets.value > 0 && addedPallets.value.length >= maxPallets.value) {
-            // Optional: User feedback, though button should be disabled
+        if (maxPallets.value > 0 && palletCount.value >= maxPallets.value) {
             return; 
         }
 
@@ -235,11 +351,12 @@ const removePallet = async (item) => {
             const response = await ApiService.post('transfers/remove-assigned-pallet', { 
                 physical_id: item.physical_id,
                 batch: item.batch || null,
-                po_number: props.item?.po_number,
-                po_item: props.item?.po_item,
-                material_code: removeLeadingZeros(props.item?.material_code),
-                plant: props.item?.supplying_plant,
-                sloc: props.item?.issuing_sloc_sto,
+                po_number: props.item?.po_number || props.item?.po_number,
+                po_item: props.item?.po_item || props.item?.po_item,
+                material_code: removeLeadingZeros(props.item?.material_code || props.item?.material_code),
+                transport_number: selectedTransport.value?.transport_number,
+                plant: props.item?.supplying_plant || props.item?.supplying_plant,
+                sloc: props.item?.issuing_sloc_sto || props.item?.issuing_sloc_sto,
             });
             
             toast.value = {
@@ -250,6 +367,7 @@ const removePallet = async (item) => {
             
             // Remove from list
             addedPallets.value = addedPallets.value.filter(p => p.physical_id !== item.physical_id);
+            totalAssignedPallets.value = Math.max(0, totalAssignedPallets.value - 1);
             emit('updated');
         } catch (error) {
             console.error('Failed to remove assigned pallet:', error);
@@ -267,6 +385,15 @@ const removePallet = async (item) => {
 const handleSave = () => {
     // 1. Filter out only the pallets that aren't assigned yet
     const newPallets = addedPallets.value.filter(p => !p.is_assigned);
+
+    if (newPallets.length === 0) {
+        toast.value = {
+            message: 'No new pallets to assign.',
+            color: 'error',
+            show: true
+        };
+        return;
+    }
     
     const formattedPallets = newPallets.map(p => ({
         physical_id: p.physical_id,
@@ -274,11 +401,87 @@ const handleSave = () => {
         quantity: p.quantity || 0 // Default to 0 if quantity is not provided
     }));
 
-    console.log(formattedPallets);
-    
     emit('save', {
         pallets: formattedPallets,
+        transport_number: getTransportNumber(),
     });
+};
+
+const getTransportNumber = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.transport_number || t?.transport?.transport_number || props.item?.transport_number || 'N/A';
+};
+
+const getDriverName = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.driver_name || t?.driver?.full_name || t?.transport?.driver?.full_name || props.item?.driver_name || 'N/A';
+};
+
+const getPlateNumber = (option) => {
+    const t = option || selectedTransport.value;
+    return t?.plate_number || t?.vehicle?.plate_number || t?.transport?.vehicle?.plate_number || props.item?.plate_number || 'N/A';
+};
+
+const getPickedBatch = (option) => {
+    const t = option || selectedTransport.value;
+    const batch = t?.batch || t?.transport?.batch || props.item?.batch;
+    if (!batch) return 'N/A';
+    
+    if (Array.isArray(batch)) {
+        return batch.map(b => typeof b === 'object' ? (b.batch || b.BATCH || JSON.stringify(b)) : b).join(', ');
+    }
+    
+    return typeof batch === 'object' ? (batch.batch || batch.BATCH || 'N/A') : batch;
+};
+
+const getAllowedBatches = (item) => {
+    if (!item) return '';
+
+    if (item.sto_transactions) {
+        const allBatches = item.sto_transactions.flatMap(tx => {
+            if (!tx.batch) return [];
+            
+            let batchArray = tx.batch;
+            
+            if (typeof batchArray === 'string') {
+                try {
+                    batchArray = JSON.parse(batchArray);
+                } catch {
+                    return [batchArray];
+                }
+            }
+
+            if (Array.isArray(batchArray)) {
+                return batchArray.map(b => typeof b === 'object' ? b.batch : b);
+            }
+            
+            return typeof batchArray === 'object' ? [(batchArray.batch || batchArray.BATCH)] : [batchArray];
+        });
+
+        const uniqueBatches = [...new Set(allBatches)].filter(Boolean);
+        if (uniqueBatches.length > 0) return uniqueBatches.join(', ');
+    }
+
+    const directBatch = item.batch || item.transport?.batch;
+    if (directBatch) {
+        if (typeof directBatch === 'string') {
+            try {
+                const parsed = JSON.parse(directBatch);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(b => typeof b === 'object' ? (b.batch || b.BATCH) : b).filter(Boolean).join(', ');
+                }
+            } catch {
+                return directBatch;
+            }
+            return directBatch;
+        }
+        if (Array.isArray(directBatch)) {
+            return directBatch.map(b => typeof b === 'object' ? (b.batch || b.BATCH) : b).filter(Boolean).join(', ');
+        }
+        return typeof directBatch === 'object' ? (directBatch.batch || directBatch.BATCH || '') : String(directBatch);
+    }
+
+    return '';
 };
 
 </script>
@@ -294,25 +497,94 @@ const handleSave = () => {
             <v-divider></v-divider>
 
             <v-card-text class="flex-grow-1 overflow-y-auto">
-                <div v-if="item" class="mb-4 pa-3 bg-grey-lighten-4 rounded">
+                <v-alert
+                    type="info"
+                    variant="outlined"
+                    prominent
+                    class="mb-4"
+                >
+                    Picked Batch: <span class="font-weight-bold">{{ getAllowedBatches(props.item) }}</span>. 
+                    
+                    <span>If you need another batch, please contact Supply Chain.</span>
+                </v-alert>
+
+                <div v-if="item" class="mb-4 bg-grey-lighten-4 rounded">
                    <div class="d-flex justify-space-between align-center">
                         <div>
-                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item.material_code) }}</div>
-                            <div><strong>Material Desc:</strong> {{ item.material_description }}</div>
-                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.qty) }} {{ item.uom }}</div>
-                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item.open_quantity) }} {{ item.uom }}</div>
+                            <div><strong>Material Code:</strong> {{ removeLeadingZeros(item?.material_code || item.material_code) }}</div>
+                            <div><strong>Material Desc:</strong> {{ item?.material_description || item.material_description }}</div>
+                            <div><strong>Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.qty || item.qty) }} {{ item?.uom || item.uom }}</div>
+                            <div><strong>Open Qty:</strong> {{ numberWithCommaAndTwoDecimals(item?.open_quantity || item.open_quantity) }} {{ item?.uom || item.uom }}</div>
+                            <div class="mt-4" style="min-width: 320px">
+                                <v-autocomplete
+                                    v-model="selectedTruckscale"
+                                    v-model:search="truckscaleSearch"
+                                    no-filter
+                                    @update:search="onTruckscaleSearchInput"
+                                    :items="truckscales"
+                                    :loading="truckscalesLoading"
+                                    :item-title="getTruckscaleTitle"
+                                    label="Select Truckscale"
+                                    return-object
+                                    clearable
+                                    variant="outlined"
+                                    density="compact"
+                                    hide-details
+                                    bg-color="white"
+                                />
+                            </div>
                         </div>
                         <div v-if="materialConversionLoading">
                            <v-progress-circular indeterminate size="20" width="2" color="primary"></v-progress-circular> Calculating limit...
                         </div>
                         <div v-else class="text-right">
                              <div class="text-caption text-grey">Pallet Limit</div>
-                             <div class="text-h6" :class="{'text-error': addedPallets.length >= maxPallets && maxPallets > 0, 'text-success': addedPallets.length < maxPallets}">
-                                {{ addedPallets.length }} / {{ maxPallets > 0 ? maxPallets : '∞' }}
+                                      <div class="text-h6" :class="{'text-error': palletCount >= maxPallets && maxPallets > 0, 'text-success': palletCount < maxPallets}">
+                                          {{ palletCount }} / {{ maxPallets > 0 ? maxPallets : '∞' }}
                              </div>
                         </div>
                    </div>
                 </div>
+
+                <div v-if="truckscaleType === 'gi_sto'" class="mb-4">
+                    <v-data-table
+                        :headers="transportHeaders"
+                        :items="truckscaleTransports"
+                        class="elevation-1 border rounded"
+                        density="compact"
+                        hide-default-footer
+                    >
+                        <template #item.transport_number="{ item: transport }">
+                            {{ getTransportNumber(transport) }}
+                        </template>
+                        <template #item.driver_name="{ item: transport }">
+                            {{ getDriverName(transport) }}
+                        </template>
+                        <template #item.plate_number="{ item: transport }">
+                            {{ getPlateNumber(transport) }}
+                        </template>
+                        <template #no-data>
+                            <div class="pa-4 text-center text-grey">No transports available.</div>
+                        </template>
+                    </v-data-table>
+                </div>
+
+                <!-- Provision for other truckscale types: add v-else-if="truckscaleType === '...'" sections here -->
+<!-- 
+                <div class="d-flex align-center justify-space-between mb-3 pa-2 bg-grey-lighten-5 rounded border">
+                    <div>
+                        <span>Transport: </span>
+                        <span class="font-weight-bold">{{ getTransportNumber(selectedTransport) }}</span>
+                    </div>
+                    <div v-if="getPlateNumber(selectedTransport) !== 'N/A'">
+                        <span>Plate: </span>
+                        <span class="font-weight-bold">{{ getPlateNumber(selectedTransport) }}</span>
+                    </div>
+                    <div v-if="getDriverName(selectedTransport) !== 'N/A'">
+                        <span>Driver: </span>
+                        <span class="font-weight-bold">{{ getDriverName(selectedTransport) }}</span>
+                    </div>
+                </div> -->
 
                 <v-row align="center" class="mb-2">
                     <v-col cols="12" md="8">
@@ -330,19 +602,19 @@ const handleSave = () => {
                             hide-details
                             placeholder="Type to search..."
                             no-filter
-                            :disabled="maxPallets > 0 && addedPallets.length >= maxPallets"
+                            :disabled="maxPallets > 0 && palletCount >= maxPallets"
                         >
-                            <template #item="{ props, item }">
+                            <template #item="{ props: itemProps, item: palletOption }">
                                 <v-list-item
-                                    v-bind="props"
+                                    v-bind="itemProps"
                                     class="pallet-option-item"
                                     lines="three"
-                                    :title="item.raw.physical_id || 'N/A'"
+                                    :title="palletOption.raw.physical_id || 'N/A'"
                                 >
                                     <template #subtitle>
                                         <div class="pallet-option-subtitle">
-                                            <div>{{ getPlantLabel(item.raw) }}</div>
-                                            <div>Current Batch: {{ item.raw.batch || 'N/A' }}</div>
+                                            <div>{{ getPlantLabel(palletOption.raw) }}</div>
+                                            <div>Current Batch: {{ palletOption.raw.batch || 'N/A' }}</div>
                                         </div>
                                     </template>
                                 </v-list-item>
@@ -350,7 +622,7 @@ const handleSave = () => {
                         </v-autocomplete>
                     </v-col>
                     <v-col cols="12" md="4">
-                        <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet || (maxPallets > 0 && addedPallets.length >= maxPallets)">
+                        <v-btn color="primary" block @click="addPallet" :disabled="!selectedPallet || (maxPallets > 0 && palletCount >= maxPallets)">
                             Add Pallet
                         </v-btn>
                     </v-col>
@@ -362,17 +634,17 @@ const handleSave = () => {
                     class="elevation-1 border rounded"
                     density="compact"
                 >
-                    <template #item.current_batch="{ item }">
-                        {{ item.batch || item?.inventory?.batch || '-' }}
+                    <template #item.current_batch="{ item: tableItem }">
+                        {{ tableItem.batch || tableItem?.inventory?.batch || '-' }}
                     </template>
-                    <template #item.actions="{ item }">
+                    <template #item.actions="{ item: tableItem }">
                         <v-btn 
                             icon="ri-delete-bin-line" 
                             size="small" 
-                            :color="item.is_assigned ? 'error' : 'warning'" 
+                            :color="tableItem.is_assigned ? 'error' : 'warning'" 
                             variant="text" 
-                            :title="item.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
-                            @click="removePallet(item)"
+                            :title="tableItem.is_assigned ? 'Remove assigned pallet' : 'Remove from list'"
+                            @click="removePallet(tableItem)"
                         ></v-btn>
                     </template>
                     <template #no-data>
@@ -388,7 +660,7 @@ const handleSave = () => {
             <v-card-actions class="pa-4">
                 <v-spacer></v-spacer>
                 <v-btn variant="outlined" @click="dialogVisible = false">Cancel</v-btn>
-                <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading">Save Changes</v-btn>
+                <v-btn color="primary" variant="elevated" @click="handleSave" :loading="loading" :disabled="!selectedTransport?.transport_number">Save Changes</v-btn>
             </v-card-actions>
         </v-card>
         <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />

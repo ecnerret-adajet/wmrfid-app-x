@@ -111,14 +111,14 @@ const proceedReserve = async () => {
     }
 
     if (store.activeTab !== 'available_stocks') {
-        if (!hasCustomerApprovalDocument.value) {
-            toast.value = { message: 'Please choose a customer approval file.', color: 'error', show: true }
-            return
-        }
-        if (!store.customerApprovalRemarks) {
-            toast.value = { message: 'Please input remarks.', color: 'error', show: true }
-            return
-        }
+        // if (!hasCustomerApprovalDocument.value) {
+        //     toast.value = { message: 'Please choose a customer approval file.', color: 'error', show: true }
+        //     return
+        // }
+        // if (!store.customerApprovalRemarks) {
+        //     toast.value = { message: 'Please input remarks.', color: 'error', show: true }
+        //     return
+        // }
     }
 
     const formData = new FormData()

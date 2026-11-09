@@ -135,6 +135,11 @@ const loadItems = async ({ page: pageNum, itemsPerPage: perPage }) => {
     }
 };
 
+const onSearchInput = (val) => {
+    searchValue.value = val;
+    handleSearch();
+};
+
 const handleSearch = () => {
     loadItems({
         page: 1,
