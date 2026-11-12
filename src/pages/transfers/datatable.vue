@@ -45,6 +45,7 @@ const showReservedPallets = ref(false);
 const stoData = ref([]);
 const assignTruckscaleDialog = ref(false);
 const selectedTruckscaleItem = ref(null);
+const selectedScaleType = ref(null);
 const selectedTruckscale = ref(null);
 const selectedTruckscalePalletIds = ref([]);
 const isSavingTruckscale = ref(false);
@@ -160,9 +161,12 @@ const headers = [
 ]
 
 const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+    // Applied filters win; the parent's live filters fill in anything not applied yet (e.g. first load).
+    // final_weight only applies to the warehouse (ALC) table.
+    const { final_weight, ...requestFilters } = { ...props.initialFilters, ...filters.value };
 
     // Skip fetching until both plant and storage location filters are selected
-    if (!filters.value.plant_id || !filters.value.storage_location_id) {
+    if (!requestFilters.plant_id || !requestFilters.storage_location_id) {
         serverItems.value = [];
         totalItems.value = 0;
         loading.value = false;
@@ -192,8 +196,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             page,
             itemsPerPage,
             sort: sortQuery.value,
-            filters: filters.value,
-            is_alc_managed: true
+            filters: requestFilters,
+            alc_mode: false
         }
     })
         .then((response) => {
@@ -287,6 +291,7 @@ const handleAction = async (sto, action) => {
         router.push({ name: 'sto-batch-selection', params: { po_number: sto.po_number, po_item: sto.po_item } });
     } else if (action == 'assign_truckscale') {
         selectedTruckscaleItem.value = sto;
+        selectedScaleType.value = null;
         selectedTruckscale.value = null;
         selectedTruckscalePalletIds.value = [];
         assignTruckscaleDialog.value = true;
@@ -326,7 +331,7 @@ const handleAction = async (sto, action) => {
 }
 
 const saveTruckscaleAssignment = async () => {
-    if (!selectedTruckscaleItem.value || !selectedTruckscale.value || !selectedTruckscalePalletIds.value.length) return;
+    if (!selectedScaleType.value || !selectedTruckscaleItem.value || !selectedTruckscale.value || !selectedTruckscalePalletIds.value.length) return;
 
     const selectedPalletIds = new Set(selectedTruckscalePalletIds.value);
     const pallets = assignedPallets.value
@@ -948,7 +953,7 @@ defineExpose({
                 <div>
                     <div class="text-h5 font-weight-bold">Assign Truckscale</div>
                     <div class="text-body-2 text-medium-emphasis mt-1">
-                        Choose a truckscale for the pallets reserved against this STO item.
+                        Select a scale type, then choose a truckscale for the reserved pallets.
                     </div>
                 </div>
                 <v-btn icon="ri-close-line" variant="text" aria-label="Close dialog"
@@ -971,7 +976,7 @@ defineExpose({
                 </v-row>
 
                 <v-alert type="info" variant="tonal" density="comfortable" class="mb-4">
-                    Choose a truckscale, then select unassigned pallets to assign to it.
+                    Select a scale type first, then choose a truckscale and select unassigned pallets to assign to it.
                 </v-alert>
 
                 <v-alert
@@ -983,6 +988,25 @@ defineExpose({
                 >
                     {{ truckscalesError }}
                 </v-alert>
+
+                <div class="mb-2">
+                    <div class="text-subtitle-1 font-weight-bold">Select Scale Type</div>
+                    <div class="text-body-2 text-medium-emphasis">
+                        Choose the type of scale for this STO.
+                    </div>
+                </div>
+
+                <v-radio-group v-model="selectedScaleType" class="mb-2" hide-details>
+                    <v-radio label="Truckscale" value="Truckscale" />
+                    <v-radio label="Floorscale" value="Floorscale" />
+                </v-radio-group>
+
+                <div class="mb-2">
+                    <div class="text-subtitle-1 font-weight-bold">Select truckscale</div>
+                    <div class="text-body-2 text-medium-emphasis">
+                        {{ selectedScaleType ? 'Choose a truckscale to enable pallet selection.' : 'Select a scale type to enable truckscale selection.' }}
+                    </div>
+                </div>
 
                 <v-select
                     v-model="selectedTruckscale"
@@ -998,7 +1022,7 @@ defineExpose({
                     width="50%"
                     class="mb-4"
                     :loading="truckscalesLoading"
-                    :disabled="truckscalesLoading || Boolean(truckscalesError)"
+                    :disabled="!selectedScaleType || truckscalesLoading || Boolean(truckscalesError)"
                     no-data-text="No truckscales available for this STO"
                     @update:model-value="selectedTruckscalePalletIds = []"
                 />
@@ -1186,7 +1210,7 @@ defineExpose({
                 <v-btn
                     color="primary"
                     prepend-icon="ri-check-line"
-                    :disabled="!selectedTruckscale || !selectedTruckscalePalletIds.length"
+                    :disabled="!selectedScaleType || !selectedTruckscale || !selectedTruckscalePalletIds.length"
                     :loading="isSavingTruckscale"
                     @click="saveTruckscaleAssignment"
                 >

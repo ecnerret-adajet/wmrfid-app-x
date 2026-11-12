@@ -6,6 +6,7 @@ import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
 import { onMounted, ref, watch } from 'vue';
+import alcDatatable from './alcDatatable.vue';
 import datatable from './datatable.vue';
 
 const authStore = useAuthStore();
@@ -17,7 +18,8 @@ const defaultFilters = () => ({
     dateFrom: todayStr,
     dateTo: todayStr,
     pallet_assignment: 1,
-    batch_pick: 1,
+    batch_pick: authStore.user?.is_warehouse === true ? 2 : 1,
+    final_weight: 1,
 });
 
 const filters = ref(defaultFilters());
@@ -103,6 +105,8 @@ const applyFilter = () => {
             dateTo: filters.value.dateTo,
             plant_id: filters.value.plant?.id,
             storage_location_id: filters.value.storageLocation?.id,
+            batch_pick: filters.value.batch_pick,
+            final_weight: filters.value.final_weight,
             valid_material_only: true,
         });
     }
@@ -223,7 +227,16 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 ]" v-model="filters.batch_pick">
             </v-select>
         </VCol>
-        <VCol md="4" class="d-none d-md-flex"></VCol>
+        <VCol v-if="authStore.user?.is_warehouse === true" md="2" cols="12" class="pe-md-2 pb-2 pb-md-0">
+            <v-select label="Final Weight"
+                density="compact" :items="[
+                    { title: 'All', value: null },
+                    { title: 'No Final Weight', value: 1 },
+                    { title: 'Final Weight', value: 2 }
+                ]" v-model="filters.final_weight">
+            </v-select>
+        </VCol>
+        <VCol :md="authStore.user?.is_warehouse === true ? 2 : 4" class="d-none d-md-flex"></VCol>
        
         <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
             <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
@@ -236,12 +249,15 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
     </VRow>
 
     <VCard>
-        <datatable ref="datatableRef" @pagination-changed="onPaginationChanged"
+        <component :is="authStore.user?.is_warehouse === true ? alcDatatable : datatable"
+            ref="datatableRef" @pagination-changed="onPaginationChanged"
             :initial-filters="{
                 dateFrom: filters.dateFrom,
                 dateTo: filters.dateTo,
                 plant_id: filters.plant?.id,
                 storage_location_id: filters.storageLocation?.id,
+                batch_pick: filters.batch_pick,
+                final_weight: filters.final_weight,
                 valid_material_only: true,
             }"
         />
