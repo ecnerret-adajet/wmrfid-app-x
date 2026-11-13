@@ -4,8 +4,8 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
-import Moment from 'moment';
 import { debounce } from 'lodash';
+import Moment from 'moment';
 import { computed, onMounted, ref, watch } from 'vue';
 import alcDatatable from './alcDatatable.vue';
 import datatable from './datatable.vue';
@@ -55,6 +55,16 @@ const availableFloorscalePoNumbers = ref([]);
 const availableFloorscalePoLoading = ref(false);
 const availableFloorscalePoError = ref('');
 let availableFloorscalePoRequest = 0;
+const selectedFloorscalePo = computed(() =>
+    availableFloorscalePoNumbers.value.find(option => option.po_number === floorscalePoNumber.value) || null
+);
+const floorscalePoLineItemHeaders = [
+    { title: 'LINE ITEM', key: 'po_item' },
+    { title: 'MATERIAL', key: 'material_code' },
+    { title: 'DESCRIPTION', key: 'material_description' },
+    { title: 'QUANTITY', key: 'qty', align: 'end' },
+    { title: 'UOM', key: 'uom' },
+];
 
 const fetchAvailableFloorscalePoNumbers = async (search = '') => {
     const requestId = ++availableFloorscalePoRequest;
@@ -73,7 +83,13 @@ const fetchAvailableFloorscalePoNumbers = async (search = '') => {
         if (!Array.isArray(response.data)) {
             throw new Error('Unexpected response while loading available purchase orders.');
         }
-        availableFloorscalePoNumbers.value = response.data.map(String);
+        availableFloorscalePoNumbers.value = response.data
+            .filter(option => option && option.po_number != null)
+            .map(option => ({
+                ...option,
+                po_number: String(option.po_number),
+                purchase_order_items: Array.isArray(option.purchase_order_items) ? option.purchase_order_items : [],
+            }));
     } catch (error) {
         if (requestId !== availableFloorscalePoRequest) return;
         console.error('Failed to load available floorscale purchase orders:', error);
@@ -83,10 +99,11 @@ const fetchAvailableFloorscalePoNumbers = async (search = '') => {
     }
 };
 
-const debouncedFetchAvailableFloorscalePoNumbers = debounce(fetchAvailableFloorscalePoNumbers, 300);
+const debouncedFetchAvailableFloorscalePoNumbers = debounce(fetchAvailableFloorscalePoNumbers, 3000);
 
 const onFloorscalePoSearch = search => {
     if (!floorscalePlant.value?.plant_code || !floorscaleSloc.value?.code || search === floorscalePoNumber.value) return;
+    floorscalePoNumber.value = null;
     availableFloorscalePoRequest++;
     availableFloorscalePoLoading.value = true;
     availableFloorscalePoNumbers.value = [];
@@ -364,11 +381,10 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 <i class="ri-search-eye-line mr-2"></i>
                 Search
             </PrimaryButton>
-            <VBtn color="primary" variant="tonal" prepend-icon="ri-add-line" @click="openFloorscaleRequest">
+            <VBtn v-if="authStore.user?.is_warehouse === true" color="primary" variant="tonal" prepend-icon="ri-add-line" @click="openFloorscaleRequest">
                 New Floorscale Request
             </VBtn>
         </VCol>
-
 
     </VRow>
 
@@ -447,6 +463,8 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                     v-model="floorscalePoNumber"
                     v-model:search="floorscalePoSearch"
                     :items="availableFloorscalePoNumbers"
+                    item-title="po_number"
+                    item-value="po_number"
                     label="PO Number"
                     placeholder="Select a PO number"
                     prepend-inner-icon="ri-file-list-3-line"
@@ -461,6 +479,32 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 <VAlert v-if="availableFloorscalePoError" type="error" variant="tonal" density="comfortable" class="mt-3">
                     {{ availableFloorscalePoError }}
                 </VAlert>
+                <div v-if="selectedFloorscalePo" class="mt-5">
+                    <div class="text-subtitle-1 font-weight-bold mb-2">Line Items</div>
+                    <VTable density="comfortable" class="border rounded">
+                        <thead>
+                            <tr>
+                                <th v-for="header in floorscalePoLineItemHeaders" :key="header.key" :class="header.align === 'end' ? 'text-end' : ''">
+                                    {{ header.title }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(lineItem, index) in selectedFloorscalePo.purchase_order_items" :key="lineItem.id ?? `${lineItem.po_item}-${index}`">
+                                <td>{{ lineItem.po_item || '-' }}</td>
+                                <td>{{ lineItem.material_code || '-' }}</td>
+                                <td>{{ lineItem.material_description || '-' }}</td>
+                                <td class="text-end">{{ lineItem.qty ?? '-' }}</td>
+                                <td>{{ lineItem.uom || '-' }}</td>
+                            </tr>
+                            <tr v-if="!selectedFloorscalePo.purchase_order_items.length">
+                                <td :colspan="floorscalePoLineItemHeaders.length" class="text-center text-medium-emphasis py-4">
+                                    No line items returned for this purchase order.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </VTable>
+                </div>
             </VCardText>
             <VDivider />
             <VCardActions class="px-5 px-sm-6 py-4">
