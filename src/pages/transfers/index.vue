@@ -5,7 +5,8 @@ import Toast from '@/components/Toast.vue';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import Moment from 'moment';
-import { onMounted, ref, watch } from 'vue';
+import { debounce } from 'lodash';
+import { computed, onMounted, ref, watch } from 'vue';
 import alcDatatable from './alcDatatable.vue';
 import datatable from './datatable.vue';
 
@@ -41,6 +42,126 @@ const toast = ref({
 
 const plantsOption = ref([]);
 const storageLocationsOption = ref([]);
+const floorscaleRequestDialog = ref(false);
+const floorscaleRequestSaving = ref(false);
+const floorscaleRequestError = ref('');
+const floorscalePoNumber = ref(null);
+const floorscaleFormSubmitted = ref(false);
+const floorscalePlant = ref(null);
+const floorscaleSloc = ref(null);
+const floorscaleStorageLocations = computed(() => floorscalePlant.value?.storage_locations || []);
+const floorscalePoSearch = ref('');
+const availableFloorscalePoNumbers = ref([]);
+const availableFloorscalePoLoading = ref(false);
+const availableFloorscalePoError = ref('');
+let availableFloorscalePoRequest = 0;
+
+const fetchAvailableFloorscalePoNumbers = async (search = '') => {
+    const requestId = ++availableFloorscalePoRequest;
+    const plantCode = floorscalePlant.value?.plant_code;
+    const sloc = floorscaleSloc.value?.code;
+    if (!floorscaleRequestDialog.value || !plantCode || !sloc) return;
+
+    availableFloorscalePoLoading.value = true;
+    availableFloorscalePoError.value = '';
+    try {
+        const response = await ApiService.query(
+            `transfer-orders/get-available-po/${encodeURIComponent(plantCode)}/${encodeURIComponent(sloc)}`,
+            { params: { search: String(search || '').trim(), limit: 10 } }
+        );
+        if (requestId !== availableFloorscalePoRequest) return;
+        if (!Array.isArray(response.data)) {
+            throw new Error('Unexpected response while loading available purchase orders.');
+        }
+        availableFloorscalePoNumbers.value = response.data.map(String);
+    } catch (error) {
+        if (requestId !== availableFloorscalePoRequest) return;
+        console.error('Failed to load available floorscale purchase orders:', error);
+        availableFloorscalePoError.value = error.response?.data?.message || error.message || 'Could not load available purchase orders.';
+    } finally {
+        if (requestId === availableFloorscalePoRequest) availableFloorscalePoLoading.value = false;
+    }
+};
+
+const debouncedFetchAvailableFloorscalePoNumbers = debounce(fetchAvailableFloorscalePoNumbers, 300);
+
+const onFloorscalePoSearch = search => {
+    if (!floorscalePlant.value?.plant_code || !floorscaleSloc.value?.code || search === floorscalePoNumber.value) return;
+    availableFloorscalePoRequest++;
+    availableFloorscalePoLoading.value = true;
+    availableFloorscalePoNumbers.value = [];
+    debouncedFetchAvailableFloorscalePoNumbers(search);
+};
+
+watch(
+    [floorscaleRequestDialog, () => floorscalePlant.value?.plant_code, () => floorscaleSloc.value?.code],
+    ([isOpen, plantCode, sloc]) => {
+        debouncedFetchAvailableFloorscalePoNumbers.cancel();
+        availableFloorscalePoRequest++;
+        floorscalePoSearch.value = '';
+        availableFloorscalePoNumbers.value = [];
+        availableFloorscalePoError.value = '';
+        floorscalePoNumber.value = null;
+
+        if (isOpen && plantCode && sloc) {
+            fetchAvailableFloorscalePoNumbers();
+        } else {
+            availableFloorscalePoLoading.value = false;
+        }
+    },
+    { flush: 'sync' }
+);
+
+const openFloorscaleRequest = () => {
+    floorscalePoNumber.value = null;
+    const assignedPlant = authStore.user?.assigned_plant;
+    floorscalePlant.value = plantsOption.value.find(plant => plant.id === assignedPlant?.id) || null;
+    const assignedSlocCode = assignedPlant?.default_storage_location?.code;
+    floorscaleSloc.value = assignedSlocCode != null
+        ? floorscaleStorageLocations.value.find(sloc => sloc.code === assignedSlocCode) || null
+        : null;
+    floorscaleRequestError.value = '';
+    floorscaleFormSubmitted.value = false;
+    floorscaleRequestDialog.value = true;
+};
+
+const submitFloorscaleRequest = async () => {
+    if (floorscaleRequestSaving.value) return;
+    floorscaleFormSubmitted.value = true;
+    floorscaleRequestError.value = '';
+    console.log('Submitting floorscale request with:', {
+        po_number: floorscalePoNumber.value,
+        plant_code: floorscalePlant.value?.plant_code,
+        sloc: floorscaleSloc.value?.code
+    });
+    const plantCode = String(floorscalePlant.value?.plant_code ?? '').trim();
+    const sloc = String(floorscaleSloc.value?.code ?? '').trim();
+    if (!plantCode || !sloc) {
+        floorscaleRequestError.value = 'Select a plant and storage location with valid codes.';
+        return;
+    }
+    if (!floorscaleStorageLocations.value.some(location => location.id === floorscaleSloc.value.id)) {
+        floorscaleRequestError.value = 'Select a storage location belonging to the selected plant.';
+        return;
+    }
+    if (!floorscalePoNumber.value) return;
+
+    floorscaleRequestSaving.value = true;
+    try {
+        await ApiService.post('transfer-orders/floorscale-requests', {
+            po_number: floorscalePoNumber.value,
+            plant_code: plantCode,
+            sloc,
+        });
+        floorscaleRequestDialog.value = false;
+        toast.value = { message: 'Floorscale request created successfully.', color: 'success', show: true };
+    } catch (error) {
+        console.error('Failed to create floorscale request:', error);
+        floorscaleRequestError.value = error.response?.data?.message || 'Could not create the floorscale request. Please try again.';
+    } finally {
+        floorscaleRequestSaving.value = false;
+    }
+};
 
 onMounted(() => {
     fetchDataDropdown();
@@ -105,6 +226,8 @@ const applyFilter = () => {
             dateTo: filters.value.dateTo,
             plant_id: filters.value.plant?.id,
             storage_location_id: filters.value.storageLocation?.id,
+            plant_code: filters.value.plant?.plant_code,
+            sloc: filters.value.storageLocation?.code,
             batch_pick: filters.value.batch_pick,
             final_weight: filters.value.final_weight,
             valid_material_only: true,
@@ -236,13 +359,14 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 ]" v-model="filters.final_weight">
             </v-select>
         </VCol>
-        <VCol :md="authStore.user?.is_warehouse === true ? 2 : 4" class="d-none d-md-flex"></VCol>
-       
-        <VCol md="2" cols="12" class="pb-2 pb-md-0 d-flex align-center">
-            <PrimaryButton class="flex-grow-1" type="button" @click="applyFilter" :loading="isLoading">
+        <VCol :md="authStore.user?.is_warehouse === true ? 4 : 6" cols="12" class="d-flex justify-md-end flex-wrap ga-2 pb-2 pb-md-0">
+            <PrimaryButton type="button" @click="applyFilter" :loading="isLoading">
                 <i class="ri-search-eye-line mr-2"></i>
                 Search
             </PrimaryButton>
+            <VBtn color="primary" variant="tonal" prepend-icon="ri-add-line" @click="openFloorscaleRequest">
+                New Floorscale Request
+            </VBtn>
         </VCol>
 
 
@@ -256,6 +380,8 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                 dateTo: filters.dateTo,
                 plant_id: filters.plant?.id,
                 storage_location_id: filters.storageLocation?.id,
+                plant_code: filters.plant?.plant_code,
+                sloc: filters.storageLocation?.code,
                 batch_pick: filters.batch_pick,
                 final_weight: filters.final_weight,
                 valid_material_only: true,
@@ -263,7 +389,96 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
         />
     </VCard>
 
-    <Toast :show="toast.show" :message="toast.message"/>
+    <VDialog v-model="floorscaleRequestDialog" max-width="900" scrollable :persistent="floorscaleRequestSaving">
+        <VCard rounded="lg">
+            <VCardTitle class="floorscale-request__header pa-5 pa-sm-6">
+                <div class="d-flex align-start ga-3">
+                    <VAvatar color="primary" variant="tonal" rounded="lg" size="48" class="flex-shrink-0">
+                        <VIcon icon="ri-scales-3-line" size="24" />
+                    </VAvatar>
+                    <div class="flex-grow-1 text-wrap">
+                        <div class="text-h5 font-weight-bold">New Floorscale Request</div>
+                        <div class="text-body-2 text-medium-emphasis mt-1">Select a purchase order to request floorscale processing.</div>
+                    </div>
+                    <VBtn icon="ri-close-line" variant="text" size="small" aria-label="Close dialog" :disabled="floorscaleRequestSaving" @click="floorscaleRequestDialog = false" />
+                </div>
+            </VCardTitle>
+
+            <VCardText class="pa-5 pa-sm-6">
+                <VAlert v-if="floorscaleRequestError" type="error" variant="tonal" class="mb-4">
+                    {{ floorscaleRequestError }}
+                </VAlert>
+                <div class="text-subtitle-1 font-weight-bold mb-1">Request location</div>
+                <div class="text-body-2 text-medium-emphasis mb-4">Select the plant and storage location for this request.</div>
+                <VRow dense class="mb-4">
+                    <VCol cols="12" sm="6">
+                        <VSelect
+                            v-model="floorscalePlant"
+                            :items="plantsOption"
+                            item-title="title"
+                            item-value="id"
+                            label="Plant"
+                            prepend-inner-icon="ri-building-line"
+                            variant="outlined"
+                            return-object
+                            clearable
+                            :disabled="floorscaleRequestSaving"
+                            :error-messages="floorscaleFormSubmitted && !floorscalePlant ? 'Select a plant.' : []"
+                            @update:model-value="floorscaleSloc = null"
+                        />
+                    </VCol>
+                    <VCol cols="12" sm="6">
+                        <VSelect
+                            v-model="floorscaleSloc"
+                            :items="floorscaleStorageLocations"
+                            item-title="name"
+                            item-value="code"
+                            label="Storage Location"
+                            prepend-inner-icon="ri-map-pin-line"
+                            variant="outlined"
+                            return-object
+                            clearable
+                            :disabled="!floorscalePlant || floorscaleRequestSaving"
+                            :error-messages="floorscaleFormSubmitted && !floorscaleSloc ? 'Select a storage location.' : []"
+                        />
+                    </VCol>
+                </VRow>
+                <VAutocomplete
+                    v-model="floorscalePoNumber"
+                    v-model:search="floorscalePoSearch"
+                    :items="availableFloorscalePoNumbers"
+                    label="PO Number"
+                    placeholder="Select a PO number"
+                    prepend-inner-icon="ri-file-list-3-line"
+                    variant="outlined"
+                    no-filter
+                    @update:search="onFloorscalePoSearch"
+                    :loading="availableFloorscalePoLoading"
+                    :disabled="floorscaleRequestSaving || !floorscalePlant || !floorscaleSloc"
+                    :no-data-text="availableFloorscalePoError ? 'Could not load purchase orders' : 'No available POs for this plant and storage location'"
+                    :error-messages="floorscaleFormSubmitted && !floorscalePoNumber ? 'Select an available PO number.' : []"
+                />
+                <VAlert v-if="availableFloorscalePoError" type="error" variant="tonal" density="comfortable" class="mt-3">
+                    {{ availableFloorscalePoError }}
+                </VAlert>
+            </VCardText>
+            <VDivider />
+            <VCardActions class="px-5 px-sm-6 py-4">
+                <VSpacer />
+                <VBtn color="secondary" variant="outlined" :disabled="floorscaleRequestSaving" @click="floorscaleRequestDialog = false">Cancel</VBtn>
+                <VBtn color="primary" variant="flat" type="button" @click="submitFloorscaleRequest" prepend-icon="ri-send-plane-line" :loading="floorscaleRequestSaving">Submit Request</VBtn>
+            </VCardActions>
+    
+        </VCard>
+    </VDialog>
+
+    <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event"/>
     <Loader :show="pageLoading" />
 
 </template>
+
+<style scoped>
+.floorscale-request__header {
+    background: rgba(var(--v-theme-primary), 0.06);
+}
+</style>

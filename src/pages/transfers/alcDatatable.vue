@@ -34,6 +34,14 @@ const isLoading = ref(false);
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
+const floorscaleItems = ref([]);
+const floorscaleLoading = ref(false);
+const floorscaleTotalItems = ref(0);
+const floorscaleError = ref('');
+const floorscalePage = ref(1);
+const floorscaleItemsPerPage = ref(50);
+const floorscaleSortQuery = ref('-created_at');
+let floorscaleRequest = 0;
 const itemsPerPage = ref(50);
 const page = ref(1);
 const sortQuery = ref('-created_at'); // Default sort
@@ -42,7 +50,9 @@ const stoData = ref([]);
 const assignTruckscaleDialog = ref(false);
 const assignPalletsDialog = ref(false);
 const palletAssignmentTruckscale = ref(null);
+const palletAssignmentMode = ref('truckscale');
 const reservedPalletsTruckscale = ref(null);
+const reservedPalletsMode = ref('truckscale');
 const selectedLineItemId = ref(null);
 const selectedPalletIds = ref([]);
 const lineItems = ref([]);
@@ -64,7 +74,9 @@ const formatLineItemQuantity = (value) => {
     return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 const lockedAssignedPalletIds = computed(() =>
-    new Set(assignedPalletRecords.value.filter(pallet => pallet.truckscale_no).map(pallet => pallet.physical_id))
+    new Set(assignedPalletRecords.value.filter(pallet =>
+        pallet.truckscale_no || pallet.floor_scale_request_reference
+    ).map(pallet => pallet.physical_id))
 );
 const filteredAssignedPallets = computed(() => {
     const search = (palletSearch.value || '').trim().toLowerCase();
@@ -91,6 +103,11 @@ const isSavingTruckscale = ref(false);
 const truckscales = ref([]);
 const truckscalesLoading = ref(false);
 const truckscalesError = ref('');
+const activeScaleTab = ref('floorscale');
+const scaleTabs = [
+    { title: 'Truckscale', value: 'truckscale', icon: 'ri-scales-3-line' },
+    { title: 'Floorscale', value: 'floorscale', icon: 'ri-scales-2-line' },
+];
 const assignedPallets = computed(() =>
     selectedTruckscaleItem.value?.sto_transactions?.flatMap(transaction => transaction.items || []) || []
 );
@@ -103,14 +120,8 @@ const headers = [
         sortable: false,
     },
     {
-        title: 'SCALE NO.',
+        title: 'TRUCKSCALE NO.',
         key: 'truckscale_no',
-        align: 'center',
-        sortable: false,
-    },
-    {
-        title: 'SCALE TYPE',
-        key: 'scale_type',
         align: 'center',
         sortable: false,
     },
@@ -171,7 +182,83 @@ const headers = [
 
 ]
 
-const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
+const floorscaleHeaders = [
+    { title: '', key: 'action', align: 'center', sortable: false, width: '64px' },
+    { title: 'REFERENCE NO.', key: 'reference_no' },
+    { title: 'STO NO.', key: 'po_number' },
+    { title: 'REQUESTED BY', key: 'requested_by_name' },
+    { title: 'PLANT', key: 'plant_code' },
+    { title: 'SLOC', key: 'sloc' },
+    {
+        title: 'PALLET ASSIGNMENT',
+        key: 'pallet_assignment',
+        align: 'center',
+        sortable: false,
+        width: '170px'
+
+    },
+    {
+        title: 'BATCH PICKED',
+        key: 'batch_picked',
+        align: 'center',
+        sortable: false,
+    },
+    { title: 'DATE CREATED', key: 'created_at' },
+];
+
+const getFloorscaleRequestParams = ({ page, itemsPerPage, sort }) => {
+    const requestFilters = { ...props.initialFilters, ...filters.value };
+    const filter = {};
+    if (requestFilters.plant_code) filter.plant_code = requestFilters.plant_code;
+    if (requestFilters.sloc) filter.sloc = requestFilters.sloc;
+    if (requestFilters.dateFrom) filter.date_from = requestFilters.dateFrom;
+    if (requestFilters.dateTo) filter.date_to = requestFilters.dateTo;
+    if (requestFilters.batch_pick != null) filter.batch_picked = requestFilters.batch_pick;
+    const search = String(requestFilters.search ?? props.search ?? '').trim();
+    return {
+        page,
+        itemsPerPage,
+        sort,
+        search,
+        ...(Object.keys(filter).length ? { filter } : {}),
+    };
+};
+
+const loadFloorscaleItems = async ({ page = floorscalePage.value, itemsPerPage = floorscaleItemsPerPage.value, sortBy = [] } = {}) => {
+    const requestId = ++floorscaleRequest;
+    floorscalePage.value = page;
+    floorscaleItemsPerPage.value = itemsPerPage;
+    floorscaleSortQuery.value = sortBy?.length
+        ? `${sortBy[0].order === 'desc' ? '-' : ''}${sortBy[0].key}`
+        : '-created_at';
+
+    floorscaleLoading.value = true;
+    floorscaleError.value = '';
+    try {
+        const response = await ApiService.query('transfer-orders/floorscale-requests', {
+            params: getFloorscaleRequestParams({ page, itemsPerPage, sort: floorscaleSortQuery.value }),
+        });
+        if (requestId !== floorscaleRequest) return;
+        if (!Array.isArray(response.data?.data)) {
+            throw new Error('Unexpected response while loading floorscale requests.');
+        }
+        floorscaleItems.value = response.data.data;
+        floorscaleTotalItems.value = response.data.total;
+    } catch (error) {
+        if (requestId !== floorscaleRequest) return;
+        console.error('Failed to load floorscale requests:', error);
+        floorscaleError.value = error.response?.data?.message || error.message || 'Could not load floorscale requests.';
+        floorscaleItems.value = [];
+        floorscaleTotalItems.value = 0;
+    } finally {
+        if (requestId === floorscaleRequest) floorscaleLoading.value = false;
+    }
+};
+
+const loadItems = ({ page: requestedPage, itemsPerPage: requestedItemsPerPage, sortBy, search }) => {
+    page.value = requestedPage;
+    itemsPerPage.value = requestedItemsPerPage;
+
     // Explicitly applied filters win; the parent's live filters fill in anything not applied yet (e.g. first load)
     const requestFilters = { ...props.initialFilters, ...filters.value };
 
@@ -181,8 +268,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
         totalItems.value = 0;
         loading.value = false;
         emits('pagination-changed', {
-            page,
-            itemsPerPage,
+            page: requestedPage,
+            itemsPerPage: requestedItemsPerPage,
             sortBy: sortQuery.value,
             search: props.search,
             totalItems: totalItems.value,
@@ -203,8 +290,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
 
     ApiService.query('datatable/purchase-orders', {
         params: {
-            page,
-            itemsPerPage,
+            page: requestedPage,
+            itemsPerPage: requestedItemsPerPage,
             sort: sortQuery.value,
             filters: requestFilters,
             alc_mode: true
@@ -216,8 +303,8 @@ const loadItems = ({ page, itemsPerPage, sortBy, search }) => {
             loading.value = false
 
             emits('pagination-changed', {
-                page,
-                itemsPerPage,
+                page: requestedPage,
+                itemsPerPage: requestedItemsPerPage,
                 sortBy: sortQuery.value,
                 search: props.search,
                 totalItems: totalItems.value,
@@ -241,6 +328,10 @@ const applyFilters = (data) => {
         itemsPerPage: itemsPerPage.value,
         sortBy: [{ key: 'created_at', order: 'desc' }],
         search: props.search
+    });
+    loadFloorscaleItems({
+        page: 1,
+        itemsPerPage: floorscaleItemsPerPage.value,
     });
 }
 
@@ -292,9 +383,22 @@ const getReservedPallets = (item) => {
     ) || [];
 };
 
+const getFloorscaleReservedPallets = (item) => {
+   const referenceNo = item?.reference_no;
+    if (referenceNo == null || referenceNo === '') return [];
+    return item?.sto_transactions?.flatMap(transaction =>
+        (transaction.items || []).filter(pallet =>
+            pallet.floor_scale_request_reference != null && String(pallet.floor_scale_request_reference) === String(referenceNo)
+        ).map(pallet => ({
+            ...pallet,
+            lineItem: transaction.po_item ?? pallet.sto_transaction?.po_item,
+        }))
+    ) || [];
+};
+
 const fetchLineItems = async (sto) => {
     const requestId = ++lineItemsRequest;
-    const plantCode = sto.truckscale_plant;
+    const plantCode = sto.truckscale_plant || sto.plant_code;
     const storageLocation = sto.sloc;
     const poNumber = sto.po_number;
 
@@ -361,12 +465,20 @@ const fetchAssignedPallets = async (lineItemId) => {
     assignedPalletsLoading.value = true;
     try {
         const response = await ApiService.query(
-            `transfer-orders/get-assigned-pallets/${encodeURIComponent(poNumber)}/${encodeURIComponent(lineItem.po_item)}/${encodeURIComponent(lineItem.material_code)}`,
-            {}
+            `transfer-orders/get-reserved-pallets/${encodeURIComponent(poNumber)}/${encodeURIComponent(lineItem.po_item)}/${encodeURIComponent(lineItem.material_code)}`,
+            {
+                params: {
+                    mode: palletAssignmentMode.value,
+                    ...(palletAssignmentMode.value === 'floorscale'
+                        ? { reference_no: palletAssignmentTruckscale.value?.reference_no }
+                        : { truckscale_no: palletAssignmentTruckscale.value?.truckscale_no }),
+                },
+            }
         );
         if (!Array.isArray(response.data) || !response.data.every(pallet =>
             pallet && typeof pallet.physical_id === 'string' && pallet.physical_id.length > 0
-            && Object.prototype.hasOwnProperty.call(pallet, 'truckscale_no')
+            && (Object.prototype.hasOwnProperty.call(pallet, 'truckscale_no')
+                || Object.prototype.hasOwnProperty.call(pallet, 'floor_scale_request_reference'))
             && Object.prototype.hasOwnProperty.call(pallet, 'is_loaded')
         )) {
             throw new Error('Unexpected response while loading pallets.');
@@ -385,9 +497,12 @@ watch(assignPalletsDialog, (open) => {
     if (!open) resetAssignedPallets();
 }, { flush: 'sync' });
 
-const handleAction = async (sto, action) => {
+const handleAction = async (sto, action, mode = 'truckscale') => {
     if (action === 'assign_pallets') {
-        if (!sto.sto_transactions?.[0]?.items?.length > 0) {
+        const hasPickedPallets = mode === 'floorscale'
+            ? sto.sto_transactions?.some(transaction => transaction.items?.length > 0)
+            : sto.sto_transactions?.[0]?.items?.length > 0;
+        if (!hasPickedPallets) {
             Swal.fire({
                 icon: 'error',
                 title: 'No Batch Picked Yet',
@@ -399,6 +514,7 @@ const handleAction = async (sto, action) => {
         }
 
         palletAssignmentTruckscale.value = sto;
+        palletAssignmentMode.value = mode;
         selectedLineItemId.value = null;
         resetAssignedPallets();
         assignPalletsDialog.value = true;
@@ -432,6 +548,7 @@ const handleAction = async (sto, action) => {
         fetchTruckscales(sto);
     } else if (action == 'view_reserved_pallets') {
         reservedPalletsTruckscale.value = sto;
+        reservedPalletsMode.value = mode;
         selectedUnassignIds.value = [];
         viewReservedPallets.value = true;
         refreshReservedPallets();
@@ -439,29 +556,35 @@ const handleAction = async (sto, action) => {
 
 }
 
-const assignPalletsToTruckscale = (poNumber, poItem, truckscaleNo, pallets) =>
+const assignPalletsToTruckscale = (target, poItem, pallets) =>
     ApiService.post('transfer-orders/assign-truckscale', {
-        po_number: poNumber,
+        mode: palletAssignmentMode.value,
+        po_number: target.po_number,
         po_item: poItem,
-        truckscale_no: truckscaleNo,
+        ...(palletAssignmentMode.value === 'floorscale'
+            ? { reference_no: target.reference_no }
+            : { truckscale_no: target.truckscale_no }),
         pallets,
     });
 
 const savePalletAssignmentToTruckscale = async () => {
     if (isSavingPalletAssignment.value) return;
 
-    const truckscale = palletAssignmentTruckscale.value;
+    const assignmentTarget = palletAssignmentTruckscale.value;
     const lineItem = selectedLineItem.value;
     const selectedIds = new Set(selectedPalletIds.value);
     const pallets = assignedPalletRecords.value.filter(pallet =>
         selectedIds.has(pallet.physical_id) && !lockedAssignedPalletIds.value.has(pallet.physical_id)
     );
-    if (!truckscale?.po_number || !truckscale?.truckscale_no || !lineItem || !selectedIds.size
+    const targetIdentifier = palletAssignmentMode.value === 'floorscale'
+        ? assignmentTarget?.reference_no
+        : assignmentTarget?.truckscale_no;
+    if (!assignmentTarget?.po_number || !targetIdentifier || !lineItem || !selectedIds.size
         || new Set(pallets.map(pallet => pallet.physical_id)).size !== selectedIds.size) {
         Swal.fire({
             icon: 'error',
             title: 'Pallet Assignment Failed',
-            text: 'Select a line item and available pallets for a valid truckscale.',
+            text: 'Select a line item and available pallets for a valid scale request.',
         });
         return;
     }
@@ -469,9 +592,8 @@ const savePalletAssignmentToTruckscale = async () => {
     isSavingPalletAssignment.value = true;
     try {
         await assignPalletsToTruckscale(
-            truckscale.po_number,
+            assignmentTarget,
             lineItem.po_item,
-            truckscale.truckscale_no,
             pallets.map(pallet => ({
                 physical_id: pallet.physical_id,
                 batch: pallet.batch ?? null,
@@ -482,17 +604,24 @@ const savePalletAssignmentToTruckscale = async () => {
         Swal.fire({
             icon: 'success',
             title: 'Pallets Assigned',
-            text: 'The selected pallets were assigned to the truckscale.',
+            text: `The selected pallets were assigned to the ${palletAssignmentMode.value}.`,
             confirmButtonColor: '#00833c',
             confirmButtonText: '<span style="color: #ffffff;">OK</span>'
         });
-        fetchStockTransferDetails();
+        if (palletAssignmentMode.value === 'floorscale') {
+            await loadFloorscaleItems({
+                page: floorscalePage.value,
+                itemsPerPage: floorscaleItemsPerPage.value,
+            });
+        } else {
+            fetchStockTransferDetails();
+        }
     } catch (error) {
         console.error('Failed to assign pallets to truckscale:', error);
         Swal.fire({
             icon: 'error',
             title: 'Pallet Assignment Failed',
-            text: error.response?.data?.message || 'Could not assign the selected pallets to this truckscale. Please try again.',
+            text: error.response?.data?.message || 'Could not assign the selected pallets to this scale request. Please try again.',
             confirmButtonColor: '#d33',
             confirmButtonText: '<span style="color: #ffffff;">OK</span>'
         });
@@ -503,7 +632,9 @@ const savePalletAssignmentToTruckscale = async () => {
 
 const batchPickModalOpen = ref(false);
 
-const reservedPalletItems = computed(() => getReservedPallets(reservedPalletsTruckscale.value));
+const reservedPalletItems = computed(() => reservedPalletsMode.value === 'floorscale'
+    ? getFloorscaleReservedPallets(reservedPalletsTruckscale.value)
+    : getReservedPallets(reservedPalletsTruckscale.value));
 const selectedUnassignIds = ref([]);
 const unassignLoading = ref(false);
 const unassignConfirmDialog = ref(false);
@@ -512,15 +643,19 @@ const unassignMessageType = ref('success');
 const reservedPalletsLoading = ref(false);
 const reservedPalletsError = ref('');
 let reservedPalletsRequest = 0;
+const reservedPalletsTargetIdentifier = computed(() => reservedPalletsMode.value === 'floorscale'
+    ? reservedPalletsTruckscale.value?.reference_no
+    : reservedPalletsTruckscale.value?.truckscale_no);
 const canUnassignReservedPallet = item =>
     item.id != null && typeof item.physical_id === 'string' && item.physical_id.length > 0
     && item.material_code != null && String(item.material_code) !== ''
     && Object.prototype.hasOwnProperty.call(item, 'batch')
     && Object.prototype.hasOwnProperty.call(item, 'is_loaded') && !item.is_loaded
-    && reservedPalletsTruckscale.value?.truckscale_no != null
-    && reservedPalletsTruckscale.value.truckscale_no !== ''
-    && item.truckscale_no != null
-    && String(item.truckscale_no) === String(reservedPalletsTruckscale.value.truckscale_no);
+    && reservedPalletsTargetIdentifier.value != null
+    && reservedPalletsTargetIdentifier.value !== ''
+    && (reservedPalletsMode.value === 'floorscale'
+        ? String(item.floor_scale_request_reference) === String(reservedPalletsTargetIdentifier.value)
+        : String(item.truckscale_no) === String(reservedPalletsTargetIdentifier.value));
 const selectableUnassignItems = computed(() => reservedPalletItems.value.filter(canUnassignReservedPallet));
 const selectedUnassignItems = computed(() => {
     const ids = new Set(selectedUnassignIds.value);
@@ -550,6 +685,29 @@ const refreshReservedPallets = async () => {
     reservedPalletsError.value = '';
     reservedPalletsLoading.value = true;
     try {
+        if (reservedPalletsMode.value === 'floorscale') {
+            if (row?.reference_no == null || row.reference_no === '') throw new Error('The selected floorscale request has no reference number.');
+            const response = await ApiService.query('transfer-orders/floorscale-requests', {
+                params: getFloorscaleRequestParams({
+                    page: floorscalePage.value,
+                    itemsPerPage: floorscaleItemsPerPage.value,
+                    sort: floorscaleSortQuery.value,
+                }),
+            });
+            if (!Array.isArray(response.data?.data)) throw new Error('Unexpected response while refreshing reserved pallets.');
+            const updated = response.data.data.find(item => String(item.reference_no) === String(row.reference_no));
+            if (!updated) throw new Error('This floorscale request is no longer on the current page. Close the dialog and reopen it.');
+            if (!Array.isArray(updated.sto_transactions) || !updated.sto_transactions.every(transaction => Array.isArray(transaction.items))) {
+                throw new Error('Reserved pallet details were not returned. Close the dialog and try again.');
+            }
+            if (requestId !== reservedPalletsRequest) return;
+            reservedPalletsTruckscale.value = updated;
+            floorscaleItems.value = response.data.data;
+            floorscaleTotalItems.value = response.data.total;
+            selectedUnassignIds.value = [];
+            return;
+        }
+
         if (row?.id == null) throw new Error('The truckscale row has no ID and cannot be refreshed.');
         if (row.truckscale_no == null || row.truckscale_no === '') throw new Error('The selected row has no truckscale number.');
         const response = await ApiService.query('datatable/purchase-orders', {
@@ -589,13 +747,13 @@ const validateUnassignSelection = () => {
     const ids = new Set(selectedUnassignIds.value);
     const pallets = selectedUnassignItems.value;
     const poNumber = reservedPalletsTruckscale.value?.po_number;
-    const truckscaleNo = reservedPalletsTruckscale.value?.truckscale_no;
-    if (!poNumber || !truckscaleNo || !ids.size || new Set(pallets.map(item => item.id)).size !== ids.size) {
+    const targetIdentifier = reservedPalletsTargetIdentifier.value;
+    if (!poNumber || !targetIdentifier || !ids.size || new Set(pallets.map(item => item.id)).size !== ids.size) {
         unassignMessageType.value = 'error';
-        unassignMessage.value = 'Select eligible pallets for a valid truckscale.';
+        unassignMessage.value = 'Select eligible pallets for a valid scale request.';
         return;
     }
-    return { pallets, poNumber, truckscaleNo };
+    return { pallets, poNumber, targetIdentifier };
 };
 
 const confirmUnassignPallets = () => {
@@ -610,12 +768,15 @@ const unassignSelectedPallets = async () => {
         unassignConfirmDialog.value = false;
         return;
     }
-    const { pallets, poNumber, truckscaleNo } = selection;
+    const { pallets, poNumber, targetIdentifier } = selection;
     unassignLoading.value = true;
     try {
         await ApiService.post('transfer-orders/unassign-truckscale', {
+            mode: reservedPalletsMode.value,
             po_number: poNumber,
-            truckscale_no: truckscaleNo,
+            ...(reservedPalletsMode.value === 'floorscale'
+                ? { reference_no: targetIdentifier }
+                : { truckscale_no: targetIdentifier }),
             pallets: pallets.map(item => ({
                 id: item.id,
                 physical_id: item.physical_id,
@@ -624,6 +785,14 @@ const unassignSelectedPallets = async () => {
             })),
         });
         await refreshReservedPallets();
+        if (reservedPalletsMode.value === 'floorscale') {
+            fetchStockTransferDetails();
+        } else {
+            await loadFloorscaleItems({
+                page: floorscalePage.value,
+                itemsPerPage: floorscaleItemsPerPage.value,
+            });
+        }
         unassignMessageType.value = 'success';
         unassignMessage.value = 'Pallets unassigned. The selected pallets remain reserved for the STO.';
     } catch (error) {
@@ -700,8 +869,15 @@ defineExpose({
 </script>
 
 <template>
-    <VDataTableServer v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" fixed-header :headers="headers" :items="serverItems"
-        :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems">
+    <v-tabs v-model="activeScaleTab" color="primary" class="mb-4">
+        <v-tab v-for="scaleTab in scaleTabs" :key="scaleTab.value" :value="scaleTab.value" :prepend-icon="scaleTab.icon">
+            {{ scaleTab.title }}
+        </v-tab>
+    </v-tabs>
+    <v-window v-model="activeScaleTab">
+        <v-window-item v-for="scaleTab in scaleTabs" :key="scaleTab.value" :value="scaleTab.value">
+            <VDataTableServer v-if="scaleTab.value === 'truckscale'" v-model:items-per-page="itemsPerPage" :items-per-page-options="[25, 50, 100]" fixed-header :headers="headers" :items="serverItems"
+                :items-length="totalItems" :loading="loading" item-value="id" :search="search" @update:options="loadItems">
         <template class="font-weight-black" v-slot:header.remaining_qty="{ header }">
             <span>REMAINING</span><br />
             <span>QTY</span>
@@ -714,6 +890,11 @@ defineExpose({
 
         <template #item.po_item="{ item }">
             <span class="font-weight-bold mb-1">{{ item.sto_transaction_items?.[0]?.sto_transaction?.po_item }}</span>
+        </template>
+
+        <template class="font-weight-black" v-slot:header.pallet_assignment="{ header }">
+            <span>PALLET</span><br />
+            <span>ASSIGNMENT</span>
         </template>
 
         <template #item.transport_number="{ item }">
@@ -732,16 +913,6 @@ defineExpose({
             </div>
         </template>
 
-        <template #item.scale_type="{ item }">
-            <div class="d-flex flex-column  g-1">
-                <v-chip v-if="item.fl_weight1" color="info" label small>
-                    Floorscale
-                </v-chip>
-                <v-chip v-else color="primary" label small>
-                    Truckscale
-                </v-chip>
-            </div>
-        </template>
 
         <template #item.is_final="{ item }">
             <i v-if="item.final_indicator === 'X'" style="font-size: 30px; background-color: green;"
@@ -833,7 +1004,66 @@ defineExpose({
                 </v-menu>
             </div>
         </template>
-    </VDataTableServer>
+            </VDataTableServer>
+            <div v-else>
+                <v-alert v-if="floorscaleError" type="error" variant="tonal" class="mb-4">
+                    {{ floorscaleError }}
+                    <v-btn variant="text" size="small" @click="loadFloorscaleItems()">Retry</v-btn>
+                </v-alert>
+                <VDataTableServer
+                    v-model:items-per-page="floorscaleItemsPerPage"
+                    :items-per-page-options="[25, 50, 100]"
+                    fixed-header
+                    :headers="floorscaleHeaders"
+                    :items="floorscaleItems"
+                    :items-length="floorscaleTotalItems"
+                    :loading="floorscaleLoading"
+                    item-value="id"
+                    @update:options="loadFloorscaleItems"
+                >
+                    <template #item.action="{ item }">
+                        <v-menu location="end">
+                            <template #activator="{ props: menuProps }">
+                                <v-btn icon="ri-more-2-line" variant="text" v-bind="menuProps" color="grey" aria-label="Floorscale request actions" />
+                            </template>
+                            <v-list>
+                                <v-list-item prepend-icon="ri-add-box-line" @click="handleAction(item, 'assign_pallets', 'floorscale')">Assign Pallets</v-list-item>
+                                <v-list-item prepend-icon="ri-stack-line" @click="handleAction(item, 'view_reserved_pallets', 'floorscale')">View Reserved Pallets</v-list-item>
+                            </v-list>
+                        </v-menu>
+                    </template>
+                    <template class="font-weight-black" v-slot:header.pallet_assignment="{ header }">
+                        <span>PALLET</span><br />
+                        <span>ASSIGNMENT</span>
+                    </template>
+                    <template #item.status="{ item }">
+                        <v-chip size="small" color="primary" variant="tonal">{{ item.status || '-' }}</v-chip>
+                    </template>
+                    <template #item.batch_picked="{ item }">
+                        <i v-if="item.sto_transactions?.[0]?.items?.length > 0" style="font-size: 30px; background-color: green;"
+                                                class="ri-checkbox-circle-line"></i>
+                        <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                    </template>
+
+                    <template #item.pallet_assignment="{ item }">
+                        <div class="d-flex flex-column py-2 g-1">
+                            <v-chip color="info" label small>
+                                Reserved: <span class="font-weight-bold ml-1">{{ getFloorscaleReservedPallets(item).length }}</span>
+                            </v-chip>
+                            
+                            <v-chip color="primary" class="mt-1" label small>
+                                &nbsp;&nbsp;&nbsp;Loaded: <span class="font-weight-bold ml-1">{{ getFloorscaleReservedPallets(item).filter(pallet => pallet.is_loaded).length }}</span>
+                            </v-chip>
+                        </div>
+                    </template>
+
+                    <template #item.created_at="{ item }">
+                        {{ item.created_at ? moment(item.created_at).format('M/D/YY h:mm A') : '' }}
+                    </template>
+                </VDataTableServer>
+            </div>
+        </v-window-item>
+    </v-window>
 
 
     <Toast :show="toast.show" :message="toast.message" :color="toast.color" @update:show="toast.show = $event" />
@@ -849,7 +1079,7 @@ defineExpose({
                     <div class="flex-grow-1">
                         <div class="text-h5 font-weight-bold">Assign Pallets</div>
                         <div class="text-body-2 text-medium-emphasis mt-1 text-wrap">
-                            Select a line item and choose its pallets for this truckscale.
+                                    Select a line item and choose its pallets for this {{ palletAssignmentMode }}.
                         </div>
                     </div>
                     <v-btn icon="ri-close-line" variant="text" size="small" aria-label="Close dialog" :disabled="isSavingPalletAssignment" @click="assignPalletsDialog = false" />
@@ -859,10 +1089,10 @@ defineExpose({
                 <v-row dense class="mb-5">
                     <v-col cols="12" sm="6">
                         <div class="pallet-dialog__context rounded-lg pa-3 d-flex align-center ga-3">
-                            <v-icon icon="ri-scales-3-line" color="primary" />
+                            <v-icon :icon="palletAssignmentMode === 'floorscale' ? 'ri-scales-2-line' : 'ri-scales-3-line'" color="primary" />
                             <div>
-                                <div class="text-caption text-medium-emphasis">Truckscale</div>
-                                <div class="font-weight-bold">{{ palletAssignmentTruckscale?.truckscale_no || '-' }}</div>
+                                <div class="text-caption text-medium-emphasis">{{ palletAssignmentMode === 'floorscale' ? 'Floorscale Request' : 'Truckscale' }}</div>
+                                <div class="font-weight-bold">{{ (palletAssignmentMode === 'floorscale' ? palletAssignmentTruckscale?.reference_no : palletAssignmentTruckscale?.truckscale_no) || '-' }}</div>
                             </div>
                         </div>
                     </v-col>
@@ -1013,7 +1243,8 @@ defineExpose({
                                 <th>Batch Code</th>
                                 <th>Mfg Date</th>
                                 <th class="text-center">Qty</th>
-                                <th class="text-center">Truckscale No.</th>
+                                <th class="text-center">Type</th>
+                                <th class="text-center">Reference</th>
                                 <th class="text-center">Loaded</th>
                                 <th>TR #</th>
                                 <th>TO #</th>
@@ -1038,7 +1269,12 @@ defineExpose({
                                 <td>{{ pallet.mfg_date ? moment(pallet.mfg_date).format('YYYY-MM-DD') : '-' }}</td>
                                 <td class="text-center">{{ pallet.quantity ?? '-' }} {{ pallet.uom || '' }}</td>
                                 <td class="text-center">
-                                    <v-chip v-if="pallet.truckscale_no" color="primary" label size="small">{{ pallet.truckscale_no }}</v-chip>
+                                    {{ pallet.truckscale_no ? 'Truckscale' : (pallet.floor_scale_request_reference || pallet.reference_no) ? 'Floor Scale' : '-' }}
+                                </td>
+                                <td class="text-center">
+                                    <v-chip v-if="pallet.truckscale_no || pallet.floor_scale_request_reference" color="primary" label size="small">
+                                        {{ pallet.truckscale_no || pallet.floor_scale_request_reference }}
+                                    </v-chip>
                                     <v-chip v-else color="success" variant="tonal" size="x-small">NOT ASSIGNED</v-chip>
                                 </td>
                                 <td class="text-center">
@@ -1051,7 +1287,7 @@ defineExpose({
                         </tbody>
                     </v-table>
                     <div class="text-caption text-medium-emphasis mt-2">
-                        Pallets already assigned to a truckscale cannot be selected.
+                        Pallets already assigned to a scale request cannot be selected.
                     </div>
                 </template>
             </v-card-text>
@@ -1064,7 +1300,7 @@ defineExpose({
                     color="primary"
                     prepend-icon="ri-check-line"
                     :loading="isSavingPalletAssignment"
-                    :disabled="!selectedLineItem || !selectedPalletIds.length || assignedPalletsLoading || Boolean(assignedPalletsError) || !palletAssignmentTruckscale?.truckscale_no"
+                    :disabled="!selectedLineItem || !selectedPalletIds.length || assignedPalletsLoading || Boolean(assignedPalletsError) || !(palletAssignmentMode === 'floorscale' ? palletAssignmentTruckscale?.reference_no : palletAssignmentTruckscale?.truckscale_no)"
                     @click="savePalletAssignmentToTruckscale"
                 >Assign Pallets</v-btn>
             </v-card-actions>
@@ -1081,7 +1317,7 @@ defineExpose({
                     <div class="flex-grow-1">
                         <div class="text-h5 font-weight-bold">Reserved Pallets</div>
                         <div class="text-body-2 text-medium-emphasis mt-1 text-wrap">
-                            Reserved pallets assigned to this truckscale and their loading details.
+                            Reserved pallets assigned to this {{ reservedPalletsMode }} request and their loading details.
                         </div>
                     </div>
                     <v-btn icon="ri-close-line" variant="text" size="small" aria-label="Close dialog" :disabled="unassignLoading" @click="viewReservedPallets = false" />
@@ -1100,10 +1336,10 @@ defineExpose({
                     </v-col>
                     <v-col cols="12" sm="6">
                         <div class="pallet-dialog__context rounded-lg pa-3 d-flex align-center ga-3">
-                            <v-icon icon="ri-scales-3-line" color="primary" />
+                            <v-icon :icon="reservedPalletsMode === 'floorscale' ? 'ri-scales-2-line' : 'ri-scales-3-line'" color="primary" />
                             <div>
-                                <div class="text-caption text-medium-emphasis">Truckscale Number</div>
-                                <div class="font-weight-bold">{{ reservedPalletsTruckscale?.truckscale_no || '-' }}</div>
+                                <div class="text-caption text-medium-emphasis">{{ reservedPalletsMode === 'floorscale' ? 'Floorscale Reference' : 'Truckscale Number' }}</div>
+                                <div class="font-weight-bold">{{ reservedPalletsTargetIdentifier || '-' }}</div>
                             </div>
                         </div>
                     </v-col>
@@ -1135,7 +1371,7 @@ defineExpose({
                 <div v-else-if="!reservedPalletItems.length" class="pallet-dialog__empty rounded-lg text-center pa-6">
                     <v-icon icon="ri-inbox-line" size="32" color="secondary" class="mb-2" />
                     <div class="font-weight-medium">No assigned pallets</div>
-                    <div class="text-body-2 text-medium-emphasis">No reserved pallets are assigned to this truckscale.</div>
+                    <div class="text-body-2 text-medium-emphasis">No reserved pallets are assigned to this scale request.</div>
                 </div>
                 <v-table v-else density="comfortable" class="border rounded-lg">
                     <thead>
@@ -1160,8 +1396,8 @@ defineExpose({
                             <th>Line Item</th>
                             <th>Material</th>
                             <th>
-                                <span>Truckscale</span><br/>
-                                <span>No.</span>
+                                <span>Scale</span><br/>
+                                <span>Reference</span>
                             </th>
                             <th class="text-center">Bin Location</th>
                             <th class="text-center">Layer</th>
@@ -1193,8 +1429,8 @@ defineExpose({
                                 </div>
                             </td>
                             <td>
-                                <v-chip prepend-icon="ri-checkbox-circle-line" v-if="item.truckscale_no" color="primary" variant="tonal" size="small">
-                                    {{ item.truckscale_no || '-' }}
+                                <v-chip prepend-icon="ri-checkbox-circle-line" v-if="item.truckscale_no || item.floor_scale_request_reference" color="primary" variant="tonal" size="small">
+                                    {{ item.truckscale_no || item.floor_scale_request_reference }}
                                 </v-chip>
                                 <v-chip prepend-icon="ri-time-line" v-else color="warning" variant="tonal" size="small">
                                     PENDING
@@ -1227,7 +1463,7 @@ defineExpose({
                     :loading="unassignLoading"
                     :disabled="reservedPalletsLoading || Boolean(reservedPalletsError) || !selectedUnassignIds.length"
                     @click="confirmUnassignPallets"
-                >Unassign from truckscale</v-btn>
+                >Unassign from {{ reservedPalletsMode }}</v-btn>
             </v-card-actions>
         </v-card>
         <v-dialog v-model="unassignConfirmDialog" max-width="700px" scrollable :persistent="unassignLoading">
@@ -1250,8 +1486,8 @@ defineExpose({
                     <div class="unassign-dialog__context rounded-lg pa-4 d-flex align-center ga-3 mb-5">
                         <v-icon icon="ri-scales-3-line" color="primary" />
                         <div>
-                            <div class="text-caption text-medium-emphasis">Unassign from truckscale</div>
-                            <div class="font-weight-bold">{{ reservedPalletsTruckscale?.truckscale_no || '-' }}</div>
+                            <div class="text-caption text-medium-emphasis">Unassign from {{ reservedPalletsMode }}</div>
+                            <div class="font-weight-bold">{{ reservedPalletsTargetIdentifier || '-' }}</div>
                         </div>
                     </div>
                     <div class="d-flex align-center justify-space-between ga-3 mb-3">
