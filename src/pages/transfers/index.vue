@@ -172,6 +172,7 @@ const submitFloorscaleRequest = async () => {
         });
         floorscaleRequestDialog.value = false;
         toast.value = { message: 'Floorscale request created successfully.', color: 'success', show: true };
+        datatableRef.value?.loadFloorscaleItems();
     } catch (error) {
         console.error('Failed to create floorscale request:', error);
         floorscaleRequestError.value = error.response?.data?.message || 'Could not create the floorscale request. Please try again.';

@@ -203,6 +203,12 @@ const floorscaleHeaders = [
         align: 'center',
         sortable: false,
     },
+    {
+        title: 'IS FINAL',
+        key: 'is_final',
+        align: 'center',
+        sortable: false,
+    },
     { title: 'DATE CREATED', key: 'created_at' },
 ];
 
@@ -224,13 +230,15 @@ const getFloorscaleRequestParams = ({ page, itemsPerPage, sort }) => {
     };
 };
 
-const loadFloorscaleItems = async ({ page = floorscalePage.value, itemsPerPage = floorscaleItemsPerPage.value, sortBy = [] } = {}) => {
+const loadFloorscaleItems = async ({ page = floorscalePage.value, itemsPerPage = floorscaleItemsPerPage.value, sortBy } = {}) => {
     const requestId = ++floorscaleRequest;
     floorscalePage.value = page;
     floorscaleItemsPerPage.value = itemsPerPage;
-    floorscaleSortQuery.value = sortBy?.length
-        ? `${sortBy[0].order === 'desc' ? '-' : ''}${sortBy[0].key}`
-        : '-created_at';
+    if (sortBy) {
+        floorscaleSortQuery.value = sortBy.length
+            ? `${sortBy[0].order === 'desc' ? '-' : ''}${sortBy[0].key}`
+            : '-created_at';
+    }
 
     floorscaleLoading.value = true;
     floorscaleError.value = '';
@@ -864,7 +872,8 @@ function removeLeadingZeros(value) {
 
 defineExpose({
     loadItems,
-    applyFilters
+    applyFilters,
+    loadFloorscaleItems
 })
 </script>
 
@@ -915,7 +924,7 @@ defineExpose({
 
 
         <template #item.is_final="{ item }">
-            <i v-if="item.final_indicator === 'X'" style="font-size: 30px; background-color: green;"
+            <i v-if="item.truckscale?.final_indicator === 'X'" style="font-size: 30px; background-color: green;"
                                     class="ri-checkbox-circle-line"></i>
             <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
         </template>

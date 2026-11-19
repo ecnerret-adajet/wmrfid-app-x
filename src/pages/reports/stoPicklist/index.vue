@@ -20,6 +20,7 @@ const summary_count = reactive({
     pending_goods_issuance_pallets: null,
     completed_goods_issuance_pallets: null,
     total_pallets_reserved: null,
+    total_sto_line_items_processed: null,
 })
 const activeView = ref('table');
 
@@ -163,13 +164,13 @@ const processingKpis = computed(() => {
             color: 'info',
             icon: 'ri-stack-line',
         },
-        {
-            label: 'Total STO Line Items Processed',
-            value: totalItems.value,
-            caption: 'Total STO line items processed with reserved batch and pallet',
-            color: 'info',
-            icon: 'ri-file-list-3-line',
-        },
+        // {
+        //     label: 'Total STO Line Items Processed',
+        //     value: summary_count.total_sto_line_items_processed,
+        //     caption: 'Total STO line items processed with reserved batch and pallet',
+        //     color: 'info',
+        //     icon: 'ri-file-list-3-line',
+        // },
     ];
 });
 
@@ -228,18 +229,20 @@ const kpiChartOptions = computed(() => ({
 }));
 
 const baseHeaders = [
+    { title: 'REFERENCE NO.', key: 'reference', align: 'start', sortable: false },
+    { title: 'TYPE', key: 'type', align: 'start', sortable: false },
     { title: 'ISSUING PLANT & SLOC', key: 'plant_id', align: 'start', sortable: false },
     { title: 'RECEIVING PLANT & SLOC', key: 'receiving_plant_id', align: 'start', sortable: false },
     { title: 'STO NO.', key: 'po_number', align: 'start', sortable: false },
     { title: 'ITEM NO.', key: 'po_item', sortable: false },
+    { title: 'PHYSICAL ID', key: 'physical_id', sortable: false },
+    { title: 'BATCH', key: 'batch', sortable: false },
     { title: 'MATERIAL', key: 'material', sortable: false },
     { title: 'QTY & UOM', key: 'quantity', sortable: false },
-    { title: 'GI QTY', key: 'gi_quantity', sortable: false },
-    { title: 'REMAINING QTY', key: 'current_quantity', sortable: false },
-    { title: 'SAP SERVER', key: 'sap_server', sortable: false },
-    { title: 'RESERVED PALLETS', key: 'reserved_pallets', sortable: false, align: 'center' },
-    { title: 'PENDING PALLETS', key: 'pending_pallets', sortable: false, align: 'center' },
-    { title: 'COMPLETED PALLETS', key: 'completed_pallets', sortable: false, align: 'center' },
+    // { title: 'GI QTY', key: 'gi_quantity', sortable: false },
+    // { title: 'REMAINING QTY', key: 'current_quantity', sortable: false },
+    { title: 'COMPLETED?', key: 'is_completed', sortable: false },
+    { title: 'LOADED?', key: 'is_loaded', sortable: false },
     { title: 'PROCESSED AT', key: 'created_at', sortable: false },
     { title: 'PROCESSED BY', key: 'processed_by', align: 'start', sortable: false }
 ]
@@ -360,9 +363,6 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
             if (payload.table?.original) {
                 serverItems.value = payload.table?.original?.data;   // Current page raw line records array
                 totalItems.value = payload.table?.original?.total;   // Total absolute matched lines for footer
-                summary_count.late_batch_picked = payload.table?.original?.status_summary?.late_batch_picked || 0;
-                summary_count.on_time_batch_picked = payload.table?.original?.status_summary?.on_time_batch_picked || 0;
-                summary_count.total_completed = payload.table?.original?.status_summary?.total_items || 0;
                 const kpiSummary = {
                     ...payload.table?.original?.status_summary,
                     ...payload.table?.original?.kpi_summary,
@@ -370,14 +370,15 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
                 summary_count.pending_goods_issuance_pallets = getKpiCount(kpiSummary.pending_goods_issuance_pallets);
                 summary_count.completed_goods_issuance_pallets = getKpiCount(kpiSummary.completed_goods_issuance_pallets);
                 summary_count.total_pallets_reserved = getKpiCount(kpiSummary.total_pallets_reserved);
-
+                summary_count.total_sto_line_items_processed = getKpiCount(kpiSummary.total_sto_line_items_processed);
                 if (
                     summary_count.pending_goods_issuance_pallets === null
                     || summary_count.completed_goods_issuance_pallets === null
                     || summary_count.total_pallets_reserved === null
+                    || summary_count.total_sto_line_items_processed === null
                 ) {
                     toast.value = {
-                        message: 'Pallet KPI aggregates are missing from the report response.',
+                        message: 'KPI aggregates are missing from the report response.',
                         color: 'error',
                         show: true,
                     };
@@ -428,7 +429,7 @@ function removeLeadingZeros(value) {
         </v-btn>
     </div>
 
-    <VRow class="processing-kpis" aria-live="polite">
+    <VRow class="processing-kpis justify-end" aria-live="polite">
         <VCol
             v-for="kpi in processingKpis"
             :key="kpi.label"
@@ -499,17 +500,22 @@ function removeLeadingZeros(value) {
                         <span>QTY</span>
                     </template>
 
+                    <template #header.reference="{ column }">
+                        <span classs="mb-1">REFERENCE</span><br />
+                        <span>NO.</span>
+                    </template>
+
                     <template #item.plant_id="{ item }">
-                        <span class="font-weight-bold">{{ item.supplying_plant || '' }}</span>
-                        <span v-if="item.issuing_sloc" class="text-muted small ml-1">
-                            ({{ item.issuing_sloc }})
+                        <span class="font-weight-bold">{{ item.sto_transaction?.supplying_plant || '' }}</span>
+                        <span v-if="item.sto_transaction?.issuing_sloc" class="text-muted small ml-1">
+                            ({{ item.sto_transaction?.issuing_sloc }})
                         </span>
                     </template>
 
                     <template #item.receiving_plant_id="{ item }">
-                        <span class="font-weight-bold">{{ item.receiving_plant || '' }}</span>
-                        <span v-if="item.receiving_sloc" class="text-muted small ml-1">
-                            ({{ item.receiving_sloc }})
+                        <span class="font-weight-bold">{{ item.sto_transaction?.receiving_plant || '' }}</span>
+                        <span v-if="item.sto_transaction?.receiving_sloc" class="text-muted small ml-1">
+                            ({{ item.sto_transaction?.receiving_sloc }})
                         </span>
                     </template>
 
@@ -534,26 +540,58 @@ function removeLeadingZeros(value) {
                         {{ numberWithComma(item.current_quantity) || 0 }} {{ item.uom || '' }}
                     </template>
 
-                    <template #item.reserved_pallets="{ item }">
-                        <v-chip size="small" variant="tonal" color="info">
-                            {{ palletItems(item).length }}
-                        </v-chip>
-                    </template>
-
-                    <template #item.pending_pallets="{ item }">
-                        <v-chip size="small" color="warning" variant="tonal">
-                            {{ pendingPalletCount(item) }}
-                        </v-chip>
-                    </template>
-
-                    <template #item.completed_pallets="{ item }">
-                        <v-chip size="small" color="primary" variant="tonal">
-                            {{ completedPalletCount(item) }}
-                        </v-chip>
-                    </template>
-
                     <template #item.processed_by="{ item }">
                         {{ item.processed_by?.name || '-'}}
+                    </template>
+
+                    <template #item.is_completed="{ item }">
+                        <div class="d-flex justify-center align-center">
+                            <i v-if="item.is_completed" style="font-size: 30px; background-color: green;"
+                                class="ri-checkbox-circle-line"></i>
+                            <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                        </div>
+                    </template>
+
+                    <template #item.is_loaded="{ item }">
+                        <div class="d-flex justify-center align-center">
+                            <i v-if="item.is_loaded" style="font-size: 30px; background-color: green;"
+                                class="ri-checkbox-circle-line"></i>
+                            <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                        </div>
+                    </template>
+
+                    <template #item.reference="{ item }">
+                        <v-chip
+                            v-if="item.truckscale_no"
+                            color="primary"
+                            size="small"
+                        >
+                            {{ item.truckscale_no }}
+                        </v-chip>
+
+                        <v-chip
+                            v-else-if="item.floor_scale_request_reference"
+                            color="info"
+                            size="small"
+                        >
+                            {{ item.floor_scale_request_reference }}
+                        </v-chip>
+
+                        <v-chip  v-else color="error" size="small">
+                            Pending
+                        </v-chip>
+                    </template>
+
+                    <template #item.type="{ item }">
+                        <v-chip v-if="item.truckscale_no" color="primary" size="small">
+                            Truckscale
+                        </v-chip>
+                        <v-chip v-else-if="item.floor_scale_request_reference" color="info" size="small">
+                            Floor Scale
+                        </v-chip>
+                        <v-chip v-else color="error" size="small">
+                            Pending
+                        </v-chip>
                     </template>
             
                 </VDataTableServer>
