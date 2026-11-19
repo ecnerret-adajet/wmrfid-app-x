@@ -297,6 +297,9 @@ const proceedMapping = () => {
     <VerticalNavLink v-if="authUserCan('view.open.do.picklist') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Open DO Picklist', icon: 'ri-list-check', to: '/reports/open-do-picklist' }" />
     
+    <VerticalNavLink v-if="authStore.user?.is_super_admin || (authUserCan('view.open.sto.picklist.report') && authStore.user?.plants?.some(plant => plant.plant_code === '2110'))"
+        :item="{ title: 'Open STO Picklist', icon: 'ri-file-transfer-line', to: '/reports/open-sto-picklist' }" />
+    
     <VerticalNavLink v-if="authUserCan('view.completed.do.picklist') && (authStore.user?.plants?.some(plant => plant.plant_code === '2110') || authStore.user?.is_super_admin)"
         :item="{ title: 'Completed DO Picklist', icon: 'ri-file-check-line', to: '/reports/completed-do-picklist' }" />
     

@@ -574,6 +574,18 @@ export const routes = [
                 },
         },
         {
+                path: 'reports/open-sto-picklist',
+                name: 'open-sto-picklist-report',
+                component: () => import('@/pages/reports/openStoPicklist/index.vue'),
+                meta: {
+                    pageTitle: "Open STO Picklist Report",
+                    breadcrumbs: [
+                            { label: "Open STO Picklist Report", link: "/reports/open-sto-picklist" },
+                    ],
+                },
+        },
+
+        {
                 path: 'reports/completed-do-picklist',
                 name: 'completed-do-picklist-report',
                 component: () => import('@/pages/reports/completedDoPicklist/index.vue'),
