@@ -103,7 +103,7 @@ const isSavingTruckscale = ref(false);
 const truckscales = ref([]);
 const truckscalesLoading = ref(false);
 const truckscalesError = ref('');
-const activeScaleTab = ref('floorscale');
+const activeScaleTab = ref('truckscale');
 const scaleTabs = [
     { title: 'Truckscale', value: 'truckscale', icon: 'ri-scales-3-line' },
     { title: 'Floorscale', value: 'floorscale', icon: 'ri-scales-2-line' },

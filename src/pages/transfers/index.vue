@@ -2,6 +2,7 @@
 import Loader from '@/components/Loader.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import Toast from '@/components/Toast.vue';
+import { numberWithComma } from '@/composables/useHelpers';
 import ApiService from '@/services/ApiService';
 import { useAuthStore } from '@/stores/auth';
 import { debounce } from 'lodash';
@@ -495,7 +496,7 @@ const onPaginationChanged = ({ page, itemsPerPage, sortBy, search, totalItems: i
                                 <td>{{ lineItem.po_item || '-' }}</td>
                                 <td>{{ lineItem.material_code || '-' }}</td>
                                 <td>{{ lineItem.material_description || '-' }}</td>
-                                <td class="text-end">{{ lineItem.qty ?? '-' }}</td>
+                                <td class="text-end">{{ numberWithComma(lineItem.qty) ?? '-' }}</td>
                                 <td>{{ lineItem.uom || '-' }}</td>
                             </tr>
                             <tr v-if="!selectedFloorscalePo.purchase_order_items.length">
