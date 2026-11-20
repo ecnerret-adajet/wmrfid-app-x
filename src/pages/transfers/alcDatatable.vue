@@ -69,6 +69,7 @@ let assignedPalletsRequest = 0;
 const selectedLineItem = computed(() =>
     lineItems.value.find(item => item.po_item === selectedLineItemId.value) || null
 );
+const isFinalizedScale = item => item?.truckscale?.final_indicator === 'X';
 const formatLineItemQuantity = (value) => {
     if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) return 'Unavailable';
     return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -507,6 +508,15 @@ watch(assignPalletsDialog, (open) => {
 
 const handleAction = async (sto, action, mode = 'truckscale') => {
     if (action === 'assign_pallets') {
+        if (isFinalizedScale(sto)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Pallet Assignment Failed',
+                text: 'Pallets cannot be assigned to a finalized scale request.',
+            });
+            return;
+        }
+
         const hasPickedPallets = mode === 'floorscale'
             ? sto.sto_transactions?.some(transaction => transaction.items?.length > 0)
             : sto.sto_transactions?.[0]?.items?.length > 0;
@@ -579,6 +589,15 @@ const savePalletAssignmentToTruckscale = async () => {
     if (isSavingPalletAssignment.value) return;
 
     const assignmentTarget = palletAssignmentTruckscale.value;
+    if (isFinalizedScale(assignmentTarget)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Pallet Assignment Failed',
+            text: 'Pallets cannot be assigned to a finalized scale request.',
+        });
+        return;
+    }
+
     const lineItem = selectedLineItem.value;
     const selectedIds = new Set(selectedPalletIds.value);
     const pallets = assignedPalletRecords.value.filter(pallet =>
@@ -1000,7 +1019,7 @@ defineExpose({
                         <v-btn icon="ri-more-2-line" variant="text" v-bind="props" color="grey"></v-btn>
                     </template>
                     <v-list>
-                        <v-list-item prepend-icon="ri-add-box-line" @click="handleAction(item, 'assign_pallets')">Assign Pallets</v-list-item>
+                        <v-list-item :disabled="isFinalizedScale(item)" prepend-icon="ri-add-box-line" @click="handleAction(item, 'assign_pallets')">Assign Pallets</v-list-item>
                         <v-list-item prepend-icon="ri-stack-line"  @click="handleAction(item, 'view_reserved_pallets')">View Reserved Pallets</v-list-item>
                         <v-list-item
                             v-if="item.batch_pick_status === 'Batch Picked' && (authUserCan('can.sto.assign.truckscale') || authStore.user?.is_super_admin)"
@@ -1036,7 +1055,7 @@ defineExpose({
                                 <v-btn icon="ri-more-2-line" variant="text" v-bind="menuProps" color="grey" aria-label="Floorscale request actions" />
                             </template>
                             <v-list>
-                                <v-list-item prepend-icon="ri-add-box-line" @click="handleAction(item, 'assign_pallets', 'floorscale')">Assign Pallets</v-list-item>
+                                <v-list-item :disabled="isFinalizedScale(item)" prepend-icon="ri-add-box-line" @click="handleAction(item, 'assign_pallets', 'floorscale')">Assign Pallets</v-list-item>
                                 <v-list-item prepend-icon="ri-stack-line" @click="handleAction(item, 'view_reserved_pallets', 'floorscale')">View Reserved Pallets</v-list-item>
                             </v-list>
                         </v-menu>
@@ -1050,6 +1069,12 @@ defineExpose({
                     </template>
                     <template #item.batch_picked="{ item }">
                         <i v-if="item.sto_transactions?.[0]?.items?.length > 0" style="font-size: 30px; background-color: green;"
+                                                class="ri-checkbox-circle-line"></i>
+                        <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
+                    </template>
+
+                    <template #item.is_final="{ item }">
+                        <i v-if="item.truckscale?.final_indicator === 'X'" style="font-size: 30px; background-color: green;"
                                                 class="ri-checkbox-circle-line"></i>
                         <i v-else style="font-size: 30px; background-color: #FF4C51;" class="ri-close-circle-line"></i>
                     </template>
